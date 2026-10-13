@@ -207,7 +207,7 @@ export default function PostDetailScreen(): React.JSX.Element {
             {post.geotag ? <View style={styles.placeRow}><IconMapPin size={17} color={c.textSecondary} /><Text style={[styles.place, { color: c.textSecondary }]}>{post.geotag}</Text></View> : null}
             <View style={styles.engagementRow}>
               <TouchableOpacity style={styles.engagementButton} onPress={() => void toggleLike()} accessibilityRole="button" accessibilityLabel={liked ? t('post.unlikeA11y') : t('post.likeA11y')}>
-                {liked ? <IconHeartFilled size={23} color={c.danger} /> : <IconHeart size={23} color={c.textSecondary} />}
+                {liked ? <IconHeartFilled size={23} color={c.dangerText} /> : <IconHeart size={23} color={c.textSecondary} />}
                 <Text style={[styles.engagementText, { color: c.textSecondary }]}>{likeCount}</Text>
               </TouchableOpacity>
               <View style={styles.engagementButton}><IconMessageCircle size={22} color={c.textSecondary} /><Text style={[styles.engagementText, { color: c.textSecondary }]}>{comments.length}</Text></View>
@@ -236,7 +236,7 @@ export default function PostDetailScreen(): React.JSX.Element {
         <Pressable style={[styles.backdrop, { backgroundColor: c.scrim }]} onPress={() => setMenuVisible(false)} />
         <View style={[styles.sheet, { backgroundColor: c.bgElevated, borderColor: c.borderSubtle }]}>
           <View style={styles.sheetHandleWrap}><View style={[styles.sheetHandle, { backgroundColor: c.borderSubtle }]} /></View>
-          {isOwner ? <SheetRow label={t('detail.delete')} color={c.danger} borderColor={c.borderSubtle} icon={<IconTrash size={20} color={c.danger} />} onPress={confirmDelete} /> : <SheetRow label={t('detail.reportPost')} color={c.danger} borderColor={c.borderSubtle} icon={<IconFlag size={20} color={c.danger} />} onPress={() => { setMenuVisible(false); setReportVisible(true); }} />}
+          {isOwner ? <SheetRow label={t('detail.delete')} color={c.dangerText} borderColor={c.borderSubtle} icon={<IconTrash size={20} color={c.dangerText} />} onPress={confirmDelete} /> : <SheetRow label={t('detail.reportPost')} color={c.dangerText} borderColor={c.borderSubtle} icon={<IconFlag size={20} color={c.dangerText} />} onPress={() => { setMenuVisible(false); setReportVisible(true); }} />}
           <SheetRow label={t('detail.cancel')} color={c.textSecondary} borderColor={c.borderSubtle} icon={<IconX size={20} color={c.textSecondary} />} onPress={() => setMenuVisible(false)} />
         </View>
       </AppModal>

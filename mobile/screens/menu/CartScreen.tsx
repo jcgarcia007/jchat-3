@@ -361,7 +361,7 @@ export default function CartScreen() {
             accessibilityLabel={t('cart.removeA11y', { name: line.item.name })}
             style={({ pressed }) => [styles.deleteBtn, { opacity: pressed ? 0.6 : 1 }]}
           >
-            <IconTrash size={18} color={c.danger} strokeWidth={2} />
+            <IconTrash size={18} color={c.dangerText} strokeWidth={2} />
           </Pressable>
         </View>
       </View>

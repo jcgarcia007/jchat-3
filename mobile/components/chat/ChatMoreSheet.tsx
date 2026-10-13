@@ -65,7 +65,7 @@ export function ChatMoreSheet({
           <Row icon={<IconSettings size={22} color={c.textPrimary} />} label={t('moreSheet.ownerSettings')} onPress={run(onOwnerSettings)} color={c.textPrimary} border={c.borderSubtle} />
         ) : null}
         {!isOwner && inVenue ? (
-          <Row testID="venue-leave" icon={<IconDoorExit size={22} color={c.danger} />} label={t('venueSession.leave')} onPress={run(onLeaveVenue)} color={c.danger} border={c.borderSubtle} />
+          <Row testID="venue-leave" icon={<IconDoorExit size={22} color={c.dangerText} />} label={t('venueSession.leave')} onPress={run(onLeaveVenue)} color={c.dangerText} border={c.borderSubtle} />
         ) : null}
 
         <Pressable onPress={onClose} accessibilityRole="button" style={styles.cancel}>

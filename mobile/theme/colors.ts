@@ -46,6 +46,8 @@ export const darkColors = {
   ...shared,
   /** Brand blue as text / icon: #5C7CFA on dark surfaces. */
   brandText: palette.brand,
+  /** Danger as text / icon: the lighter #F87171 on dark surfaces. */
+  dangerText: palette.dangerTextDark,
   bgBase: palette.bgBase,
   bgSurface: palette.bgSurface,
   bgElevated: palette.bgElevated,
@@ -63,6 +65,8 @@ export const lightColors: ThemeColors = {
   ...shared,
   /** Brand blue as text / icon: the darker #3B5BDB on light surfaces (4.7:1+). */
   brandText: palette.brandTextLight,
+  /** Danger as text / icon: the darker #C62828 on light surfaces. */
+  dangerText: palette.dangerTextLight,
   bgBase: palette.bgBaseLight,
   bgSurface: palette.bgSurfaceLight,
   bgElevated: palette.bgElevatedLight,

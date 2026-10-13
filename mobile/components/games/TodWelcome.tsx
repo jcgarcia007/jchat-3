@@ -130,7 +130,7 @@ function TodRulesModal({ visible, readOnly, saving, error, onAccept, onDismiss }
                 </View>
               ))}
               <Text style={[styles.notice, { color: c.textSecondary }]}>{t('welcome.notice')}</Text>
-              {error ? <Text style={[styles.error, { color: c.danger }]}>{t('welcome.saveError')}</Text> : null}
+              {error ? <Text style={[styles.error, { color: c.dangerText }]}>{t('welcome.saveError')}</Text> : null}
             </ScrollView>
             <View style={styles.actions}>
               {readOnly ? (

@@ -231,7 +231,7 @@ function AdjustSheet({ item, businessId, onDone, onClose }: AdjustSheetProps) {
 
         {/* Error / success */}
         {errorMsg ? (
-          <Text style={[styles.errorText, { color: c.danger }]}>{errorMsg}</Text>
+          <Text style={[styles.errorText, { color: c.dangerText }]}>{errorMsg}</Text>
         ) : null}
         {successStock !== null ? (
           <Text style={[styles.successText, { color: c.success }]}>
@@ -345,7 +345,7 @@ function LinkSheet({ scannedCode, items, businessId, onLinked, onDismiss }: Link
       </View>
 
       {errorMsg ? (
-        <Text style={[styles.errorText, { color: c.danger, marginHorizontal: 16 }]}>
+        <Text style={[styles.errorText, { color: c.dangerText, marginHorizontal: 16 }]}>
           {errorMsg}
         </Text>
       ) : null}
@@ -509,7 +509,7 @@ export default function PosInventoryScreen() {
           </Text>
           {isLow ? (
             <View style={[styles.lowBadge, { backgroundColor: c.danger + '20', borderColor: c.danger + '44' }]}>
-              <Text style={[styles.lowBadgeText, { color: c.danger }]}>
+              <Text style={[styles.lowBadgeText, { color: c.dangerText }]}>
                 {t('badgeLow')}
               </Text>
             </View>
@@ -599,7 +599,7 @@ export default function PosInventoryScreen() {
         </View>
       ) : errorMsg ? (
         <View style={styles.center}>
-          <Text style={[styles.errorBody, { color: c.danger }]}>{errorMsg}</Text>
+          <Text style={[styles.errorBody, { color: c.dangerText }]}>{errorMsg}</Text>
           <Pressable onPress={() => void load()} style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}>
             <Text style={[styles.retryText, { color: c.brandText }]}>{t('loadError')}</Text>
           </Pressable>

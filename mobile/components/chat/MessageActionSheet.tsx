@@ -55,8 +55,8 @@ export function MessageActionSheet({ visible, authorName, onReport, onBlock, onP
       >
         <View style={[styles.handle, { backgroundColor: colors.borderSubtle }]} />
         {onPin ? row('pin', t('pin.pinButton', { ns: 'chat' }), <IconPin size={20} color={colors.textPrimary} />, colors.textPrimary, onPin) : null}
-        {row('report', t('report.message'), <IconFlag size={20} color={colors.danger} />, colors.danger, onReport)}
-        {row('block', t('report.block', { name: authorName }), <IconBan size={20} color={colors.danger} />, colors.danger, onBlock)}
+        {row('report', t('report.message'), <IconFlag size={20} color={colors.dangerText} />, colors.danger, onReport)}
+        {row('block', t('report.block', { name: authorName }), <IconBan size={20} color={colors.dangerText} />, colors.danger, onBlock)}
         <Pressable accessibilityRole="button" onPress={onClose} style={styles.cancel}>
           <Text style={[styles.cancelLabel, { color: colors.textSecondary }]}>{t('actions.cancel')}</Text>
         </Pressable>

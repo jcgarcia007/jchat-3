@@ -241,7 +241,7 @@ export default function PosMyPrintersScreen(): React.ReactElement {
             </Pressable>
           ))}
           <Pressable onPress={resetAddFlow} style={s.cancelRow}>
-            <Text style={[s.cancelText, { color: colors.danger }]}>
+            <Text style={[s.cancelText, { color: colors.dangerText }]}>
               {t('actions.cancel', { ns: 'common' })}
             </Text>
           </Pressable>
@@ -278,7 +278,7 @@ export default function PosMyPrintersScreen(): React.ReactElement {
             <Text style={s.primaryBtnText}>{t('pos.printers.printTest')}</Text>
           </Pressable>
           <Pressable onPress={resetAddFlow} style={s.cancelRow}>
-            <Text style={[s.cancelText, { color: colors.danger }]}>
+            <Text style={[s.cancelText, { color: colors.dangerText }]}>
               {t('actions.cancel', { ns: 'common' })}
             </Text>
           </Pressable>
@@ -313,7 +313,7 @@ export default function PosMyPrintersScreen(): React.ReactElement {
             </>
           ) : (
             <>
-              <Text style={[s.addPhaseLabel, { color: colors.danger }]}>
+              <Text style={[s.addPhaseLabel, { color: colors.dangerText }]}>
                 {t('pos.printers.testError')}: {testError}
               </Text>
               <Pressable
@@ -325,7 +325,7 @@ export default function PosMyPrintersScreen(): React.ReactElement {
             </>
           )}
           <Pressable onPress={resetAddFlow} style={s.cancelRow}>
-            <Text style={[s.cancelText, { color: colors.danger }]}>
+            <Text style={[s.cancelText, { color: colors.dangerText }]}>
               {t('actions.cancel', { ns: 'common' })}
             </Text>
           </Pressable>
@@ -397,7 +397,7 @@ export default function PosMyPrintersScreen(): React.ReactElement {
                 onPress={() => handleRemove(p.address)}
                 accessibilityLabel={t('pos.printers.removePrinter')}
               >
-                <IconTrash size={16} color={colors.danger} strokeWidth={1.8} />
+                <IconTrash size={16} color={colors.dangerText} strokeWidth={1.8} />
               </Pressable>
             </View>
           ))

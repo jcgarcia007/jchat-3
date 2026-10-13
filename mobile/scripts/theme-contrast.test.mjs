@@ -69,8 +69,8 @@ function check(name, fg, bg) {
 const dark = { bgBase: palette.bgBase, bgSurface: palette.bgSurface, bgElevated: palette.bgElevated, bgOverlay: palette.bgOverlay };
 const light = { bgBase: palette.bgBaseLight, bgSurface: palette.bgSurfaceLight, bgElevated: palette.bgElevatedLight, bgOverlay: palette.bgElevatedLight };
 for (const [scheme, surfaces, text] of [
-  ['dark', dark, { textPrimary: palette.textPrimary, textSecondary: palette.textSecondary, textTertiary: palette.textTertiary, brandText: palette.brand }],
-  ['light', light, { textPrimary: palette.textPrimaryLight, textSecondary: palette.textSecondaryLight, textTertiary: palette.textTertiaryLight, brandText: palette.brandTextLight }],
+  ['dark', dark, { textPrimary: palette.textPrimary, textSecondary: palette.textSecondary, textTertiary: palette.textTertiary, brandText: palette.brand, dangerText: palette.dangerTextDark }],
+  ['light', light, { textPrimary: palette.textPrimaryLight, textSecondary: palette.textSecondaryLight, textTertiary: palette.textTertiaryLight, brandText: palette.brandTextLight, dangerText: palette.dangerTextLight }],
 ]) {
   for (const [textName, color] of Object.entries(text)) {
     for (const [surfaceName, surface] of Object.entries(surfaces)) check(`${scheme} · ${textName} on ${surfaceName}`, color, surface);

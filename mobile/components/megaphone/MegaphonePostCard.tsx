@@ -142,7 +142,7 @@ export default function MegaphonePostCard({
           style={styles.action}
         >
           {liked ? (
-            <IconHeartFilled size={24} color={colors.danger} />
+            <IconHeartFilled size={24} color={colors.dangerText} />
           ) : (
             <IconHeart size={24} color={colors.textSecondary} strokeWidth={1.8} />
           )}

@@ -323,7 +323,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
   const topInset = inSheet ? 4 : insets.top;
   if (initialLoading) return <ProfileSkeleton theme={theme} topInset={topInset} />;
   if (error || !profile) {
-    return <View style={[styles.errorRoot, { backgroundColor: c.bgBase }]}><Text style={[styles.errorText, { color: c.danger }]}>{error ?? t('view.profileNotFound')}</Text></View>;
+    return <View style={[styles.errorRoot, { backgroundColor: c.bgBase }]}><Text style={[styles.errorText, { color: c.dangerText }]}>{error ?? t('view.profileNotFound')}</Text></View>;
   }
 
   const renderPosts = () => !isOwnProfile && (relation === 'blockedByMe' || relation === 'blockedMe') ? null : !canViewPosts ? (
@@ -366,8 +366,8 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
           <View style={styles.sheetHandleWrap}><View style={[styles.sheetHandle, { backgroundColor: theme.statsBorder }]} /></View>
           <Text style={[styles.sheetTitle, { color: theme.bodyText }]}>@{profile.username}</Text>
           <SheetRow icon={<IconShare3 size={20} color={theme.bodyText} />} label={t('menu.share')} color={theme.bodyText} borderColor={theme.statsBorder} onPress={() => { setMenuVisible(false); void shareProfile(); }} />
-          <SheetRow icon={<IconFlag size={20} color={c.danger} />} label={t('menu.report')} color={c.danger} borderColor={theme.statsBorder} onPress={() => { setMenuVisible(false); setReportVisible(true); }} />
-          <SheetRow icon={<IconBan size={20} color={c.danger} />} label={blocked ? t('menu.unblock') : t('menu.block')} color={c.danger} borderColor={theme.statsBorder} onPress={confirmBlock} />
+          <SheetRow icon={<IconFlag size={20} color={c.dangerText} />} label={t('menu.report')} color={c.dangerText} borderColor={theme.statsBorder} onPress={() => { setMenuVisible(false); setReportVisible(true); }} />
+          <SheetRow icon={<IconBan size={20} color={c.dangerText} />} label={blocked ? t('menu.unblock') : t('menu.block')} color={c.dangerText} borderColor={theme.statsBorder} onPress={confirmBlock} />
           <SheetRow icon={<IconX size={20} color={theme.bodyTextSecondary} />} label={t('actions.cancel')} color={theme.bodyTextSecondary} borderColor={theme.statsBorder} onPress={() => setMenuVisible(false)} />
         </View>
       </AppModal>

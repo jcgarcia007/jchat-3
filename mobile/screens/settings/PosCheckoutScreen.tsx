@@ -552,7 +552,7 @@ export default function PosCheckoutScreen() {
               {readerStatus === 'ready' ? (
                 <IconWifi size={18} color={c.success} strokeWidth={2} />
               ) : readerStatus === 'error' ? (
-                <IconWifiOff size={18} color={c.danger} strokeWidth={2} />
+                <IconWifiOff size={18} color={c.dangerText} strokeWidth={2} />
               ) : (
                 <Spinner size="small" color={c.brandText} />
               )}
@@ -586,7 +586,7 @@ export default function PosCheckoutScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={t('pos.readerRetry')}
               >
-                <IconRefresh size={16} color={c.danger} strokeWidth={2} />
+                <IconRefresh size={16} color={c.dangerText} strokeWidth={2} />
               </Pressable>
             ) : null}
           </View>
@@ -673,14 +673,14 @@ export default function PosCheckoutScreen() {
         {/* ── Checkout error ── */}
         {phase === 'error' && checkoutError ? (
           <View style={[styles.errorBanner, { backgroundColor: c.brandLight, borderColor: c.danger }]}>
-            <Text style={[styles.errorText, { color: c.danger }]}>{checkoutError}</Text>
+            <Text style={[styles.errorText, { color: c.dangerText }]}>{checkoutError}</Text>
             <Pressable
               onPress={() => { setPhase('idle'); setCheckoutError(null); }}
               style={[styles.errorRetry, { borderColor: c.danger }]}
               accessibilityRole="button"
               accessibilityLabel={t('pos.readerRetry')}
             >
-              <Text style={[styles.errorRetryText, { color: c.danger }]}>
+              <Text style={[styles.errorRetryText, { color: c.dangerText }]}>
                 {t('pos.readerRetry')}
               </Text>
             </Pressable>
@@ -764,7 +764,7 @@ export default function PosCheckoutScreen() {
                 </Pressable>
 
                 {printStatus === 'error' && printError ? (
-                  <Text style={[styles.printErrorText, { color: c.danger }]}>
+                  <Text style={[styles.printErrorText, { color: c.dangerText }]}>
                     {printError}
                   </Text>
                 ) : null}

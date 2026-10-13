@@ -979,7 +979,7 @@ export default function PosSplitScreen(): React.ReactElement {
                 </Text>
               </Pressable>
               {printStatus[lastSuccessKey] === 'error' ? (
-                <Text style={[styles.printErrorText, { color: c.danger }]}>
+                <Text style={[styles.printErrorText, { color: c.dangerText }]}>
                   {t('pos.printError')}
                 </Text>
               ) : null}
@@ -1181,7 +1181,7 @@ export default function PosSplitScreen(): React.ReactElement {
             {readerStatus === 'ready' ? (
               <IconWifi size={18} color={c.success} strokeWidth={2} />
             ) : readerStatus === 'error' ? (
-              <IconWifiOff size={18} color={c.danger} strokeWidth={2} />
+              <IconWifiOff size={18} color={c.dangerText} strokeWidth={2} />
             ) : (
               <Spinner size="small" color={c.brandText} />
             )}
@@ -1214,7 +1214,7 @@ export default function PosSplitScreen(): React.ReactElement {
               accessibilityRole="button"
               accessibilityLabel={t('pos.readerRetry')}
             >
-              <IconRefresh size={16} color={c.danger} strokeWidth={2} />
+              <IconRefresh size={16} color={c.dangerText} strokeWidth={2} />
             </Pressable>
           )}
         </View>
@@ -1356,7 +1356,7 @@ export default function PosSplitScreen(): React.ReactElement {
             </View>
 
             {splitError !== null && (
-              <Text style={[styles.splitError, { color: c.danger }]}>{splitError}</Text>
+              <Text style={[styles.splitError, { color: c.dangerText }]}>{splitError}</Text>
             )}
 
             <Pressable
@@ -1575,7 +1575,7 @@ export default function PosSplitScreen(): React.ReactElement {
                   { backgroundColor: c.danger + '18', borderColor: c.danger },
                 ]}
               >
-                <Text style={[styles.errorText, { color: c.danger }]}>
+                <Text style={[styles.errorText, { color: c.dangerText }]}>
                   {checkoutError}
                 </Text>
               </View>
@@ -1744,7 +1744,7 @@ export default function PosSplitScreen(): React.ReactElement {
                   { backgroundColor: c.danger + '18', borderColor: c.danger },
                 ]}
               >
-                <Text style={[styles.errorText, { color: c.danger }]}>
+                <Text style={[styles.errorText, { color: c.dangerText }]}>
                   {checkoutError}
                 </Text>
               </View>

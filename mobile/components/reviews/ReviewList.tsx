@@ -338,7 +338,7 @@ function makeListStyles(c: ReturnType<typeof useThemeColors>) {
     },
     errorText: {
       fontSize: 14,
-      color: c.danger,
+      color: c.dangerText,
       textAlign: 'center',
     },
     emptyText: {

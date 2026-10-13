@@ -110,7 +110,7 @@ function Stamps() {
         <Text style={[styles.stampText, { color: c.success }]}>{t('deck.like')}</Text>
       </Animated.View>
       <Animated.View style={[styles.stamp, styles.stampNope, { borderColor: c.danger }, nopeStyle]}>
-        <Text style={[styles.stampText, { color: c.danger }]}>{t('deck.nope')}</Text>
+        <Text style={[styles.stampText, { color: c.dangerText }]}>{t('deck.nope')}</Text>
       </Animated.View>
       <Animated.View style={[styles.stamp, styles.stampSuper, { borderColor: c.brand }, superStyle]}>
         <Text style={[styles.stampText, { color: c.brandText }]}>{t('deck.superLike')}</Text>
@@ -170,7 +170,7 @@ function Controls({
   return (
     <View style={styles.controls}>
       {button(t('deck.undo'), () => void handleUndo(), !canUndo, c.warning, <IconArrowBackUp size={24} color={c.warning} />)}
-      {button(t('deck.pass'), () => swipeLeft(), !canSwipe, c.danger, <IconX size={28} color={c.danger} />)}
+      {button(t('deck.pass'), () => swipeLeft(), !canSwipe, c.danger, <IconX size={28} color={c.dangerText} />)}
       {button(
         t('deck.superLike'),
         () => swipeUp(),

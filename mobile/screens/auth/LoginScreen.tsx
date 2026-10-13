@@ -239,5 +239,5 @@ const styles = StyleSheet.create({
   socialText: { fontFamily: loginFont.textBold, fontSize: 15, color: ticket.ticketInk },
   newHere: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', minHeight: 44 },
   newHereText: { fontFamily: loginFont.text, fontSize: 14, color: ticket.ticketInkMuted },
-  link: { fontFamily: loginFont.textBold, fontSize: 14, color: ticket.brandAccent },
+  link: { fontFamily: loginFont.textBold, fontSize: 14, color: ticket.ticketButton },
 });

@@ -40,6 +40,7 @@ import { TodRoundCard } from '../games/TodRoundCard';
 import { TodDrawResult } from '../games/TodDrawResult';
 import type { VoiceSource } from '../../services/voiceNotes';
 import { getInitials } from '../../utils/initials';
+import { ensureTextContrast } from '../../utils/ensureTextContrast';
 import { webSlop } from '../../utils/touchTarget';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -354,7 +355,7 @@ export function MessageBubble({
             onPress={handlePressUser}
             style={styles.senderNameRow}
           >
-            <Text style={[styles.senderName, { color: theme.accent }]} numberOfLines={1}>
+            <Text style={[styles.senderName, { color: ensureTextContrast(theme.accent, theme.bg, 4.5) }]} numberOfLines={1}>
               {displayName}
               {incognito ? ' 🎭' : ''}
             </Text>
@@ -371,7 +372,7 @@ export function MessageBubble({
                   style={[
                     styles.roleBadgeText,
                     authorRole === 'owner'
-                      ? styles.roleBadgeTextOwner
+                      ? [styles.roleBadgeTextOwner, { color: ensureTextContrast(palette.gold, theme.bg, 5) }]
                       : styles.roleBadgeTextStaff,
                   ]}
                 >

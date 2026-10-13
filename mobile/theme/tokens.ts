@@ -18,6 +18,10 @@ export const palette = {
   success: '#1D9E75',
   warning: '#f59e0b',
   danger: '#ef4444',
+  /** Danger as TEXT / ICON on light surfaces: 5.6:1 on white (#ef4444 is 3.76:1). Dark mode keeps #ef4444. */
+  dangerTextLight: '#C62828',
+  /** Danger as TEXT / ICON on dark surfaces: 4.5:1+ even on the overlay surface (#ef4444 is 3.8:1 there). */
+  dangerTextDark: '#F87171',
   gold: '#D97706',
   /** Modal/backdrop scrim — intentionally dark in both color schemes. */
   scrim: 'rgba(0,0,0,0.72)',

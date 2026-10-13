@@ -438,7 +438,7 @@ function makeStyles(c: ThemeColors) {
       textAlignVertical: 'top',
     },
     errorText: {
-      color: c.danger,
+      color: c.dangerText,
       fontSize: 13,
       marginBottom: 8,
       marginLeft: 2,

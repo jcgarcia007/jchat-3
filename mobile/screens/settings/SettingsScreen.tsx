@@ -819,7 +819,7 @@ export default function SettingsScreen() {
 
         {/* ── 6. SIGN OUT ──────────────────────────────────────────────────── */}
         <SettingsRow
-          icon={<IconLock size={20} color={c.danger} strokeWidth={2} />}
+          icon={<IconLock size={20} color={c.dangerText} strokeWidth={2} />}
           label={t('main.signOut')}
           onPress={handleSignOut}
           destructive
@@ -830,7 +830,7 @@ export default function SettingsScreen() {
 
         {/* ── 7. DELETE ACCOUNT ────────────────────────────────────────────── */}
         <SettingsRow
-          icon={<IconTrash size={20} color={c.danger} strokeWidth={2} />}
+          icon={<IconTrash size={20} color={c.dangerText} strokeWidth={2} />}
           label={t('main.deleteAccount')}
           sublabel={t('main.deleteAccountSub')}
           onPress={handleDeleteAccount}

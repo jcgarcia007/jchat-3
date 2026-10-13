@@ -131,7 +131,7 @@ export default function TodHomeScreen() {
         ) : null}
         {message ? (
           <View style={[styles.banner, { backgroundColor: c.bgElevated, borderColor: c.danger }]} accessibilityRole="alert">
-            <Text style={[styles.bannerText, { color: c.danger }]}>{message}</Text>
+            <Text style={[styles.bannerText, { color: c.dangerText }]}>{message}</Text>
           </View>
         ) : null}
 

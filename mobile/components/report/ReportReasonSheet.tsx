@@ -148,7 +148,7 @@ export function ReportReasonSheet({ visible, targetName, contentType, contentId,
                       },
                     ]}
                   >
-                    {urgent ? <IconAlertTriangle size={20} color={colors.danger} strokeWidth={2.2} /> : null}
+                    {urgent ? <IconAlertTriangle size={20} color={colors.dangerText} strokeWidth={2.2} /> : null}
                     <View style={styles.optionText}>
                       <Text style={[styles.optionLabel, { color: urgent ? colors.danger : colors.textPrimary, fontWeight: urgent ? '800' : '500' }]}>
                         {t(`report.reasons.${code}`)}
@@ -181,7 +181,7 @@ export function ReportReasonSheet({ visible, targetName, contentType, contentId,
               )}
 
               {error ? (
-                <Text accessibilityRole="alert" style={[styles.error, { color: colors.danger }]}>{error}</Text>
+                <Text accessibilityRole="alert" style={[styles.error, { color: colors.dangerText }]}>{error}</Text>
               ) : null}
 
               <Pressable

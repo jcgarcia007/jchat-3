@@ -321,7 +321,7 @@ export default function WorkModeScreen() {
         )}
 
         {pinError ? (
-          <Text style={[styles.pinError, { color: c.danger }]}>{pinError}</Text>
+          <Text style={[styles.pinError, { color: c.dangerText }]}>{pinError}</Text>
         ) : null}
 
         <Pressable

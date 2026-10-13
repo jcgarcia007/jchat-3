@@ -216,7 +216,7 @@ export default function PostCard({
         >
           <Animated.View style={{ transform: [{ scale: heartScale }] }}>
             {post.liked_by_me ? (
-              <IconHeartFilled size={22} color={c.danger} />
+              <IconHeartFilled size={22} color={c.dangerText} />
             ) : (
               <IconHeart size={22} color={c.textSecondary} />
             )}

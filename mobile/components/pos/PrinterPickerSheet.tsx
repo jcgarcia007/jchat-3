@@ -263,7 +263,7 @@ const PrinterPickerSheet = forwardRef<PrinterPickerSheetRef, PrinterPickerSheetP
               ItemSeparatorComponent={() => <View style={s.divider} />}
             />
             <Pressable style={[s.cancelBtn, { backgroundColor: colors.bgBase }]} onPress={handleCancel}>
-              <Text style={[s.cancelText, { color: colors.danger }]}>
+              <Text style={[s.cancelText, { color: colors.dangerText }]}>
                 {t('actions.cancel', { ns: 'common' })}
               </Text>
             </Pressable>

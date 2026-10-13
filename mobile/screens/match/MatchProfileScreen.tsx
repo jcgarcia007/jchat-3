@@ -246,7 +246,7 @@ export default function MatchProfileScreen() {
           <View style={[styles.actions, { borderTopColor: c.borderSubtle, backgroundColor: c.bgSurface }]}>
             {(
               [
-                { action: 'pass', label: t('deck.pass'), color: c.danger, icon: <IconX size={28} color={c.danger} /> },
+                { action: 'pass', label: t('deck.pass'), color: c.dangerText, icon: <IconX size={28} color={c.dangerText} /> },
                 { action: 'super', label: t('deck.superLike'), color: c.brandText, icon: <IconStarFilled size={24} color={c.brandText} /> },
                 { action: 'like', label: t('deck.likeButton'), color: c.success, icon: <IconHeartFilled size={26} color={c.success} /> },
               ] as const

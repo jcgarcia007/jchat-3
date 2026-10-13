@@ -225,7 +225,7 @@ export default function MatchActivityScreen() {
             accessibilityLabel={t('activity.deleteLikeA11y', { name })}
             style={styles.iconBtn}
           >
-            <IconTrash size={20} color={c.danger} />
+            <IconTrash size={20} color={c.dangerText} />
           </Pressable>
         )}
         {tab === 'matches' && (
@@ -246,7 +246,7 @@ export default function MatchActivityScreen() {
               accessibilityLabel={t('activity.deleteMatchA11y', { name })}
               style={styles.iconBtn}
             >
-              <IconTrash size={20} color={c.danger} />
+              <IconTrash size={20} color={c.dangerText} />
             </Pressable>
           </>
         )}
@@ -307,7 +307,7 @@ export default function MatchActivityScreen() {
                 accessibilityRole="button"
                 style={styles.clearAll}
               >
-                <Text style={[styles.clearAllText, { color: c.danger }]}>{t('activity.clearAll')}</Text>
+                <Text style={[styles.clearAllText, { color: c.dangerText }]}>{t('activity.clearAll')}</Text>
               </Pressable>
             ) : null
           }

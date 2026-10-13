@@ -846,7 +846,7 @@ function makeStyles(c: ThemeColors) {
 
     // Error
     errorText: {
-      color: c.danger,
+      color: c.dangerText,
       fontSize: 13,
       marginTop: 10,
       marginLeft: 2,

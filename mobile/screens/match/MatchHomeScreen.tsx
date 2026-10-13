@@ -125,7 +125,7 @@ export default function MatchHomeScreen() {
           hitSlop={10}
           style={styles.iconBtn}
         >
-          <IconLogout size={22} color={c.danger} />
+          <IconLogout size={22} color={c.dangerText} />
         </Pressable>
       </View>
 

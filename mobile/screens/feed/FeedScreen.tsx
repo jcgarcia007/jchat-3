@@ -286,7 +286,7 @@ export default function FeedScreen() {
           {t('list.emptyBody')}
         </Text>
         {initError ? (
-          <Text style={[styles.errorText, { color: c.danger }]}>
+          <Text style={[styles.errorText, { color: c.dangerText }]}>
             {initError}
           </Text>
         ) : null}

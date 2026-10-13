@@ -222,7 +222,7 @@ function DraftRow({
           style={[styles.draftBtn, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}
           accessibilityRole="button"
         >
-          <IconTrash size={12} color={c.danger} strokeWidth={2} />
+          <IconTrash size={12} color={c.dangerText} strokeWidth={2} />
         </Pressable>
       </View>
       <Text style={[styles.rowPrice, { color: c.textTertiary }]}>
@@ -995,11 +995,11 @@ export default function PosTableHub(): React.ReactElement {
                     accessibilityState={{ disabled: !!uncombiningId }}
                   >
                     {uncombiningId === sec.table_id ? (
-                      <Spinner size="small" color={c.danger} />
+                      <Spinner size="small" color={c.dangerText} />
                     ) : (
                       <>
-                        <IconPlugOff size={12} color={c.danger} strokeWidth={2} />
-                        <Text style={[styles.uncombineBtnText, { color: c.danger }]}>
+                        <IconPlugOff size={12} color={c.dangerText} strokeWidth={2} />
+                        <Text style={[styles.uncombineBtnText, { color: c.dangerText }]}>
                           {t('pos.combineSeparar')}
                         </Text>
                       </>
@@ -1138,10 +1138,10 @@ export default function PosTableHub(): React.ReactElement {
                       accessibilityRole="button"
                     >
                       {releaseLoading
-                        ? <Spinner size="small" color={c.danger} />
-                        : <IconLock size={14} color={c.danger} strokeWidth={1.8} />
+                        ? <Spinner size="small" color={c.dangerText} />
+                        : <IconLock size={14} color={c.dangerText} strokeWidth={1.8} />
                       }
-                      <Text style={[styles.codeActionLabel, { color: c.danger }]}>
+                      <Text style={[styles.codeActionLabel, { color: c.dangerText }]}>
                         {t('pos.tableCode.release')}
                       </Text>
                     </Pressable>

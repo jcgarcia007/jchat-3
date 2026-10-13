@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
   passwordInput: { paddingRight: 52 },
   eye: { position: 'absolute', right: 0, width: 48, height: 52, alignItems: 'center', justifyContent: 'center' },
   forgot: { alignSelf: 'flex-end', minHeight: 44, justifyContent: 'center' },
-  link: { fontFamily: loginFont.textBold, fontSize: 14, color: ticket.brandAccent },
+  link: { fontFamily: loginFont.textBold, fontSize: 14, color: ticket.ticketButton },
   primary: {
     height: 54,
     borderRadius: 14,
