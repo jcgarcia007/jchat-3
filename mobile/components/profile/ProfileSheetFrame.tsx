@@ -91,6 +91,33 @@ export function ProfileSheetFrame({ onClose, children, overlay, a11yLabel, testI
   }, [panel, sheetHeight, translateY]);
 
   const closingRef = useRef(false);
+  // Web a11y of the chat behind (axe aria-hidden-focus). React Navigation marks every screen under the focused one
+  // aria-hidden="true" while it is still full of focusable controls:
+  //   - PANEL mode: the chat stays usable next to the panel, so it must be reachable by keyboard / screen reader:
+  //     the attribute is removed (and kept removed while React Navigation re-applies it).
+  //   - SHEET mode: the chat is covered, so it is made `inert` (no focus, no clicks) while the sheet is open.
+  // The screen behind is found like above: the first ancestor with a previous sibling, at most MAX_DOM_LEVELS up.
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') return undefined;
+    let el = (document.querySelector(`[data-testid="${testIDBase}-${panel ? 'panel' : 'sheet'}"]`) as HTMLElement | null)?.parentElement ?? null;
+    let behind: Element | null = null;
+    for (let level = 0; el && el !== document.body && level < MAX_DOM_LEVELS; level += 1) {
+      if (el.previousElementSibling) { behind = el.previousElementSibling; break; }
+      el = el.parentElement;
+    }
+    if (!behind) return undefined;
+    const screen = behind;
+    if (panel) {
+      const reveal = () => { if (screen.getAttribute('aria-hidden') === 'true') screen.removeAttribute('aria-hidden'); };
+      reveal();
+      const observer = new MutationObserver(reveal);
+      observer.observe(screen, { attributes: true, attributeFilter: ['aria-hidden'] });
+      return () => observer.disconnect();
+    }
+    screen.setAttribute('inert', '');
+    return () => screen.removeAttribute('inert');
+  }, [panel, testIDBase]);
+
   const useNative = Platform.OS !== 'web';
 
   useEffect(() => {

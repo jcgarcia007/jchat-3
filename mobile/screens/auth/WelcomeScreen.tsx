@@ -83,7 +83,7 @@ export default function WelcomeScreen() {
       </View>
 
       {/* ── Navigation dots ── */}
-      <View style={styles.dotsRow} accessibilityLabel={t('welcome.stepIndicator')}>
+      <View style={styles.dotsRow} accessible accessibilityRole="image" accessibilityLabel={t('welcome.stepIndicator')}>
         {[0, 1, 2, 3].map((i) => (
           <View
             key={i}

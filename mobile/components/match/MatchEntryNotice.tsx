@@ -172,7 +172,7 @@ export function MatchEntryNotice({
                 {Array.from({ length: count }, (_, i) => `i${i + 1}`).map((item) => (
                   <Text
                     key={item}
-                    style={[styles.guideSectionBody, { color: c.textSecondary }]}
+                    style={[styles.guideSectionBody, { color: c.textSecondary }, key === 'data' && item === 'i2' ? { textDecorationLine: 'underline' } : null]}
                     accessibilityRole={key === 'data' && item === 'i2' ? 'link' : undefined}
                     onPress={key === 'data' && item === 'i2' ? () => void Linking.openURL(PRIVACY_URL) : undefined}
                   >
@@ -189,7 +189,7 @@ export function MatchEntryNotice({
       <Text style={[styles.legal, { color: c.textSecondary }]}>
         {t('entry.legalPrefix')}{' '}
         <Text
-          style={{ color: c.brand }}
+          style={{ color: c.brand, textDecorationLine: 'underline' }}
           accessibilityRole="link"
           onPress={() => void Linking.openURL(TERMS_URL)}
         >
@@ -197,7 +197,7 @@ export function MatchEntryNotice({
         </Text>{' '}
         {t('entry.legalAnd')}{' '}
         <Text
-          style={{ color: c.brand }}
+          style={{ color: c.brand, textDecorationLine: 'underline' }}
           accessibilityRole="link"
           onPress={() => void Linking.openURL(PRIVACY_URL)}
         >
