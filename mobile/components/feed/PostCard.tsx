@@ -225,7 +225,7 @@ export default function PostCard({
             <Text
               style={[
                 styles.actionCount,
-                { color: post.liked_by_me ? c.danger : c.textSecondary },
+                { color: post.liked_by_me ? c.dangerText : c.textSecondary },
               ]}
             >
               {likeCount}

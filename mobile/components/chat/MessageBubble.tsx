@@ -144,7 +144,8 @@ interface BubbleContentProps {
 
 function BubbleContent({ message, isOwn, theme, onImagePress, onOrderNow, displayName }: BubbleContentProps) {
   const { t } = useTranslation('chat');
-  const textColor = isOwn ? theme.bubbleOutText : theme.bubbleInText;
+  // Some venue themes set text colours that miss 4.5:1 on their own bubble: nudge only the TEXT (same hue); bubbles keep the theme colours.
+  const textColor = ensureTextContrast(isOwn ? theme.bubbleOutText : theme.bubbleInText, isOwn ? theme.bubbleOutBg : theme.bubbleInBg, 4.5);
   // Only this project's Storage URLs are rendered. The sender's own optimistic bubble
   // still shows the local file while the upload runs (it is removed if the upload fails).
   const canShowMedia =
@@ -372,7 +373,7 @@ export function MessageBubble({
                   style={[
                     styles.roleBadgeText,
                     authorRole === 'owner'
-                      ? [styles.roleBadgeTextOwner, { color: ensureTextContrast(palette.gold, theme.bg, 5) }]
+                      ? [styles.roleBadgeTextOwner, { color: ensureTextContrast(palette.gold, theme.bg, 7) }]
                       : styles.roleBadgeTextStaff,
                   ]}
                 >

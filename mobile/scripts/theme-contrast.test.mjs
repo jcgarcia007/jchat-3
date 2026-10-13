@@ -41,12 +41,8 @@ export function contrast(fg, bg) {
   return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
 }
 
-const KNOWN_BELOW = new Map([
-  // Brand blue as text on the dark "overlay" surface (chips / inputs, not body text) is 3.89:1; everything else the
-  // brand blue does as text, icon or fill (brandText / brandFill) passes. #5C7CFA itself stays the colour for logos,
-  // large accents and decoration (3.67:1 with white), so it is not checked as text any more.
-  ['dark · brandText on bgOverlay', 'brand text on the dark overlay surface 3.89:1 (chips / inputs, not body text)'],
-]);
+// Every text role of the app theme now reaches 4.5:1 on every surface; no exceptions left in the app theme.
+const KNOWN_BELOW = new Map([]);
 
 const failures = [];
 const stillBelow = new Set();
@@ -69,7 +65,7 @@ function check(name, fg, bg) {
 const dark = { bgBase: palette.bgBase, bgSurface: palette.bgSurface, bgElevated: palette.bgElevated, bgOverlay: palette.bgOverlay };
 const light = { bgBase: palette.bgBaseLight, bgSurface: palette.bgSurfaceLight, bgElevated: palette.bgElevatedLight, bgOverlay: palette.bgElevatedLight };
 for (const [scheme, surfaces, text] of [
-  ['dark', dark, { textPrimary: palette.textPrimary, textSecondary: palette.textSecondary, textTertiary: palette.textTertiary, brandText: palette.brand, dangerText: palette.dangerTextDark }],
+  ['dark', dark, { textPrimary: palette.textPrimary, textSecondary: palette.textSecondary, textTertiary: palette.textTertiary, brandText: palette.brandTextDark, dangerText: palette.dangerTextDark }],
   ['light', light, { textPrimary: palette.textPrimaryLight, textSecondary: palette.textSecondaryLight, textTertiary: palette.textTertiaryLight, brandText: palette.brandTextLight, dangerText: palette.dangerTextLight }],
 ]) {
   for (const [textName, color] of Object.entries(text)) {

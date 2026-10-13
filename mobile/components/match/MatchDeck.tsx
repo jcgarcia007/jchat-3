@@ -170,7 +170,7 @@ function Controls({
   return (
     <View style={styles.controls}>
       {button(t('deck.undo'), () => void handleUndo(), !canUndo, c.warning, <IconArrowBackUp size={24} color={c.warning} />)}
-      {button(t('deck.pass'), () => swipeLeft(), !canSwipe, c.danger, <IconX size={28} color={c.dangerText} />)}
+      {button(t('deck.pass'), () => swipeLeft(), !canSwipe, c.dangerText, <IconX size={28} color={c.dangerText} />)}
       {button(
         t('deck.superLike'),
         () => swipeUp(),

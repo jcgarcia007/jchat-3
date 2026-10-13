@@ -1707,7 +1707,7 @@ export default function ChatRoomScreen() {
                     pressed && gateStyles.enterBtnPressed,
                   ]}
                 >
-                  <Text style={[gateStyles.enterBtnLabel, { color: themeColors.bgSurface }]}>
+                  <Text style={[gateStyles.enterBtnLabel, { color: palette.onBrand }]}>
                     {matchAvailable ? t('entry.enter', { ns: 'match' }) : t('chatRoom.enterRoom')}
                   </Text>
                 </Pressable>

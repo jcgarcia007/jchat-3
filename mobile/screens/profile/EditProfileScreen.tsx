@@ -619,7 +619,7 @@ export default function EditProfileScreen(): React.JSX.Element {
                         styles.langChip,
                         {
                           backgroundColor: isSelected
-                            ? c.brand
+                            ? c.brandFill
                             : c.bgSurface,
                           borderColor: isSelected
                             ? c.brand

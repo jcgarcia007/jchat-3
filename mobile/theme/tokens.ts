@@ -13,6 +13,8 @@ export const palette = {
   brandFill: '#4263EB',
   /** Brand blue as TEXT / ICON on light surfaces: 4.7:1 on #e8eaf0. Dark mode keeps #5C7CFA (5.2:1 on the dark background). */
   brandTextLight: '#3B5BDB',
+  /** Brand blue as TEXT / ICON on dark surfaces: 4.5:1+ on every dark surface incl. the overlay (#5C7CFA is 3.9:1 there). */
+  brandTextDark: '#6B8AFB',
   brandLight: 'rgba(92,124,250,0.12)',
   brandPurple: '#7C3AED',
   success: '#1D9E75',

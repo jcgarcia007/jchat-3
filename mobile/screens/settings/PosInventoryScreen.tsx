@@ -586,7 +586,7 @@ export default function PosInventoryScreen() {
           accessibilityRole="checkbox"
           accessibilityState={{ checked: lowOnly }}
         >
-          <Text style={[styles.lowFilterText, { color: lowOnly ? c.danger : c.textSecondary }]}>
+          <Text style={[styles.lowFilterText, { color: lowOnly ? c.dangerText : c.textSecondary }]}>
             {t('filterLow')}
           </Text>
         </Pressable>

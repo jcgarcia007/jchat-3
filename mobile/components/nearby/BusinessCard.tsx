@@ -30,7 +30,7 @@ export default function BusinessCard({ item, onEnter }: BusinessCardProps) {
             {item.name}
           </Text>
           <View style={[styles.badge, { backgroundColor: colors.bgElevated }]}>
-            <Text style={[styles.badgeText, { color: status === 'open' ? colors.success : status === 'closed' ? colors.danger : colors.textSecondary }]}>
+            <Text style={[styles.badgeText, { color: status === 'open' ? colors.success : status === 'closed' ? colors.dangerText : colors.textSecondary }]}>
               {nearbyTranslation.t(status === 'open' ? 'openBadge' : status === 'closed' ? 'closedBadge' : 'hoursUnavailable')}
             </Text>
           </View>

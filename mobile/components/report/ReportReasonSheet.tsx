@@ -150,7 +150,7 @@ export function ReportReasonSheet({ visible, targetName, contentType, contentId,
                   >
                     {urgent ? <IconAlertTriangle size={20} color={colors.dangerText} strokeWidth={2.2} /> : null}
                     <View style={styles.optionText}>
-                      <Text style={[styles.optionLabel, { color: urgent ? colors.danger : colors.textPrimary, fontWeight: urgent ? '800' : '500' }]}>
+                      <Text style={[styles.optionLabel, { color: urgent ? colors.dangerText : colors.textPrimary, fontWeight: urgent ? '800' : '500' }]}>
                         {t(`report.reasons.${code}`)}
                       </Text>
                       {urgent ? (

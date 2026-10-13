@@ -383,7 +383,7 @@ export default function CreatePostScreen() {
             <Text
               style={[
                 styles.counter,
-                { color: overLimit ? c.danger : c.textTertiary },
+                { color: overLimit ? c.dangerText : c.textTertiary },
               ]}
             >
               {captionLength}/{CAPTION_LIMIT}

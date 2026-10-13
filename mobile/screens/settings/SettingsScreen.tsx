@@ -163,7 +163,7 @@ function SettingsRow({
         <Text
           style={[
             styles.rowLabel,
-            { color: destructive ? c.danger : c.textPrimary },
+            { color: destructive ? c.dangerText : c.textPrimary },
           ]}
         >
           {label}

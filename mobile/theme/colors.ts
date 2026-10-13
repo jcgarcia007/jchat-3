@@ -44,8 +44,8 @@ const shared = {
 
 export const darkColors = {
   ...shared,
-  /** Brand blue as text / icon: #5C7CFA on dark surfaces. */
-  brandText: palette.brand,
+  /** Brand blue as text / icon: the lighter #6B8AFB on dark surfaces. */
+  brandText: palette.brandTextDark,
   /** Danger as text / icon: the lighter #F87171 on dark surfaces. */
   dangerText: palette.dangerTextDark,
   bgBase: palette.bgBase,
