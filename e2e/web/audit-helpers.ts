@@ -139,6 +139,19 @@ const DOM_CHECKS = `(opts) => {
     }
   }
 
+  // 2b. iOS Safari hygiene: text fields under 16 px (it zooms the page on focus) and a document that scrolls.
+  for (const f of Array.from(root.querySelectorAll('input,textarea'))) {
+    if (['checkbox', 'radio', 'hidden', 'range', 'file', 'button', 'submit'].includes(f.type) || !isVisible(f)) continue;
+    const r = f.getBoundingClientRect();
+    if (r.width <= 0 || r.height <= 0) continue;
+    const px = parseFloat(getComputedStyle(f).fontSize);
+    if (px < 16) out.push({ kind: 'input-small', msg: 'campo de texto de ' + px + ' px (< 16: iOS Safari hace zoom al enfocarlo)', target: label(f) });
+  }
+  // Only the app shell must never scroll the document (the Next pages are normal long pages).
+  window.scrollTo(0, 40);
+  if (opts.appShell && window.scrollY > 0) out.push({ kind: 'doc-scroll', msg: 'el documento hace scroll (window.scrollY ' + window.scrollY + '): la cabecera puede salirse de la pantalla en iOS', target: '' });
+  window.scrollTo(0, 0);
+
   // 3. Clickables: empty / unnamed buttons, empty SVG icons, small touch targets.
   const clickSel = 'button,[role=button],[role=link],a[href],[role=tab],[role=switch],[role=checkbox],[role=radio],[role=menuitem]';
   const seenClick = new Set();
@@ -233,6 +246,8 @@ const SEVERITY: Record<string, Severity> = {
   'cut-text': 'baja',
   'split-word': 'media',
   'small-target': 'baja',
+  'input-small': 'media',
+  'doc-scroll': 'alta',
   'axe-critical': 'alta',
   'axe-serious': 'media',
   navigation: 'media',
@@ -332,7 +347,7 @@ export class Audit {
 
     const [w] = meta.size.split('x').map(Number);
     const raw = (await page
-      .evaluate(`(${DOM_CHECKS})(${JSON.stringify({ desktop: w >= 900, phone: w <= 480, expectColumn: this.expectColumn })})`)
+      .evaluate(`(${DOM_CHECKS})(${JSON.stringify({ desktop: w >= 900, phone: w <= 480, expectColumn: this.expectColumn, appShell: this.expectColumn })})`)
       .catch((e) => [{ kind: 'navigation', msg: `check failed: ${String(e).slice(0, 120)}`, target: '' }])) as { kind: string; msg: string; target: string }[];
     for (const r of raw) this.push({ kind: r.kind, message: r.msg, target: r.target, shot: shotRel });
 
