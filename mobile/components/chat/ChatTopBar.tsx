@@ -43,6 +43,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import type { ChatTheme } from '../../theme/chatThemes';
+import { webSlop } from '../../utils/touchTarget';
 import { palette } from '../../theme/tokens';
 import type { UserAnchor } from './MessageBubble';
 import { getInitials } from '../../utils/initials';
@@ -125,7 +126,7 @@ function UserAvatar({ user, theme, onPressUser }: UserAvatarProps) {
       accessibilityLabel={t('topBar.userTapA11y', { name: displayName })}
       // 40 pt avatar + 2 pt slop on every side = 44 pt touch area.
       hitSlop={2}
-      style={avatarStyles.wrap}
+      style={[avatarStyles.wrap, webSlop(2), Platform.OS === 'web' ? { marginHorizontal: 1 } : null]}
     >
       {!user.is_incognito && user.avatar_url ? (
         <Image

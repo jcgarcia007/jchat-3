@@ -141,7 +141,7 @@ const tabStyles = StyleSheet.create({
   },
   tab: {
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 12.5, // 14 px text + 2 × 12.5 + 2 px indicator ≈ 44 pt touch target
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
   },

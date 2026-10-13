@@ -40,6 +40,7 @@ import { TodRoundCard } from '../games/TodRoundCard';
 import { TodDrawResult } from '../games/TodDrawResult';
 import type { VoiceSource } from '../../services/voiceNotes';
 import { getInitials } from '../../utils/initials';
+import { webSlop } from '../../utils/touchTarget';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -328,7 +329,8 @@ export function MessageBubble({
           onPress={handlePressUser}
           accessibilityRole="button"
           accessibilityLabel={t('bubble.userLongPressA11y', { name: displayName })}
-          style={styles.avatarWrap}
+          // 32 px avatar → 44 px target on web too (react-native-web ignores hitSlop); marginBottom 2 − 6 slop = −4.
+          style={[styles.avatarWrap, webSlop(6), Platform.OS === 'web' ? { marginBottom: -4 } : null]}
         >
           {!incognito && message.sender_avatar ? (
             <Image
@@ -403,7 +405,8 @@ export function MessageBubble({
           onPress={onPressOwnAvatar}
           accessibilityRole="button"
           accessibilityLabel={t('ownMenu.title')}
-          style={styles.avatarWrap}
+          // 32 px avatar → 44 px target on web too (react-native-web ignores hitSlop); marginBottom 2 − 6 slop = −4.
+          style={[styles.avatarWrap, webSlop(6), Platform.OS === 'web' ? { marginBottom: -4 } : null]}
         >
           {message.sender_avatar ? (
             <Image source={{ uri: message.sender_avatar }} style={[styles.avatar, { borderColor: theme.border }]} />

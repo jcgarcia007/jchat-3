@@ -255,8 +255,6 @@ export function ChatInput({
           disabled={disabled}
           accessibilityRole="button"
           accessibilityLabel={attachmentOpen ? t('input.closeAttachment') : t('input.openAttachment')}
-          // 38 pt button + 3 pt slop on every side = 44 pt touch area.
-          hitSlop={3}
           style={({ pressed }) => [
             barStyles.iconBtn,
             { backgroundColor: attachmentOpen ? theme.accent : theme.inputBg, borderColor: theme.border },
@@ -296,8 +294,6 @@ export function ChatInput({
           disabled={disabled}
           accessibilityRole="button"
           accessibilityLabel={t('input.takePhoto')}
-          // 38 pt button + 3 pt slop on every side = 44 pt touch area.
-          hitSlop={3}
           style={({ pressed }) => [
             barStyles.iconBtn,
             { backgroundColor: theme.inputBg, borderColor: theme.border },
@@ -315,8 +311,6 @@ export function ChatInput({
           onPress={canSend ? handleSend : handleMicPress}
           accessibilityRole="button"
           accessibilityLabel={canSend ? t('input.send') : t('voice.record', { ns: 'common' })}
-          // 38 pt button + 3 pt slop on every side = 44 pt touch area.
-          hitSlop={3}
           style={({ pressed }) => [
             barStyles.iconBtn,
             { backgroundColor: canSend ? theme.accent : theme.inputBg, borderColor: theme.border },
@@ -362,9 +356,10 @@ const barStyles = StyleSheet.create({
     lineHeight: 20,
   },
   iconBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    // 44 pt = the minimum touch target (react-native-web ignores hitSlop, so the button itself is 44).
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',

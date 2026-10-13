@@ -956,6 +956,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 7,
+    minHeight: 44 - 6, // + the 3 pt padding of the segmented container on each side = 44 pt target
     borderRadius: 8,
   },
 
