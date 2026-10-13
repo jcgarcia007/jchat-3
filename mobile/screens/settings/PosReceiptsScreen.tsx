@@ -249,7 +249,7 @@ export default function PosReceiptsScreen(): React.ReactElement {
       {/* Body */}
       {loading ? (
         <View style={styles.centered}>
-          <Spinner color={colors.brand} size="large" />
+          <Spinner color={colors.brandText} size="large" />
           <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
             {t('settings:pos.receiptsLoading')}
           </Text>

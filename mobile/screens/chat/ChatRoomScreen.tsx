@@ -1703,7 +1703,7 @@ export default function ChatRoomScreen() {
                   accessibilityLabel={t('chatRoom.enterRoomA11y')}
                   style={({ pressed }) => [
                     gateStyles.enterBtn,
-                    { backgroundColor: themeColors.brand, opacity: initialLoading ? 0.6 : 1 },
+                    { backgroundColor: themeColors.brandFill, opacity: initialLoading ? 0.6 : 1 },
                     pressed && gateStyles.enterBtnPressed,
                   ]}
                 >
@@ -1715,7 +1715,7 @@ export default function ChatRoomScreen() {
 
               {geoGate.gateStatus === 'checking' && (
                 <View style={gateStyles.geoStatus}>
-                  <Spinner size="small" color={themeColors.brand} />
+                  <Spinner size="small" color={themeColors.brandText} />
                   <Text style={[gateStyles.geoStatusText, { color: themeColors.textSecondary }]}>
                     {t('chatRoom.geoVerifying')}
                   </Text>
@@ -1725,7 +1725,7 @@ export default function ChatRoomScreen() {
               {gateRefused && (
                 <View style={gateStyles.outsideWrap}>
                   <View style={[gateStyles.outsideIcon, { backgroundColor: themeColors.bgElevated }]}>
-                    <IconMapPin size={30} color={themeColors.brand} strokeWidth={2} />
+                    <IconMapPin size={30} color={themeColors.brandText} strokeWidth={2} />
                   </View>
                   <Text style={[gateStyles.outsideTitle, { color: themeColors.textPrimary }]}>
                     {noReading
@@ -1751,7 +1751,7 @@ export default function ChatRoomScreen() {
                       testID="chat-geo-retry"
                       onPress={handleEnter}
                       accessibilityRole="button"
-                      style={({ pressed }) => [gateStyles.outsideBtn, { backgroundColor: themeColors.brand, opacity: pressed ? 0.82 : 1 }]}
+                      style={({ pressed }) => [gateStyles.outsideBtn, { backgroundColor: themeColors.brandFill, opacity: pressed ? 0.82 : 1 }]}
                     >
                       <Text style={[gateStyles.outsideBtnLabel, { color: palette.onBrand }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
                         {geoGate.gateStatus === 'permission_denied' ? t('chatRoom.geoAllowLocation') : t('chatRoom.geoRetry')}
@@ -1791,7 +1791,7 @@ export default function ChatRoomScreen() {
         {/* Background placeholder behind modal */}
         <View style={[gateStyles.bgPlaceholder, { backgroundColor: themeColors.bgBase }]}>
           {initialLoading && (
-            <Spinner size="large" color={themeColors.brand} />
+            <Spinner size="large" color={themeColors.brandText} />
           )}
         </View>
       </SafeAreaView>

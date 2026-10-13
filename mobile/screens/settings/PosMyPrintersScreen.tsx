@@ -213,7 +213,7 @@ export default function PosMyPrintersScreen(): React.ReactElement {
     if (addPhase === 'listing') {
       return (
         <View style={[s.addCard, { backgroundColor: colors.bgSurface }]}>
-          <Spinner color={colors.brand} />
+          <Spinner color={colors.brandText} />
           <Text style={[s.addPhaseLabel, { color: colors.textSecondary }]}>
             {t('pos.printers.loadingPaired')}
           </Text>
@@ -233,7 +233,7 @@ export default function PosMyPrintersScreen(): React.ReactElement {
               style={({ pressed }) => [s.deviceRow, pressed && { opacity: 0.7 }]}
               onPress={() => handlePickDevice(d)}
             >
-              <IconBluetoothConnected size={18} color={colors.brand} strokeWidth={1.8} />
+              <IconBluetoothConnected size={18} color={colors.brandText} strokeWidth={1.8} />
               <View style={{ marginLeft: 10 }}>
                 <Text style={[s.deviceName, { color: colors.textPrimary }]}>{d.name}</Text>
                 <Text style={[s.deviceAddr, { color: colors.textSecondary }]}>{d.address}</Text>
@@ -294,7 +294,7 @@ export default function PosMyPrintersScreen(): React.ReactElement {
           </Text>
           {testState === 'printing' ? (
             <>
-              <Spinner color={colors.brand} />
+              <Spinner color={colors.brandText} />
               <Text style={[s.addPhaseLabel, { color: colors.textSecondary }]}>
                 {t('pos.printers.testPrinting')}
               </Text>
@@ -362,14 +362,14 @@ export default function PosMyPrintersScreen(): React.ReactElement {
       >
         {/* ── Bluetooth section ─────────────────────────────────────────────── */}
         <View style={s.sectionHeader}>
-          <IconBluetoothConnected size={15} color={colors.brand} strokeWidth={2} />
+          <IconBluetoothConnected size={15} color={colors.brandText} strokeWidth={2} />
           <Text style={[s.sectionTitle, { color: colors.textSecondary }]}>
             {t('pos.printers.btSection')}
           </Text>
         </View>
 
         {loading ? (
-          <Spinner color={colors.brand} style={{ marginVertical: 16 }} />
+          <Spinner color={colors.brandText} style={{ marginVertical: 16 }} />
         ) : btPrinters.length === 0 ? (
           <Text style={[s.emptyHint, { color: colors.textTertiary }]}>
             {t('pos.printers.noBtSaved')}
@@ -390,7 +390,7 @@ export default function PosMyPrintersScreen(): React.ReactElement {
                 onPress={() => handleTestPrint(p)}
                 accessibilityLabel={t('pos.printers.printTest')}
               >
-                <IconPrinter size={16} color={colors.brand} strokeWidth={1.8} />
+                <IconPrinter size={16} color={colors.brandText} strokeWidth={1.8} />
               </Pressable>
               <Pressable
                 style={[s.iconBtn, { borderColor: colors.danger, marginLeft: 6 }]}
@@ -412,7 +412,7 @@ export default function PosMyPrintersScreen(): React.ReactElement {
             ]}
             onPress={handleStartAdd}
           >
-            <IconPlus size={16} color={colors.brand} strokeWidth={2} />
+            <IconPlus size={16} color={colors.brandText} strokeWidth={2} />
             <Text style={[s.addBtnText, { color: colors.brand }]}>
               {t('pos.printers.addBt')}
             </Text>

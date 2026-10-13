@@ -67,7 +67,7 @@ export default function RadiusSheet({ visible, value, onSelect, onClose }: Radiu
               >
                 {formatRadius(miles)}
               </Text>
-              {selected ? <IconCheck size={20} color={colors.brand} strokeWidth={2.5} /> : null}
+              {selected ? <IconCheck size={20} color={colors.brandText} strokeWidth={2.5} /> : null}
             </Pressable>
           );
         })}

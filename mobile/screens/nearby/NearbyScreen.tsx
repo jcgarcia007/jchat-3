@@ -49,7 +49,7 @@ export default function NearbyScreen() {
   if (nearby.loading) {
     return (
       <View style={[styles.centered, { backgroundColor: colors.bgBase }]}>
-        <Spinner size="large" color={colors.brand} />
+        <Spinner size="large" color={colors.brandText} />
       </View>
     );
   }
@@ -66,7 +66,7 @@ export default function NearbyScreen() {
         ]}
       >
         <View style={styles.titleRow}>
-          <IconBuildingStore size={22} color={colors.brand} strokeWidth={2} />
+          <IconBuildingStore size={22} color={colors.brandText} strokeWidth={2} />
           <Text style={[styles.title, { color: colors.textPrimary }]}>
             {translation.t('headerTitle')}
           </Text>

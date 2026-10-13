@@ -241,7 +241,7 @@ const PrinterPickerSheet = forwardRef<PrinterPickerSheetRef, PrinterPickerSheetP
       <>
         {loading && (
           <View style={s.spinnerOverlay} pointerEvents="none">
-            <Spinner color={colors.brand} />
+            <Spinner color={colors.brandText} />
           </View>
         )}
 

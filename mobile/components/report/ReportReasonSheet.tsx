@@ -111,7 +111,7 @@ export function ReportReasonSheet({ visible, targetName, contentType, contentId,
           {phase === 'sent' ? (
             <View style={styles.sent}>
               <View style={[styles.sentIcon, { backgroundColor: colors.brandLight }]}>
-                <IconCheck size={28} color={colors.brand} strokeWidth={2.5} />
+                <IconCheck size={28} color={colors.brandText} strokeWidth={2.5} />
               </View>
               <Text style={[styles.title, { color: colors.textPrimary }]}>{t('report.successTitle')}</Text>
               <Text style={[styles.subtitle, { color: colors.textSecondary, textAlign: 'center' }]}>

@@ -247,7 +247,7 @@ export default function OffersScreen() {
           onPress={() => setRadiusSheetOpen(true)}
           style={[styles.radiusChip, { backgroundColor: colors.brandLight }]}
         >
-          <IconMapPin size={15} color={colors.brand} strokeWidth={2.2} />
+          <IconMapPin size={15} color={colors.brandText} strokeWidth={2.2} />
           <Text style={[styles.radiusChipText, { color: colors.brand }]}>{formatRadius(radiusMiles)}</Text>
         </Pressable>
       </View>
@@ -261,14 +261,14 @@ export default function OffersScreen() {
 
       {loading ? (
         <View style={styles.center}>
-          <Spinner color={colors.brand} size="large" />
+          <Spinner color={colors.brandText} size="large" />
         </View>
       ) : (
         <FlatList
           contentContainerStyle={[styles.list, items.length === 0 && styles.emptyList]}
           data={items}
           keyExtractor={itemKey}
-          ListFooterComponent={loadingMore ? <Spinner color={colors.brand} style={styles.footer} /> : null}
+          ListFooterComponent={loadingMore ? <Spinner color={colors.brandText} style={styles.footer} /> : null}
           onEndReached={() => { void loadMore(); }}
           onEndReachedThreshold={0.5}
           renderItem={renderItem}
