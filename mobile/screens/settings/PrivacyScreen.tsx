@@ -341,7 +341,7 @@ function InfoRow({
   const inner = (
     <>
       {icon != null && <View style={styles.rowIcon}>{icon}</View>}
-      <View style={styles.rowContent}>
+      <View style={[styles.rowContent, rightBadge != null && styles.rowContentWithBadge]}>
         <Text style={[styles.rowLabel, { color: labelColor }]}>{label}</Text>
       </View>
       {value != null && (
@@ -359,6 +359,7 @@ function InfoRow({
     { backgroundColor: bgColor, borderColor },
     rowBorderRadius(isFirst, isLast),
     !isLast && styles.rowBorderBottom,
+    rightBadge != null && styles.rowWrap,
   ];
 
   if (locked || onPress == null) {
@@ -999,6 +1000,15 @@ const styles = StyleSheet.create({
   rowContent: {
     flex: 1,
     paddingRight: 8,
+  },
+  // A row with a badge (the locked Location row): the label keeps a readable width and the badge wraps below it on
+  // narrow phones, instead of squeezing the label to ~60 px and breaking words mid-word.
+  rowContentWithBadge: {
+    minWidth: 150,
+  },
+  rowWrap: {
+    flexWrap: 'wrap',
+    rowGap: 6,
   },
   rowLabel: {
     fontSize: 15,

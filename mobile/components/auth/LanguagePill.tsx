@@ -42,6 +42,7 @@ export function LanguagePill() {
             style={[styles.option, active && styles.optionActive]}
             accessibilityRole="radio"
             accessibilityState={{ checked: active }}
+            aria-checked={active}
             accessibilityLabel={t(option.a11yKey)}
           >
             <Text style={[styles.optionText, active && styles.optionTextActive]}>{option.label}</Text>

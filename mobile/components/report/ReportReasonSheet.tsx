@@ -137,6 +137,7 @@ export function ReportReasonSheet({ visible, targetName, contentType, contentId,
                   <Pressable
                     accessibilityRole="radio"
                     accessibilityState={{ checked: selected }}
+                    aria-checked={selected}
                     key={code}
                     onPress={() => { setReason(code); setError(null); }}
                     style={[

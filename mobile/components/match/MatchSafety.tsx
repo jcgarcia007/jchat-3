@@ -199,6 +199,7 @@ function ReportSheet({
                 onPress={() => setReason(r)}
                 accessibilityRole="radio"
                 accessibilityState={{ checked: active }}
+                aria-checked={active}
                 style={[
                   styles.reasonRow,
                   { borderColor: active ? c.brand : c.borderSubtle, backgroundColor: c.bgElevated },

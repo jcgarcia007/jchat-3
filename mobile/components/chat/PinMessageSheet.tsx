@@ -381,6 +381,7 @@ export function PinMessageSheet({
               ]}
               accessibilityRole="radio"
               accessibilityState={{ checked: notify }}
+              aria-checked={notify}
             >
               <IconBell size={16} color={notify ? theme.accent : c.textSecondary} />
               <Text
@@ -404,6 +405,7 @@ export function PinMessageSheet({
               ]}
               accessibilityRole="radio"
               accessibilityState={{ checked: !notify }}
+              aria-checked={!notify}
             >
               <IconBellOff
                 size={16}
