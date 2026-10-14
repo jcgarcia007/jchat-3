@@ -13,6 +13,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { EntryTarget } from '../utils/entryUrl';
+import { isEntryTarget, rememberEntry } from '../utils/reenterEntry';
 import { isSupabaseConfigured, supabase } from './supabase';
 
 export interface ResolvedEntry {
@@ -80,16 +81,9 @@ export function subscribePendingEntry(listener: PendingListener): () => void {
   };
 }
 
-function isEntryTarget(value: unknown): value is EntryTarget {
-  if (!value || typeof value !== 'object') return false;
-  const t = value as Record<string, unknown>;
-  if (t.kind === 'venue') return typeof t.venue === 'string';
-  if (t.kind === 'table') return typeof t.venue === 'string' && typeof t.label === 'string' && typeof t.code === 'string';
-  if (t.kind === 'token') return typeof t.token === 'string' && (t.venue === undefined || typeof t.venue === 'string');
-  return false;
-}
-
 export async function savePendingEntry(target: EntryTarget, now: number = Date.now()): Promise<void> {
+  // Remembered for this tab (never in a URL / log): the web offers "Entrar al chat de {local}" again after Cancelar.
+  rememberEntry(target);
   const stored: StoredEntry = { target, savedAt: now };
   try {
     await AsyncStorage.setItem(PENDING_KEY, JSON.stringify(stored));

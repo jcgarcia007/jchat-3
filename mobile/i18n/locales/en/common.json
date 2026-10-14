@@ -121,6 +121,12 @@
     "leftVenue": "You left {{business}}",
     "scanHint": "To get back into a chat, open your phone's camera and scan the QR code on the table or at the venue.",
     "downloadApp": "Download the app",
-    "myProfile": "My profile"
+    "myProfile": "My profile",
+    "enterVenue": "Enter the {{business}} chat",
+    "enterThisVenue": "Enter this venue's chat",
+    "reenterVenue": "Go back into {{business}}",
+    "reenterThisVenue": "Go back into this venue",
+    "viewMenu": "View the menu",
+    "thisVenue": "this venue"
   }
 }

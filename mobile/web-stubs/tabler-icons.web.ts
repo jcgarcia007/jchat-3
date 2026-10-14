@@ -76,6 +76,7 @@ export { default as IconLifebuoy } from '@tabler/icons-react-native/IconLifebuoy
 export { default as IconListCheck } from '@tabler/icons-react-native/IconListCheck';
 export { default as IconLoader2 } from '@tabler/icons-react-native/IconLoader2';
 export { default as IconLock } from '@tabler/icons-react-native/IconLock';
+export { default as IconLogin2 } from '@tabler/icons-react-native/IconLogin2';
 export { default as IconLogout } from '@tabler/icons-react-native/IconLogout';
 export { default as IconMail } from '@tabler/icons-react-native/IconMail';
 export { default as IconMap } from '@tabler/icons-react-native/IconMap';
