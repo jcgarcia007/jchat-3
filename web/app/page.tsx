@@ -17,6 +17,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import {
   motion,
+  MotionConfig,
   useMotionValue,
   useSpring,
   useTransform,
@@ -61,13 +62,15 @@ const MAP_VENUES = [
 // ── Framer Motion helpers ─────────────────────────────────────────────────────
 // 4-tuple satisface el tipo Easing de FM v13.
 const EASE = [0.16, 1, 0.3, 1] as [number, number, number, number];
+// Section reveal: a short rise (20 px, not 28) with a strong ease-out, children 70 ms apart (the 30–80 ms band; 90 ms
+// read as sluggish on the long lists). Marketing page, so 0.6 s is allowed; UI chrome elsewhere stays under 300 ms.
 const fadeUp = {
-  hidden: { opacity: 0, y: 28 },
-  show:   { opacity: 1, y: 0, transition: { duration: 0.72, ease: EASE } },
+  hidden: { opacity: 0, y: 20 },
+  show:   { opacity: 1, y: 0, transition: { duration: 0.6, ease: EASE } },
 };
 const stagger = {
   hidden: {},
-  show:   { transition: { staggerChildren: 0.09 } },
+  show:   { transition: { staggerChildren: 0.07 } },
 };
 
 // ── Phone Hero ────────────────────────────────────────────────────────────────
@@ -252,7 +255,9 @@ export default function LandingPage() {
   ];
 
   return (
-    <>
+    // reducedMotion="user": with prefers-reduced-motion every transform / layout animation below (the rise, the parallax,
+    // the float) is dropped and opacity fades stay — it used to ignore the setting for the section reveals.
+    <MotionConfig reducedMotion="user">
       <style>{`
         /* --land-* tokens live in styles/landing.css (single definition). */
 
@@ -851,6 +856,6 @@ export default function LandingPage() {
         </footer>
 
       </div>
-    </>
+    </MotionConfig>
   );
 }
