@@ -26,26 +26,9 @@ import { EntryVenueCard } from '../../components/auth/EntryVenueCard';
 import { TicketPerforation } from '../../components/auth/TicketPerforation';
 import { TicketTitle, useTicketCascade } from '../../components/auth/TicketReveal';
 import { showAlert } from '../../utils/dialog';
+import { readAuthCode } from '../../utils/authUrl';
 
 type LoginNav = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
-
-/**
- * Parse the `#key=value&…` fragment of the OAuth callback URL into a plain object.
- * Manual parse (no reliance on RN's partial URLSearchParams polyfill). Implicit
- * flow returns access_token / refresh_token (or error / error_description) here.
- */
-function parseAuthFragment(url: string): Record<string, string> {
-  const hash = url.includes('#') ? url.slice(url.indexOf('#') + 1) : '';
-  const out: Record<string, string> = {};
-  for (const pair of hash.split('&')) {
-    if (!pair) continue;
-    const eq = pair.indexOf('=');
-    const key = eq >= 0 ? pair.slice(0, eq) : pair;
-    const val = eq >= 0 ? pair.slice(eq + 1) : '';
-    out[decodeURIComponent(key)] = decodeURIComponent(val);
-  }
-  return out;
-}
 
 export default function LoginScreen() {
   const navigation = useNavigation<LoginNav>();
@@ -63,8 +46,7 @@ export default function LoginScreen() {
   // ── Social OAuth (deep-link, M1) ───────────────────────────────────────────
   // signInWithOAuth({ redirectTo: jchat://auth/callback, skipBrowserRedirect })
   //   → openAuthSessionAsync abre el browser y captura el redirect de vuelta
-  //   → implicit flow: tokens en el fragment (#access_token=…&refresh_token=…) → setSession
-  //   → PKCE flow: ?code=… → exchangeCodeForSession
+  //   → PKCE: ?code=… → exchangeCodeForSession (los tokens en la URL ya no se aceptan: utils/authUrl.ts)
   //   → AuthContext.onAuthStateChange entra a la app.
   async function handleOAuth(provider: 'google' | 'apple') {
     if (!isSupabaseConfigured) {
@@ -90,26 +72,10 @@ export default function LoginScreen() {
     // 'cancel' / 'dismiss' → el usuario cerró el navegador; sin error que reportar.
     if (result.type !== 'success' || !result.url) return;
 
-    const returnedUrl = result.url;
-
-    // Caso 1 — implicit flow: access_token + refresh_token en el fragment.
-    const fragment = parseAuthFragment(returnedUrl);
-    if (fragment.access_token && fragment.refresh_token) {
-      const { error: sessionError } = await supabase.auth.setSession({
-        access_token: fragment.access_token,
-        refresh_token: fragment.refresh_token,
-      });
-      if (sessionError) {
-        showAlert(t('login.alerts.signInErrorTitle'), toUserMessage(sessionError, 'auth:login.alerts.signInErrorMessage'));
-      }
-      // Éxito: onAuthStateChange en AuthContext dispara y la app entra.
-      return;
-    }
-
-    // Caso 2 — PKCE flow: ?code=… en los query params. Linking.parse maneja el scheme
-    // custom jchat:// de forma fiable (new URL no parsea bien esquemas no estándar en RN).
-    const code = Linking.parse(returnedUrl).queryParams?.code;
-    if (typeof code === 'string' && code) {
+    // PKCE: the browser returns `?code=…` (tokens in a URL are never accepted, see utils/authUrl.ts). Only this
+    // device, which holds the code verifier, can exchange it.
+    const code = readAuthCode(result.url);
+    if (code) {
       const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
       if (exchangeError) {
         showAlert(t('login.alerts.signInErrorTitle'), toUserMessage(exchangeError, 'auth:login.alerts.signInErrorMessage'));
@@ -117,7 +83,7 @@ export default function LoginScreen() {
       return;
     }
 
-    // Ni token ni code: el texto del provider es crudo e inglés; mostrar el genérico traducido.
+    // Sin code: el texto del provider es crudo e inglés; mostrar el genérico traducido.
     showAlert(t('login.alerts.signInErrorTitle'), t('login.alerts.signInErrorMessage'));
   }
 

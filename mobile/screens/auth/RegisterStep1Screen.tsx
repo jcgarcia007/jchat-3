@@ -46,6 +46,7 @@ import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { toUserMessage } from '../../utils/errors';
 import type { AuthStackParamList } from '../../navigation/AppNavigator';
 import { showAlert } from '../../utils/dialog';
+import { readAuthCode } from '../../utils/authUrl';
 
 // ---------------------------------------------------------------------------
 // Screen-local color constants — only values not in palette/tokens
@@ -157,28 +158,9 @@ export default function RegisterStep1Screen() {
     if (!data?.url) return;
     const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
     if (result.type !== 'success' || !result.url) return;
-    const returnedUrl = result.url;
-    // implicit flow
-    const hash = returnedUrl.includes('#') ? returnedUrl.slice(returnedUrl.indexOf('#') + 1) : '';
-    const fragment: Record<string, string> = {};
-    for (const pair of hash.split('&')) {
-      if (!pair) continue;
-      const eq = pair.indexOf('=');
-      const k = eq >= 0 ? pair.slice(0, eq) : pair;
-      const v = eq >= 0 ? pair.slice(eq + 1) : '';
-      fragment[decodeURIComponent(k)] = decodeURIComponent(v);
-    }
-    if (fragment.access_token && fragment.refresh_token) {
-      const { error: sessionError } = await supabase.auth.setSession({
-        access_token: fragment.access_token,
-        refresh_token: fragment.refresh_token,
-      });
-      if (sessionError) showAlert(t('register.alerts.signUpFailedTitle'), toUserMessage(sessionError, 'auth:register.alerts.unexpectedError'));
-      return;
-    }
-    // PKCE flow
-    const code = Linking.parse(returnedUrl).queryParams?.code;
-    if (typeof code === 'string' && code) {
+    // PKCE: `?code=…` only; tokens in a URL are never accepted (utils/authUrl.ts).
+    const code = readAuthCode(result.url);
+    if (code) {
       const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
       if (exchangeError) showAlert(t('register.alerts.signUpFailedTitle'), toUserMessage(exchangeError, 'auth:register.alerts.unexpectedError'));
       return;

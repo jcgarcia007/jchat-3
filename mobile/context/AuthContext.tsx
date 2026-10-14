@@ -17,6 +17,7 @@ import React, {
 } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import * as Linking from 'expo-linking';
+import { classifyAuthUrl } from '../utils/authUrl';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../services/supabase';
 import { isBiometricEnabled } from '../services/biometric';
@@ -94,44 +95,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Intercepts sign-up / email-change confirmation links. Password recovery no
     // longer uses links; the user enters the emailed OTP inside the app instead.
     async function handleAuthUrl(url: string) {
-      const isConfirm = url.includes('://confirm');
-      if (!isConfirm) return;
-      const ok = await exchangeAuthUrl(url);
+      const action = classifyAuthUrl(url);
+      if (action.kind === 'ignore') return;
+      let ok = false;
+      if (action.kind === 'exchange') {
+        // Never replace a session that is already open: a confirmation link is for a sign-up this device started while
+        // signed out, so an open session means the link is not for this flow (and PKCE would otherwise swap accounts).
+        const { data } = await supabase.auth.getSession();
+        if (!data.session) {
+          // PKCE: only works on the device that started the sign-up (needs its code verifier).
+          const { error } = await supabase.auth.exchangeCodeForSession(action.code);
+          ok = !error;
+        }
+      }
+      // 'rejected' (tokens in the URL, no code) falls through to the error notice; nothing is ever set from a URL.
       if (!mounted) return;
       if (ok) {
         showAlert(i18n.t('auth:confirmEmail.successTitle'), i18n.t('auth:confirmEmail.successMessage'));
       } else {
         showAlert(i18n.t('auth:confirmEmail.errorTitle'), i18n.t('auth:confirmEmail.errorMessage'));
       }
-    }
-
-    /** Establishes the session carried by an auth deep link. Returns true on success. */
-    async function exchangeAuthUrl(url: string): Promise<boolean> {
-      const parsed = Linking.parse(url);
-      const code = typeof parsed.queryParams?.code === 'string' ? parsed.queryParams.code : null;
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        return !error;
-      }
-      // Implicit flow: tokens in fragment (#access_token=...&refresh_token=...&type=recovery|signup)
-      const hash = url.includes('#') ? url.slice(url.indexOf('#') + 1) : '';
-      const frag: Record<string, string> = {};
-      for (const pair of hash.split('&')) {
-        if (!pair) continue;
-        const eq = pair.indexOf('=');
-        const k = decodeURIComponent(eq >= 0 ? pair.slice(0, eq) : pair);
-        const v = decodeURIComponent(eq >= 0 ? pair.slice(eq + 1) : '');
-        frag[k] = v;
-      }
-      if (frag.access_token && frag.refresh_token) {
-        const { error } = await supabase.auth.setSession({
-          access_token: frag.access_token,
-          refresh_token: frag.refresh_token,
-        });
-        return !error;
-      }
-      // Expired / already-used link: Supabase redirects with #error=…&error_code=otp_expired
-      return false;
     }
 
     // Cold start: a persisted recovery flag means the app closed before the user

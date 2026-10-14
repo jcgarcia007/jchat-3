@@ -54,6 +54,11 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
+    // PKCE (supabase-js' default is 'implicit', which returns tokens in the URL). With PKCE a deep link / OAuth return
+    // carries only a code that this device alone can exchange (code verifier in AsyncStorage): a link opened by another
+    // app or page cannot sign anybody in (H-03, see utils/authUrl.ts). The email OTP of the password recovery
+    // (verifyOtp) does not use the code verifier and is unaffected.
+    flowType: 'pkce',
   },
   realtime: { heartbeatIntervalMs: HEARTBEAT_INTERVAL_MS, ...webRealtimeOptions },
   // Every REST / auth / storage / functions request ends (20 s; 120 s for file transfers). Not used by the websocket.
