@@ -113,6 +113,9 @@ export function useNotificationPresenter(notifications: NotificationRow[]) {
         const status = typeof payload?.status === 'string' ? payload.status : '';
         const n = payload?.order_number ?? '';
         const toTable = payload?.order_type === 'table';
+        // A claimed web order arrives as 'confirmed' (paid) or 'pending' — not only the kitchen states below.
+        if (status === 'pending') return t('messages.notif.orderPending', { n });
+        if (status === 'confirmed') return t('messages.notif.orderConfirmed', { n });
         if (status === 'preparing') return t('messages.notif.orderPreparing', { n });
         if (status === 'ready') return t(toTable ? 'messages.notif.orderReadyTable' : 'messages.notif.orderReady', { n });
         if (status === 'delivered') return t('messages.notif.orderDelivered', { n });

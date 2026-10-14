@@ -36,6 +36,8 @@
       "matchSuper": "{{name}} te dio un Super Like",
       "matchMatch": "¡Hiciste match con {{name}}!",
       "matchNewPeople": "Llegó gente nueva a Match en {{business}}",
+      "orderPending": "Recibimos tu pedido #{{n}}",
+      "orderConfirmed": "Tu pedido #{{n}} fue confirmado",
       "orderPreparing": "Están preparando tu pedido #{{n}}",
       "orderReady": "Tu pedido #{{n}} está listo. Recógelo en el mostrador",
       "orderReadyTable": "Tu pedido #{{n}} va en camino a tu mesa",
