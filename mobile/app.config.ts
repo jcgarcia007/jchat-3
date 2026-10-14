@@ -15,6 +15,12 @@ import type { ExpoConfig } from 'expo/config';
 const ANDROID_GOOGLE_SERVICES = process.env.GOOGLE_SERVICES_JSON ?? './google-services.json';
 const IOS_GOOGLE_SERVICES = process.env.GOOGLE_SERVICE_INFO_PLIST ?? './GoogleService-Info.plist';
 
+// iOS permission texts (English default in Info.plist; the Spanish ones live in assets/locales/es.json and are written to
+// InfoPlist.strings at prebuild). One string per key so two plugins can never disagree about it.
+const LOCATION_WHEN_IN_USE = 'JChat uses your location to show nearby venues on the map and to connect to nearby card readers.';
+const CAMERA = 'JChat uses the camera to take photos for chat, posts and your profile, and to scan inventory barcodes.';
+const FACE_ID = 'JChat uses Face ID to unlock the app when you turn on biometric lock.';
+
 const config: ExpoConfig = {
   name: 'JChat',
   slug: 'jchat',
@@ -58,6 +64,19 @@ const config: ExpoConfig = {
     usesAppleSignIn: true,
     // Firebase (APNs push) — local file in dev, EAS file secret in CI.
     googleServicesFile: IOS_GOOGLE_SERVICES,
+    // Privacy manifest of the app itself (the SDKs ship their own). Tracking is off and no tracking domains. The
+    // required-reason API categories are the usual ones of an Expo / React Native app. To be revalidated with the ITMS
+    // warnings of the first TestFlight build: Apple lists any category or reason that is missing.
+    privacyManifests: {
+      NSPrivacyTracking: false,
+      NSPrivacyTrackingDomains: [],
+      NSPrivacyAccessedAPITypes: [
+        { NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryUserDefaults', NSPrivacyAccessedAPITypeReasons: ['CA92.1'] },
+        { NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryFileTimestamp', NSPrivacyAccessedAPITypeReasons: ['C617.1'] },
+        { NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategorySystemBootTime', NSPrivacyAccessedAPITypeReasons: ['35F9.1'] },
+        { NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryDiskSpace', NSPrivacyAccessedAPITypeReasons: ['E174.1'] },
+      ],
+    },
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
       // Lets the per-language InfoPlist.strings (locales above) apply.
@@ -88,6 +107,21 @@ const config: ExpoConfig = {
         ],
         category: ['BROWSABLE', 'DEFAULT'],
       },
+    ],
+    // Permissions the app does not use but that libraries add (removed from the final manifest with tools:node="remove"):
+    //  - READ/WRITE_EXTERNAL_STORAGE: added by expo-file-system's plugin and expo-image-picker. With minSdk 26 the
+    //    photo picker hands over content URIs and the app only reads/writes its own cache, so neither is needed.
+    //  - READ_MEDIA_IMAGES / READ_MEDIA_VIDEO: the app picks photos through the system picker, never browses the media library.
+    //  - ACCESS_BACKGROUND_LOCATION: location is foreground only (the expo-location plugin below adds nothing "Always").
+    //  - SYSTEM_ALERT_WINDOW (draw over other apps): comes from the Expo prebuild template / React Native's debug
+    //    manifest, only a debug tool; blocked in store builds (EAS profile `production`, which has no development client).
+    blockedPermissions: [
+      'android.permission.READ_EXTERNAL_STORAGE',
+      'android.permission.WRITE_EXTERNAL_STORAGE',
+      'android.permission.READ_MEDIA_IMAGES',
+      'android.permission.READ_MEDIA_VIDEO',
+      'android.permission.ACCESS_BACKGROUND_LOCATION',
+      ...(process.env.EAS_BUILD_PROFILE === 'production' ? ['android.permission.SYSTEM_ALERT_WINDOW'] : []),
     ],
     // Firebase Cloud Messaging — local file in dev, EAS file secret in CI.
     googleServicesFile: ANDROID_GOOGLE_SERVICES,
@@ -122,13 +156,13 @@ const config: ExpoConfig = {
       'expo-image-picker',
       {
         photosPermission: 'JChat uses your photos for your profile, posts, messages and Match.',
-        cameraPermission: 'JChat needs access to your camera to take photos in chat.',
+        cameraPermission: CAMERA,
       },
     ],
     [
       'expo-camera',
       {
-        cameraPermission: 'Para escanear códigos de barras del inventario.',
+        cameraPermission: CAMERA,
       },
     ],
     [
@@ -147,8 +181,7 @@ const config: ExpoConfig = {
       '@stripe/stripe-terminal-react-native',
       {
         bluetoothBackgroundMode: true,
-        locationWhenInUsePermission:
-          'JChat uses your location to show nearby venues on the map and to connect to card readers.',
+        locationWhenInUsePermission: LOCATION_WHEN_IN_USE,
         bluetoothAlwaysUsagePermission:
           'JChat uses Bluetooth to connect to Stripe Terminal card readers for in-person payments.',
         bluetoothPeripheralPermission:
@@ -163,15 +196,19 @@ const config: ExpoConfig = {
     [
       'expo-location',
       {
-        // "When in use" only (M8). Proximity/geofencing runs in the FOREGROUND —
-        // there is no real background location yet. Requesting "Always" without
-        // using it is needless Apple-review friction. Restore
-        // locationAlwaysAndWhenInUsePermission + UIBackgroundModes when Stage 4
-        // wires real background geofencing (see services/geofence.ts TODO).
-        locationWhenInUsePermission:
-          'JChat uses your location to show nearby venues on the map and to connect to nearby card readers.',
+        // "When in use" only (M8). Proximity/geofencing runs in the FOREGROUND — there is no real background
+        // location yet. The plugin adds the "Always" keys and NSMotionUsageDescription with a generic text unless
+        // told otherwise: `false` deletes the key (applyPermissions in @expo/config-plugins), so only
+        // NSLocationWhenInUseUsageDescription remains. Restore locationAlways* + UIBackgroundModes when Stage 4 wires
+        // real background geofencing (see services/geofence.ts TODO). Motion activity is not used.
+        locationWhenInUsePermission: LOCATION_WHEN_IN_USE,
+        locationAlwaysAndWhenInUsePermission: false,
+        locationAlwaysPermission: false,
+        motionUsagePermission: false,
       },
     ],
+    // Biometric lock (services/biometric.ts): its plugin runs by default with a generic Face ID text.
+    ['expo-local-authentication', { faceIDPermission: FACE_ID }],
     // Push notifications (FCM/APNs). Add an icon/color/sounds here later if needed.
     'expo-notifications',
     [

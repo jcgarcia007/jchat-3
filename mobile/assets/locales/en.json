@@ -1,3 +1,12 @@
 {
-  "NSPhotoLibraryUsageDescription": "JChat uses your photos for your profile, posts, messages and Match."
+  "ios": {
+    "NSPhotoLibraryUsageDescription": "JChat uses your photos for your profile, posts, messages and Match.",
+    "NSCameraUsageDescription": "JChat uses the camera to take photos for chat, posts and your profile, and to scan inventory barcodes.",
+    "NSMicrophoneUsageDescription": "JChat needs access to your microphone to send voice messages.",
+    "NSLocationWhenInUseUsageDescription": "JChat uses your location to show nearby venues on the map and to connect to nearby card readers.",
+    "NSFaceIDUsageDescription": "JChat uses Face ID to unlock the app when you turn on biometric lock.",
+    "NSBluetoothAlwaysUsageDescription": "JChat uses Bluetooth to connect to Stripe Terminal card readers for in-person payments.",
+    "NSBluetoothPeripheralUsageDescription": "JChat uses Bluetooth to communicate with card readers for in-person payments.",
+    "NSLocalNetworkUsageDescription": "JChat uses the local network to connect to WiFi-enabled card readers."
+  }
 }
