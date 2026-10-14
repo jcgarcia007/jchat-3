@@ -73,3 +73,6 @@ e2e/.env.local
 e2e/artifacts/
 # Signed-in Playwright web session (session tokens of the test account): never commit
 e2e/.auth/
+
+# Release evidence: raw scanner output stays out of git (may contain secrets)
+release-evidence/*/raw/
