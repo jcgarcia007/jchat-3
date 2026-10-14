@@ -78,7 +78,7 @@ import { useDmUnread } from '../../hooks/useDmUnread';
 import { useResilientChannel } from '../../hooks/useResilientChannel';
 import { useVisualViewportInset } from '../../hooks/useVisualViewportInset';
 import { publicMenuUrl, venueMenuTarget } from '../../utils/venueMenuTarget';
-import { subscribeMenuOrderSent } from '../../services/menuEvents';
+import { subscribeMenuOrderClaimed, subscribeMenuOrderSent } from '../../services/menuEvents';
 import { InlineToast } from '../../components/common/InlineToast';
 import { ReconnectingBanner } from '../../components/common/ReconnectingBanner';
 import { InlineRetryRow } from '../../components/common/InlineRetryRow';
@@ -512,6 +512,7 @@ export default function ChatRoomScreen() {
     markRead: markNotificationRead,
     markAllRead: markAllNotificationsRead,
     undoMarkAll: undoMarkAllNotifications,
+    refresh: refreshNotifications,
   } = useNotifications({ passive: true });
   // Red dot on the 💬 button of the top bar (shared source with the Messages tab dot).
   const { hasUnread: hasUnreadDms } = useDmUnread();
@@ -1030,6 +1031,8 @@ export default function ChatRoomScreen() {
   // The menu sheet reported an order: "Pedido enviado" over the chat (the sheet closed itself).
   const [orderSentToast, setOrderSentToast] = useState(false);
   useEffect(() => subscribeMenuOrderSent(() => setOrderSentToast(true)), []);
+  // The order placed from the sheet was claimed for me: the claim inserted an order_status notification → refresh the 🔔.
+  useEffect(() => subscribeMenuOrderClaimed(() => void refreshNotifications()), [refreshNotifications]);
 
   const handleMenuPress = useCallback(() => {
     if (menuTarget.kind === 'none') return;

@@ -16,3 +16,20 @@ export function subscribeMenuOrderSent(listener: Listener): () => void {
     listeners.delete(listener);
   };
 }
+
+/**
+ * "The order placed from the menu sheet was claimed for this user": the chat refreshes its notifications (the claim
+ * inserts an order_status row) so the 🔔 shows it at once.
+ */
+const claimedListeners = new Set<Listener>();
+
+export function emitMenuOrderClaimed(): void {
+  claimedListeners.forEach((listener) => listener());
+}
+
+export function subscribeMenuOrderClaimed(listener: Listener): () => void {
+  claimedListeners.add(listener);
+  return () => {
+    claimedListeners.delete(listener);
+  };
+}

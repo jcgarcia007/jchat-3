@@ -273,6 +273,7 @@
     "loadError": "We couldn't load the menu",
     "retry": "Retry",
     "openInTab": "Open in another tab",
-    "orderSent": "Order sent"
+    "orderSent": "Order sent",
+    "claimFailed": "We couldn't link your order; save the tracking link."
   }
 }

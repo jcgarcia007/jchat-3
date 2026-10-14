@@ -6,6 +6,8 @@
  */
 
 import { supabase, isSupabaseConfigured } from './supabase';
+import { buildClaimArgs, claimErrorKind, type ClaimErrorKind } from '../utils/claimEmbeddedOrder';
+import type { OrderPlacedInfo } from '../utils/menuSheetMessage';
 
 /** orders.status (CHECK constraint, migration 184). */
 export type OrderStatus =
@@ -258,4 +260,23 @@ export async function myActiveOrders(): Promise<ActiveOrder[]> {
   const { data, error } = await supabase.rpc('my_active_orders' as never);
   if (error) throw error;
   return (Array.isArray(data) ? data : []) as ActiveOrder[];
+}
+
+export type ClaimEmbeddedOrderResult =
+  | { ok: true; orderId: string; orderNumber: number; status: string; businessId: string }
+  | { ok: false; reason: ClaimErrorKind | 'nothing_to_claim' };
+
+/**
+ * Claims the guest order the web menu sheet just placed for the signed-in user (RPC claim_embedded_order, migration
+ * 232): the order id + the guest tracking code the menu sent are the proof of possession. The room is only used by
+ * the server to fill room_id when it belongs to the same venue. Never logs the id or the code.
+ */
+export async function claimEmbeddedOrder(info: OrderPlacedInfo, roomId: string | null | undefined): Promise<ClaimEmbeddedOrderResult> {
+  const args = buildClaimArgs(info, roomId);
+  if (!args) return { ok: false, reason: 'nothing_to_claim' };
+  const { data, error } = await supabase.rpc('claim_embedded_order' as never, args as never);
+  if (error) return { ok: false, reason: claimErrorKind(error as { code?: string; message?: string }) };
+  const row = (Array.isArray(data) ? data[0] : data) as { order_id?: string; order_number?: number; status?: string; business_id?: string } | null;
+  if (!row?.order_id) return { ok: false, reason: 'error' };
+  return { ok: true, orderId: row.order_id, orderNumber: Number(row.order_number ?? 0), status: row.status ?? '', businessId: row.business_id ?? '' };
 }

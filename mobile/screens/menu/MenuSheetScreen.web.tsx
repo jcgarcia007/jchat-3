@@ -28,11 +28,12 @@ import { ProfileSheetFrame } from '../../components/profile/ProfileSheetFrame';
 import { MENU_FRAME_ORIGIN } from '../../constants/appLinks';
 import { useVenueSession } from '../../context/VenueSessionContext';
 import { useIncomingDmNotice, type IncomingDmNotice } from '../../hooks/useIncomingDmNotice';
-import { emitMenuOrderSent } from '../../services/menuEvents';
+import { emitMenuOrderClaimed, emitMenuOrderSent } from '../../services/menuEvents';
+import { claimEmbeddedOrder } from '../../services/orders';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { getEntryTableToken } from '../../services/venueTable';
-import { parseMenuSheetMessage } from '../../utils/menuSheetMessage';
+import { parseMenuOrderPlaced, parseMenuSheetMessage } from '../../utils/menuSheetMessage';
 import { buildTableContextMessage } from '../../utils/menuTableMessage';
 
 const LOAD_TIMEOUT_MS = 15_000;
@@ -40,6 +41,7 @@ const LOAD_TIMEOUT_MS = 15_000;
 export default function MenuSheetScreen(): React.ReactElement {
   const c = useThemeColors();
   const { t } = useTranslation('pos');
+  const { t: tc } = useTranslation('common');
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { url, businessName, openUrl } = useRoute<RouteProp<MainStackParamList, 'MenuSheet'>>().params;
   const venue = useVenueSession();
@@ -49,6 +51,8 @@ export default function MenuSheetScreen(): React.ReactElement {
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [attempt, setAttempt] = useState(0);
   const closingRef = useRef(false);
+  const claimingRef = useRef(false);
+  const [claimFailed, setClaimFailed] = useState(false);
 
   useEffect(() => {
     setChatCovered(true);
@@ -71,6 +75,30 @@ export default function MenuSheetScreen(): React.ReactElement {
       }
       if (kind !== 'order_placed') return;
       if (closingRef.current) return;
+      const info = parseMenuOrderPlaced({ origin: event.origin, data: event.data }, MENU_FRAME_ORIGIN);
+      if (info?.trackingCode) {
+        // A guest card payment: the framed menu has no session of this app, so the order is a guest order. Claim it
+        // for the signed-in user (RPC claim_embedded_order) so tracking and notifications reach them. The id and the
+        // code are credentials: they are never logged or shown.
+        if (claimingRef.current) return;
+        claimingRef.current = true;
+        setClaimFailed(false);
+        void claimEmbeddedOrder(info, venue.session?.roomId).then((result) => {
+          claimingRef.current = false;
+          if (result.ok) {
+            closingRef.current = true;
+            emitMenuOrderSent();
+            emitMenuOrderClaimed();
+            // Tracking inside the app (the sheet's route is replaced; back returns to the chat).
+            navigation.replace('OrderTracking', { orderId: result.orderId, roomId: venue.session?.roomId });
+          } else {
+            // Not linked: the sheet stays open on the menu's own tracking page (it shows the follow link).
+            setClaimFailed(true);
+          }
+        });
+        return;
+      }
+      // No guest code (e.g. an order added to the table tab): nothing to claim, close as before.
       closingRef.current = true;
       emitMenuOrderSent();
       navigation.goBack();
@@ -126,6 +154,14 @@ export default function MenuSheetScreen(): React.ReactElement {
             style={styles.frame}
           />
         ) : null}
+        {claimFailed ? (
+          <View testID="menu-sheet-claim-failed" accessibilityRole="alert" style={[styles.claimBanner, { backgroundColor: c.bgElevated, borderColor: c.borderSubtle }]}>
+            <Text style={[styles.claimText, { color: c.textPrimary }]}>{t('menuSheet.claimFailed')}</Text>
+            <Pressable onPress={() => setClaimFailed(false)} accessibilityRole="button" accessibilityLabel={tc('actions.close')} style={styles.claimClose}>
+              <Text style={[styles.secondaryLabel, { color: c.brandText }]}>{tc('actions.close')}</Text>
+            </Pressable>
+          </View>
+        ) : null}
         {state === 'loading' ? (
           <View style={styles.center} pointerEvents="none">
             <Spinner size="large" color={c.brandText} />
@@ -156,4 +192,7 @@ const styles = StyleSheet.create({
   primaryLabel: { fontSize: 15, fontWeight: '700' },
   secondary: { minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   secondaryLabel: { fontSize: 15, fontWeight: '600' },
+  claimBanner: { position: 'absolute', left: 12, right: 12, bottom: 12, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  claimText: { flex: 1, fontSize: 14, fontWeight: '600' },
+  claimClose: { minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center' },
 });

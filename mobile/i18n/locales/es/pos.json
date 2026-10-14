@@ -273,6 +273,7 @@
     "loadError": "No se pudo cargar el menú",
     "retry": "Reintentar",
     "openInTab": "Abrir en otra pestaña",
-    "orderSent": "Pedido enviado"
+    "orderSent": "Pedido enviado",
+    "claimFailed": "No pudimos vincular tu pedido; guarda el enlace de seguimiento."
   }
 }
