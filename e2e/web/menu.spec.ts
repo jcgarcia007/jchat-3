@@ -184,3 +184,98 @@ test('[desktop] the profile still opens as the right-hand panel and shifts the c
   await expect(page.getByTestId('profile-panel')).toHaveCount(0);
   expect(await appColumn(page)).toEqual(before);
 });
+
+// ── claim_embedded_order (the order placed in the framed menu is claimed for the signed-in user) ───────────────────
+// The RPC is MOCKED (page.route): nothing is ordered, paid or written; the framed menu's order_placed is simulated.
+const ORDER_ID = '0b4895d0-5dc5-4c7f-8303-52748d0fe823'; // synthetic
+const TRACKING = 'AbCdEfGhIjKlMnOpQrStUv12'; // synthetic
+
+async function openMenuAndFrame(page: Page) {
+  await enterChat(page);
+  const roomId = page.url().match(/room\/([0-9a-f-]{36})/i)?.[1]; // read before the sheet route replaces the URL
+  await page.getByRole('button', { name: /Abrir menú|Open menu/i }).first().click();
+  await expect(page.getByTestId('menu-sheet')).toBeVisible({ timeout: 10_000 });
+  await expect(page.frameLocator('iframe').locator('body')).not.toBeEmpty({ timeout: 25_000 });
+  const frame = page.frames().find((f) => f.url().startsWith(new URL(process.env.E2E_MENU_BASE_URL as string).origin) && f.url().includes('/m/'))!;
+  return { frame, roomId, post: (data: unknown) => frame.evaluate((d) => window.parent.postMessage(d, '*'), data) };
+}
+
+test('order_placed with a tracking code claims the order (RPC params), closes the sheet and opens the tracking screen', async ({ page }) => {
+  test.skip(!process.env.E2E_MENU_BASE_URL, 'needs the menu served from E2E_MENU_BASE_URL (a local next dev)');
+  const calls: unknown[] = [];
+  await page.route('**/rest/v1/rpc/claim_embedded_order', async (route) => {
+    calls.push(route.request().postDataJSON());
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ order_id: ORDER_ID, order_number: 188, status: 'confirmed', business_id: '00000000-0000-4000-8000-000000000001' }]) });
+  });
+  const { post, roomId } = await openMenuAndFrame(page);
+  expect(roomId, 'the active room is in the chat URL').toBeTruthy();
+
+  await post({ type: 'jchat:menu', event: 'order_placed', orderId: ORDER_ID, trackingCode: TRACKING });
+  await expect.poll(() => calls.length).toBe(1);
+  expect(calls[0]).toEqual({ p_order_id: ORDER_ID, p_tracking_code: TRACKING, p_room_id: roomId });
+
+  await expect(page.getByTestId('menu-sheet')).toHaveCount(0); // the sheet's route was replaced by the tracking screen
+  await expect(page.getByTestId('menu-sheet-claim-failed')).toHaveCount(0);
+  expect(page.url(), 'the tracking code is never in the URL').not.toContain(TRACKING);
+  expect(page.url()).toMatch(/OrderTracking/i);
+});
+
+test('order_placed with only the tracking code (a real card payment: the menu does not know the id) sends p_order_id null', async ({ page }) => {
+  test.skip(!process.env.E2E_MENU_BASE_URL, 'needs the menu served from E2E_MENU_BASE_URL (a local next dev)');
+  const calls: unknown[] = [];
+  await page.route('**/rest/v1/rpc/claim_embedded_order', async (route) => {
+    calls.push(route.request().postDataJSON());
+    await route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ code: '22023', message: 'invalid_claim', details: null, hint: null }) });
+  });
+  const { post, roomId } = await openMenuAndFrame(page);
+  await post({ type: 'jchat:menu', event: 'order_placed', trackingCode: TRACKING });
+  await expect.poll(() => calls.length).toBe(1);
+  expect(calls[0]).toEqual({ p_order_id: null, p_tracking_code: TRACKING, p_room_id: roomId });
+  // The RPC as applied today refuses a null id: the sheet stays open with the "could not link" notice.
+  await expect(page.getByTestId('menu-sheet-claim-failed')).toBeVisible({ timeout: 10_000 });
+});
+
+test('a refused claim keeps the sheet open and says the order could not be linked', async ({ page }) => {
+  test.skip(!process.env.E2E_MENU_BASE_URL, 'needs the menu served from E2E_MENU_BASE_URL (a local next dev)');
+  let calls = 0;
+  await page.route('**/rest/v1/rpc/claim_embedded_order', async (route) => {
+    calls += 1;
+    await route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ code: '42501', message: 'claim_not_allowed', details: null, hint: null }) });
+  });
+  const { post } = await openMenuAndFrame(page);
+  await post({ type: 'jchat:menu', event: 'order_placed', orderId: ORDER_ID, trackingCode: TRACKING });
+  await expect(page.getByTestId('menu-sheet-claim-failed')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByTestId('menu-sheet-claim-failed')).toContainText(/No pudimos vincular tu pedido/);
+  await expect(page.getByTestId('menu-sheet')).toBeVisible(); // still open, on the menu's own tracking page
+  expect(calls).toBe(1);
+  expect(page.url()).not.toMatch(/OrderTracking/i);
+});
+
+test('order_placed without a tracking code (a tab order) closes as before and does not call the RPC', async ({ page }) => {
+  test.skip(!process.env.E2E_MENU_BASE_URL, 'needs the menu served from E2E_MENU_BASE_URL (a local next dev)');
+  let calls = 0;
+  await page.route('**/rest/v1/rpc/claim_embedded_order', async (route) => {
+    calls += 1;
+    await route.abort();
+  });
+  const { post } = await openMenuAndFrame(page);
+  await post({ type: 'jchat:menu', event: 'order_placed' });
+  await expect(page.getByTestId('menu-sheet')).toHaveCount(0);
+  await expect(page.getByTestId('menu-order-sent')).toBeVisible();
+  expect(calls).toBe(0);
+});
+
+test('order_placed from another origin does not claim anything', async ({ page }) => {
+  test.skip(!process.env.E2E_MENU_BASE_URL, 'needs the menu served from E2E_MENU_BASE_URL (a local next dev)');
+  let calls = 0;
+  await page.route('**/rest/v1/rpc/claim_embedded_order', async (route) => {
+    calls += 1;
+    await route.abort();
+  });
+  await openMenuAndFrame(page);
+  // Posted from the app's OWN origin (not the menu's): ignored.
+  await page.evaluate(([id, code]) => window.postMessage({ type: 'jchat:menu', event: 'order_placed', orderId: id, trackingCode: code }, '*'), [ORDER_ID, TRACKING]);
+  await page.waitForTimeout(800);
+  await expect(page.getByTestId('menu-sheet')).toBeVisible();
+  expect(calls).toBe(0);
+});

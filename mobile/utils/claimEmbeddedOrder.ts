@@ -9,15 +9,22 @@
 import type { OrderPlacedInfo } from './menuSheetMessage';
 
 export interface ClaimArgs {
-  p_order_id: string;
+  /** null when the menu could not know the id (a card payment: the order is created by the webhook AFTER the pay response). */
+  p_order_id: string | null;
   p_tracking_code: string;
   p_room_id: string | null;
 }
 
-/** The RPC arguments, or null when the message has no code / id to claim with (e.g. a tab order has no guest code). */
+/**
+ * The RPC arguments, or null when there is no guest tracking code (e.g. a tab order has none): the code is the proof of
+ * possession, the id is optional. NOTE: migration 232 as applied REQUIRES p_order_id (invalid_claim without it) and the
+ * menu cannot know the id of a card-paid order (guest-pay returns only the code; the order is created later by the
+ * webhook, and guest_order_view never returns the id) — so until the RPC also accepts a null id (resolve by the unique
+ * tracking code), the claim of a real card payment is refused and the sheet shows the "could not link" notice.
+ */
 export function buildClaimArgs(info: OrderPlacedInfo, roomId: string | null | undefined): ClaimArgs | null {
-  if (!info.orderId || !info.trackingCode) return null;
-  return { p_order_id: info.orderId, p_tracking_code: info.trackingCode, p_room_id: roomId ?? null };
+  if (!info.trackingCode) return null;
+  return { p_order_id: info.orderId ?? null, p_tracking_code: info.trackingCode, p_room_id: roomId ?? null };
 }
 
 export type ClaimErrorKind = 'not_authenticated' | 'claim_not_allowed' | 'invalid_claim' | 'error';

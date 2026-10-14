@@ -40,8 +40,8 @@ const ROOM = '9a462992-2dbf-4264-a4b6-c365bd4626f1';
 assert.deepEqual(buildClaimArgs({ orderId: ID, trackingCode: CODE }, ROOM), { p_order_id: ID, p_tracking_code: CODE, p_room_id: ROOM });
 assert.deepEqual(buildClaimArgs({ orderId: ID, trackingCode: CODE }, null), { p_order_id: ID, p_tracking_code: CODE, p_room_id: null });
 assert.deepEqual(buildClaimArgs({ orderId: ID, trackingCode: CODE }, undefined), { p_order_id: ID, p_tracking_code: CODE, p_room_id: null });
-assert.equal(buildClaimArgs({ trackingCode: CODE }, ROOM), null);
-assert.equal(buildClaimArgs({ orderId: ID }, ROOM), null);
+assert.deepEqual(buildClaimArgs({ trackingCode: CODE }, ROOM), { p_order_id: null, p_tracking_code: CODE, p_room_id: ROOM }, 'a card payment: the code only (the id is unknown to the menu)');
+assert.equal(buildClaimArgs({ orderId: ID }, ROOM), null, 'no code = no proof of possession');
 assert.equal(buildClaimArgs({}, ROOM), null);
 
 // Error mapping (SQLSTATE first, message second).
