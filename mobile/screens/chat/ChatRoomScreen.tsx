@@ -83,6 +83,7 @@ import { InlineToast } from '../../components/common/InlineToast';
 import { ReconnectingBanner } from '../../components/common/ReconnectingBanner';
 import { InlineRetryRow } from '../../components/common/InlineRetryRow';
 import { mergeMessages, planResync } from '../../utils/mergeMessages';
+import { createProfileCache, settleOptimistic, type ProfileCache, type ProfileRow } from '../../utils/messageProfiles';
 import { retryWithTimeout } from '../../utils/retryWithTimeout';
 import type { NotificationRoute } from '../../services/notifications';
 import { openNotificationRoute, useNotificationPresenter } from '../../hooks/useNotificationPresenter';
@@ -244,6 +245,17 @@ const AUTOSCROLL_BOTTOM_THRESHOLD = 80;
 /** An incognito message shows its nickname, never my real name / photo. */
 const isIncognitoMessage = (message: ChatMessage): boolean => message.metadata?.incognito === true;
 
+/** public_profiles for the given users (the RLS of `users` only lets you read your own row). Throws on failure. */
+async function fetchPublicProfiles(ids: string[]): Promise<ProfileRow[]> {
+  const { data, error } = await supabase.from('public_profiles').select('id, username, display_name, avatar_url').in('id', ids);
+  if (error) throw error;
+  return (data ?? []).map((p) => ({
+    id: p.id as string,
+    name: ((p.display_name as string | null) ?? (p.username as string | null)) ?? null,
+    avatar: (p.avatar_url as string | null) ?? null,
+  }));
+}
+
 // ── Component ──────────────────────────────────────────────────────────────────
 
 export default function ChatRoomScreen() {
@@ -306,9 +318,31 @@ export default function ChatRoomScreen() {
   const [hasMore, setHasMore] = useState(true);
   const oldestTimestampRef = useRef<string | null>(null);
   // Cache user_id → display name to resolve sender_name for realtime messages
-  const userNameCacheRef = useRef<Map<string, string>>(new Map());
+  // One profile cache for the room (utils/messageProfiles): members, earlier messages and my own profile are applied
+  // at once; a missing author is fetched ONCE (shared in-flight request) and the message is patched when it arrives.
+  // Its two Maps are the name / avatar caches the rest of the screen reads.
+  const profileCacheRef = useRef<ProfileCache | null>(null);
+  if (!profileCacheRef.current) profileCacheRef.current = createProfileCache(fetchPublicProfiles);
+  const profileCache = profileCacheRef.current;
+  const userNameCacheRef = useRef(profileCache.names);
   // Cache user_id → avatar_url (null = no avatar) to resolve sender_avatar
-  const userAvatarCacheRef = useRef<Map<string, string | null>>(new Map());
+  const userAvatarCacheRef = useRef(profileCache.avatars);
+  // Fills in the author's profile on a message that was added without it (Realtime, optimistic): one shared lookup,
+  // one more try a few seconds later if it failed. Messages that are already gone are left alone.
+  const patchSenderRef = useRef<(messageId: string, userId: string | null | undefined) => void>(() => undefined);
+  patchSenderRef.current = (messageId, userId) => {
+    if (!userId || profileCache.known(userId)) return;
+    const attempt = (retry: boolean) => {
+      void profileCache.ensure([userId]).then(() => {
+        if (profileCache.known(userId)) {
+          setMessages((prev) => prev.map((m) => (m.id === messageId && !isIncognitoMessage(m) ? profileCache.apply(m) : m)));
+        } else if (retry) {
+          setTimeout(() => attempt(false), 3000);
+        }
+      });
+    };
+    attempt(true);
+  };
   const flatListRef = useRef<FlatList>(null);
   // Fullscreen photo viewer: the tapped image's URL (null = closed).
   const [viewerImage, setViewerImage] = useState<string | null>(null);
@@ -692,37 +726,11 @@ export default function ChatRoomScreen() {
    * `users` only lets you read your own row) and fills the name caches. Shared by the page load and the catch-up.
    */
   const hydrateRows = useCallback(async (rows: Record<string, unknown>[]): Promise<ChatMessage[]> => {
-    const uniqueUserIds = [...new Set(
-      rows.map((r) => r.user_id).filter(Boolean) as string[]
-    )];
-
-    if (uniqueUserIds.length > 0) {
-      // A failed profile lookup must not lose the messages: they show with the generic sender name.
-      try {
-        const { data: profs } = await supabase
-          .from('public_profiles')
-          .select('id, username, display_name, avatar_url')
-          .in('id', uniqueUserIds);
-        for (const p of profs ?? []) {
-          const nm = (p.display_name as string | null) ?? (p.username as string | null) ?? undefined;
-          if (nm) userNameCacheRef.current.set(p.id as string, nm);
-          userAvatarCacheRef.current.set(p.id as string, (p.avatar_url as string | null) ?? null);
-        }
-      } catch (err) {
-        console.warn('[ChatRoom] sender profiles lookup failed:', err);
-      }
-    }
-
-    return rows.map((row) => {
-      const senderName = typeof row.user_id === 'string'
-        ? userNameCacheRef.current.get(row.user_id)
-        : undefined;
-      const senderAvatar = typeof row.user_id === 'string'
-        ? userAvatarCacheRef.current.get(row.user_id) ?? undefined
-        : undefined;
-      return { ...row, sender_name: senderName, sender_avatar: senderAvatar } as unknown as ChatMessage;
-    });
-  }, []);
+    // A failed profile lookup must not lose the messages: they show with the generic sender name (and the next
+    // message from that author retries the lookup).
+    await profileCache.ensure(rows.map((r) => r.user_id as string | null));
+    return rows.map((row) => profileCache.apply(row as unknown as ChatMessage));
+  }, [profileCache]);
 
   const loadMessages = useCallback(async (roomId: string, before?: string) => {
     if (!isSupabaseConfigured) return;
@@ -853,13 +861,14 @@ export default function ChatRoomScreen() {
         // fall back to the translated generic name
       }
       if (cancelled) return;
-      if (name) userNameCacheRef.current.set(user.id, name);
-      userAvatarCacheRef.current.set(user.id, avatarUrl);
+      profileCache.prime(user.id, { name, avatar: avatarUrl });
+      // Messages of mine sent before this arrived are patched with my photo / name.
+      setMessages((prev) => prev.map((m) => (m.user_id === user.id && !isIncognitoMessage(m) ? profileCache.apply(m) : m)));
       // Presence waits for this: it is published once, with the real name.
       setSelfProfile({ name, avatarUrl });
     })();
     return () => { cancelled = true; };
-  }, [user?.id]);
+  }, [user?.id, profileCache]);
 
   // ── Realtime subscription (messages) ──────────────────────────────────────
   const meId = user?.id;
@@ -881,11 +890,10 @@ export default function ChatRoomScreen() {
           },
           (payload) => {
             const raw = payload.new as ChatMessage;
-            const cachedName = userNameCacheRef.current.get(raw.user_id);
-            const cachedAvatar = userAvatarCacheRef.current.get(raw.user_id);
-            const newMsg: ChatMessage = cachedName
-              ? { ...raw, sender_name: cachedName, sender_avatar: cachedAvatar ?? undefined }
-              : raw;
+            // The Realtime row is the bare `messages` row: the author's profile comes from the cache (members,
+            // earlier messages, my own profile) and, if it is not there, from ONE shared lookup that patches the
+            // message when it arrives — never left on the fallback initial.
+            const newMsg = profileCache.apply(raw);
             setMessages((prev) => {
               // Avoid duplicates. Inverted list → prepend (index 0 = newest = bottom).
               if (prev.some((m) => m.id === newMsg.id)) return prev;
@@ -894,30 +902,7 @@ export default function ChatRoomScreen() {
             // With the inverted list a new message at index 0 appears at the bottom
             // automatically: if the user is at the bottom they see it; if they
             // scrolled up to read history, they are not yanked down.
-            // If the name wasn't cached (message from a user we haven't seen yet),
-            // resolve name + avatar from public_profiles and patch the message in place.
-            // If the lookup fails the message stays on screen with the generic name (it is never lost).
-            if (!cachedName && raw.user_id) {
-              void (async () => {
-                try {
-                  const { data: prof } = await supabase
-                    .from('public_profiles')
-                    .select('id, username, display_name, avatar_url')
-                    .eq('id', raw.user_id)
-                    .maybeSingle();
-                  const nm = prof?.display_name ?? prof?.username ?? undefined;
-                  const av = prof?.avatar_url ?? null;
-                  if (nm) userNameCacheRef.current.set(raw.user_id, nm);
-                  userAvatarCacheRef.current.set(raw.user_id, av);
-                  if (nm) {
-                    setMessages((prev) =>
-                      prev.map((m) => (m.id === raw.id ? { ...m, sender_name: nm, sender_avatar: av ?? undefined } : m)));
-                  }
-                } catch (err) {
-                  console.warn('[ChatRoom] sender profile lookup failed:', err);
-                }
-              })();
-            }
+            patchSenderRef.current(raw.id, raw.user_id);
           },
         )
         .on(
@@ -1136,6 +1121,8 @@ export default function ChatRoomScreen() {
 
       // Inverted list → prepend (index 0 = newest = bottom).
       setMessages((prev) => [optimistic, ...prev]);
+      // Born with my photo / name from the cache; if my profile has not loaded yet it is patched in when it does.
+      if (!incognito?.enabled) patchSenderRef.current(optimisticId, user.id);
       // Sender always jumps to the bottom (offset 0 in an inverted list).
       isNearBottomRef.current = true;
       setTimeout(() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true }), 50);
@@ -1156,11 +1143,7 @@ export default function ChatRoomScreen() {
           // Remove any Realtime-added copy that arrived before the insert resolved,
           // then replace the optimistic with the confirmed row.
           const confirmed = data as ChatMessage;
-          setMessages((prev) =>
-            prev
-              .filter((m) => m.id !== confirmed.id)
-              .map((m) => (m.id === optimisticId ? confirmed : m)),
-          );
+          setMessages((prev) => settleOptimistic(prev, optimisticId, confirmed));
         } else {
           await handleSendFailure(error, optimisticId);
         }
@@ -1201,6 +1184,8 @@ export default function ChatRoomScreen() {
 
       // Inverted list → prepend (index 0 = newest = bottom).
       setMessages((prev) => [optimistic, ...prev]);
+      // Born with my photo / name from the cache; if my profile has not loaded yet it is patched in when it does.
+      if (!incognito?.enabled) patchSenderRef.current(optimisticId, user.id);
       // Sender always jumps to the bottom (offset 0 in an inverted list).
       isNearBottomRef.current = true;
       // The photo comes from a native picker/camera modal that is still
@@ -1242,11 +1227,7 @@ export default function ChatRoomScreen() {
 
         if (!error && data) {
           const confirmed = data as ChatMessage;
-          setMessages((prev) =>
-            prev
-              .filter((m) => m.id !== confirmed.id)
-              .map((m) => (m.id === optimisticId ? confirmed : m)),
-          );
+          setMessages((prev) => settleOptimistic(prev, optimisticId, confirmed));
           // Upload + insert done (the remote image swaps in here). Re-pin to the
           // newest message if the sender was still at the bottom, so the photo
           // lands even if the earlier scroll raced the picker dismissal.
@@ -1295,6 +1276,8 @@ export default function ChatRoomScreen() {
         sender_avatar: incognito?.enabled ? undefined : (userAvatarCacheRef.current.get(user.id) ?? undefined),
       };
       setMessages((prev) => [optimistic, ...prev]);
+      // Born with my photo / name from the cache; if my profile has not loaded yet it is patched in when it does.
+      if (!incognito?.enabled) patchSenderRef.current(optimisticId, user.id);
       isNearBottomRef.current = true;
       requestAnimationFrame(() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true }));
 
@@ -1325,11 +1308,7 @@ export default function ChatRoomScreen() {
 
         if (!error && data) {
           const confirmed = data as ChatMessage;
-          setMessages((prev) =>
-            prev
-              .filter((m) => m.id !== confirmed.id)
-              .map((m) => (m.id === optimisticId ? confirmed : m)),
-          );
+          setMessages((prev) => settleOptimistic(prev, optimisticId, confirmed));
         } else {
           await handleSendFailure(error, optimisticId, toUserMessage(error, 'errors:app.VOICE_UPLOAD_FAILED'));
         }
