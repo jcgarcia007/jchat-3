@@ -45,13 +45,26 @@ async function withNormalizedAssets(result: ImagePicker.ImagePickerResult): Prom
   return { ...result, assets };
 }
 
+/** The Android 13+ Photo Picker is not installed (ActivityNotFoundException for PICK_IMAGES). */
+function isPhotoPickerMissing(err: unknown): boolean {
+  return /ActivityNotFoundException|No Activity found to handle Intent/i.test(String((err as { message?: unknown })?.message ?? err));
+}
+
 export async function safeLaunchLibrary(
   options: ImagePicker.ImagePickerOptions,
 ): Promise<ImagePicker.ImagePickerResult | null> {
   try {
     if (!(await prepareToPresent())) return null;
     try {
-      const result = await ImagePicker.launchImageLibraryAsync(options);
+      let result: ImagePicker.ImagePickerResult;
+      try {
+        result = await ImagePicker.launchImageLibraryAsync(options);
+      } catch (err) {
+        // Android 13+ opens the system Photo Picker (PICK_IMAGES); devices and emulators without that module throw
+        // ActivityNotFoundException. The classic picker (ACTION_GET_CONTENT, `legacy: true`) needs no permission either.
+        if (options.legacy || !isPhotoPickerMissing(err)) throw err;
+        result = await ImagePicker.launchImageLibraryAsync({ ...options, legacy: true });
+      }
       return await withNormalizedAssets(result);
     } finally {
       lastClosedAt = Date.now();
