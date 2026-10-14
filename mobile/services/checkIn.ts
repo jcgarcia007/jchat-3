@@ -2,28 +2,29 @@
  * JChat 3.0 — Check-In service (Task 1.18)
  *
  * Pure async functions that wrap the shared Supabase client.
- * All types are co-located here.
+ *
+ * THE SERVER DECIDES (migration 235). `checkIn()` only calls the RPC `check_in(p_business_id)`, which requires the
+ * person to be physically at the venue (venue_presence_ok — no client coordinates are trusted or even sent), excludes the
+ * owner, and allows one check-in per venue per 24 h. The INSERT policy on `check_ins` is `with check (false)`: nobody
+ * inserts directly any more, so a client-side radius / 24 h check would add nothing and is gone. The caller refreshes
+ * the presence first (CheckInButton → runGeoCheck, the same fresh-position → check_geofence_and_join_room the chat gate
+ * uses) and the RPC then reads it.
  *
  * PRIVACY RULES (enforced here and in callers):
  *   - `getCheckInHistory` returns business info WITHOUT created_at; the UI
  *     MUST NOT display timestamps on the profile Places tab.
- *   - GPS is consumed ONLY as caller-supplied lat/lng; this module never
- *     requests device location. // TODO(Stage 4): obtain device location for geofence
+ *   - This module never requests or logs device location.
  *
- * STAGE 2 STUBS:
+ * STAGE 2 STUB:
  *   - `postSystemMessageToRoom` is a named placeholder; insert into the
  *     `messages` table is stubbed with a TODO because the chat-room flow
  *     (Task 2.4) is not built yet. // TODO(Stage 2): post system message to room via messages table
- *
- * SCHEMA NOTE:
- *   // TODO(schema): unique constraint per (user_id, business_id, 24h window).
- *   A partial/conditional unique index would look like:
- *     create unique index on check_ins (user_id, business_id)
- *     where created_at > now() - interval '24 hours';
- *   Until that lands, this service enforces the 24h rule client-side.
  */
 
 import { supabase, isSupabaseConfigured } from './supabase';
+import { mapCheckInResponse, type CheckInResult } from '../utils/checkInResult';
+
+export type { CheckInDeniedReason, CheckInResult } from '../utils/checkInResult';
 
 // ── Co-located types ────────────────────────────────────────────────────────
 
@@ -54,73 +55,16 @@ export interface CheckInPlace {
   visitCount: number;
 }
 
-/** Discriminated union returned by checkIn() */
-export type CheckInResult =
-  | { ok: true; checkInId: string }
-  | { ok: false; reason: 'already_checked_in_24h' }
-  | { ok: false; reason: 'outside_radius' }
-  | { ok: false; reason: 'not_configured' }
-  | { ok: false; reason: 'db_error'; message: string };
-
 /** Parameters accepted by checkIn() */
 export interface CheckInParams {
-  userId: string;
+  /** The venue (businesses.id). The person is the authenticated user: the server reads auth.uid(). */
   businessId: string;
   /** Room the user is currently in — used for system message stub (Stage 2) */
   roomId: string;
-  /** Device latitude. Required when venueData is provided for geofence check. */
-  userLat?: number;
-  /** Device longitude. Required when venueData is provided for geofence check. */
-  userLng?: number;
-  /**
-   * Pass venue lat/lng + radius when a geofence check is desired.
-   * If omitted the geofence check is skipped (e.g. in contexts where
-   * device location is unavailable — the button should not pass these
-   * until Stage 4 wires up device GPS).
-   * // TODO(Stage 4): obtain device location for geofence
-   */
-  venueData?: {
-    lat: number;
-    lng: number;
-    /** Geofence radius in metres (from businesses table / owner config). */
-    radiusM: number;
-    name: string;
-    ownerUsername?: string;
-  };
   /** Display name of the current user (for system message body). */
   username: string;
-}
-
-// ── Geofence helper ─────────────────────────────────────────────────────────
-
-/**
- * Returns true when (userLat, userLng) is within radiusM metres of (venueLat, venueLng).
- * Uses the haversine formula.
- */
-export function isWithinRadius(
-  userLat: number,
-  userLng: number,
-  venueLat: number,
-  venueLng: number,
-  radiusM: number,
-): boolean {
-  const R = 6_371_000; // Earth radius in metres
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-
-  const dLat = toRad(venueLat - userLat);
-  const dLng = toRad(venueLng - userLng);
-
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(userLat)) *
-      Math.cos(toRad(venueLat)) *
-      Math.sin(dLng / 2) *
-      Math.sin(dLng / 2);
-
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const distanceM = R * c;
-
-  return distanceM <= radiusM;
+  /** Venue name (system message body); falls back to the id. */
+  businessName?: string;
 }
 
 // ── Stage 2 stub ─────────────────────────────────────────────────────────────
@@ -155,84 +99,30 @@ async function postSystemMessageToRoom(
 // ── Check-In ─────────────────────────────────────────────────────────────────
 
 /**
- * Perform a check-in for the current user at a business.
- *
- * Steps:
- *   1. Guard: isSupabaseConfigured
- *   2. Geofence check (if venueData + userLat/userLng provided)
- *   3. 24h de-dup check (client-side; complement with DB constraint when ready)
- *   4. Insert into check_ins
- *   5. Stub: post system message (Stage 2)
+ * Check in at a business. The server decides (see the header): the result says why it was refused
+ * (`not_present`, `already_checked_in_24h`, `owner`, `invalid_business`, `business_inactive`, `auth_required`).
+ * A network / server failure is `db_error`; nothing is thrown.
  */
 export async function checkIn(params: CheckInParams): Promise<CheckInResult> {
-  const { userId, businessId, roomId, userLat, userLng, venueData, username } =
-    params;
+  const { businessId, roomId, username, businessName } = params;
 
-  // ── 1. Guard ──────────────────────────────────────────────────────────────
   if (!isSupabaseConfigured) {
     return { ok: false, reason: 'not_configured' };
   }
 
-  // ── 2. Geofence check ────────────────────────────────────────────────────
-  // TODO(Stage 4): obtain device location for geofence — the caller is
-  // responsible for passing userLat/userLng from expo-location (Stage 4).
-  if (
-    venueData !== undefined &&
-    userLat !== undefined &&
-    userLng !== undefined
-  ) {
-    const within = isWithinRadius(
-      userLat,
-      userLng,
-      venueData.lat,
-      venueData.lng,
-      venueData.radiusM,
-    );
-    if (!within) {
-      return { ok: false, reason: 'outside_radius' };
-    }
+  let result: CheckInResult;
+  try {
+    const response = await supabase.rpc('check_in', { p_business_id: businessId });
+    result = mapCheckInResponse({ data: response.data, error: response.error });
+  } catch (err) {
+    return { ok: false, reason: 'db_error', message: err instanceof Error ? err.message : 'rpc_failed' };
   }
 
-  // ── 3. 24h de-dup check ──────────────────────────────────────────────────
-  // TODO(schema): unique constraint per (user_id, business_id, 24h window).
-  // When the DB partial-unique index exists this query becomes a belt-and-suspenders
-  // check; the insert will also be rejected by the constraint.
-  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const { data: existing, error: existingError } = await supabase
-    .from('check_ins')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('business_id', businessId)
-    .gte('created_at', since)
-    .limit(1)
-    .maybeSingle();
-
-  if (existingError) {
-    return { ok: false, reason: 'db_error', message: existingError.message };
+  if (result.ok) {
+    // Stage 2 stub — system message
+    await postSystemMessageToRoom(roomId, username, businessName ?? businessId);
   }
-  if (existing !== null) {
-    return { ok: false, reason: 'already_checked_in_24h' };
-  }
-
-  // ── 4. Insert check-in row ───────────────────────────────────────────────
-  const { data: inserted, error: insertError } = await supabase
-    .from('check_ins')
-    .insert({ user_id: userId, business_id: businessId })
-    .select('id')
-    .single();
-
-  if (insertError) {
-    return { ok: false, reason: 'db_error', message: insertError.message };
-  }
-
-  // ── 5. Stage 2 stub — system message ─────────────────────────────────────
-  await postSystemMessageToRoom(
-    roomId,
-    username,
-    venueData?.name ?? businessId,
-  );
-
-  return { ok: true, checkInId: (inserted as { id: string }).id };
+  return result;
 }
 
 // ── Check-In history (profile Places tab) ───────────────────────────────────

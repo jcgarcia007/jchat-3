@@ -1925,7 +1925,11 @@ export default function ChatRoomScreen() {
           }
         />
 
-        {/* ── Check-in bar — only when enabled for the main room ───────── */}
+        {/* ── Check-in bar — only when enabled for the main room ─────────
+            NOTE: `check_in_enabled` is NOT a column of `rooms` yet (migration 235 made check-in server-side but did not add
+            it; whether and how the owner turns check-ins on is still to be decided). The select below does not ask for it
+            either, so `room?.check_in_enabled` is undefined and this bar stays HIDDEN in production. Do not add the column
+            or enable the bar until that decision is made. ─────────────────────────────────────────────── */}
         {isMainRoom && (room?.check_in_enabled ?? false) && (
           <View style={[chatStyles.checkInBar, { backgroundColor: chatTheme.topBg }]}>
             <CheckInButton
@@ -1933,6 +1937,7 @@ export default function ChatRoomScreen() {
               businessId={room?.business_id ?? DEMO_BUSINESS.id}
               roomId={activeRoomId}
               username={selfProfile?.name ?? undefined}
+              businessName={business?.name}
             />
           </View>
         )}

@@ -9,9 +9,11 @@
  *   enabled     — owner has activated check-ins for this business (pass false to hide)
  *   businessId  — uuid of the business being checked into
  *   roomId      — uuid of the room the user is currently in (for system message stub)
- *   venueData   — optional; when present enables the geofence check
- *                 // TODO(Stage 4): obtain device location from expo-location and
- *                 // pass userLat/userLng here to enforce the geofence
+ *   businessName — venue name for the messages ("Tienes que estar en {local}…")
+ *
+ * The SERVER decides (services/checkIn.ts): before calling the check_in RPC the button refreshes the presence with the
+ * same runGeoCheck the chat gate uses (fresh position → check_geofence_and_join_room), then the RPC proves the person is
+ * at the venue itself. No coordinates are logged or sent by this component.
  *
  * Stage 2 notes:
  *   - `roomId` is required but chat rooms (Task 2.4) are not built yet.
@@ -25,7 +27,7 @@
  *   - Success / blocked reason surfaced via Alert
  */
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -37,8 +39,8 @@ import { IconMapPin } from '@tabler/icons-react-native';
 import { useThemeColors } from '../../theme/colors';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
-import { checkIn } from '../../services/checkIn';
-import type { CheckInParams } from '../../services/checkIn';
+import { checkIn, type CheckInResult } from '../../services/checkIn';
+import { runGeoCheck } from '../../screens/chat/useGeofenceGate';
 import { toUserMessage } from '../../utils/errors';
 import { showAlert } from '../../utils/dialog';
 
@@ -56,12 +58,8 @@ export interface CheckInButtonProps {
   roomId: string;
   /** The viewer's display name from public_profiles (never from auth metadata). */
   username?: string;
-  /**
-   * Optional venue location data for geofence enforcement.
-   * When omitted the geofence check is skipped.
-   * // TODO(Stage 4): pass userLat/userLng from expo-location once available
-   */
-  venueData?: CheckInParams['venueData'];
+  /** Venue name, for the "you have to be at {venue}" message; generic text when missing. */
+  businessName?: string;
   /**
    * Optional callback invoked after a successful check-in.
    * Useful for updating parent UI (e.g. show a confetti overlay).
@@ -75,18 +73,28 @@ export interface CheckInButtonProps {
 // module scope. Keys map to the `chat` namespace's `checkIn.*` block.
 type CheckInErrorKey =
   | 'checkIn.alreadyTitle' | 'checkIn.alreadyMessage'
-  | 'checkIn.tooFarTitle' | 'checkIn.tooFarMessage'
+  | 'checkIn.ownerTitle' | 'checkIn.ownerMessage'
+  | 'checkIn.inactiveTitle' | 'checkIn.inactiveMessage'
+  | 'checkIn.invalidTitle' | 'checkIn.invalidMessage'
+  | 'checkIn.notSignedInTitle' | 'checkIn.notSignedInMessage'
   | 'checkIn.unavailableTitle' | 'checkIn.unavailableMessage'
   | 'checkIn.errorTitle' | 'checkIn.tryAgain';
 
+/** Every refusal except `not_present` (that one has its own message with the venue name and a retry button). */
 function blockedReasonKeys(
-  reason: 'already_checked_in_24h' | 'outside_radius' | 'not_configured' | 'db_error',
+  reason: Exclude<Extract<CheckInResult, { ok: false }>['reason'], 'not_present'>,
 ): { titleKey: CheckInErrorKey; messageKey: CheckInErrorKey } {
   switch (reason) {
     case 'already_checked_in_24h':
       return { titleKey: 'checkIn.alreadyTitle', messageKey: 'checkIn.alreadyMessage' };
-    case 'outside_radius':
-      return { titleKey: 'checkIn.tooFarTitle', messageKey: 'checkIn.tooFarMessage' };
+    case 'owner':
+      return { titleKey: 'checkIn.ownerTitle', messageKey: 'checkIn.ownerMessage' };
+    case 'business_inactive':
+      return { titleKey: 'checkIn.inactiveTitle', messageKey: 'checkIn.inactiveMessage' };
+    case 'invalid_business':
+      return { titleKey: 'checkIn.invalidTitle', messageKey: 'checkIn.invalidMessage' };
+    case 'auth_required':
+      return { titleKey: 'checkIn.notSignedInTitle', messageKey: 'checkIn.notSignedInMessage' };
     case 'not_configured':
       return { titleKey: 'checkIn.unavailableTitle', messageKey: 'checkIn.unavailableMessage' };
     case 'db_error':
@@ -101,7 +109,7 @@ export function CheckInButton({
   businessId,
   roomId,
   username,
-  venueData,
+  businessName,
   onSuccess,
 }: CheckInButtonProps) {
   const c = useThemeColors();
@@ -118,25 +126,33 @@ export function CheckInButton({
 
     setLoading(true);
     try {
+      // Refresh the presence first (fresh position → check_geofence_and_join_room, the chat gate's own check); the
+      // check_in RPC then proves it server-side. The outcome of this refresh is not interpreted here: the RPC decides.
+      await runGeoCheck(roomId, undefined, { interactive: true });
+
       const result = await checkIn({
-        userId: user.id,
         businessId,
         roomId,
         username: username ?? t('chatRoom.fallbackUserName'),
-        venueData,
-        // TODO(Stage 4): pass userLat/userLng from expo-location here
-        // userLat: deviceLocation.coords.latitude,
-        // userLng: deviceLocation.coords.longitude,
+        businessName,
       });
 
       if (result.ok) {
         setCheckedIn(true);
         onSuccess?.(result.checkInId);
         showAlert(t('checkIn.successTitle'), t('checkIn.successMessage'));
+      } else if (result.reason === 'not_present') {
+        showAlert(
+          t('checkIn.notPresentTitle'),
+          businessName ? t('checkIn.notPresentMessage', { business: businessName }) : t('checkIn.notPresentMessageGeneric'),
+          [
+            { text: t('checkIn.retry'), onPress: () => void handlePressRef.current() },
+            { text: t('checkIn.close'), style: 'cancel' },
+          ],
+        );
       } else {
         const { titleKey, messageKey } = blockedReasonKeys(result.reason);
-        const dynamicMessage = result.reason === 'db_error' ? result.message : undefined;
-        showAlert(t(titleKey), dynamicMessage ?? t(messageKey));
+        showAlert(t(titleKey), t(messageKey)); // never the raw server message
       }
     } catch (err) {
       showAlert(
@@ -146,7 +162,11 @@ export function CheckInButton({
     } finally {
       setLoading(false);
     }
-  }, [user, businessId, roomId, username, venueData, onSuccess]);
+  }, [user, businessId, roomId, username, businessName, onSuccess, t]);
+
+  // "Reintentar" re-runs the latest handler (the alert's callback outlives this render).
+  const handlePressRef = useRef(handlePress);
+  handlePressRef.current = handlePress;
 
   // Owner has not enabled check-ins — render nothing
   if (!enabled) return null;

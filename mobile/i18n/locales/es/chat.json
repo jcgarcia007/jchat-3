@@ -92,7 +92,18 @@
     "unavailableTitle": "No disponible",
     "unavailableMessage": "Los registros no están disponibles en este momento.",
     "errorTitle": "Algo salió mal",
-    "tryAgain": "Inténtalo de nuevo."
+    "tryAgain": "Inténtalo de nuevo.",
+    "notPresentTitle": "Check-in no disponible",
+    "notPresentMessage": "Tienes que estar en {{business}} para hacer check-in.",
+    "notPresentMessageGeneric": "Tienes que estar en el local para hacer check-in.",
+    "retry": "Reintentar",
+    "close": "Cerrar",
+    "ownerTitle": "Los dueños no pueden registrarse",
+    "ownerMessage": "No puedes hacer check-in en tu propio local.",
+    "inactiveTitle": "Local no disponible",
+    "inactiveMessage": "Este local no acepta check-ins en este momento.",
+    "invalidTitle": "Local no encontrado",
+    "invalidMessage": "No encontramos este local. Inténtalo más tarde."
   },
   "incognito": {
     "title": "Modo incógnito",

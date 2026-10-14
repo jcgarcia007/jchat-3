@@ -92,7 +92,18 @@
     "unavailableTitle": "Unavailable",
     "unavailableMessage": "Check-ins are not available right now.",
     "errorTitle": "Something Went Wrong",
-    "tryAgain": "Please try again."
+    "tryAgain": "Please try again.",
+    "notPresentTitle": "Check-in unavailable",
+    "notPresentMessage": "You have to be at {{business}} to check in.",
+    "notPresentMessageGeneric": "You have to be at the venue to check in.",
+    "retry": "Try again",
+    "close": "Close",
+    "ownerTitle": "Owners can't check in",
+    "ownerMessage": "You can't check in at your own venue.",
+    "inactiveTitle": "Venue unavailable",
+    "inactiveMessage": "This venue isn't accepting check-ins right now.",
+    "invalidTitle": "Venue not found",
+    "invalidMessage": "We couldn't find this venue. Please try again later."
   },
   "incognito": {
     "title": "Incognito Mode",
