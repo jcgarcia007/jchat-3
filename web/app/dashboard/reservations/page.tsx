@@ -530,11 +530,12 @@ function ReservationForm({
           p_reserved_at: new Date(reservedAt).toISOString(),
           p_party_size: Number(partySize),
           p_table_ids: Array.from(selectedTableIds),
-          p_event_type: eventType || null,
-          p_phone: phone.trim() || null,
-          p_first_name: firstName.trim() || null,
-          p_last_name: lastName.trim() || null,
-          p_special_requests: specialRequests.trim() || null,
+          // Optional parameters of the RPC (default null): omitted instead of sent as null (the generated types have no null here).
+          p_event_type: eventType || undefined,
+          p_phone: phone.trim() || undefined,
+          p_first_name: firstName.trim() || undefined,
+          p_last_name: lastName.trim() || undefined,
+          p_special_requests: specialRequests.trim() || undefined,
         });
         if (err) throw err;
       } else {

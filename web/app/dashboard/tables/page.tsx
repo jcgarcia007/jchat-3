@@ -940,8 +940,8 @@ function ReservationToggle({
     const { error: rpcErr } = await supabase.rpc("set_table_reserved", {
       p_table_id: tableId,
       p_reserved: true,
-      p_note: note || null,
-      p_until,
+      p_note: note || undefined, // optional parameters (default null): omitted, the generated types have no null here
+      p_until: p_until ?? undefined,
     });
     setBusy(false);
     if (rpcErr) {
