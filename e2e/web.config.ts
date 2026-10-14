@@ -35,7 +35,7 @@ export default defineConfig({
       reuseExistingServer: true,
       timeout: 30_000,
     },
-    ...(process.env.WEB_AUDIT
+    ...(process.env.WEB_AUDIT || process.env.WEB_NEXT
       ? [
           {
             command: 'npm run dev -- -p 3100',
