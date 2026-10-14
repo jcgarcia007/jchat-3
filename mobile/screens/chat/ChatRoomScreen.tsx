@@ -335,7 +335,7 @@ export default function ChatRoomScreen() {
     const attempt = (retry: boolean) => {
       void profileCache.ensure([userId]).then(() => {
         if (profileCache.known(userId)) {
-          setMessages((prev) => prev.map((m) => (m.id === messageId && !isIncognitoMessage(m) ? profileCache.apply(m) : m)));
+          setMessages((prev) => prev.map((m) => (m.id === messageId && !isIncognitoMessage(m) ? profileCache.apply(m, { incognito: false }) : m)));
         } else if (retry) {
           setTimeout(() => attempt(false), 3000);
         }
@@ -729,7 +729,10 @@ export default function ChatRoomScreen() {
     // A failed profile lookup must not lose the messages: they show with the generic sender name (and the next
     // message from that author retries the lookup).
     await profileCache.ensure(rows.map((r) => r.user_id as string | null));
-    return rows.map((row) => profileCache.apply(row as unknown as ChatMessage));
+    return rows.map((row) => {
+      const message = row as unknown as ChatMessage;
+      return profileCache.apply(message, { incognito: isIncognitoMessage(message) });
+    });
   }, [profileCache]);
 
   const loadMessages = useCallback(async (roomId: string, before?: string) => {
@@ -863,7 +866,7 @@ export default function ChatRoomScreen() {
       if (cancelled) return;
       profileCache.prime(user.id, { name, avatar: avatarUrl });
       // Messages of mine sent before this arrived are patched with my photo / name.
-      setMessages((prev) => prev.map((m) => (m.user_id === user.id && !isIncognitoMessage(m) ? profileCache.apply(m) : m)));
+      setMessages((prev) => prev.map((m) => (m.user_id === user.id && !isIncognitoMessage(m) ? profileCache.apply(m, { incognito: false }) : m)));
       // Presence waits for this: it is published once, with the real name.
       setSelfProfile({ name, avatarUrl });
     })();
@@ -893,7 +896,7 @@ export default function ChatRoomScreen() {
             // The Realtime row is the bare `messages` row: the author's profile comes from the cache (members,
             // earlier messages, my own profile) and, if it is not there, from ONE shared lookup that patches the
             // message when it arrives — never left on the fallback initial.
-            const newMsg = profileCache.apply(raw);
+            const newMsg = profileCache.apply(raw, { incognito: isIncognitoMessage(raw) });
             setMessages((prev) => {
               // Avoid duplicates. Inverted list → prepend (index 0 = newest = bottom).
               if (prev.some((m) => m.id === newMsg.id)) return prev;
@@ -902,7 +905,8 @@ export default function ChatRoomScreen() {
             // With the inverted list a new message at index 0 appears at the bottom
             // automatically: if the user is at the bottom they see it; if they
             // scrolled up to read history, they are not yanked down.
-            patchSenderRef.current(raw.id, raw.user_id);
+            // An incognito sender is never given the real profile (nickname, no photo): nothing to look up.
+            if (!isIncognitoMessage(raw)) patchSenderRef.current(raw.id, raw.user_id);
           },
         )
         .on(

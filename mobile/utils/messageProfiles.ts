@@ -79,7 +79,8 @@ export function createProfileCache(fetcher: ProfileFetcher): ProfileCache {
   };
 
   const apply: ProfileCache['apply'] = (message, options) => {
-    if (options?.incognito) return message;
+    // Incognito (explicit, or the message itself says so): never decorated with the real name / photo.
+    if (options?.incognito || (message as { metadata?: { incognito?: unknown } }).metadata?.incognito === true) return message;
     const name = names.get(message.user_id);
     const hasAvatar = avatars.has(message.user_id);
     if (name === undefined && !hasAvatar) return message;

@@ -96,6 +96,25 @@ const PROFILES = {
   assert.equal(calls.length, 0);
 }
 
+// 6b. A message flagged incognito in its own metadata gets NEITHER the real photo NOR the real name, even though the
+// author's profile is in the cache (with or without the explicit option): the nickname / no-photo stays.
+{
+  const { cache } = makeCache(PROFILES);
+  cache.prime(ANA, { name: 'Ana', avatar: 'https://img.example/ana.jpg' });
+  const flagged = msg('inc-1', ANA, { metadata: { incognito: true, nickname: 'Nick' }, sender_name: 'Nick' });
+  const out = cache.apply(flagged);
+  assert.deepEqual(out, flagged, 'unchanged');
+  assert.equal(out.sender_name, 'Nick');
+  assert.equal(out.sender_avatar, undefined);
+  assert.equal(cache.apply(flagged, { incognito: true }).sender_avatar, undefined);
+  // The same author, not incognito, is decorated as usual.
+  const normal = cache.apply(msg('inc-2', ANA, { metadata: { incognito: false } }));
+  assert.equal(normal.sender_name, 'Ana');
+  assert.equal(normal.sender_avatar, 'https://img.example/ana.jpg');
+  const noMeta = cache.apply(msg('inc-3', ANA));
+  assert.equal(noMeta.sender_avatar, 'https://img.example/ana.jpg');
+}
+
 // 7. My optimistic message is born with my photo and name (primed own profile) …
 const { cache: own } = makeCache(PROFILES);
 own.prime(ME, { name: 'Test', avatar: 'https://img.example/me.jpg' });
