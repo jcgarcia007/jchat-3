@@ -9,6 +9,7 @@
  */
 
 import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/database.types';
 import { cookies } from 'next/headers';
 
@@ -45,5 +46,16 @@ export async function createSupabaseServerClient() {
         }
       },
     },
+  });
+}
+
+/**
+ * A server-side client that IGNORES the visitor's cookies (anon key, no session). Used by the framed menu
+ * (/m/<slug>?embed=1): same-site with the app, it receives the jchat.cloud session cookies, and what it renders must
+ * not depend on whose account that is (an owner would otherwise see their own RLS view). See lib/embedCheckoutPath.ts.
+ */
+export function createSupabaseAnonServerClient() {
+  return createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
 }

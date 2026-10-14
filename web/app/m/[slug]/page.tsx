@@ -17,6 +17,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import {
+  createSupabaseAnonServerClient,
   createSupabaseServerClient,
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
@@ -118,14 +119,15 @@ function parseOptions(raw: Json | null | undefined): ItemOptions {
 
 // ── Data fetching ─────────────────────────────────────────────────────────────
 
-async function getMenuData(slug: string): Promise<{
+async function getMenuData(slug: string, embed = false): Promise<{
   business: PublicBusiness;
   categories: PublicMenuCategory[];
 } | null> {
   if (!isSupabaseConfigured) return null;
 
   const t = await getTranslations("menu");
-  const supabase = await createSupabaseServerClient();
+  // Embedded in the app: same-site, so the visitor's session cookies arrive — read the menu as an anonymous visitor.
+  const supabase = embed ? createSupabaseAnonServerClient() : await createSupabaseServerClient();
 
   const { data: biz, error: bizErr } = await supabase
     .from("businesses")
@@ -317,9 +319,10 @@ type PageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const data = await getMenuData(slug);
+  const embedParam = searchParams ? (await searchParams).embed : undefined;
+  const data = await getMenuData(slug, embedParam === "1");
   const t = await getTranslations("menu");
   if (!data) return { title: t("notFoundTitle") };
 
@@ -352,7 +355,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function MenuPublicPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
-  const data = await getMenuData(slug);
+  const sp = searchParams ? await searchParams : undefined;
+  const isEmbed = sp?.embed === "1";
+  const data = await getMenuData(slug, isEmbed);
 
   if (!data && isSupabaseConfigured) notFound();
 
@@ -380,15 +385,14 @@ export default async function MenuPublicPage({ params, searchParams }: PageProps
   // Preview override: ?preview_template=<slug> forces a template, and
   // ?preview_palette=<slug> forces a color palette — both for capture/preview
   // without changing the business's saved menu_template_id / menu_palette_id.
-  const sp = searchParams ? await searchParams : undefined;
   const preview = typeof sp?.preview_template === "string" ? sp.preview_template : undefined;
   if (preview) data.business.menu_template_id = preview;
   const previewPalette = typeof sp?.preview_palette === "string" ? sp.preview_palette : undefined;
   if (previewPalette) data.business.menu_palette_id = previewPalette;
 
   const isAppMode = sp?.app === "1";
-  // ?embed=1: shown inside the web app's menu sheet (an iframe of our own domains, see lib/embedOrigins.ts).
-  const isEmbed = sp?.embed === "1";
+  // ?embed=1 (isEmbed above): shown inside the web app's menu sheet (an iframe of our own domains, see
+  // lib/embedOrigins.ts). Same-site with the app → it gets the session cookies, so it reads and orders as a guest.
   const appRoomId = typeof sp?.room === "string" ? sp.room : null;
 
   return (

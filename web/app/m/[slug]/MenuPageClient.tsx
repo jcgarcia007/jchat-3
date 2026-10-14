@@ -1872,6 +1872,8 @@ export default function MenuPageClient({
     if (step === "menu") return;
     if (profileFetchedRef.current) return;
     profileFetchedRef.current = true;
+    // Framed by the app (?embed=1): a guest, whatever account the same-site cookie belongs to → no name from it.
+    if (isEmbed) return;
     void (async () => {
       try {
         const { data } = await supabase.auth.getUser();
@@ -1888,7 +1890,7 @@ export default function MenuPageClient({
         /* si falla, la casilla queda vacía — no bloquea nada */
       }
     })();
-  }, [step]);
+  }, [step, isEmbed]);
 
   // ── Category nav active tracking ────────────────────────────────────────────
   const [activeCategory, setActiveCategory] = useState<string>(
@@ -2466,6 +2468,7 @@ export default function MenuPageClient({
           // a pick-up order skipped the choice sheet, so "back" returns to the pick-up details
           onBack={() => setStep(!tableCtx && pickupType === "counter" ? "pickup" : "choice")}
           onOrderPlaced={notifyOrderPlaced}
+          guestOnly={isEmbed}
           onDone={() => {
             setCartItems([]);
             setStep("menu");

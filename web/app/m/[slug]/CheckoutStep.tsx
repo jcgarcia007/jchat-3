@@ -22,6 +22,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { loadStripe, type Stripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { decideCheckoutPath } from "@/lib/embedCheckoutPath";
 import { buildOrderOptions } from "@/lib/orderOptions";
 import { readFunctionError } from "@/lib/functionError";
 import { readFunctionErrorCode, venueErrorKey } from "@/lib/venueLocation";
@@ -81,6 +82,7 @@ export function CheckoutStep({
   onBack,
   onDone,
   onOrderPlaced,
+  guestOnly = false,
 }: {
   business: { id: string; name: string };
   cartItems: CheckoutCartItem[];
@@ -99,6 +101,11 @@ export function CheckoutStep({
    * `trackingCode` is the guest tracking code of this order (guest-pay), which the framing app uses to claim it.
    */
   onOrderPlaced?: (info?: { trackingCode?: string | null }) => void;
+  /**
+   * The menu is framed by the app (?embed=1): ALWAYS the guest path (guest-pay → tracking code), whatever session
+   * the cookie holds — see lib/embedCheckoutPath.ts. The `supabase` client of an embedded page has no session either.
+   */
+  guestOnly?: boolean;
 }) {
   const t = useTranslations("checkout");
   const tv = useTranslations("venue");
@@ -297,14 +304,15 @@ export function CheckoutStep({
       setPhase("error");
       return;
     }
-    // getUser (not getSession) — verifies the token with the server.
-    const { data } = await supabase.auth.getUser();
-    if (data.user) {
+    // Embedded: guest, without even asking who the cookie belongs to (getUser would send its token to the server).
+    // Otherwise getUser (not getSession) — verifies the token with the server.
+    const hasSession = guestOnly ? false : !!(await supabase.auth.getUser()).data.user;
+    if (decideCheckoutPath({ embed: !!guestOnly, hasSession }) === "authenticated") {
       await createIntent();
     } else {
       await createGuestIntent();
     }
-  }, [createIntent, createGuestIntent]);
+  }, [createIntent, createGuestIntent, guestOnly]);
 
   // On mount: start the payment once (no login wall, no prompts).
   useEffect(() => {

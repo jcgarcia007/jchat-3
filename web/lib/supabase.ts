@@ -12,7 +12,9 @@
  */
 
 import { createBrowserClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 import type { Database } from './database.types';
+import { isEmbedSearch } from './embedCheckoutPath';
 
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://placeholder.supabase.co';
@@ -24,7 +26,19 @@ export const isSupabaseConfigured =
   !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
   !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-export const supabase = createBrowserClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY);
+/**
+ * The menu framed by the app (/m/<slug>?embed=1) is same-site with the app, so the browser would hand it the
+ * jchat.cloud session cookies. It must behave as a guest: here the client is a plain supabase-js client that never
+ * reads, stores or refreshes a session (no cookie, no localStorage), so nothing of the cookie's account can reach the
+ * framed menu — not for the checkout path, not for a name or an Authorization header. See lib/embedCheckoutPath.ts.
+ */
+const embeddedFrame = typeof window !== 'undefined' && isEmbedSearch(window.location.search);
+
+export const supabase = embeddedFrame
+  ? (createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    }) as unknown as ReturnType<typeof createBrowserClient<Database>>)
+  : createBrowserClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ── Session guard for Edge Functions ──────────────────────────────────────────
 // A 401 from any Edge Function while we hold a session means the access token is dead (e.g. the
