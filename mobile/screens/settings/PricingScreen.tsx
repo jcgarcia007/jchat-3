@@ -1,4 +1,8 @@
 /**
+ * Fuera de la v1 de tiendas (decisión 2026-10-14): volverá con IAP/RevenueCat.
+ * Sin uso: no está en ningún stack ni hay navegación a esta pantalla (la compra de Verified con Stripe Checkout
+ * en el navegador no cabe en App Store 3.1.1 / Google Play Payments).
+ *
  * JChat 3.0 — PricingScreen (user plans)
  *
  * Shows the two USER-tier plans: Regular (free) and Verified ($1.99/mo).

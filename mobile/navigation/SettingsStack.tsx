@@ -12,7 +12,6 @@ import {
 
 import SettingsScreen from '../screens/settings/SettingsScreen';
 import PrivacyScreen from '../screens/settings/PrivacyScreen';
-import PricingScreen from '../screens/settings/PricingScreen';
 import WorkModeScreen from '../screens/settings/WorkModeScreen';
 import ChangePasswordScreen from '../screens/settings/ChangePasswordScreen';
 import BlockedUsersScreen from '../screens/settings/BlockedUsersScreen';
@@ -24,7 +23,6 @@ export type SettingsStackParamList = {
   SettingsHome: undefined;
   Privacy: undefined;
   BlockedUsers: undefined;
-  Pricing: undefined;
   WorkMode: undefined;
   ChangePassword: undefined;
   MyOrders: undefined;
@@ -42,7 +40,6 @@ export default function SettingsStack() {
       <Stack.Screen name="SettingsHome" component={SettingsScreen} />
       <Stack.Screen name="Privacy" component={PrivacyScreen} />
       <Stack.Screen name="BlockedUsers" component={BlockedUsersScreen} />
-      <Stack.Screen name="Pricing" component={PricingScreen} />
       <Stack.Screen name="WorkMode" component={WorkModeScreen} />
       <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
       <Stack.Screen name="MyOrders" component={MyOrdersScreen} />

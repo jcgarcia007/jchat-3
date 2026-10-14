@@ -44,7 +44,6 @@ import {
   IconBriefcase,
   IconChevronLeft,
   IconChevronRight,
-  IconCreditCard,
   IconFingerprint,
   IconLanguage,
   IconLock,
@@ -546,20 +545,10 @@ export default function SettingsScreen() {
           right={<ChevronRight />}
         />
 
-        {/* Web: no subscription (an in-app purchase) and no Work Mode / POS. */}
+        {/* No "Plans" row: the Verified subscription is NOT sold inside the app in the store v1 (digital good: Apple 3.1.1 /
+            Google Play Payments; IAP with RevenueCat comes in a later update — decision 2026-10-14). Web: no Work Mode / POS. */}
         {!isWeb ? (
           <>
-        <SectionDivider />
-
-        {/* Plans / Cuentas */}
-        <SettingsRow
-          icon={<IconCreditCard size={20} color={c.brandText} strokeWidth={2} />}
-          label={t('main.plans')}
-          sublabel={t('main.plansSub')}
-          onPress={() => navigation.navigate('Pricing')}
-          right={<ChevronRight />}
-        />
-
         {/* Work Mode — only shown when user has at least one POS-access business */}
         {hasPosAccess && (
           <>
