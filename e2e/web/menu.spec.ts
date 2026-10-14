@@ -220,7 +220,7 @@ test('order_placed with a tracking code claims the order (RPC params), closes th
   expect(page.url()).toMatch(/OrderTracking/i);
 });
 
-test('order_placed with only the tracking code (a real card payment: the menu does not know the id) sends p_order_id null', async ({ page }) => {
+test('order_placed with only the tracking code (a real card payment: the menu does not know the id) sends p_order_id null and is not retried on invalid_claim', async ({ page }) => {
   test.skip(!process.env.E2E_MENU_BASE_URL, 'needs the menu served from E2E_MENU_BASE_URL (a local next dev)');
   const calls: unknown[] = [];
   await page.route('**/rest/v1/rpc/claim_embedded_order', async (route) => {
@@ -231,24 +231,66 @@ test('order_placed with only the tracking code (a real card payment: the menu do
   await post({ type: 'jchat:menu', event: 'order_placed', trackingCode: TRACKING });
   await expect.poll(() => calls.length).toBe(1);
   expect(calls[0]).toEqual({ p_order_id: null, p_tracking_code: TRACKING, p_room_id: roomId });
-  // The RPC as applied today refuses a null id: the sheet stays open with the "could not link" notice.
+  // invalid_claim is final: the sheet stays open with the "could not link" notice.
   await expect(page.getByTestId('menu-sheet-claim-failed')).toBeVisible({ timeout: 10_000 });
 });
 
-test('a refused claim keeps the sheet open and says the order could not be linked', async ({ page }) => {
+test('a claim refused for good (invalid_claim) is not retried: the sheet stays open with the notice', async ({ page }) => {
   test.skip(!process.env.E2E_MENU_BASE_URL, 'needs the menu served from E2E_MENU_BASE_URL (a local next dev)');
   let calls = 0;
   await page.route('**/rest/v1/rpc/claim_embedded_order', async (route) => {
     calls += 1;
-    await route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ code: '42501', message: 'claim_not_allowed', details: null, hint: null }) });
+    await route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ code: '22023', message: 'invalid_claim', details: null, hint: null }) });
   });
   const { post } = await openMenuAndFrame(page);
   await post({ type: 'jchat:menu', event: 'order_placed', orderId: ORDER_ID, trackingCode: TRACKING });
   await expect(page.getByTestId('menu-sheet-claim-failed')).toBeVisible({ timeout: 10_000 });
   await expect(page.getByTestId('menu-sheet-claim-failed')).toContainText(/No pudimos vincular tu pedido/);
   await expect(page.getByTestId('menu-sheet')).toBeVisible(); // still open, on the menu's own tracking page
+  await page.waitForTimeout(2500); // a retry would have come by now
   expect(calls).toBe(1);
   expect(page.url()).not.toMatch(/OrderTracking/i);
+});
+
+test('card payment: the first attempt is refused (the webhook has not created the order yet), the retry links it', async ({ page }) => {
+  test.skip(!process.env.E2E_MENU_BASE_URL, 'needs the menu served from E2E_MENU_BASE_URL (a local next dev)');
+  const calls: unknown[] = [];
+  await page.route('**/rest/v1/rpc/claim_embedded_order', async (route) => {
+    calls.push(route.request().postDataJSON());
+    if (calls.length === 1) {
+      await route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ code: '42501', message: 'claim_not_allowed', details: null, hint: null }) });
+    } else {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ order_id: ORDER_ID, order_number: 188, status: 'confirmed', business_id: '00000000-0000-4000-8000-000000000001' }]) });
+    }
+  });
+  const { post, roomId } = await openMenuAndFrame(page);
+  await post({ type: 'jchat:menu', event: 'order_placed', trackingCode: TRACKING }); // a card payment: no order id
+  await expect(page.getByTestId('menu-sheet-claiming')).toBeVisible({ timeout: 5_000 });
+  await expect(page.getByTestId('menu-sheet-claiming')).toContainText(/Vinculando tu pedido/);
+  await expect.poll(() => calls.length, { timeout: 10_000 }).toBe(2); // 2 s later
+  expect(calls[0]).toEqual({ p_order_id: null, p_tracking_code: TRACKING, p_room_id: roomId });
+  expect(calls[1]).toEqual(calls[0]);
+  await expect(page.getByTestId('menu-sheet')).toHaveCount(0);
+  await expect(page.getByTestId('menu-sheet-claim-failed')).toHaveCount(0);
+  expect(page.url()).toMatch(/OrderTracking/i);
+  expect(page.url()).not.toContain(TRACKING);
+});
+
+test('retries are bounded: still refused after 10 retries (~20 s) → the "could not link" notice', async ({ page }) => {
+  test.skip(!process.env.E2E_MENU_BASE_URL, 'needs the menu served from E2E_MENU_BASE_URL (a local next dev)');
+  test.setTimeout(60_000);
+  let calls = 0;
+  await page.route('**/rest/v1/rpc/claim_embedded_order', async (route) => {
+    calls += 1;
+    await route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ code: '42501', message: 'claim_not_allowed', details: null, hint: null }) });
+  });
+  const { post } = await openMenuAndFrame(page);
+  await post({ type: 'jchat:menu', event: 'order_placed', trackingCode: TRACKING });
+  await expect(page.getByTestId('menu-sheet-claiming')).toBeVisible({ timeout: 5_000 });
+  await expect(page.getByTestId('menu-sheet-claim-failed')).toBeVisible({ timeout: 35_000 });
+  await expect(page.getByTestId('menu-sheet-claiming')).toHaveCount(0);
+  expect(calls).toBe(11); // the first attempt + 10 retries
+  await expect(page.getByTestId('menu-sheet')).toBeVisible();
 });
 
 test('order_placed without a tracking code (a tab order) closes as before and does not call the RPC', async ({ page }) => {

@@ -38,3 +38,15 @@ export function claimErrorKind(error: { code?: string | null; message?: string |
   if (code === '22023' || /invalid_claim/.test(message)) return 'invalid_claim';
   return 'error';
 }
+
+/** A card-paid order is created by the Stripe webhook AFTER the payment: the first claim can find nothing yet. */
+export const CLAIM_RETRY_DELAY_MS = 2000;
+export const CLAIM_MAX_RETRIES = 10; // ~20 s after the first attempt
+
+/**
+ * Retry policy: only `claim_not_allowed` (order not there yet / not claimable yet) is retried, up to CLAIM_MAX_RETRIES
+ * times. `invalid_claim` (bad code), `not_authenticated` and any other error will not change by waiting.
+ */
+export function shouldRetryClaim(reason: ClaimErrorKind | 'nothing_to_claim', retriesDone: number): boolean {
+  return reason === 'claim_not_allowed' && retriesDone < CLAIM_MAX_RETRIES;
+}

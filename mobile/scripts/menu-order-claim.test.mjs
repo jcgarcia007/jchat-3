@@ -3,7 +3,7 @@
 // Run: node scripts/menu-order-claim.test.mjs
 import assert from 'node:assert/strict';
 import { parseMenuOrderPlaced, parseMenuSheetMessage } from '../utils/menuSheetMessage.ts';
-import { buildClaimArgs, claimErrorKind } from '../utils/claimEmbeddedOrder.ts';
+import { CLAIM_MAX_RETRIES, CLAIM_RETRY_DELAY_MS, buildClaimArgs, claimErrorKind, shouldRetryClaim } from '../utils/claimEmbeddedOrder.ts';
 
 const ORIGIN = 'https://jchat.cloud';
 const ID = '0b4895d0-5dc5-4c7f-8303-52748d0fe823';
@@ -52,5 +52,15 @@ assert.equal(claimErrorKind({ message: 'claim_not_allowed' }), 'claim_not_allowe
 assert.equal(claimErrorKind({ code: '57014', message: 'timeout' }), 'error');
 assert.equal(claimErrorKind(null), 'error');
 assert.equal(claimErrorKind(undefined), 'error');
+
+// Retry policy: only claim_not_allowed, every 2 s, up to 10 retries (~20 s); nothing else is retried.
+assert.equal(CLAIM_RETRY_DELAY_MS, 2000);
+assert.equal(CLAIM_MAX_RETRIES, 10);
+for (let done = 0; done < CLAIM_MAX_RETRIES; done += 1) assert.equal(shouldRetryClaim('claim_not_allowed', done), true, `retry #${done + 1}`);
+assert.equal(shouldRetryClaim('claim_not_allowed', CLAIM_MAX_RETRIES), false, 'exhausted after 10 retries');
+assert.equal(shouldRetryClaim('claim_not_allowed', 99), false);
+for (const reason of ['invalid_claim', 'not_authenticated', 'error', 'nothing_to_claim']) {
+  assert.equal(shouldRetryClaim(reason, 0), false, `${reason} is never retried`);
+}
 
 console.log('menu order claim OK');

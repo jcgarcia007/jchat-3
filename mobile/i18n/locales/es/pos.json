@@ -274,6 +274,7 @@
     "retry": "Reintentar",
     "openInTab": "Abrir en otra pestaña",
     "orderSent": "Pedido enviado",
+    "claiming": "Vinculando tu pedido…",
     "claimFailed": "No pudimos vincular tu pedido; guarda el enlace de seguimiento."
   }
 }

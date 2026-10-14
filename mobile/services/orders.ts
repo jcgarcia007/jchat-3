@@ -6,7 +6,7 @@
  */
 
 import { supabase, isSupabaseConfigured } from './supabase';
-import { buildClaimArgs, claimErrorKind, type ClaimErrorKind } from '../utils/claimEmbeddedOrder';
+import { CLAIM_RETRY_DELAY_MS, buildClaimArgs, claimErrorKind, shouldRetryClaim, type ClaimErrorKind } from '../utils/claimEmbeddedOrder';
 import type { OrderPlacedInfo } from '../utils/menuSheetMessage';
 
 /** orders.status (CHECK constraint, migration 184). */
@@ -279,4 +279,21 @@ export async function claimEmbeddedOrder(info: OrderPlacedInfo, roomId: string |
   const row = (Array.isArray(data) ? data[0] : data) as { order_id?: string; order_number?: number; status?: string; business_id?: string } | null;
   if (!row?.order_id) return { ok: false, reason: 'error' };
   return { ok: true, orderId: row.order_id, orderNumber: Number(row.order_number ?? 0), status: row.status ?? '', businessId: row.business_id ?? '' };
+}
+
+/**
+ * claimEmbeddedOrder with the retry policy of utils/claimEmbeddedOrder: a card-paid order is created by the Stripe
+ * webhook after the payment, so the first attempt can be refused (claim_not_allowed) while the order does not exist
+ * yet; it is retried every CLAIM_RETRY_DELAY_MS up to CLAIM_MAX_RETRIES times. Other errors are returned at once.
+ * `cancelled()` lets the caller stop retrying (the sheet was closed).
+ */
+export async function claimWithRetry(info: OrderPlacedInfo, roomId: string | null | undefined, cancelled: () => boolean = () => false): Promise<ClaimEmbeddedOrderResult> {
+  let retries = 0;
+  for (;;) {
+    const result = await claimEmbeddedOrder(info, roomId);
+    if (result.ok || !shouldRetryClaim(result.reason, retries) || cancelled()) return result;
+    retries += 1;
+    await new Promise((resolve) => setTimeout(resolve, CLAIM_RETRY_DELAY_MS));
+    if (cancelled()) return result;
+  }
 }

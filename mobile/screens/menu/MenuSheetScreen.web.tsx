@@ -29,7 +29,7 @@ import { MENU_FRAME_ORIGIN } from '../../constants/appLinks';
 import { useVenueSession } from '../../context/VenueSessionContext';
 import { useIncomingDmNotice, type IncomingDmNotice } from '../../hooks/useIncomingDmNotice';
 import { emitMenuOrderClaimed, emitMenuOrderSent } from '../../services/menuEvents';
-import { claimEmbeddedOrder } from '../../services/orders';
+import { claimWithRetry } from '../../services/orders';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { getEntryTableToken } from '../../services/venueTable';
@@ -52,7 +52,15 @@ export default function MenuSheetScreen(): React.ReactElement {
   const [attempt, setAttempt] = useState(0);
   const closingRef = useRef(false);
   const claimingRef = useRef(false);
+  const unmountedRef = useRef(false);
+  const [claiming, setClaiming] = useState(false);
   const [claimFailed, setClaimFailed] = useState(false);
+  useEffect(() => {
+    unmountedRef.current = false;
+    return () => {
+      unmountedRef.current = true;
+    };
+  }, []);
 
   useEffect(() => {
     setChatCovered(true);
@@ -83,8 +91,11 @@ export default function MenuSheetScreen(): React.ReactElement {
         if (claimingRef.current) return;
         claimingRef.current = true;
         setClaimFailed(false);
-        void claimEmbeddedOrder(info, venue.session?.roomId).then((result) => {
+        setClaiming(true);
+        void claimWithRetry(info, venue.session?.roomId, () => unmountedRef.current).then((result) => {
           claimingRef.current = false;
+          if (unmountedRef.current) return;
+          setClaiming(false);
           if (result.ok) {
             closingRef.current = true;
             emitMenuOrderSent();
@@ -153,6 +164,12 @@ export default function MenuSheetScreen(): React.ReactElement {
             onError={() => setState('error')}
             style={styles.frame}
           />
+        ) : null}
+        {claiming ? (
+          <View testID="menu-sheet-claiming" accessibilityRole="alert" style={[styles.claimBanner, { backgroundColor: c.bgElevated, borderColor: c.borderSubtle }]}>
+            <Spinner size="small" color={c.brandText} />
+            <Text style={[styles.claimText, { color: c.textPrimary }]}>{t('menuSheet.claiming')}</Text>
+          </View>
         ) : null}
         {claimFailed ? (
           <View testID="menu-sheet-claim-failed" accessibilityRole="alert" style={[styles.claimBanner, { backgroundColor: c.bgElevated, borderColor: c.borderSubtle }]}>

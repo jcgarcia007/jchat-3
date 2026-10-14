@@ -274,6 +274,7 @@
     "retry": "Retry",
     "openInTab": "Open in another tab",
     "orderSent": "Order sent",
+    "claiming": "Linking your order…",
     "claimFailed": "We couldn't link your order; save the tracking link."
   }
 }
