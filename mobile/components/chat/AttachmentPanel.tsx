@@ -37,11 +37,10 @@ import {
   IconHeart,
   IconQrcode,
 } from '@tabler/icons-react-native';
-import * as ImagePicker from 'expo-image-picker';
 import { useTranslation } from 'react-i18next';
 import type { ChatTheme } from '../../theme/chatThemes';
 import { useMatchPresenceState } from '../../services/matchPresence';
-import { normalizeImageUri } from '../../utils/normalizeImage';
+import { pickPhotoFromLibrary } from '../../services/photoPicker';
 import { showAlert } from '../../utils/dialog';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -137,34 +136,16 @@ export function AttachmentPanel({
   const [gamesOpen, setGamesOpen] = useState(false);
   const handlePhoto = useCallback(async () => {
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        showAlert(
-          t('attachment.photoPermissionTitle'),
-          t('attachment.photoPermissionMessage'),
-        );
-        return;
-      }
-      // SDK 56: MediaTypeOptions is deprecated → mediaTypes accepts string[].
-      // legacy:true forces the classic Android picker (ACTION_GET_CONTENT)
-      // instead of the Android 13+ Photo Picker (PICK_IMAGES), which throws
-      // ActivityNotFoundException on devices/emulators without the Photo Picker
-      // module (non-GMS images).
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        quality: 0.85,
-        legacy: true,
-      });
-      if (!result.canceled && result.assets.length > 0) {
-        const asset = result.assets[0];
-        if (asset?.uri) {
-          onPhoto((await normalizeImageUri(asset.uri, asset.mimeType)).uri);
-        }
-      }
+      // No library permission (services/photoPicker.ts). legacy:true forces the classic Android picker
+      // (ACTION_GET_CONTENT) instead of the Android 13+ Photo Picker (PICK_IMAGES), which throws
+      // ActivityNotFoundException on devices/emulators without the Photo Picker module (non-GMS images).
+      const result = await pickPhotoFromLibrary({ allowsEditing: true, quality: 0.85, legacy: true });
+      // pickPhotoFromLibrary already applied the EXIF rotation (normalizeImageUri).
+      const asset = result && !result.canceled ? result.assets[0] : undefined;
+      if (asset?.uri) onPhoto(asset.uri);
     } catch (err) {
       // Don't fail silently — surface a clear message and log for debugging.
-      console.error('[AttachmentPanel] launchImageLibraryAsync failed:', err);
+      console.error('[AttachmentPanel] photo library failed:', err);
       showAlert(
         t('attachment.galleryErrorTitle'),
         t('attachment.galleryErrorMessage'),

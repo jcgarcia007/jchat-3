@@ -47,7 +47,6 @@ import {
 } from 'react-native';
 import { Spinner } from '../common/Spinner';
 import { useTranslation } from 'react-i18next';
-import * as ImagePicker from 'expo-image-picker';
 import { IconPlus } from '@tabler/icons-react-native';
 
 import { useThemeColors } from '../../theme/colors';
@@ -60,7 +59,7 @@ import {
   type UserStories,
 } from '../../services/stories';
 import StoryViewerScreen from '../../screens/stories/StoryViewerScreen';
-import { safeLaunchLibrary } from '../../utils/safePicker';
+import { pickPhotoFromLibrary } from '../../services/photoPicker';
 import { showAlert } from '../../utils/dialog';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -153,20 +152,8 @@ export default function StoriesRow({
     if (creatingStory || uploading) return;
     setCreatingStory(true);
 
-    // 1. Request permission.
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      showAlert(
-        t('create.permissionTitle'),
-        t('storiesRow.storyPermission'),
-      );
-      setCreatingStory(false);
-      return;
-    }
-
-    // 2. Launch image picker.
-    const result = await safeLaunchLibrary({
-      mediaTypes: ['images'],
+    // 1. Launch the image picker (no library permission: services/photoPicker.ts).
+    const result = await pickPhotoFromLibrary({
       allowsEditing: true,
       aspect: [9, 16],
       quality: 0.85,

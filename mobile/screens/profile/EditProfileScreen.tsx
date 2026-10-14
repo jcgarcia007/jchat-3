@@ -71,7 +71,7 @@ import ProfileThemeSelector from '../../components/profile/ProfileThemeSelector'
 // The screen is registered in AppNavigator separately (Task 1.8 wire-up).
 import { useNavigation } from '@react-navigation/native';
 import { toUserMessage } from '../../utils/errors';
-import { safeLaunchLibrary } from '../../utils/safePicker';
+import { pickPhotoFromLibrary } from '../../services/photoPicker';
 import { emitMyProfileChanged } from '../../services/profileEvents';
 import { confirm, showAlert } from '../../utils/dialog';
 
@@ -224,24 +224,8 @@ export default function EditProfileScreen(): React.JSX.Element {
 
   // ── Image picker helpers ──────────────────────────────────────────────────
 
-  async function requestMediaPermission(): Promise<boolean> {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== ImagePicker.PermissionStatus.GRANTED) {
-      showAlert(
-        t('edit.permissionTitle'),
-        t('edit.permissionMessage'),
-      );
-      return false;
-    }
-    return true;
-  }
-
   const pickAvatar = useCallback(async () => {
-    const granted = await requestMediaPermission();
-    if (!granted) return;
-
-    const result = await safeLaunchLibrary({
-      mediaTypes: 'images',
+    const result = await pickPhotoFromLibrary({
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.85,
@@ -254,11 +238,7 @@ export default function EditProfileScreen(): React.JSX.Element {
   }, []);
 
   const pickCover = useCallback(async () => {
-    const granted = await requestMediaPermission();
-    if (!granted) return;
-
-    const result = await safeLaunchLibrary({
-      mediaTypes: 'images',
+    const result = await pickPhotoFromLibrary({
       allowsEditing: true,
       aspect: [16, 9],
       quality: 0.85,

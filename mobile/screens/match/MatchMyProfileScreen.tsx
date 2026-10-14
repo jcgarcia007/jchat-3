@@ -37,7 +37,8 @@ import {
 } from '../../services/matchProfile';
 import type { MatchCard as MatchCardData, MatchPhoto } from '../../services/matchTypes';
 import { loadUserSettings, updateMySettings } from '../../services/userSettings';
-import { safeLaunchCamera, safeLaunchLibrary } from '../../utils/safePicker';
+import { safeLaunchCamera } from '../../utils/safePicker';
+import { pickPhotoFromLibrary } from '../../services/photoPicker';
 import { showAlert } from '../../utils/dialog';
 import { useAppWindow } from '../../utils/appWindow';
 import { ThemedSwitch } from '../../components/common/ThemedSwitch';
@@ -141,13 +142,13 @@ export default function MatchMyProfileScreen() {
   const pickAndUpload = useCallback(
     async (source: 'gallery' | 'camera') => {
       if (!user?.id) return;
-      const permission =
-        source === 'camera'
-          ? await ImagePicker.requestCameraPermissionsAsync()
-          : await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        showAlert(t('profile.photos.permission'));
-        return;
+      // Only the camera needs a permission; the photo library does not (services/photoPicker.ts).
+      if (source === 'camera') {
+        const permission = await ImagePicker.requestCameraPermissionsAsync();
+        if (!permission.granted) {
+          showAlert(t('profile.photos.permission'));
+          return;
+        }
       }
       const options: ImagePicker.ImagePickerOptions = {
         mediaTypes: ['images'],
@@ -158,7 +159,7 @@ export default function MatchMyProfileScreen() {
       const result =
         source === 'camera'
           ? await safeLaunchCamera(options)
-          : await safeLaunchLibrary({ ...options, legacy: true });
+          : await pickPhotoFromLibrary({ ...options, legacy: true });
       const uri = result && !result.canceled ? result.assets[0]?.uri : undefined;
       if (!uri) return;
       await run(() => addMatchPhoto(user.id, uri, photos.length), 'profile.photos.uploadError');

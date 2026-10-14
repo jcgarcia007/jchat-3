@@ -42,6 +42,7 @@ import { canRecordVoice } from '../../services/webVoice';
 import type { VoiceRecording } from '../common/VoiceRecorderBar';
 import type { ChatTheme } from '../../theme/chatThemes';
 import { normalizeImageUri } from '../../utils/normalizeImage';
+import { pickPhotoFromLibrary } from '../../services/photoPicker';
 import { checkMessage } from '../../utils/messageFilter';
 import { showAlert } from '../../utils/dialog';
 
@@ -159,22 +160,12 @@ export function ChatInput({
   // sending from the gallery isn't lost.
   const handleGallery = useCallback(async () => {
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        showAlert(t('input.cameraPermissionTitle'), t('input.cameraPermissionMessage'));
-        return;
-      }
-      // legacy:true — classic Android picker (see AttachmentPanel for the Photo Picker caveat).
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        quality: 0.85,
-        legacy: true,
-      });
-      const asset = !result.canceled ? result.assets[0] : undefined;
-      if (asset?.uri) onSendPhoto((await normalizeImageUri(asset.uri, asset.mimeType)).uri);
+      // No library permission (services/photoPicker.ts). legacy:true — classic Android picker (see AttachmentPanel).
+      const result = await pickPhotoFromLibrary({ allowsEditing: true, quality: 0.85, legacy: true });
+      const asset = result && !result.canceled ? result.assets[0] : undefined;
+      if (asset?.uri) onSendPhoto(asset.uri); // already normalized by the helper
     } catch (err) {
-      console.error('[ChatInput] launchImageLibraryAsync failed:', err);
+      console.error('[ChatInput] photo library failed:', err);
       showAlert(t('input.cameraErrorTitle'), t('input.cameraErrorMessage'));
     }
   }, [onSendPhoto, t]);

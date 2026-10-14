@@ -91,7 +91,8 @@ import { useMatchSafety } from '../../components/match/MatchSafety';
 import { getChatMeta, isAwaitingReplyError } from '../../services/matchChat';
 import type { ChatMeta } from '../../services/matchChat';
 import { getMatchPresence } from '../../services/matchPresence';
-import { safeLaunchCamera, safeLaunchLibrary } from '../../utils/safePicker';
+import { safeLaunchCamera } from '../../utils/safePicker';
+import { pickPhotoFromLibrary } from '../../services/photoPicker';
 import { checkMessage } from '../../utils/messageFilter';
 import { blockUser } from '../../services/blocks';
 import { ReportReasonSheet } from '../../components/report/ReportReasonSheet';
@@ -585,23 +586,14 @@ export default function DMChatScreen() {
   );
 
   const pickFromGallery = useCallback(async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      showAlert(
-        t('dmChat.permissionTitle'),
-        t('dmChat.permissionMessage'),
-      );
-      return;
-    }
-    // legacy:true — classic Android picker (see AttachmentPanel for the Photo Picker caveat).
-    const result = await safeLaunchLibrary({
-      mediaTypes: ['images'],
+    // No library permission (services/photoPicker.ts). legacy:true — classic Android picker (see AttachmentPanel).
+    const result = await pickPhotoFromLibrary({
       // quality 1: the picker does not compress; the only compression is normalizeImageUri (2000 px, JPEG 0.85).
       quality: 1,
       legacy: true,
     });
     await sendPickedPhoto(result);
-  }, [t, sendPickedPhoto]);
+  }, [sendPickedPhoto]);
 
   const takePhoto = useCallback(async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();

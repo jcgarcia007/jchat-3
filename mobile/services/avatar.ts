@@ -9,7 +9,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
 import i18n from '../i18n';
-import { safeLaunchLibrary } from '../utils/safePicker';
+import { pickPhotoFromLibrary } from './photoPicker';
 import { showAlert } from '../utils/dialog';
 import { AVATAR_SIDE, avatarOutputSide, centerSquareCrop } from '../utils/squareCrop';
 import { emitMyProfileChanged } from './profileEvents';
@@ -38,13 +38,8 @@ async function cropToSquareWeb(uri: string): Promise<{ uri: string; mimeType: st
  * (a translated notice has been shown in that case).
  */
 export async function changeMyAvatar(userId: string): Promise<string | null> {
-  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (permission.status !== ImagePicker.PermissionStatus.GRANTED) {
-    showAlert(i18n.t('edit.permissionTitle', { ns: 'profile' }) as string, i18n.t('edit.permissionMessage', { ns: 'profile' }) as string);
-    return null;
-  }
-  const result = await safeLaunchLibrary({
-    mediaTypes: 'images',
+  // No library permission (services/photoPicker.ts).
+  const result = await pickPhotoFromLibrary({
     allowsEditing: true,
     aspect: [1, 1],
     quality: 0.85,

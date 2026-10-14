@@ -42,7 +42,8 @@ import { useThemeColors } from '../../theme/colors';
 import { useAuth } from '../../context/AuthContext';
 import { createPost, removePostMedia, uploadPostMedia } from '../../services/posts';
 import { toUserMessage } from '../../utils/errors';
-import { safeLaunchCamera, safeLaunchLibrary } from '../../utils/safePicker';
+import { safeLaunchCamera } from '../../utils/safePicker';
+import { pickPhotoFromLibrary } from '../../services/photoPicker';
 import { confirm, showAlert } from '../../utils/dialog';
 
 // ── constants ───────────────────────────────────────────────────────────────
@@ -62,16 +63,6 @@ interface SelectedAsset {
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
-
-/** Request camera-roll permission and, if denied, show an alert (localized strings passed in). */
-async function requestMediaPermission(title: string, message: string): Promise<boolean> {
-  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (status !== 'granted') {
-    showAlert(title, message);
-    return false;
-  }
-  return true;
-}
 
 /** Request camera permission and, if denied, show an alert (localized strings passed in). */
 async function requestCameraPermission(title: string, message: string): Promise<boolean> {
@@ -121,17 +112,14 @@ export default function CreatePostScreen() {
   // ── image picking ──────────────────────────────────────────────────────────
 
   const pickFromGallery = useCallback(async () => {
-    const allowed = await requestMediaPermission(t('create.permissionTitle'), t('create.galleryPermission'));
-    if (!allowed) return;
-
+    // No library permission (services/photoPicker.ts).
     const remaining = MAX_IMAGES - assets.length;
     if (remaining <= 0) {
       showAlert(t('create.limitTitle'), t('create.limitMessage', { max: MAX_IMAGES }));
       return;
     }
 
-    const result = await safeLaunchLibrary({
-      mediaTypes: ['images'],
+    const result = await pickPhotoFromLibrary({
       allowsMultipleSelection: true,
       selectionLimit: remaining,
       quality: 0.85,
