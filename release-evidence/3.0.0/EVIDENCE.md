@@ -6,7 +6,31 @@
 - **Secretos:** ningún valor impreso ni guardado aquí. Los escáneres no encontraron secretos (SEC-01/02/03).
 - **Convención de resultado:** PASA · FALLA · N/A · BLOQUEADO. "FALLA" = hallazgo que Planning debe clasificar; no se arregló nada.
 
-## Tabla de verificaciones
+## Actualización noche 2 (2026-10-14 → 15)
+
+Estado de `main`: `b7332f0`. Las ramas se integraron por avance rápido, así que el SHA de merge de cada arreglo es el de su commit.
+
+| Hallazgo | Estado | SHA en `main` | Qué quedó |
+|---|---|---|---|
+| H-01 `next` | **RESUELTO** | `46a9259` | `next` y `eslint-config-next` 16.4.0; `npm audit` de `web/` sin críticas (ver SEC-06 de la noche 2). |
+| H-03 sesión por deep link | **RESUELTO** | `7676da1` | PKCE + solo `?code=`; un enlace con tokens se rechaza; nunca se reemplaza una sesión abierta. |
+| H-04 compra de Verified | **RESUELTO** | `2e6aa86` | Sin fila "Planes" ni pantalla `Pricing`; los textos "$1,99 / mo" y "Get Verified" ya no viajan en el bundle. Vuelve con IAP/RevenueCat. |
+| H-06 permisos y manifiesto de privacidad | **RESUELTO** | `fa49cb0` (+ `6fe1dcc`, `523d87d`) | Sin `NSLocationAlways*` ni `NSMotion`; textos específicos es/en; `blockedPermissions` de Android (verificado en el manifest fusionado de un APK); `PrivacyInfo.xcprivacy`. Las correcciones del selector de fotos (`6fe1dcc`, `523d87d`) evitan que el bloqueo rompa la galería. |
+| H-08 Sign in with Apple | **en rama** | `feat/apple-signin-native` (`09e1d34`, `3f267dd`), sin integrar | Botón oficial y flujo nativo en iOS; falta el bundle ID en Supabase (paso de consola). |
+| (nuevo) B1 check-in en servidor | **RESUELTO** | `b7332f0` (migración 235 en `e962d9b`) | `check_in(p_business_id)` con presencia real, dueño excluido y 1 por local cada 24 h; la política de INSERT quedó en `with check (false)`. |
+| (nuevo) DB-01/DB-04 endurecimiento | **RESUELTO** | `e962d9b` (migración 234) | `revoke execute` a `anon`/`public` en 15 funciones de trigger y `tod_resolve_report`; `search_path` fijo en 8 funciones. Aplicada por Planning el 2026-10-14 vía MCP; versionada en el repo. |
+
+### Mediciones repetidas sobre `main` (`b7332f0`), 2026-10-14
+
+| ID | Comando | Resultado | Resumen | Artefacto |
+|---|---|---|---|---|
+| QA-02 | `npx tsc --noEmit` en `mobile/` y `web/` | PASA | 0 errores en ambos. | raw/tsc-mobile-n2.txt · raw/tsc-web-n2.txt |
+| QA-05 | `node scripts/<x>.test.mjs` (mobile) · `node --test scripts/<x>.test.mjs` (web) | PASA | 33 de 33 archivos con salida 0 (29 mobile + 4 web; la noche 1 eran 28). | raw/tests-summary-n2.txt |
+| SEC-03 | `npx expo export -p web` y `-p ios -p android --no-bytecode` + `grep -E 'service_role\|sk_live_\|sk_test_\|whsec_\|re_[A-Za-z0-9]{20,}\|sntrys_\|SUPABASE_SERVICE'` | PASA | 0 coincidencias en el bundle web (31 archivos) y en el nativo (41 archivos); validado con una cadena conocida (`supabase.co` aparece). Solo claves publicables de Stripe (`pk_live_`/`pk_test_`), como antes. | raw/export-web-n2.log · raw/export-native-n2.log |
+| SEC-06 | `npm audit --omit=dev --audit-level=high --json` en `mobile/` y `web/` · `osv-scanner scan source -L mobile/package-lock.json -L web/package-lock.json` | MEJORA (web) · SIN CAMBIO (mobile) | `web/`: **0 críticas**, 1 alta (`source-map-js`, herramienta de build), 2 moderadas (antes: 1 crítica, 4 altas, 2 moderadas). `mobile/`: igual que la noche 1 (1 crítica `shell-quote` y 28 altas, casi todas herramientas de build; H-02 sigue abierto). `osv-scanner` solo sobre los dos lockfiles (sin el ruido de copias de trabajo): mobile 10 paquetes / 27 avisos, web 9 / 25. | raw/npm-audit-web-n2.json · raw/npm-audit-mobile-n2.json · raw/osv-n2.json |
+| F8 (con la rama de accesibilidad) | `cd e2e && npm run web:audit` en `fix/a11y-icon-labels` | PASA | 30 de 30; **0 bloqueantes, 0 altas, 3 medias, 165 bajas** (noche 1: 166); apariciones en bruto idénticas (959). Axe no empeora. | raw/web-audit-a11y-REPORTE.md |
+
+## Tabla de verificaciones (noche 1, sobre `4f9dba8`)
 
 | ID | Comando exacto | Commit | Resultado | Resumen | Artefacto |
 |---|---|---|---|---|---|
@@ -112,12 +136,12 @@ Marcado "desconocido": qué recibe exactamente Firebase; la retención de cada p
 
 | # | Sev. propuesta | Hallazgo | Dónde |
 |---|---|---|---|
-| H-01 | **P1** | `next` 16.2.9 con avisos: salto de middleware/proxy (alto; Turbopack + un solo idioma), SSRF, DoS y 3 críticos de RCE (Windows, optimización AVIF, `next/og`). Parche: 16.4.0. El repo no usa `next/og`, `next/image` ni Server Actions y el hospedaje es Vercel (no Windows), así que casi todo no alcanza. El salto de middleware pesa menos de lo que parece: `web/middleware.ts` solo refresca la sesión y la protección de rutas vive en `dashboard/layout.tsx` (comentario en `middleware.ts:4-6`); aun así conviene actualizar a 16.4.0 y comprobar si se cumple su condición (Turbopack + un solo idioma). | `web/package.json:22`, raw/npm-audit-web.json |
+| H-01 | ~~**P1**~~ **RESUELTO `46a9259`** | `next` 16.2.9 con avisos: salto de middleware/proxy (alto; Turbopack + un solo idioma), SSRF, DoS y 3 críticos de RCE (Windows, optimización AVIF, `next/og`). Parche: 16.4.0. El repo no usa `next/og`, `next/image` ni Server Actions y el hospedaje es Vercel (no Windows), así que casi todo no alcanza. El salto de middleware pesa menos de lo que parece: `web/middleware.ts` solo refresca la sesión y la protección de rutas vive en `dashboard/layout.tsx` (comentario en `middleware.ts:4-6`); aun así conviene actualizar a 16.4.0 y comprobar si se cumple su condición (Turbopack + un solo idioma). | `web/package.json:22`, raw/npm-audit-web.json |
 | H-02 | **P2** | Dependencias móviles con avisos altos/críticos (`shell-quote`, `@xmldom/xmldom`, `node-forge`, `metro*`, `image-size`, `brace-expansion`, `browserslist`…): casi todas son herramientas de compilación (CLI de Expo/Metro) y no llegan al bundle. Los que cuelgan de `react-native`, `react-native-maps`, `@stripe/stripe-react-native`, `datetimepicker`, `react-native-bluetooth-classic` y `swipe-deck` son avisos heredados de `react-native`; `@react-native-motion-kit/swipe-deck` sin arreglo. | raw/npm-audit-mobile.json |
-| H-03 | **P1** | Un enlace `jchat://confirm#access_token=…&refresh_token=…` abierto desde cualquier app o página hace que la app ejecute `supabase.auth.setSession` con esos tokens: se puede **cambiar la cuenta de la víctima por la del atacante** sin que lo note (fijación de sesión). El único filtro es `url.includes('://confirm')`. | `mobile/context/AuthContext.tsx:96-141` |
-| H-04 | **P0 (riesgo de rechazo)** | La suscripción "Verified" ($1,99/mes, bien digital) se compra desde la app con Stripe Checkout en el navegador (`Linking.openURL`), sin compra dentro de la app. Las guías 3.1.1 de Apple y la política de pagos de Google Play exigen su propio sistema para bienes digitales. Decisión de producto/legal, no técnica. | `mobile/screens/settings/PricingScreen.tsx:66-76`, EF `subscriptions` |
+| H-03 | ~~**P1**~~ **RESUELTO `7676da1`** | Un enlace `jchat://confirm#access_token=…&refresh_token=…` abierto desde cualquier app o página hace que la app ejecute `supabase.auth.setSession` con esos tokens: se puede **cambiar la cuenta de la víctima por la del atacante** sin que lo note (fijación de sesión). El único filtro es `url.includes('://confirm')`. | `mobile/context/AuthContext.tsx:96-141` |
+| H-04 | ~~**P0 (riesgo de rechazo)**~~ **RESUELTO `2e6aa86`** | La suscripción "Verified" ($1,99/mes, bien digital) se compra desde la app con Stripe Checkout en el navegador (`Linking.openURL`), sin compra dentro de la app. Las guías 3.1.1 de Apple y la política de pagos de Google Play exigen su propio sistema para bienes digitales. Decisión de producto/legal, no técnica. | `mobile/screens/settings/PricingScreen.tsx:66-76`, EF `subscriptions` |
 | H-05 | **P2** | Token de sesión en AsyncStorage (sin cifrar) en vez de Keychain/Keystore. | `mobile/services/supabase.ts:53` |
-| H-06 | **P1** | Permisos y textos de privacidad: "Always location" y "Motion" con texto genérico sin finalidad; `READ/WRITE_EXTERNAL_STORAGE` y `SYSTEM_ALERT_WINDOW` en Android (política de permisos de Play); sin `PrivacyInfo.xcprivacy` de la app ni `ios.privacyManifests`. | ver INV-03 |
+| H-06 | ~~**P1**~~ **RESUELTO `fa49cb0`** | Permisos y textos de privacidad: "Always location" y "Motion" con texto genérico sin finalidad; `READ/WRITE_EXTERNAL_STORAGE` y `SYSTEM_ALERT_WINDOW` en Android (política de permisos de Play); sin `PrivacyInfo.xcprivacy` de la app ni `ios.privacyManifests`. | ver INV-03 |
 | H-07 | **P3** | ESLint web: 169 errores y 69 avisos; mobile sin ESLint. 109 `console.warn/error` en producción. | QA-03, QA-07 |
 | H-08 | **P2** | `ios.usesAppleSignIn` activo pero `expo-apple-authentication` no está instalado (el login con Apple va por navegador). Con Google también ofrecido, la guía 4.8 pide un inicio de sesión equivalente; comprobar que el flujo actual cumple y que el entitlement no sobra. | `app.config.ts`, raw/prebuild.log |
 | H-09 | **P3** | `aps-environment=development` en la config introspectada. Normalmente la firma de distribución lo cambia a `production`; verificar en el primer build de `production`. | raw/JChat.entitlements |
