@@ -6,6 +6,53 @@
 - **Secretos:** ningún valor impreso ni guardado aquí. Los escáneres no encontraron secretos (SEC-01/02/03).
 - **Convención de resultado:** PASA · FALLA · N/A · BLOQUEADO. "FALLA" = hallazgo que Planning debe clasificar; no se arregló nada.
 
+## Actualización noche 4 (2026-10-15, madrugada)
+
+Cadena para un solo merge (cada rama sale de la punta de la anterior): `chore/release-evidence` rebaseada sobre `origin/main` (`c881da2`, paso 0) → A `feat/web-games` (`b07f19d`) → B `fix/i18n-hardcoded` (`1a8b5b0`) → C `fix/polish-leftovers` (`5102b1b`) → D `docs/store-listing` (`be20038`) → E `chore/release-evidence` (esta). Ninguna toca `main`, producción, migraciones ni Edge Functions. Nadie empujó a `main` desde esta sesión (todos los `git push` fueron `git push origin <rama>`).
+
+### Verificaciones sobre la punta (código de `be20038`)
+
+| ID | Comando | Resultado | Resumen |
+|---|---|---|---|
+| QA-02 | `npx tsc --noEmit` en `mobile/` y `web/` | **PASA** | 0 errores en ambos. |
+| QA-05 | `node scripts/<x>.test.mjs` (mobile) · `node --test scripts/<x>.test.mjs` (web) | **PASA** | 38 de 38 archivos con salida 0 (34 mobile + 4 web; la noche 3 eran 32 + 4: nuevos `resume-recheck` e `i18n-hardcoded`). |
+| SEC-03 | `npx expo export -p web` y `-p ios -p android --no-bytecode` + `grep -E 'service_role\|sk_live_\|sk_test_\|whsec_\|re_[A-Za-z0-9]{20,}\|sntrys_\|SUPABASE_SERVICE'` | **PASA** | 0 coincidencias en el bundle web (31 archivos) y en el nativo (41 archivos). Además `expo export -p ios -p android -p web` OK. |
+
+### A · Juegos en la web (`feat/web-games`, `b07f19d`; solo web, iOS y Android sin cambios)
+
+| Pieza | Resultado |
+|---|---|
+| Escáner QR de Match | Oculto en web (pantalla de Match y panel de juegos del chat); el escáner de cámara no se monta; texto nuevo es/en "Escanea el QR del local con la cámara de tu teléfono". La prueba confirma que no se pide la cámara. |
+| Presencia en segundo plano | Re-chequeo al recuperar la red (`online`) o al restaurar la página (`pageshow`), por el mismo `runAutoGeoCheck` del gate y respetando `RESUME_RECHECK_MIN_GAP_MS`; la decisión es la función pura `utils/resumeRecheck.ts` con prueba unitaria. `visibilitychange` ya llegaba como cambio de AppState de react-native-web (verificado en su código). |
+| Baraja de Match | `touch-action: none` ya lo pone gesture-handler por defecto en web (verificado en la prueba, en la cadena de ancestros de la tarjeta). **Defecto encontrado y corregido:** soltar el puntero tras arrastrar abría el perfil (el `Pressable` de la tarjeta contaba el soltar como un toque); `CardPressable` ignora un toque cuyo puntero se movió más de 10 px (solo web). |
+| Carta de Truth or Dare | Gira y queda legible (el elemento superior en el centro es el texto, sin espejo, cara frontal oculta) en WebKit 390 px y Chromium móvil. |
+
+Playwright (`e2e/web/games-web.spec.ts`, proyectos `webkit-390` y `mobile-390x844`): **8 de 8 pasan** (Match sin botón de escanear, arrastre de la baraja, giro de la carta, autocomprobación). TODA la red de juegos va simulada (`e2e/web/games-mock.ts`): las RPC se responden con filas sintéticas, las escrituras REST y el almacenamiento se responden vacíos, y una ruta de última instancia **aborta y registra** cualquier escritura a Supabase que ningún mock respondió (la prueba falla si pasa; la autocomprobación lo demuestra). Solo pasan lecturas del propio usuario, el refresco de sesión y el socket Realtime; dos RPC declaradas `stable` (`resolve_venue_entry`, `my_active_orders`) pasan sin simular.
+No probado: Safari real en un iPhone (el WebKit de Playwright no reproduce el teclado ni el scroll real), presencia con una pestaña realmente en segundo plano durante minutos, subida de fotos de Match en web.
+
+### B · Textos sin traducir (`fix/i18n-hardcoded`, `1a8b5b0`)
+
+Escáner por AST (`mobile/scripts/i18n-hardcoded.test.mjs`): texto entre etiquetas, literales renderizados, props visibles (`placeholder`, `accessibilityLabel`, `title`, `label`, `message`…), diálogos (`Alert.alert`, `showAlert`, `confirm`…), listas de opciones (`{ label: '…' }`) y `setError('…')`. Lista blanca documentada en la cabecera (marcas, unidades, símbolos), datos `DEMO_*` omitidos y `// i18n-ignore: <motivo>` para casos puntuales. **Literales movidos a i18n: 0.** La primera pasada dio 29 candidatos y todos eran claves de i18n, unidades, datos de demostración o mensajes de desarrollador que nunca se muestran (los 5 de `services/terminal*.ts` y los ids internos de duración de ofertas llevan `i18n-ignore` con el motivo). Además la prueba comprueba que es y en tienen los mismos espacios de nombres y claves y ningún texto vacío (22 espacios de nombres, 0 diferencias). Traducciones `i18n-review`: ninguna. Maestro con los textos sin cambios: Android 7/7; iOS 6/7 y el flujo 05 volvió a pasar 3 de 3 (una falla intermitente mientras corrían a la vez las pruebas de Next).
+
+### C · Contraste, hidratación y `web:audit` (`fix/polish-leftovers`, `5102b1b`)
+
+| Arreglo | Antes | Después |
+|---|---|---|
+| Insignia de iniciales de la bandeja de DMs y etiqueta de match (`brandText`) | `#5c7cfa` sobre su tinte = 4,18:1 (F8 #2) | 4,87:1; la prueba de contraste cubre el par `brandText` sobre `brandLight` en base y superficie |
+| Aviso aparte de hidratación de React en `IconRail` / `DenseRow` (F8 #3) | `MenuImg` repartía su rango eager/lazy con un contador mutable en el render (StrictMode lo ejecuta dos veces: 0, 2, 4…) | rango por `useId`; sin errores de consola en 1280 y 390 px; build de `web/` OK |
+| Botón "Llamar al mesero" | `#18181b` sobre el acento del tema = 3,71:1 | `ensureTextContrast` sobre el acento (≥ 4,5:1) |
+| Botones de los diálogos web (`DialogHost.web.tsx`) | `#ef4444` 3,37:1 y `#5C7CFA` 3,67:1 | `dangerText` / `brandText` |
+| Aviso "tu ubicación nunca se comparte" (Privacidad) | `#ef4444` sobre su tinte rosa = 3,19:1 | `dangerText` |
+| Botones de marca del menú público (`web/`) | blanco sobre `#5c7cfa` = 3,67:1 | `--color-brand-dark` = 4,65:1 (no verificable hasta desplegar `web/`) |
+| Campo "Tu ciudad" a 200 % en Android (F8/UX-06) | el placeholder se recortaba | cabe en dos líneas (verificado con captura) |
+| Especificaciones e2e del menú y de `chat-avatar` | 12 fallos: `getByText('Entrar al chat').first()` resolvía a un elemento oculto desde la noche 1 | ayudante `enterVenue()` con `chat-enter`; suite del menú 17 de 17 |
+
+`npm run web:audit` (30 de 30 pruebas; línea base de la noche 3: 0 bloqueantes, 0 altas, **3 medias**, 166 bajas). Última pasada: **0 bloqueantes, 0 altas, 5 medias, 164 bajas** (las bajas son el aviso del controlador WebGL en el login). Las 5 medias: (1) contraste de la landing y las páginas legales y (2) del menú público, ambos **del sitio desplegado** (las pruebas `next-prod` leen producción: el arreglo de (2) y los de `web/` quedan pendientes del despliegue de `web/`); (3–5) tres pasos de navegación de la app ("Tarjeta rápida de otra persona", "Acciones de usuario", "Mi foto") que no encuentran elementos porque **el chat de Bar XZX está vacío ahora** (el audit necesita mensajes de otra persona): es el estado de los datos, no un fallo de la app. En la app: **0 contrastes** y **0 errores de hidratación**. Cuatro pasadas en total: las tres primeras destaparon, una tras otra, los contrastes de "Llamar al mesero", de los diálogos y del aviso de Privacidad, que están arreglados; el último arreglo del menú público (`web/`) se valida solo tras el despliegue. Aviso: la suite del menú, `chat-avatar` y `web:audit` entran al local de verdad (la presencia se registra con la cuenta de prueba); las pruebas de juegos web no.
+
+### D · Textos de las tiendas (`docs/store-listing`, `be20038`)
+
+`docs/store-listing/`: `app-store.es.md`, `app-store.en.md`, `google-play.es.md`, `google-play.en.md` (nombre, subtítulo, texto promocional, descripción, palabras clave ≤ 100 sin repetir nombre ni subtítulo, novedades; título y descripciones de Play) con el número de caracteres junto a cada límite, y `screenshots-plan.md` (6 pantallas por plataforma con texto es/en, tamaños 1320×2868 y 1080×1920, y la regla de capturar con una cuenta demo y datos limpios). Solo lo que la app hace hoy, 18+ explícito, sin Verified ni precios. Borradores para revisión de Juan: no se subió nada a ninguna consola.
+
 ## Actualización noche 3 (2026-10-14 → 15)
 
 Ramas encadenadas para un solo merge: `test/maestro-flows` (`eee0dfc`) → `chore/expo-patch-bump` (`6913809`) → `fix/large-text` (`d23a595`) → `chore/release-evidence` (esta). Ninguna toca `main`, producción, migraciones ni Edge Functions; nada se escribió en la base de datos.
