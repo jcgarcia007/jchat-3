@@ -209,6 +209,9 @@ const config: ExpoConfig = {
     ],
     // Biometric lock (services/biometric.ts): its plugin runs by default with a generic Face ID text.
     ['expo-local-authentication', { faceIDPermission: FACE_ID }],
+    // Sentry (docs/SENTRY_SETUP.md). The upload of source maps authenticates with SENTRY_AUTH_TOKEN (EAS secret, never here);
+    // without it builds must run with SENTRY_DISABLE_AUTO_UPLOAD=true (set by default in eas.json).
+    ['@sentry/react-native/expo', { organization: 'otunity-labs', project: 'jchat-mobile', url: 'https://sentry.io/' }],
     // Push notifications (FCM/APNs). Add an icon/color/sounds here later if needed.
     'expo-notifications',
     [

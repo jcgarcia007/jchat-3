@@ -1,8 +1,9 @@
 const path = require('path');
-const { getDefaultConfig } = require('expo/metro-config');
+// Sentry: unique Debug IDs for bundles / source maps (it wraps Expo's default config; the resolver below is kept).
+const { getSentryExpoConfig } = require('@sentry/react-native/metro');
 
 /** @type {import('expo/metro-config').MetroConfig} */
-const config = getDefaultConfig(__dirname);
+const config = getSentryExpoConfig(__dirname);
 
 // Native-only packages that cannot run in the browser. On web they are redirected to
 // inert stubs in ./web-stubs so the shared React Native code still bundles. Native
