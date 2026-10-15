@@ -74,6 +74,17 @@ for (const [scheme, surfaces, text] of [
 }
 check('onBrand on brandFill', palette.onBrand, palette.brandFill);
 
+// Brand text on its own translucent tint (the DM inbox initials badge, tags and chips: text = brandText on brandLight over the
+// surface). The plain brand blue (#5C7CFA) was 4.18:1 there in dark mode (axe color-contrast, F8 #2): brandText is the token.
+const hex = ({ r, g, b }) => `#${[r, g, b].map((v) => Math.round(v).toString(16).padStart(2, '0')).join('')}`;
+for (const [scheme, surfaces, brandText] of [['dark', dark, palette.brandTextDark], ['light', light, palette.brandTextLight]]) {
+  // Only where the tinted badge / tag sits: the base and surface backgrounds (rows of lists), not elevated / overlay sheets.
+  for (const [surfaceName, surface] of Object.entries({ bgBase: surfaces.bgBase, bgSurface: surfaces.bgSurface })) {
+    const tint = hex(over(palette.brandLight, surface));
+    check(`${scheme} · brandText on brandLight over ${surfaceName}`, brandText, tint);
+  }
+}
+
 // Chat themes: the text pairs of the room (tabs, bubbles).
 for (const t of CHAT_THEMES) {
   const n = `chat theme ${t.id} (${t.name})`;

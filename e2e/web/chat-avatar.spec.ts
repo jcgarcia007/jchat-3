@@ -15,6 +15,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
+import { enterVenue } from './enter-venue';
 
 const SESSION = path.resolve(__dirname, '..', '.auth', 'web-session.json');
 // 1×1 PNG: a real image the avatar can render without any network.
@@ -76,7 +77,7 @@ async function watchRealtime(page: Page): Promise<() => Injector | null> {
 
 async function enterChat(page: Page) {
   await page.goto('/?venue=bar-xzx-omd2', { waitUntil: 'load' });
-  await page.getByText('Entrar al chat').first().click({ timeout: 30_000 });
+  await enterVenue(page);
   await expect(page.getByTestId('chat-more-button')).toBeVisible({ timeout: 30_000 });
   await page.waitForTimeout(1500);
 }

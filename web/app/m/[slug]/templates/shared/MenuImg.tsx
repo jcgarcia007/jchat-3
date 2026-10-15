@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, type ImgHTMLAttributes, type ReactNode } from "react";
+import { createContext, useContext, useId, useState, type ImgHTMLAttributes, type ReactNode } from "react";
 import { MENU_PHOTO_THUMB_MAX, thumbUrlFor } from "@/lib/menuPhotos";
 
 /**
@@ -14,17 +14,29 @@ import { MENU_PHOTO_THUMB_MAX, thumbUrlFor } from "@/lib/menuPhotos";
  */
 const PRIORITY_IMAGES = 3;
 
-const MenuImgContext = createContext<{ rendered: number } | null>(null);
+/**
+ * One table per rendered menu (and per server request): useId of each image → its position among the first images.
+ * Keyed by useId, not by a bare "rendered++" counter: React runs a render (and a useState initializer) twice in development
+ * (StrictMode) and may re-render during hydration, and a counter then hands out 0, 2, 4… so the server HTML said
+ * loading="eager" where the client said "lazy" (React's "tree hydrated but some attributes didn't match"). The same image always
+ * gets the same rank, in the order the images are first rendered.
+ */
+const MenuImgContext = createContext<Map<string, number> | null>(null);
 
-/** One counter per rendered menu (and per server request), so the "first images" are counted per page. */
 export function MenuImgProvider({ children }: { children: ReactNode }) {
-  const [counter] = useState(() => ({ rendered: 0 }));
-  return <MenuImgContext.Provider value={counter}>{children}</MenuImgContext.Provider>;
+  const [ranks] = useState(() => new Map<string, number>());
+  return <MenuImgContext.Provider value={ranks}>{children}</MenuImgContext.Provider>;
 }
 
 export default function MenuImg({ variant = "auto", ...props }: ImgHTMLAttributes<HTMLImageElement> & { variant?: "auto" | "full" }) {
-  const counter = useContext(MenuImgContext);
-  const [rank] = useState(() => (counter ? counter.rendered++ : PRIORITY_IMAGES));
+  const ranks = useContext(MenuImgContext);
+  const id = useId();
+  let rank = PRIORITY_IMAGES;
+  if (ranks) {
+    const known = ranks.get(id);
+    if (known === undefined) ranks.set(id, ranks.size);
+    rank = known ?? ranks.size - 1;
+  }
   const [useFull, setUseFull] = useState(variant === "full");
   const priority = rank < PRIORITY_IMAGES;
   const original = typeof props.src === "string" ? props.src : undefined;

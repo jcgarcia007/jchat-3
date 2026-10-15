@@ -14,6 +14,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
+import { enterVenue } from './enter-venue';
 
 const SESSION = path.resolve(__dirname, '..', '.auth', 'web-session.json');
 const MENU_BASE = (process.env.E2E_MENU_BASE_URL ?? 'https://jchat.cloud/m').replace(/\/+$/, '');
@@ -33,7 +34,7 @@ test.use({
 
 test('🍴 opens the menu sheet over the chat (no new tab) and ✕ returns to the chat', async ({ page, context }) => {
   await page.goto('/?venue=bar-xzx-omd2', { waitUntil: 'load' });
-  await page.getByText('Entrar al chat').first().click({ timeout: 30_000 });
+  await enterVenue(page);
   await expect(page.getByTestId('chat-more-button')).toBeVisible({ timeout: 30_000 });
 
   const pagesBefore = context.pages().length;
@@ -65,7 +66,7 @@ test('🍴 opens the menu sheet over the chat (no new tab) and ✕ returns to th
 test('order_placed from the framed menu closes the sheet and shows "Pedido enviado"; a message from another origin is ignored', async ({ page }) => {
   test.skip(!process.env.E2E_MENU_BASE_URL, 'needs the menu served from E2E_MENU_BASE_URL (a local next dev)');
   await page.goto('/?venue=bar-xzx-omd2', { waitUntil: 'load' });
-  await page.getByText('Entrar al chat').first().click({ timeout: 30_000 });
+  await enterVenue(page);
   await expect(page.getByTestId('chat-more-button')).toBeVisible({ timeout: 30_000 });
   await page.getByRole('button', { name: /Abrir menú|Open menu/i }).first().click();
   await expect(page.getByTestId('menu-sheet')).toBeVisible({ timeout: 10_000 });
@@ -94,7 +95,7 @@ test('the framed menu says "ready" and accepts a table context only from its par
     window.addEventListener('message', (e) => (window as unknown as { __menuMsgs: unknown[] }).__menuMsgs.push({ origin: e.origin, data: e.data }));
   });
   await page.goto('/?venue=bar-xzx-omd2', { waitUntil: 'load' });
-  await page.getByText('Entrar al chat').first().click({ timeout: 30_000 });
+  await enterVenue(page);
   await expect(page.getByTestId('chat-more-button')).toBeVisible({ timeout: 30_000 });
   await page.getByRole('button', { name: /Abrir menú|Open menu/i }).first().click();
   await expect(page.frameLocator('iframe').locator('body')).not.toBeEmpty({ timeout: 25_000 });
@@ -138,7 +139,7 @@ async function appColumn(page: Page) {
 
 async function enterChat(page: Page) {
   await page.goto('/?venue=bar-xzx-omd2', { waitUntil: 'load' });
-  await page.getByText('Entrar al chat').first().click({ timeout: 30_000 });
+  await enterVenue(page);
   await expect(page.getByTestId('chat-more-button')).toBeVisible({ timeout: 30_000 });
 }
 

@@ -69,7 +69,7 @@ function ConversationRow({
       ]}
     >
       <View style={[styles.avatar, { backgroundColor: colors.brandLight }]}>
-        <Text style={[styles.avatarInitials, { color: colors.brand }]}>
+        <Text style={[styles.avatarInitials, { color: colors.brandText }]}>
           {initials(otherUser.display_name, otherUser.username)}
         </Text>
       </View>
@@ -86,7 +86,7 @@ function ConversationRow({
           </Text>
         </View>
         {matchBusinessName != null && (
-          <Text numberOfLines={1} style={[styles.matchTag, { color: colors.brand }]}>
+          <Text numberOfLines={1} style={[styles.matchTag, { color: colors.brandText }]}>
             {matchBusinessName
               ? translation.t('chat.listTag', { ns: 'match', business: matchBusinessName })
               : translation.t('chat.listTagShort', { ns: 'match' })}

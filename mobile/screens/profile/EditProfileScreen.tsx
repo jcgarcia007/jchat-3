@@ -565,9 +565,13 @@ export default function EditProfileScreen(): React.JSX.Element {
               <Text style={[styles.label, { color: c.textSecondary }]}>
                 {t('edit.cityLabel')}
               </Text>
+              {/* multiline so a long placeholder wraps to a second line at large text sizes; it stays one line of text (no new lines). */}
               <TextInput
                 value={city}
-                onChangeText={setCity}
+                onChangeText={(value) => setCity(value.replace(/[\r\n]+/g, ' '))}
+                multiline
+                scrollEnabled={false}
+                submitBehavior="blurAndSubmit"
                 style={[
                   styles.input,
                   {
