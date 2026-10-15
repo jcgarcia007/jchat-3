@@ -37,6 +37,7 @@ import {
   NativeSyntheticEvent,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -1642,7 +1643,8 @@ export default function ChatRoomScreen() {
               <View style={[gateStyles.handle, { backgroundColor: themeColors.borderSubtle }]} />
 
               {!gateRefused && (
-                <>
+                // Title, subtitle, notice and incognito scroll together (large text); Enter / Cancel stay pinned below.
+                <ScrollView style={gateStyles.gateScroll} contentContainerStyle={gateStyles.gateScrollContent} showsVerticalScrollIndicator={false}>
                   {/* Business name / room title */}
                   <Text style={[gateStyles.roomTitle, { color: themeColors.textPrimary }]}>
                     {business?.icon_emoji ?? '🏪'}{' '}
@@ -1674,7 +1676,7 @@ export default function ChatRoomScreen() {
                       error={incognitoError}
                     />
                   )}
-                </>
+                </ScrollView>
               )}
 
               {/* Enter button — or the geofence gate status/retry (épica geocerca Fase 3.2).
@@ -2178,6 +2180,8 @@ const gateStyles = StyleSheet.create({
     alignSelf: 'center',
     marginBottom: 8,
   },
+  gateScroll: { flexShrink: 1 },
+  gateScrollContent: { gap: 16 },
   roomTitle: {
     fontSize: 20,
     fontWeight: '700',

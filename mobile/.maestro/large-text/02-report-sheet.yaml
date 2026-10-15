@@ -1,0 +1,63 @@
+# Texto grande: hoja de motivos de reporte. Se CANCELA. Sin captura en iOS por defecto (el DM de test1 tiene una
+# imagen explícita detrás); en iOS solo comprueba que los botones están en pantalla.
+# Requiere -e PHASE=before|after (prefijo de las capturas).
+appId: com.juangarciacruz.jchatapp
+---
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: "tab-map"
+    timeout: 90000
+- runFlow: ../_dev-tools-away.yaml
+- tapOn:
+    id: "tab-messages"
+- extendedWaitUntil:
+    visible:
+      id: "dm-row-.*"
+    timeout: 30000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn:
+          id: "dm-row-1bc7f2a8.*"
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          id: "dm-row-.*"
+          index: 0
+- extendedWaitUntil:
+    visible:
+      id: "dm-menu"
+    timeout: 15000
+- tapOn:
+    id: "dm-menu"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn: "(?i)reportar usuario"
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible: "Reportar usuario"
+          timeout: 10000
+      - waitForAnimationToEnd
+      - tapOn:
+          point: "50%,48%"
+- extendedWaitUntil:
+    visible: "¿Por qué lo reportas\\?"
+    timeout: 10000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - takeScreenshot: ${PHASE}-report-sheet
+- assertVisible:
+    id: "report-cancel"
+- tapOn:
+    id: "report-cancel"

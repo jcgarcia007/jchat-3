@@ -239,7 +239,7 @@ export default function OffersScreen() {
         >
           <IconArrowLeft size={24} color={colors.textPrimary} strokeWidth={2} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>{translation.t('title')}</Text>
+        <Text adjustsFontSizeToFit minimumFontScale={0.5} numberOfLines={2} style={[styles.headerTitle, { color: colors.textPrimary }]}>{translation.t('title')}</Text>
         <Pressable
           accessibilityLabel={translation.t('radiusChipA11y', { radius: formatRadius(radiusMiles) })}
           accessibilityRole="button"
@@ -307,6 +307,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     minHeight: 58,
     paddingHorizontal: 16,
+    paddingVertical: 6,
   },
   backButton: { alignItems: 'center', height: 44, justifyContent: 'center', width: 44 },
   headerTitle: { flex: 1, fontSize: 22, fontWeight: '700', marginLeft: 4 },

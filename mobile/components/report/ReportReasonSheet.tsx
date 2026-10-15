@@ -126,6 +126,7 @@ export function ReportReasonSheet({ visible, targetName, contentType, contentId,
               </Pressable>
             </View>
           ) : (
+            <>
             <ScrollView keyboardShouldPersistTaps="handled" style={styles.scroll} contentContainerStyle={styles.scrollContent}>
               <Text style={[styles.title, { color: colors.textPrimary }]}>{t('report.title', { name: targetName })}</Text>
               <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t('report.subtitle')}</Text>
@@ -180,6 +181,9 @@ export function ReportReasonSheet({ visible, targetName, contentType, contentId,
                 </View>
               )}
 
+            </ScrollView>
+            {/* Pinned footer: with large text the list scrolls, but Send / Cancel stay on screen. */}
+            <View>
               {error ? (
                 <Text accessibilityRole="alert" style={[styles.error, { color: colors.dangerText }]}>{error}</Text>
               ) : null}
@@ -200,7 +204,8 @@ export function ReportReasonSheet({ visible, targetName, contentType, contentId,
               <Pressable testID="report-cancel" accessibilityRole="button" onPress={onClose} style={styles.cancel}>
                 <Text style={[styles.cancelLabel, { color: colors.textSecondary }]}>{t('actions.cancel')}</Text>
               </Pressable>
-            </ScrollView>
+            </View>
+            </>
           )}
         </View>
       </KeyboardAvoidingView>
@@ -218,7 +223,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   handle: { alignSelf: 'center', borderRadius: 2, height: 4, marginBottom: 8, marginTop: 12, width: 36 },
-  scroll: { flexGrow: 0 },
+  scroll: { flexGrow: 0, flexShrink: 1 },
   scrollContent: { paddingBottom: 4 },
   title: { fontSize: 17, fontWeight: '700', marginTop: 4 },
   subtitle: { fontSize: 13, lineHeight: 18, marginBottom: 10, marginTop: 4 },

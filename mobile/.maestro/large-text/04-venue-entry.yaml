@@ -1,0 +1,36 @@
+# Texto grande: aviso de entrada al local (Bar XZX). Se pulsa "Ahora no"; NUNCA "Entrar al chat".
+# Requiere -e PHASE=before|after (prefijo de las capturas).
+appId: com.juangarciacruz.jchatapp
+---
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: "tab-map"
+    timeout: 90000
+- runFlow: ../_dev-tools-away.yaml
+- tapOn:
+    id: "tab-nearby"
+- extendedWaitUntil:
+    visible: "Bar XZX"
+    timeout: 30000
+- takeScreenshot: ${PHASE}-nearby-list
+- tapOn:
+    text: "Entrar"
+    below: "Bar XZX"
+- extendedWaitUntil:
+    visible:
+      id: "chat-enter"
+    timeout: 30000
+- takeScreenshot: ${PHASE}-venue-entry-top
+- scroll
+- takeScreenshot: ${PHASE}-venue-entry-scrolled
+- scrollUntilVisible:
+    element:
+      id: "chat-entry-cancel"
+    direction: DOWN
+    timeout: 20000
+- takeScreenshot: ${PHASE}-venue-entry-bottom
+- tapOn:
+    id: "chat-entry-cancel"
+- assertNotVisible:
+    id: "chat-enter"

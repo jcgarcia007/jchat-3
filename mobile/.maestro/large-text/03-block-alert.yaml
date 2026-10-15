@@ -1,0 +1,59 @@
+# Texto grande: alerta de bloquear. Se CANCELA. Sin captura en iOS (imagen explícita detrás).
+# Requiere -e PHASE=before|after (prefijo de las capturas).
+appId: com.juangarciacruz.jchatapp
+---
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: "tab-map"
+    timeout: 90000
+- runFlow: ../_dev-tools-away.yaml
+- tapOn:
+    id: "tab-messages"
+- extendedWaitUntil:
+    visible:
+      id: "dm-row-.*"
+    timeout: 30000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn:
+          id: "dm-row-1bc7f2a8.*"
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          id: "dm-row-.*"
+          index: 0
+- extendedWaitUntil:
+    visible:
+      id: "dm-menu"
+    timeout: 15000
+- tapOn:
+    id: "dm-menu"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn: "(?i)bloquear a.*"
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible: "Bloquear a .*"
+          timeout: 10000
+      - waitForAnimationToEnd
+      - tapOn: "Bloquear a .*"
+- extendedWaitUntil:
+    visible: "¿Bloquear a .*\\?"
+    timeout: 10000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - takeScreenshot: ${PHASE}-block-alert
+- tapOn: "(?i)cancelar"
+- assertNotVisible: "¿Bloquear a .*\\?"

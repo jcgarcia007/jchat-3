@@ -1,0 +1,43 @@
+# Texto grande: barra de entrada (composer) de un DM. No envía nada. Sin captura en iOS (imagen explícita en el
+# DM de test1): ahí solo se comprueba que el campo, foto y enviar están en pantalla.
+# Requiere -e PHASE=before|after (prefijo de las capturas).
+appId: com.juangarciacruz.jchatapp
+---
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: "tab-map"
+    timeout: 90000
+- runFlow: ../_dev-tools-away.yaml
+- tapOn:
+    id: "tab-messages"
+- extendedWaitUntil:
+    visible:
+      id: "dm-row-.*"
+    timeout: 30000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn:
+          id: "dm-row-1bc7f2a8.*"
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          id: "dm-row-.*"
+          index: 0
+- extendedWaitUntil:
+    visible:
+      id: "dm-menu"
+    timeout: 15000
+- assertVisible:
+    id: "dm-photo"
+- assertVisible:
+    id: "dm-send"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - takeScreenshot: ${PHASE}-dm-composer

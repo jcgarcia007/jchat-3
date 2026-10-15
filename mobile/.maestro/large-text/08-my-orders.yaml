@@ -1,0 +1,25 @@
+# Texto grande: Mis pedidos (Ajustes → Mis pedidos). Solo mira.
+# Requiere -e PHASE=before|after (prefijo de las capturas).
+appId: com.juangarciacruz.jchatapp
+---
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: "tab-map"
+    timeout: 90000
+- runFlow: ../_dev-tools-away.yaml
+- tapOn:
+    id: "tab-profile"
+- tapOn:
+    id: "profile-open-settings"
+- extendedWaitUntil:
+    visible:
+      id: "settings-back"
+    timeout: 15000
+- scrollUntilVisible:
+    element: "Mis pedidos.*"
+    direction: DOWN
+    timeout: 20000
+- tapOn: "Mis pedidos.*"
+- waitForAnimationToEnd
+- takeScreenshot: ${PHASE}-my-orders
