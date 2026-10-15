@@ -46,6 +46,7 @@ import type { ThemeColors } from '../../theme/colors';
 import type { ChatTheme } from '../../theme/chatThemes';
 import { palette } from '../../theme/tokens';
 import { showAlert } from '../../utils/dialog';
+import { ensureTextContrast } from '../../utils/ensureTextContrast';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -338,7 +339,7 @@ export function ServiceCallSheet({
             {loading ? (
               <Spinner size="small" color={c.bgSurface} />
             ) : (
-              <Text style={s.buttonLabel}>{t('service.callWaiter')}</Text>
+              <Text style={[s.buttonLabel, { color: ensureTextContrast(c.bgSurface, theme.accent, 4.5) }]}>{t('service.callWaiter')}</Text>
             )}
           </Pressable>
 
