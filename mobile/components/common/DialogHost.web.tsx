@@ -83,9 +83,11 @@ function DialogModal({ request }: { request: DialogRequest }): React.ReactElemen
   };
 
   const colorFor = (button: DialogButton): string => {
-    if (button.style === 'destructive') return palette.danger;
+    // Text colours of the theme (brandText / dangerText reach 4.5:1 on the dialog surface in light and dark; the raw
+    // palette.danger #ef4444 was 3.37:1 on the light surface, axe color-contrast).
+    if (button.style === 'destructive') return c.dangerText;
     if (button.style === 'cancel') return c.textSecondary;
-    return palette.brand;
+    return c.brandText;
   };
 
   return (
