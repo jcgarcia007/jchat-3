@@ -47,6 +47,7 @@ import { toUserMessage } from '../../utils/errors';
 import type { AuthStackParamList } from '../../navigation/AppNavigator';
 import { showAlert } from '../../utils/dialog';
 import { readAuthCode } from '../../utils/authUrl';
+import { AppleAuthSlot } from '../../components/auth/AppleAuthSlot';
 
 // ---------------------------------------------------------------------------
 // Screen-local color constants — only values not in palette/tokens
@@ -249,19 +250,28 @@ export default function RegisterStep1Screen() {
               />
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.socialButton, { backgroundColor: inputBg, borderColor: inputBorder }]}
-              onPress={handleAppleSignUp}
-              activeOpacity={0.75}
-              accessibilityRole="button"
-              accessibilityLabel={t('register.appleA11y')}
-            >
-              <IconBrandApple
-                size={22}
-                color={appleIconColor}
-                strokeWidth={1.75}
-              />
-            </TouchableOpacity>
+            {/* iOS: the official native Apple button (guideline 4.8 + HIG); Android / web keep this one. */}
+            <AppleAuthSlot
+              mode="signUp"
+              style={styles.socialOfficial}
+              cornerRadius={12}
+              onError={(message) => showAlert(t('register.alerts.signUpFailedTitle'), message)}
+              fallback={
+                <TouchableOpacity
+                  style={[styles.socialButton, { backgroundColor: inputBg, borderColor: inputBorder }]}
+                  onPress={handleAppleSignUp}
+                  activeOpacity={0.75}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('register.appleA11y')}
+                >
+                  <IconBrandApple
+                    size={22}
+                    color={appleIconColor}
+                    strokeWidth={1.75}
+                  />
+                </TouchableOpacity>
+              }
+            />
           </View>
 
           {/* ── Divider ────────────────────────────────────────────────── */}
@@ -526,6 +536,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Apple's official button: same slot, height and corner radius as the Google button next to it.
+  socialOfficial: { flex: 1, height: 48 },
 
   // ── Divider ────────────────────────────────────────────────────────────────
   dividerRow: {
