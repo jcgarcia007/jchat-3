@@ -2,6 +2,7 @@ import React from 'react';
 import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { IconSearch, IconX } from '@tabler/icons-react-native';
 
+import { useTranslation } from 'react-i18next';
 import { useThemeColors } from '../../theme/colors';
 import CategoryChip from './CategoryChip';
 
@@ -25,6 +26,7 @@ export default function NearbyFilters({
   selectedCategory,
 }: NearbyFiltersProps) {
   const colors = useThemeColors();
+  const { t } = useTranslation('common');
 
   return (
     <View style={styles.root}>
@@ -41,7 +43,7 @@ export default function NearbyFilters({
           value={searchQuery}
         />
         {searchQuery.length > 0 ? (
-          <TouchableOpacity hitSlop={8} onPress={() => onChangeSearch('')}>
+          <TouchableOpacity hitSlop={8} onPress={() => onChangeSearch('')} accessibilityRole="button" accessibilityLabel={t('common:a11y.clearSearch')}>
             <IconX size={14} color={colors.textTertiary} strokeWidth={2} />
           </TouchableOpacity>
         ) : null}

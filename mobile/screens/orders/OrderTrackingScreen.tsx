@@ -709,7 +709,7 @@ export default function OrderTrackingScreen(): React.ReactElement {
 
       {/* ── "Avisar al local" sheet ── */}
       <AppModal visible={showNoticeSheet} transparent animationType="slide" onRequestClose={closeNoticeSheet}>
-        <Pressable style={styles.sheetOverlay} onPress={closeNoticeSheet} accessibilityRole="none" />
+        <Pressable accessible={false} style={styles.sheetOverlay} onPress={closeNoticeSheet} accessibilityRole="none" />
         <View style={styles.sheet}>
 <ScrollView keyboardShouldPersistTaps="handled" style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 12 }}>
           <View style={styles.sheetHandle} />
@@ -787,7 +787,7 @@ export default function OrderTrackingScreen(): React.ReactElement {
         animationType="slide"
         onRequestClose={() => setShowServiceSheet(false)}
       >
-        <Pressable
+        <Pressable accessible={false}
           style={styles.sheetOverlay}
           onPress={() => setShowServiceSheet(false)}
           accessibilityRole="none"

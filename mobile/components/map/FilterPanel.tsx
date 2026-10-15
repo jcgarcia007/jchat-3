@@ -346,7 +346,7 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
           style={[styles.backdrop, { opacity: backdropOpacity }]}
           pointerEvents="box-none"
         >
-          <Pressable style={StyleSheet.absoluteFill} onPress={closeSheet} />
+          <Pressable accessible={false} style={StyleSheet.absoluteFill} onPress={closeSheet} />
         </Animated.View>
 
         {/* Sheet */}

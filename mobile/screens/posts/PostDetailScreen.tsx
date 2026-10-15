@@ -233,7 +233,7 @@ export default function PostDetailScreen(): React.JSX.Element {
       </KeyboardAvoidingView>
 
       <AppModal visible={menuVisible} transparent animationType="slide" onRequestClose={() => setMenuVisible(false)}>
-        <Pressable style={[styles.backdrop, { backgroundColor: c.scrim }]} onPress={() => setMenuVisible(false)} />
+        <Pressable accessible={false} style={[styles.backdrop, { backgroundColor: c.scrim }]} onPress={() => setMenuVisible(false)} />
         <View style={[styles.sheet, { backgroundColor: c.bgElevated, borderColor: c.borderSubtle }]}>
           <View style={styles.sheetHandleWrap}><View style={[styles.sheetHandle, { backgroundColor: c.borderSubtle }]} /></View>
           {isOwner ? <SheetRow label={t('detail.delete')} color={c.dangerText} borderColor={c.borderSubtle} icon={<IconTrash size={20} color={c.dangerText} />} onPress={confirmDelete} /> : <SheetRow label={t('detail.reportPost')} color={c.dangerText} borderColor={c.borderSubtle} icon={<IconFlag size={20} color={c.dangerText} />} onPress={() => { setMenuVisible(false); setReportVisible(true); }} />}

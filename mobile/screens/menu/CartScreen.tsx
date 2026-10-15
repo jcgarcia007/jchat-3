@@ -131,6 +131,7 @@ interface QtyButtonProps {
 
 function QtyButton({ onPress, disabled = false, icon }: QtyButtonProps) {
   const c = useThemeColors();
+  const { t } = useTranslation('common');
   const active = !disabled;
   return (
     <Pressable
@@ -138,6 +139,7 @@ function QtyButton({ onPress, disabled = false, icon }: QtyButtonProps) {
       disabled={disabled}
       hitSlop={8}
       accessibilityRole="button"
+      accessibilityLabel={icon === 'minus' ? t('common:a11y.decreaseQty') : t('common:a11y.increaseQty')}
       accessibilityState={{ disabled }}
       style={({ pressed }) => [
         styles.qtyBtn,

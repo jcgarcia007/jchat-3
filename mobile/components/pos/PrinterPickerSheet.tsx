@@ -251,7 +251,7 @@ const PrinterPickerSheet = forwardRef<PrinterPickerSheetRef, PrinterPickerSheetP
           animationType="slide"
           onRequestClose={handleCancel}
         >
-          <Pressable style={s.backdrop} onPress={handleCancel} />
+          <Pressable accessible={false} style={s.backdrop} onPress={handleCancel} />
           <View style={s.sheet}>
             <Text style={[s.sheetTitle, { color: colors.textPrimary }]}>
               {t('pos.tableCode.pickPrinter')}

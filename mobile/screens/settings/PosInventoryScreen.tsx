@@ -322,7 +322,7 @@ function LinkSheet({ scannedCode, items, businessId, onLinked, onDismiss }: Link
             {t('link.unknownMsg', { code: scannedCode })}
           </Text>
         </View>
-        <Pressable onPress={onDismiss} hitSlop={12} accessibilityRole="button">
+        <Pressable onPress={onDismiss} hitSlop={12} accessibilityRole="button" accessibilityLabel={t('common:a11y.close')}>
           <IconX size={24} color={c.textTertiary} strokeWidth={2} />
         </Pressable>
       </View>
@@ -665,10 +665,11 @@ export default function PosInventoryScreen() {
         onRequestClose={() => setAdjustItem(null)}
       >
         <Pressable
+          accessible={false}
           style={styles.modalBackdrop}
           onPress={() => setAdjustItem(null)}
         >
-          <Pressable style={styles.modalSheetWrapper} onPress={() => { /* stop propagation */ }}>
+          <Pressable accessible={false} style={styles.modalSheetWrapper} onPress={() => { /* stop propagation */ }}>
             {adjustItem ? (
               <AdjustSheet
                 item={adjustItem}
@@ -689,10 +690,11 @@ export default function PosInventoryScreen() {
         onRequestClose={() => setLinkCode(null)}
       >
         <Pressable
+          accessible={false}
           style={styles.modalBackdrop}
           onPress={() => setLinkCode(null)}
         >
-          <Pressable style={styles.modalSheetWrapper} onPress={() => { /* stop propagation */ }}>
+          <Pressable accessible={false} style={styles.modalSheetWrapper} onPress={() => { /* stop propagation */ }}>
             {linkCode ? (
               <LinkSheet
                 scannedCode={linkCode}
