@@ -218,7 +218,7 @@ function GiftDetailsSheet({ visible, onClose, view }: { visible: boolean; onClos
 
   return (
     <AppModal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.overlay} onPress={onClose} accessibilityRole="none" />
+      <Pressable accessible={false} style={styles.overlay} onPress={onClose} accessibilityRole="none" />
       <View style={[styles.sheet, { backgroundColor: c.bgSurface, paddingBottom: insets.bottom + 12 }]}>
         <View style={styles.sheetHeader}>
           <Text style={[styles.sheetTitle, { color: c.textPrimary }]} accessibilityRole="header">
@@ -297,7 +297,7 @@ function GiftAcceptSheet({
 
   return (
     <AppModal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.overlay} onPress={onClose} accessibilityRole="none" />
+      <Pressable accessible={false} style={styles.overlay} onPress={onClose} accessibilityRole="none" />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={[styles.sheet, { backgroundColor: c.bgSurface, paddingBottom: insets.bottom + 12 }]}>
 <ScrollView keyboardShouldPersistTaps="handled" style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 10 }}>

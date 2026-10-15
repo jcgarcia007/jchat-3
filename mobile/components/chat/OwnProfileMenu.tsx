@@ -33,7 +33,7 @@ export function OwnProfileMenu({ visible, onClose, onChangePhoto, onEditProfile,
 
   return (
     <AppModal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.overlay} onPress={onClose} accessibilityRole="none" />
+      <Pressable accessible={false} style={styles.overlay} onPress={onClose} accessibilityRole="none" />
       <View accessibilityViewIsModal accessibilityLabel={t('ownMenu.title')} style={[styles.sheet, { backgroundColor: c.bgSurface, paddingBottom: insets.bottom + 12 }]}>
         <View style={[styles.handle, { backgroundColor: c.borderSubtle }]} />
         <Row testID="own-menu-change-photo" icon={<IconCamera size={22} color={c.textPrimary} />} label={t('ownMenu.changePhoto')} onPress={run(onChangePhoto)} color={c.textPrimary} border={c.borderSubtle} />

@@ -242,6 +242,7 @@ function CartRow({
   onUpdateNote: (cartKey: string, note: string) => void;
 }) {
   const c = useThemeColors();
+  const { t } = useTranslation('common');
   return (
     <View style={[styles.cartRow, { borderBottomColor: c.borderSubtle }]}>
       {/* Top row: name + modifier summary + line total */}
@@ -285,6 +286,7 @@ function CartRow({
             onPress={() => onUpdateQty(item.cartKey, -1)}
             style={[styles.qtyBtn, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}
             accessibilityRole="button"
+            accessibilityLabel={t('common:a11y.decreaseQty')}
           >
             <IconMinus size={14} color={c.textSecondary} strokeWidth={2} />
           </Pressable>
@@ -293,6 +295,7 @@ function CartRow({
             onPress={() => onUpdateQty(item.cartKey, 1)}
             style={[styles.qtyBtn, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}
             accessibilityRole="button"
+            accessibilityLabel={t('common:a11y.increaseQty')}
           >
             <IconPlus size={14} color={c.textSecondary} strokeWidth={2} />
           </Pressable>
@@ -836,6 +839,7 @@ export default function PosOrderScreen() {
           onPress={() => navigation.goBack()}
           style={styles.backButton}
           accessibilityRole="button"
+          accessibilityLabel={t('common:a11y.back')}
         >
           <IconChevronLeft size={24} color={c.brandText} strokeWidth={2} />
         </Pressable>
@@ -989,7 +993,7 @@ export default function PosOrderScreen() {
       >
         <View style={styles.modOverlay}>
           {/* Backdrop tap closes the sheet */}
-          <Pressable style={styles.modBackdrop} onPress={handleModClose} />
+          <Pressable accessible={false} style={styles.modBackdrop} onPress={handleModClose} />
           {modifierItem !== null && (
             <ModifierSheet
               item={modifierItem}

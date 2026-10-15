@@ -134,7 +134,7 @@ export function ChatNotificationsSheet({
 
   return (
     <AppModal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.overlay} onPress={onClose} accessibilityRole="none" />
+      <Pressable accessible={false} style={styles.overlay} onPress={onClose} accessibilityRole="none" />
       <View style={[styles.sheet, { backgroundColor: c.bgSurface, paddingBottom: insets.bottom + 8 }]}>
         <View style={[styles.handle, { backgroundColor: c.borderSubtle }]} />
         <View style={styles.header}>
