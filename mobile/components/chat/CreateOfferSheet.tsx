@@ -131,10 +131,10 @@ interface DurationOption {
 }
 
 const DURATION_OPTIONS: DurationOption[] = [
-  { label: '1 hour',   labelKey: 'offerCreate.dur1h',      hours: 1  },
-  { label: '2 hours',  labelKey: 'offerCreate.dur2h',      hours: 2  },
-  { label: 'Tonight',  labelKey: 'offerCreate.durTonight', hours: 8  },
-  { label: 'Custom',   labelKey: 'offerCreate.durCustom',  hours: 0, custom: true },
+  { label: '1 hour',   labelKey: 'offerCreate.dur1h',      hours: 1  },  // i18n-ignore: internal id; the visible text is t(labelKey)
+  { label: '2 hours',  labelKey: 'offerCreate.dur2h',      hours: 2  },  // i18n-ignore: internal id; the visible text is t(labelKey)
+  { label: 'Tonight',  labelKey: 'offerCreate.durTonight', hours: 8  },  // i18n-ignore: internal id; the visible text is t(labelKey)
+  { label: 'Custom',   labelKey: 'offerCreate.durCustom',  hours: 0, custom: true },  // i18n-ignore: internal id; the visible text is t(labelKey)
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

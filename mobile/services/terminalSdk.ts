@@ -69,7 +69,7 @@ export const StripeTerminalProvider: React.ComponentType<any> =
 // ─── useStripeTerminal ─────────────────────────────────────────────────────────
 
 const _STUB_ERR = {
-  message: 'Stripe Terminal requires a physical device with an EAS build.',
+  message: 'Stripe Terminal requires a physical device with an EAS build.',  // i18n-ignore: developer detail, never shown (callers show t() by reason)
 };
 
 /**

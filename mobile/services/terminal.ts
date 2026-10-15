@@ -179,7 +179,7 @@ export async function getOrCreateTerminalLocation(
   }
 
   if (!data?.location_id) {
-    return { ok: false, reason: 'error', message: 'No location_id in response' };
+    return { ok: false, reason: 'error', message: 'No location_id in response' };  // i18n-ignore: developer detail, never shown (callers show t() by reason)
   }
 
   return { ok: true, locationId: data.location_id };
@@ -248,7 +248,7 @@ export async function createPaymentIntent(
   }
 
   if (!data?.client_secret || !data?.payment_intent_id) {
-    return { ok: false, reason: 'error', message: 'Incomplete response from server' };
+    return { ok: false, reason: 'error', message: 'Incomplete response from server' };  // i18n-ignore: developer detail, never shown (callers show t() by reason)
   }
 
   return {
@@ -359,7 +359,7 @@ export async function chargeSplitCheck(
   }
 
   if (!data?.client_secret || !data?.payment_intent_id || data?.total_cents == null) {
-    return { ok: false, reason: 'error', message: 'Incomplete response from server' };
+    return { ok: false, reason: 'error', message: 'Incomplete response from server' };  // i18n-ignore: developer detail, never shown (callers show t() by reason)
   }
 
   const baseCents  = data.base_cents  ?? data.amount_cents ?? 0;
@@ -429,7 +429,7 @@ export async function createTabPaymentIntent(
   }
 
   if (!data?.client_secret || !data?.payment_intent_id || data?.total_cents == null) {
-    return { ok: false, reason: 'error', message: 'Incomplete response from server' };
+    return { ok: false, reason: 'error', message: 'Incomplete response from server' };  // i18n-ignore: developer detail, never shown (callers show t() by reason)
   }
 
   const baseCents  = data.base_cents  ?? data.amount_cents ?? 0;
