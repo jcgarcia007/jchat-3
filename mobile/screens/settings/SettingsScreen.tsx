@@ -137,6 +137,7 @@ function SettingsRow({
   right,
   onPress,
   destructive,
+  testID,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -144,10 +145,12 @@ function SettingsRow({
   right?: React.ReactNode;
   onPress?: () => void;
   destructive?: boolean;
+  testID?: string;
 }) {
   const c = useThemeColors();
   return (
     <Pressable
+      testID={testID}
       onPress={onPress}
       disabled={!onPress}
       style={({ pressed }) => [
@@ -188,11 +191,13 @@ function SegmentedPicker<T extends string>({
   value,
   onChange,
   labelMap,
+  testIDPrefix,
 }: {
   options: T[];
   value: T;
   onChange: (v: T) => void;
   labelMap: Record<T, string>;
+  testIDPrefix?: string;
 }) {
   const c = useThemeColors();
   return (
@@ -202,6 +207,7 @@ function SegmentedPicker<T extends string>({
         return (
           <Pressable
             key={opt}
+            testID={testIDPrefix ? `${testIDPrefix}-${opt}` : undefined}
             onPress={() => onChange(opt)}
             style={[
               styles.segmentedOption,
@@ -665,6 +671,7 @@ export default function SettingsScreen() {
                 void patch({ language: v });
               }}
               labelMap={LANGUAGE_LABELS}
+              testIDPrefix="language-option"
             />
           </View>
         </View>
@@ -824,6 +831,7 @@ export default function SettingsScreen() {
           sublabel={t('main.deleteAccountSub')}
           onPress={handleDeleteAccount}
           destructive
+          testID="settings-delete-account"
         />
       </ScrollView>
     </View>

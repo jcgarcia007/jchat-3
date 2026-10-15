@@ -1,0 +1,13 @@
+# Flujos Maestro de JChat, en orden. Ver README.md.
+flows:
+  - "[0-9][0-9]-*.yaml"   # solo los flujos numerados (el subflujo _dev-tools-away.yaml queda fuera)
+executionOrder:
+  continueOnFailure: true
+  flowsOrder:
+    - 00-smoke
+    - 01-login
+    - 02-venue-chat
+    - 03-photo-picker
+    - 04-report-block
+    - 05-delete-account
+    - 06-settings

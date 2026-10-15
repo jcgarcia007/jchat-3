@@ -100,7 +100,7 @@ export default function NotchTabBar({ state, descriptors, navigation }: BottomTa
         onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
         onPress={onPress}
         style={styles.tabItem}
-        testID={descriptor.options.tabBarButtonTestID}
+        testID={descriptor.options.tabBarButtonTestID ?? `tab-${route.name.toLowerCase()}`}
       >
         {focused ? <View style={[styles.activeDot, { backgroundColor: colors.brand }]} /> : null}
         {icon}
@@ -139,6 +139,7 @@ export default function NotchTabBar({ state, descriptors, navigation }: BottomTa
         accessibilityLabel={commonTranslation.t('tabs.offers')}
         accessibilityRole="button"
         onPress={() => navigation.navigate('Offers')}
+        testID="tab-offers"
         style={[
           styles.offersButton,
           {

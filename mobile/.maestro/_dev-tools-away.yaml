@@ -1,0 +1,15 @@
+# Subflujo: aparta el botón flotante "Tools" del dev-client (solo existe en el build de desarrollo).
+# En Android nace arriba a la derecha (≈90%,10%) y tapa el botón de Ajustes del perfil y el ⋯ de los DMs.
+# Se arrastra al borde izquierdo, a media altura. Si no existe (build de producción) no hace nada.
+# En iOS el botón ya queda en el borde izquierdo (posición guardada), no estorba.
+appId: com.juangarciacruz.jchatapp
+---
+- runFlow:
+    when:
+      platform: Android
+      visible: "Tools"
+    commands:
+      - swipe:
+          start: "90%,10%"
+          end: "6%,62%"
+          duration: 600

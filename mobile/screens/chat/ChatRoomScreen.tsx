@@ -1761,6 +1761,7 @@ export default function ChatRoomScreen() {
 
               {/* Cancel */}
               <Pressable
+                testID="chat-entry-cancel"
                 onPress={handleBack}
                 hitSlop={8}
                 accessibilityRole="button"

@@ -452,6 +452,7 @@ export default function EditProfileScreen(): React.JSX.Element {
           {/* ── Avatar photo ─────────────────────────────────────────────── */}
           <View style={styles.avatarRow}>
             <TouchableOpacity
+              testID="edit-change-avatar"
               onPress={() => { void pickAvatar(); }}
               accessibilityRole="button"
               accessibilityLabel={t('edit.changeAvatarPhotoA11y')}

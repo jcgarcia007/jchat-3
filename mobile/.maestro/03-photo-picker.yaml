@@ -1,0 +1,40 @@
+# Perfil → Editar perfil → cambiar foto → aparece el selector del sistema → cancelar.
+# No se guarda nada.
+appId: com.juangarciacruz.jchatapp
+---
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: "tab-profile"
+    timeout: 90000
+- runFlow: _dev-tools-away.yaml
+- tapOn:
+    id: "tab-profile"
+- tapOn:
+    id: "profile-edit"
+- extendedWaitUntil:
+    visible:
+      id: "edit-change-avatar"
+    timeout: 15000
+- tapOn:
+    id: "edit-change-avatar"
+# El selector es de otro proceso: la app deja de estar en primer plano.
+- assertNotVisible:
+    id: "edit-change-avatar"
+- takeScreenshot: 03-photo-picker
+# Cancelar el selector: atrás en Android, "Cancelar/Cancel" en iOS.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn: "(?i)(cancelar|cancel)"
+- extendedWaitUntil:
+    visible:
+      id: "edit-change-avatar"
+    timeout: 15000
+- takeScreenshot: 03-after-cancel
