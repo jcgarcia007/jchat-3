@@ -1,0 +1,27 @@
+# Texto grande: Ajustes (arriba, medio y abajo). Solo mira. Capturas: ${PHASE}-settings-*.
+# Requiere -e PHASE=before|after (prefijo de las capturas).
+appId: com.juangarciacruz.jchatapp
+---
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: "tab-map"
+    timeout: 90000
+- runFlow: ../_dev-tools-away.yaml
+- tapOn:
+    id: "tab-profile"
+- tapOn:
+    id: "profile-open-settings"
+- extendedWaitUntil:
+    visible:
+      id: "settings-back"
+    timeout: 15000
+- takeScreenshot: ${PHASE}-settings-1
+- scroll
+- takeScreenshot: ${PHASE}-settings-2
+- scrollUntilVisible:
+    element:
+      id: "settings-delete-account"
+    direction: DOWN
+    timeout: 120000
+- takeScreenshot: ${PHASE}-settings-3

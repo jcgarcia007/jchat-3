@@ -1,0 +1,23 @@
+# Texto grande: Editar perfil (arriba y abajo). Solo mira; no guarda.
+# Requiere -e PHASE=before|after (prefijo de las capturas).
+appId: com.juangarciacruz.jchatapp
+---
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: "tab-map"
+    timeout: 90000
+- runFlow: ../_dev-tools-away.yaml
+- tapOn:
+    id: "tab-profile"
+- tapOn:
+    id: "profile-edit"
+- extendedWaitUntil:
+    visible:
+      id: "edit-change-avatar"
+    timeout: 15000
+- takeScreenshot: ${PHASE}-edit-profile-1
+- scroll
+- takeScreenshot: ${PHASE}-edit-profile-2
+- scroll
+- takeScreenshot: ${PHASE}-edit-profile-3

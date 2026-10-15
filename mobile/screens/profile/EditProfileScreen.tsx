@@ -392,7 +392,7 @@ export default function EditProfileScreen(): React.JSX.Element {
           <IconChevronLeft size={24} color={c.brandText} strokeWidth={2} />
         </TouchableOpacity>
 
-        <Text style={[styles.headerTitle, { color: c.textPrimary }]}>
+        <Text adjustsFontSizeToFit minimumFontScale={0.6} numberOfLines={1} style={[styles.headerTitle, { color: c.textPrimary }]}>
           {t('edit.title')}
         </Text>
 
@@ -782,14 +782,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   headerBtn: {
+    flexShrink: 0,
     padding: 4,
     minWidth: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
+    flex: 1,
+    flexShrink: 1,
     fontSize: 17,
     fontWeight: '600',
+    textAlign: 'center',
   },
   saveText: {
     fontSize: 16,

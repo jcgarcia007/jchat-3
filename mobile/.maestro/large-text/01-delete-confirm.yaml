@@ -1,0 +1,29 @@
+# Texto grande: confirmación de eliminar cuenta. Se CANCELA; nunca "Continuar".
+# Requiere -e PHASE=before|after (prefijo de las capturas).
+appId: com.juangarciacruz.jchatapp
+---
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: "tab-map"
+    timeout: 90000
+- runFlow: ../_dev-tools-away.yaml
+- tapOn:
+    id: "tab-profile"
+- tapOn:
+    id: "profile-open-settings"
+- extendedWaitUntil:
+    visible:
+      id: "settings-back"
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: "settings-delete-account"
+    direction: DOWN
+    timeout: 120000
+- tapOn:
+    id: "settings-delete-account"
+- assertVisible: "Esto elimina permanentemente tu cuenta.*"
+- takeScreenshot: ${PHASE}-delete-confirm
+- tapOn: "(?i)cancelar"
+- assertNotVisible: "Esto elimina permanentemente tu cuenta.*"

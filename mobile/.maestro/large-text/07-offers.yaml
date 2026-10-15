@@ -1,0 +1,14 @@
+# Texto grande: pestaña Ofertas. Solo mira.
+# Requiere -e PHASE=before|after (prefijo de las capturas).
+appId: com.juangarciacruz.jchatapp
+---
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: "tab-map"
+    timeout: 90000
+- runFlow: ../_dev-tools-away.yaml
+- tapOn:
+    id: "tab-offers"
+- waitForAnimationToEnd
+- takeScreenshot: ${PHASE}-offers

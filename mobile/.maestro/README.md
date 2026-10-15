@@ -46,3 +46,17 @@ maestro test -e MAESTRO_EMAIL=... -e MAESTRO_PASSWORD=... .maestro/01-login.yaml
   el botón "Reportar usuario" y "Bloquear".
 - Flujo 04 en iOS: sin capturas (el DM de test1 tiene una imagen explícita). Si un paso falla, Maestro guarda una captura automática: bórrala de `e2e/artifacts/maestro/` y de `~/.maestro/tests`.
 - Los textos están en español (cuentas de prueba en `es`).
+
+## Texto grande (`large-text/`)
+Flujos que solo miran y cancelan, para revisar que nada crítico se corte con el texto al máximo (plan F8, UX-05/UX-06).
+No entran en `npm run maestro` (carpeta aparte). Ponen capturas con el prefijo `PHASE`:
+```bash
+UDID=<udid del simulador>
+xcrun simctl ui $UDID content_size accessibility-extra-extra-extra-large   # iOS al máximo
+adb shell settings put system font_scale 2.0                                # Android al máximo
+maestro --device <id> test -e PHASE=before .maestro/large-text --test-output-dir ../e2e/artifacts/maestro/lt-<plataforma>-before
+# AL TERMINAR devolver el tamaño normal:
+xcrun simctl ui $UDID content_size large
+adb shell settings put system font_scale 1.0
+```
+En iOS no hay captura de los flujos 02, 03 y 05 (el DM de test1 tiene una imagen explícita); solo comprueban que los botones están en pantalla.
