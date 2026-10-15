@@ -27,6 +27,7 @@ import { TicketPerforation } from '../../components/auth/TicketPerforation';
 import { TicketTitle, useTicketCascade } from '../../components/auth/TicketReveal';
 import { showAlert } from '../../utils/dialog';
 import { readAuthCode } from '../../utils/authUrl';
+import { AppleAuthSlot } from '../../components/auth/AppleAuthSlot';
 
 type LoginNav = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
@@ -125,18 +126,27 @@ export default function LoginScreen() {
       </Pressable>
       </Animated.View>
 
-      {/* TODO(official-social-buttons): text-only for now. The official Google "G" logo and the native
-          Apple button (expo-apple-authentication) arrive with the build of the accounts change. */}
+      {/* Apple: the OFFICIAL native button on iOS (guideline 4.8 + HIG), as prominent as Google's; Android / web keep the
+          browser OAuth button. TODO(official-social-buttons): the official Google "G" logo is still text-only. */}
       <Animated.View style={[styles.socialRow, cascade.blockStyle(4)]}>
-        <Pressable
-          onPress={() => void runOAuth('apple')}
+        <AppleAuthSlot
+          mode="signIn"
           disabled={oauthBusy}
-          style={[styles.social, oauthBusy && styles.socialBusy]}
-          accessibilityRole="button"
-          accessibilityLabel={t('login.appleA11y')}
-        >
-          <Text style={styles.socialText}>{t('ticket.apple')}</Text>
-        </Pressable>
+          style={styles.socialOfficial}
+          cornerRadius={14}
+          onError={(message) => showAlert(t('login.alerts.signInErrorTitle'), message)}
+          fallback={
+            <Pressable
+              onPress={() => void runOAuth('apple')}
+              disabled={oauthBusy}
+              style={[styles.social, oauthBusy && styles.socialBusy]}
+              accessibilityRole="button"
+              accessibilityLabel={t('login.appleA11y')}
+            >
+              <Text style={styles.socialText}>{t('ticket.apple')}</Text>
+            </Pressable>
+          }
+        />
         <Pressable
           onPress={() => void runOAuth('google')}
           disabled={oauthBusy}
@@ -202,6 +212,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   socialBusy: { opacity: 0.6 },
+  // Apple's official button: same row slot and height as the Google button.
+  socialOfficial: { flex: 1, height: 50 },
   socialText: { fontFamily: loginFont.textBold, fontSize: 15, color: ticket.ticketInk },
   newHere: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', minHeight: 44 },
   newHereText: { fontFamily: loginFont.text, fontSize: 14, color: ticket.ticketInkMuted },
