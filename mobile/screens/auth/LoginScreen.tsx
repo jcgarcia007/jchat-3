@@ -131,6 +131,7 @@ export default function LoginScreen() {
       <Animated.View style={[styles.socialRow, cascade.blockStyle(4)]}>
         <AppleAuthSlot
           mode="signIn"
+          surface="light" // the paper ticket is light in both themes
           disabled={oauthBusy}
           style={styles.socialOfficial}
           cornerRadius={14}

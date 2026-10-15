@@ -13,7 +13,7 @@ import { isNativeAppleSignInAvailable, signInWithApple } from '../../services/ap
 import { toUserMessage } from '../../utils/errors';
 import type { AppleAuthSlotProps } from './AppleAuthSlot';
 
-export function AppleAuthSlot({ fallback, mode, disabled, style, cornerRadius = 14, onError }: AppleAuthSlotProps): React.ReactElement {
+export function AppleAuthSlot({ fallback, mode, disabled, surface = 'theme', style, cornerRadius = 14, onError }: AppleAuthSlotProps): React.ReactElement {
   const scheme = useColorScheme();
   const { t } = useTranslation('auth');
   const [available, setAvailable] = useState<boolean | null>(null);
@@ -45,7 +45,7 @@ export function AppleAuthSlot({ fallback, mode, disabled, style, cornerRadius = 
   return (
     <AppleAuthentication.AppleAuthenticationButton
       buttonType={mode === 'signUp' ? AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP : AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-      buttonStyle={scheme === 'dark' ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+      buttonStyle={surface === 'theme' && scheme === 'dark' ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
       cornerRadius={cornerRadius}
       onPress={() => void press()}
       style={[style, (busy || disabled) && { opacity: 0.6 }]}
