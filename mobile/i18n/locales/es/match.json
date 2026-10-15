@@ -73,6 +73,7 @@
   },
   "presence": {
     "scanQr": "Escanear el QR del local",
+    "scanQrWeb": "No pudimos confirmar tu ubicación. Escanea el QR del local con la cámara de tu teléfono.",
     "mocked": "No pudimos confirmar tu ubicación. Escanea el QR del local para usar Match.",
     "active": "Estás en el local",
     "error": "No pudimos verificar tu presencia. Lo intentaremos de nuevo en breve.",

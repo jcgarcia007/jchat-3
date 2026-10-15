@@ -17,8 +17,8 @@
  *  - onUndo() → true when the server undid the last swipe; then the card is restored visually.
  */
 
-import React, { useCallback, useEffect, useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import Animated, { useAnimatedReaction, useAnimatedStyle } from 'react-native-reanimated';
@@ -225,6 +225,38 @@ function DeckEnd({ endContent }: { endContent: React.ReactNode }) {
   return isCompleted ? <View style={styles.endOverlay}>{endContent}</View> : null;
 }
 
+/** A pointer that moved more than this between press and release was a drag, not a tap (web only). */
+const TAP_SLOP_PX = 10;
+
+/**
+ * The card's tap target. On the web a drag that ends on the card also fires the Pressable's onPress (the pointer goes up on
+ * the same element), which opened the profile after every swipe: there a press only counts when the pointer barely moved.
+ * iOS / Android keep the plain Pressable (the native pan already cancels the press).
+ */
+function CardPressable({ onPress, children }: { onPress: () => void; children: React.ReactNode }) {
+  const downRef = useRef<{ x: number; y: number } | null>(null);
+  const isWeb = Platform.OS === 'web';
+  return (
+    <Pressable
+      onPressIn={isWeb ? (e) => { downRef.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY }; } : undefined}
+      onPress={
+        isWeb
+          ? (e) => {
+              const down = downRef.current;
+              downRef.current = null;
+              if (down && Math.hypot(e.nativeEvent.pageX - down.x, e.nativeEvent.pageY - down.y) > TAP_SLOP_PX) return;
+              onPress();
+            }
+          : onPress
+      }
+      accessibilityRole="button"
+      style={styles.cardPressable}
+    >
+      {children}
+    </Pressable>
+  );
+}
+
 // ── Public component ───────────────────────────────────────────────────────────────────────
 
 export function MatchDeck({
@@ -260,13 +292,9 @@ export function MatchDeck({
         >
           <Deck.Card interactive>
             {({ item }) => (
-              <Pressable
-                onPress={() => onCardPress(item)}
-                accessibilityRole="button"
-                style={styles.cardPressable}
-              >
+              <CardPressable onPress={() => onCardPress(item)}>
                 <MatchCard card={item} photoUrl={mainPhotoUrl(item, photoUrls)} interestNames={interestNames} />
-              </Pressable>
+              </CardPressable>
             )}
           </Deck.Card>
         </Deck.Root>

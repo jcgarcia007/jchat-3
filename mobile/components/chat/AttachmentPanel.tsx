@@ -22,6 +22,7 @@
 
 import React, { useCallback, useState } from 'react';
 import {
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -271,17 +272,20 @@ export function AttachmentPanel({
           </View>
           {pending && (
             <View style={panelStyles.statusRow}>
+              {/* Web has no in-app scanner: the venue QR is a link, so the phone's own camera opens it. */}
               <Text style={[panelStyles.statusText, { color: theme.tabInactive }]}>
-                {tm('presence.mocked')}
+                {Platform.OS === 'web' ? tm('presence.scanQrWeb') : tm('presence.mocked')}
               </Text>
-              <Pressable
-                onPress={handleScanQr}
-                accessibilityRole="button"
-                style={[panelStyles.qrBtn, { borderColor: theme.accent }]}
-              >
-                <IconQrcode size={16} color={theme.accent} />
-                <Text style={[panelStyles.qrText, { color: theme.accent }]}>{tm('presence.scanQr')}</Text>
-              </Pressable>
+              {Platform.OS !== 'web' && (
+                <Pressable
+                  onPress={handleScanQr}
+                  accessibilityRole="button"
+                  style={[panelStyles.qrBtn, { borderColor: theme.accent }]}
+                >
+                  <IconQrcode size={16} color={theme.accent} />
+                  <Text style={[panelStyles.qrText, { color: theme.accent }]}>{tm('presence.scanQr')}</Text>
+                </Pressable>
+              )}
             </View>
           )}
           {deniedText && (

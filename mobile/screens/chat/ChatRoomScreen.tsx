@@ -1963,11 +1963,13 @@ export default function ChatRoomScreen() {
       </KeyboardAvoidingView>
 
       {/* ── Match venue QR scanner (instant presence) ────────────────────── */}
-      <MatchQrScanner
-        visible={qrScannerVisible}
-        onToken={handleQrToken}
-        onClose={() => setQrScannerVisible(false)}
-      />
+      {Platform.OS !== 'web' && (
+        <MatchQrScanner
+          visible={qrScannerVisible}
+          onToken={handleQrToken}
+          onClose={() => setQrScannerVisible(false)}
+        />
+      )}
 
       {/* ── Password entry sheet ─────────────────────────────────────────── */}
       {pendingProtectedRoom && (

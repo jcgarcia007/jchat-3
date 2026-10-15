@@ -24,7 +24,8 @@ import { AppState } from 'react-native';
 import i18n from '../i18n';
 import { useAuth } from './AuthContext';
 import { supabase, isSupabaseConfigured, channelTopic } from '../services/supabase';
-import { runAutoGeoCheck, RESUME_RECHECK_MIN_GAP_MS } from '../screens/chat/useGeofenceGate';
+import { runAutoGeoCheck, autoCheckAgeMs, RESUME_RECHECK_MIN_GAP_MS } from '../screens/chat/useGeofenceGate';
+import { useWebResumeRecheck } from '../hooks/useWebResumeRecheck';
 import { resetMatchPresence, runMatchCheckIn, setMatchReading } from '../services/matchPresence';
 import { getMatchActivity } from '../services/matchDeck';
 import { matchLeaveVenue } from '../services/match';
@@ -239,6 +240,14 @@ export function VenueSessionProvider({ children }: { children: React.ReactNode }
       sub.remove();
     };
   }, [businessId, roomId, heartbeat]);
+
+  // Web: network back / page restored → re-check (only while the chat is not mounted; the chat's own gate does it otherwise).
+  useWebResumeRecheck({
+    onResume: () => { if (!chatMountedRef.current) void heartbeat(false, RESUME_RECHECK_MIN_GAP_MS); },
+    enabled: !!businessId && !!roomId && isSupabaseConfigured,
+    ageMs: autoCheckAgeMs,
+    minGapMs: RESUME_RECHECK_MIN_GAP_MS,
+  });
 
   // ── Counters: new chat messages and Match likes ──────────────────────────────
 

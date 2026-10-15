@@ -73,6 +73,7 @@
   },
   "presence": {
     "scanQr": "Scan the venue's QR",
+    "scanQrWeb": "We couldn't confirm your location. Scan the venue's QR with your phone's camera.",
     "mocked": "We couldn't confirm your location. Scan the venue's QR to use Match.",
     "active": "You're at the venue",
     "error": "Couldn't verify your presence. We'll try again shortly.",

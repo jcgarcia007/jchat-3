@@ -10,7 +10,7 @@
  */
 
 import React, { useCallback, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '../../components/common/Spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
@@ -138,9 +138,10 @@ export default function MatchHomeScreen() {
 
         {/* Mocked location → the venue QR is the way in; otherwise a clear next step */}
         {pending && (
+          // Web has no in-app scanner: the venue QR is a link, so the phone's own camera opens it.
           <MatchStateView
-            message={t('presence.mocked')}
-            primary={{ label: t('presence.scanQr'), onPress: () => setScannerOpen(true), icon: <IconQrcode size={20} color={palette.onBrand} /> }}
+            message={Platform.OS === 'web' ? t('presence.scanQrWeb') : t('presence.mocked')}
+            primary={Platform.OS === 'web' ? undefined : { label: t('presence.scanQr'), onPress: () => setScannerOpen(true), icon: <IconQrcode size={20} color={palette.onBrand} /> }}
             secondary={{ label: t('states.backToChat'), onPress: backToChat }}
           />
         )}
@@ -186,7 +187,7 @@ export default function MatchHomeScreen() {
 
       </View>
 
-      <MatchQrScanner visible={scannerOpen} onToken={handleToken} onClose={() => setScannerOpen(false)} />
+      {Platform.OS !== 'web' && <MatchQrScanner visible={scannerOpen} onToken={handleToken} onClose={() => setScannerOpen(false)} />}
     </SafeAreaView>
   );
 }

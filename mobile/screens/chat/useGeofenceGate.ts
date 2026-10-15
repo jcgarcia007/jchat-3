@@ -23,6 +23,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 
+import { useWebResumeRecheck } from '../../hooks/useWebResumeRecheck';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import {
   requestForegroundPermission,
@@ -143,6 +144,11 @@ export async function runGeoCheck(
 
 let autoChecksInFlight = 0;
 let lastAutoCheckAt = 0;
+
+/** Milliseconds since the last automatic check started (Infinity before the first). */
+export function autoCheckAgeMs(): number {
+  return lastAutoCheckAt === 0 ? Infinity : Date.now() - lastAutoCheckAt;
+}
 
 /**
  * An automatic (non-interactive) check shared by every owner of a heartbeat: never two at once, and
@@ -335,6 +341,14 @@ export function useGeofenceGate({
       sub.remove();
     };
   }, [entered, isOwner, performBackgroundCheck, clearHeartbeat, clearGrace]);
+
+  // Web: re-check when the network comes back or the page is restored (AppState already covers visibilitychange).
+  useWebResumeRecheck({
+    onResume: () => { void performBackgroundCheck(RESUME_RECHECK_MIN_GAP_MS); },
+    enabled: entered && !isOwner && isSupabaseConfigured,
+    ageMs: autoCheckAgeMs,
+    minGapMs: RESUME_RECHECK_MIN_GAP_MS,
+  });
 
   return {
     checkAndEnter,
