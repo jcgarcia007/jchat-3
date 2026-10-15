@@ -2109,7 +2109,7 @@ export default function MenuPageClient({
           <button
             type="button"
             onClick={() => void refreshVenue(true)}
-            style={{ alignSelf: "flex-start", padding: "8px 14px", borderRadius: 10, border: "none", background: "var(--color-brand)", color: "var(--on-brand)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+            style={{ alignSelf: "flex-start", padding: "8px 14px", borderRadius: 10, border: "none", background: "var(--color-brand-dark)", color: "var(--on-brand)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
           >
             {venue.failure === "denied" ? tv("allowLocation") : tv("retry")}
           </button>
@@ -2133,7 +2133,7 @@ export default function MenuPageClient({
             <button
               type="button"
               onClick={() => setOrderBlockedNotice(false)}
-              style={{ padding: "10px 14px", borderRadius: 10, border: "none", background: "var(--color-brand)", color: "var(--on-brand)", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+              style={{ padding: "10px 14px", borderRadius: 10, border: "none", background: "var(--color-brand-dark)", color: "var(--on-brand)", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
             >
               {tv("understood")}
             </button>
