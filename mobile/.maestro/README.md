@@ -44,4 +44,5 @@ maestro test -e MAESTRO_EMAIL=... -e MAESTRO_PASSWORD=... .maestro/01-login.yaml
   `settings-delete-account`, `language-option-es|en`.
 - iOS 26: los botones de la alerta nativa del DM no responden al toque por texto la primera vez; el flujo 04 toca por posición
   el botón "Reportar usuario" y "Bloquear".
+- Flujo 04 en iOS: sin capturas (el DM de test1 tiene una imagen explícita). Si un paso falla, Maestro guarda una captura automática: bórrala de `e2e/artifacts/maestro/` y de `~/.maestro/tests`.
 - Los textos están en español (cuentas de prueba en `es`).
