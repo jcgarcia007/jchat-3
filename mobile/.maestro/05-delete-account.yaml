@@ -1,0 +1,31 @@
+# Ajustes → Eliminar cuenta → aparece la confirmación → cancelar.
+# NUNCA se pulsa "Continuar" (ni hay segunda confirmación).
+appId: com.juangarciacruz.jchatapp
+---
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: "tab-profile"
+    timeout: 90000
+- runFlow: _dev-tools-away.yaml
+- tapOn:
+    id: "tab-profile"
+- tapOn:
+    id: "profile-open-settings"
+- extendedWaitUntil:
+    visible:
+      id: "settings-back"
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: "settings-delete-account"
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: "settings-delete-account"
+- assertVisible: "Esto elimina permanentemente tu cuenta.*"
+- takeScreenshot: 05-delete-confirm
+- tapOn: "(?i)cancelar"
+- assertNotVisible: "Esto elimina permanentemente tu cuenta.*"
+- assertVisible:
+    id: "settings-delete-account"

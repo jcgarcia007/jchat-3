@@ -1,0 +1,37 @@
+# Bar XZX desde la lista "Cerca de mí": aparece el aviso de entrada y se pulsa "Ahora no".
+# NO se acepta la entrada (no se escribe nada). Comprueba que vuelve sin crash.
+appId: com.juangarciacruz.jchatapp
+---
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: "tab-nearby"
+    timeout: 90000
+- runFlow: _dev-tools-away.yaml
+- tapOn:
+    id: "tab-nearby"
+- extendedWaitUntil:
+    visible: "Bar XZX"
+    timeout: 30000
+- tapOn:
+    text: "Entrar"
+    below: "Bar XZX"
+- extendedWaitUntil:
+    visible:
+      id: "chat-enter"
+    timeout: 30000
+# Frase común a las dos variantes del aviso ("Antes de entrar" / "Juegos en Bar XZX").
+- assertVisible: "Elige cómo quieres aparecer antes de entrar\\."
+- takeScreenshot: 02-venue-entry-notice
+# Cancelar: "Ahora no" (NUNCA "Entrar al chat").
+- tapOn:
+    id: "chat-entry-cancel"
+- assertNotVisible:
+    id: "chat-enter"
+# Vuelve a la lista sin crash.
+- extendedWaitUntil:
+    visible:
+      id: "tab-bar"
+    timeout: 15000
+- assertVisible: "Bar XZX"
+- takeScreenshot: 02-venue-back

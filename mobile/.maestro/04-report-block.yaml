@@ -1,0 +1,89 @@
+# DM existente con @jcgarcia007_1bc7f2 (solo texto): menú ⋯ → Reportar → hoja de motivos → cancelar;
+# menú ⋯ → Bloquear → confirmación → cancelar. NUNCA se envía el reporte ni se bloquea.
+# El botón flotante "Tools" del dev-client tapa el ⋯ del encabezado: _dev-tools-away.yaml lo aparta.
+appId: com.juangarciacruz.jchatapp
+---
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: "tab-messages"
+    timeout: 90000
+- runFlow: _dev-tools-away.yaml
+- tapOn:
+    id: "tab-messages"
+- extendedWaitUntil:
+    visible:
+      id: "dm-row-.*"
+    timeout: 30000
+# Android (cuenta Test): el DM con @jcgarcia007_1bc7f2. iOS (cuenta test1) no tiene ese DM: usa el primero
+# que exista (el de "Test"). Los dos son DMs existentes; solo se abre el menú del encabezado.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn:
+          id: "dm-row-1bc7f2a8.*"
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          id: "dm-row-.*"
+          index: 0
+- extendedWaitUntil:
+    visible:
+      id: "dm-menu"
+    timeout: 15000
+
+# ── Reportar ──
+- tapOn:
+    id: "dm-menu"
+# Los botones de la alerta nativa de iOS 26 no responden al toque por texto en Maestro: se tocan por posición.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn: "(?i)reportar usuario"
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      # Espera a que la alerta termine de animarse antes de tocar por posición (evita una pasada intermitente).
+      - extendedWaitUntil:
+          visible: "Reportar usuario"
+          timeout: 10000
+      - waitForAnimationToEnd
+      - tapOn:
+          point: "50%,48%"
+- extendedWaitUntil:
+    visible: "¿Por qué lo reportas\\?"
+    timeout: 10000
+- takeScreenshot: 04-report-reasons
+- tapOn:
+    id: "report-cancel"
+- assertNotVisible: "¿Por qué lo reportas\\?"
+
+# ── Bloquear ──
+- tapOn:
+    id: "dm-menu"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn: "(?i)bloquear a.*"
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible: "Bloquear a .*"
+          timeout: 10000
+      - waitForAnimationToEnd
+      - tapOn:
+          point: "50%,54%"
+- extendedWaitUntil:
+    visible: "¿Bloquear a .*\\?"
+    timeout: 10000
+- takeScreenshot: 04-block-confirm
+- tapOn: "(?i)cancelar"
+- assertNotVisible: "¿Bloquear a .*\\?"

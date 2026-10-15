@@ -197,7 +197,7 @@ export function ReportReasonSheet({ visible, targetName, contentType, contentId,
                 )}
               </Pressable>
 
-              <Pressable accessibilityRole="button" onPress={onClose} style={styles.cancel}>
+              <Pressable testID="report-cancel" accessibilityRole="button" onPress={onClose} style={styles.cancel}>
                 <Text style={[styles.cancelLabel, { color: colors.textSecondary }]}>{t('actions.cancel')}</Text>
               </Pressable>
             </ScrollView>

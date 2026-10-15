@@ -123,7 +123,7 @@ export function ProfileTopBar({
             <>
               <IconButton testID="profile-create-post" label={t('header.createPostA11y')} onPress={onCreatePost}><IconPlus size={24} color={theme.bodyText} /></IconButton>
               <IconButton label={t('header.shareA11y')} onPress={onShare}><IconShare3 size={22} color={theme.bodyText} /></IconButton>
-              <IconButton label={t('header.settingsA11y')} onPress={onSettings}><IconSettings size={22} color={theme.bodyText} /></IconButton>
+              <IconButton testID="profile-open-settings" label={t('header.settingsA11y')} onPress={onSettings}><IconSettings size={22} color={theme.bodyText} /></IconButton>
             </>
           ) : (
             <IconButton label={t('header.moreA11y')} onPress={onOpenMenu}><IconDots size={25} color={theme.bodyText} /></IconButton>
@@ -224,7 +224,7 @@ export default function ProfileHeader({
       <View style={styles.actionRow} onLayout={(event) => setActionRowWidth(event.nativeEvent.layout.width)}>
         {isOwnProfile ? (
           <>
-            <TouchableOpacity style={[styles.ownActionButton, { backgroundColor: theme.btn2Bg, borderColor: theme.statsBorder }]} onPress={onEditProfile} accessibilityRole="button"><IconPencil size={17} color={theme.btn2Color} /><Text style={[styles.buttonLabel, { color: theme.btn2Color }]} numberOfLines={1}>{t('header.editProfile')}</Text></TouchableOpacity>
+            <TouchableOpacity style={[styles.ownActionButton, { backgroundColor: theme.btn2Bg, borderColor: theme.statsBorder }]} onPress={onEditProfile} accessibilityRole="button" testID="profile-edit"><IconPencil size={17} color={theme.btn2Color} /><Text style={[styles.buttonLabel, { color: theme.btn2Color }]} numberOfLines={1}>{t('header.editProfile')}</Text></TouchableOpacity>
             <TouchableOpacity
               testID="profile-create-post-button"
               style={[styles.ownActionButton, { backgroundColor: theme.btn1Bg, borderColor: theme.btn1Bg }]}

@@ -1,0 +1,34 @@
+# Ajustes abre; NO existe la fila "Planes"; el idioma muestra su valor actual (no se cambia).
+appId: com.juangarciacruz.jchatapp
+---
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: "tab-profile"
+    timeout: 90000
+- runFlow: _dev-tools-away.yaml
+- tapOn:
+    id: "tab-profile"
+- tapOn:
+    id: "profile-open-settings"
+- extendedWaitUntil:
+    visible:
+      id: "settings-back"
+    timeout: 15000
+- assertNotVisible: "(?i)(planes|plans)"
+- scrollUntilVisible:
+    element:
+      id: "language-option-.*"
+    direction: DOWN
+    timeout: 30000
+# Una de las dos opciones (es/en) está seleccionada = valor actual.
+- assertVisible:
+    id: "language-option-.*"
+    selected: true
+- takeScreenshot: 06-settings-language
+- scrollUntilVisible:
+    element:
+      id: "settings-delete-account"
+    direction: DOWN
+    timeout: 30000
+- assertNotVisible: "(?i)(planes|plans)"

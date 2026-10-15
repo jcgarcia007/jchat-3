@@ -1,0 +1,25 @@
+# Login con credenciales de prueba. NO cierra sesión: solo corre si MAESTRO_EMAIL y
+# MAESTRO_PASSWORD existen en el entorno (maestro test -e MAESTRO_EMAIL=... -e MAESTRO_PASSWORD=...)
+# Y la app está en la pantalla de inicio de sesión. Si falta algo, se omite sin fallar.
+# Las credenciales nunca se escriben en archivos ni se capturan en pantalla.
+appId: com.juangarciacruz.jchatapp
+env:
+  MAESTRO_EMAIL: ""
+  MAESTRO_PASSWORD: ""
+---
+- launchApp
+- runFlow:
+    when:
+      true: '${MAESTRO_EMAIL == "" || MAESTRO_PASSWORD == ""}'
+    commands:
+      - evalScript: "${console.log('01-login OMITIDO - faltan MAESTRO_EMAIL / MAESTRO_PASSWORD')}"
+- runFlow:
+    when:
+      true: '${MAESTRO_EMAIL != "" && MAESTRO_PASSWORD != ""}'
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: "tab-map"
+          timeout: 90000
+      # Con sesión abierta no se cierra: no hay nada que iniciar.
+      - evalScript: "${console.log('01-login OMITIDO - la app ya tiene sesion (no se cierra sesion)')}"

@@ -1,0 +1,17 @@
+# Smoke: la app abre y llega a la pantalla principal con la sesión ya iniciada.
+# En nativo la pantalla principal es el mapa (pestaña "Mapa" seleccionada).
+appId: com.juangarciacruz.jchatapp
+---
+- launchApp
+# El build de desarrollo necesita Metro; damos margen al primer bundle.
+- extendedWaitUntil:
+    visible:
+      id: "tab-map"
+    timeout: 90000
+- assertVisible:
+    id: "tab-bar"
+- runFlow: _dev-tools-away.yaml
+- assertVisible:
+    id: "tab-map"
+    selected: true
+- takeScreenshot: 00-smoke-main
