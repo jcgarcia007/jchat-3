@@ -27,6 +27,7 @@ import { updateMyLanguage } from '../services/userSettings';
 import i18n, { changeAppLanguage } from '../i18n';
 import type { SupportedLanguage } from '../i18n';
 import { showAlert } from '../utils/dialog';
+import { setMonitoringUser } from '../services/monitoring';
 
 /** Server-side 18+ confirmation state of the signed-in user. */
 export type AgeStatus = 'loading' | 'confirmed' | 'required' | 'error';
@@ -76,6 +77,8 @@ const RECOVERY_PENDING_KEY = 'jchat.recovery_pending';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
+  // Error monitoring knows the user by ID only (never e-mail / name); cleared on sign-out.
+  useEffect(() => setMonitoringUser(session?.user?.id ?? null), [session?.user?.id]);
   const [loading, setLoading] = useState(true);
   const [bypass, setBypass] = useState(false);
   const [locked, setLocked] = useState(false);

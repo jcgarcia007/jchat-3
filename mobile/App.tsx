@@ -22,6 +22,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { VenueSessionProvider } from './context/VenueSessionContext';
 import AppNavigator from './navigation/AppNavigator';
+import { initMonitoring, Sentry } from './services/monitoring';
 import { applyAppearance, loadStoredAppearance } from './theme/appearance';
 import { loadUserSettings } from './services/userSettings';
 import { useEntryLinkCapture } from './hooks/useEntryLinkCapture';
@@ -66,7 +67,10 @@ function AuthenticatedAppearanceBridge() {
   return null;
 }
 
-export default function App() {
+// Error monitoring: a no-op until EXPO_PUBLIC_SENTRY_DSN is set (privacy rules in utils/monitoringConfig.ts).
+initMonitoring();
+
+function App() {
   const [appearanceReady, setAppearanceReady] = useState(false);
   const appColors = useThemeColors();
 
@@ -120,3 +124,5 @@ export default function App() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
 });
+
+export default Sentry.wrap(App);
