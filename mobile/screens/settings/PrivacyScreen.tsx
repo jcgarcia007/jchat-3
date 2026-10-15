@@ -573,7 +573,7 @@ export default function PrivacyScreen() {
         accessibilityLabel={t('privacy.bannerA11y')}
       >
         <IconShieldLock size={20} color={palette.danger} strokeWidth={2} />
-        <Text style={[styles.locationBannerText, { color: palette.danger }]}>
+        <Text style={[styles.locationBannerText, { color: c.dangerText }]}>
           {t('privacy.bannerText')}
         </Text>
       </View>
