@@ -361,7 +361,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
       </ScrollView>
 
       <AppModal visible={menuVisible} transparent animationType="slide" onRequestClose={() => setMenuVisible(false)}>
-        <Pressable style={[styles.backdrop, { backgroundColor: c.scrim }]} onPress={() => setMenuVisible(false)} />
+        <Pressable accessible={false} style={[styles.backdrop, { backgroundColor: c.scrim }]} onPress={() => setMenuVisible(false)} />
         <View style={[styles.sheet, { backgroundColor: theme.statsBg, borderColor: theme.statsBorder }]}>
           <View style={styles.sheetHandleWrap}><View style={[styles.sheetHandle, { backgroundColor: theme.statsBorder }]} /></View>
           <Text style={[styles.sheetTitle, { color: theme.bodyText }]}>@{profile.username}</Text>

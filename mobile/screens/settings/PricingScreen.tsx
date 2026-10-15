@@ -108,6 +108,7 @@ export default function PricingScreen() {
           style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
           hitSlop={8}
           accessibilityRole="button"
+          accessibilityLabel={t('common:a11y.back')}
         >
           <IconArrowLeft size={24} color={c.textPrimary} strokeWidth={2} />
         </Pressable>

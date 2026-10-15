@@ -394,6 +394,8 @@ export default function StoryViewerScreen({
               <TouchableOpacity
                 onPress={() => setShowViewers(false)}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel={t('common:a11y.closeViewers')}
               >
                 <IconChevronLeft size={20} color={c.textPrimary} />
               </TouchableOpacity>

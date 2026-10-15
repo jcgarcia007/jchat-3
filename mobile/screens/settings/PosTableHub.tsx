@@ -196,6 +196,7 @@ function DraftRow({
   onRemove: (item: DraftItem) => void;
 }) {
   const c = useThemeColors();
+  const { t } = useTranslation('common');
   const priceCents = (item.basePriceCents + item.modifierExtraCents) * item.qty;
   return (
     <View style={styles.summaryRow}>
@@ -207,6 +208,7 @@ function DraftRow({
           onPress={() => onDecrease(item)}
           style={[styles.draftBtn, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}
           accessibilityRole="button"
+          accessibilityLabel={t('common:a11y.decreaseQty')}
         >
           <IconMinus size={12} color={c.textSecondary} strokeWidth={2} />
         </Pressable>
@@ -214,6 +216,7 @@ function DraftRow({
           onPress={() => onIncrease(item)}
           style={[styles.draftBtn, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}
           accessibilityRole="button"
+          accessibilityLabel={t('common:a11y.increaseQty')}
         >
           <IconPlus size={12} color={c.textSecondary} strokeWidth={2} />
         </Pressable>
@@ -221,6 +224,7 @@ function DraftRow({
           onPress={() => onRemove(item)}
           style={[styles.draftBtn, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}
           accessibilityRole="button"
+          accessibilityLabel={t('common:a11y.removeItem')}
         >
           <IconTrash size={12} color={c.dangerText} strokeWidth={2} />
         </Pressable>
@@ -1033,6 +1037,7 @@ export default function PosTableHub(): React.ReactElement {
                   { backgroundColor: c.bgBase, borderColor: c.borderSubtle },
                 ]}
                 accessibilityRole="button"
+                accessibilityLabel={t('common:a11y.decreaseParty')}
               >
                 <IconMinus
                   size={13}
@@ -1482,7 +1487,7 @@ export default function PosTableHub(): React.ReactElement {
         animationType="slide"
         onRequestClose={() => setShowCombinePicker(false)}
       >
-        <Pressable
+        <Pressable accessible={false}
           style={styles.modalBackdrop}
           onPress={() => setShowCombinePicker(false)}
         />

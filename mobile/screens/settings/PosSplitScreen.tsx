@@ -1322,6 +1322,7 @@ export default function PosSplitScreen(): React.ReactElement {
                     { backgroundColor: c.bgBase, borderColor: c.borderSubtle },
                   ]}
                   accessibilityRole="button"
+                  accessibilityLabel={t('common:a11y.decreaseSplit')}
                 >
                   <IconMinus
                     size={16}
@@ -1340,6 +1341,7 @@ export default function PosSplitScreen(): React.ReactElement {
                     { backgroundColor: c.bgBase, borderColor: c.borderSubtle },
                   ]}
                   accessibilityRole="button"
+                  accessibilityLabel={t('common:a11y.increaseSplit')}
                 >
                   <IconPlus
                     size={16}

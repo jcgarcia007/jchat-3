@@ -128,5 +128,18 @@
     "reenterThisVenue": "Go back into this venue",
     "viewMenu": "View the menu",
     "thisVenue": "this venue"
+  },
+  "a11y": {
+    "back": "Back",
+    "close": "Close",
+    "clearSearch": "Clear search",
+    "decreaseQty": "Decrease quantity",
+    "increaseQty": "Increase quantity",
+    "removeItem": "Remove item",
+    "decreaseParty": "Fewer people",
+    "increaseParty": "More people",
+    "decreaseSplit": "Split in fewer parts",
+    "increaseSplit": "Split in more parts",
+    "closeViewers": "Close the viewers list"
   }
 }

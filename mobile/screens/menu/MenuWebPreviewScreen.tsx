@@ -207,6 +207,7 @@ export default function MenuWebPreviewScreen() {
           onPress={() => navigation.goBack()}
           style={({ pressed }) => [styles.btn, { opacity: pressed ? 0.6 : 1 }]}
           accessibilityRole="button"
+          accessibilityLabel={t('common:a11y.back')}
           hitSlop={8}
         >
           <IconArrowLeft size={24} color={c.textPrimary} strokeWidth={2} />

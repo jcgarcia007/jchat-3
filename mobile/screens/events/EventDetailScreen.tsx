@@ -98,6 +98,8 @@ export default function EventDetailScreen({
         <TouchableOpacity
           onPress={onBack}
           style={styles.backButton}
+          accessibilityRole="button"
+          accessibilityLabel={t('common:a11y.back')}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <IconArrowLeft size={22} color={c.textPrimary} />

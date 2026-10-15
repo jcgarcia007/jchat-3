@@ -168,7 +168,7 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
 
   return (
     <AppModal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
-      <Pressable style={styles.overlay} onPress={handleClose} accessibilityRole="none" />
+      <Pressable accessible={false} style={styles.overlay} onPress={handleClose} accessibilityRole="none" />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={[styles.sheet, { backgroundColor: c.bgSurface, paddingBottom: insets.bottom + 12 }]}>
           <View style={[styles.handle, { backgroundColor: c.borderSubtle }]} />

@@ -82,7 +82,7 @@ export function ProfileMenuHint({ visible, anchorRef, onDismiss }: Props): React
         style={StyleSheet.absoluteFill}
       >
         {/* Tap outside closes. */}
-        <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: palette.scrim }]} onPress={onDismiss} accessibilityRole="none" />
+        <Pressable accessible={false} style={[StyleSheet.absoluteFill, { backgroundColor: palette.scrim }]} onPress={onDismiss} accessibilityRole="none" />
         {anchor ? (
           <>
             <View

@@ -435,7 +435,7 @@ export default function MapScreen() {
       {/* Business preview bottom sheet (Task 2.3) */}
       <AppModal visible={!!selected} transparent animationType="slide" onRequestClose={() => setSelected(null)}>
         <View style={styles.sheetBackdrop}>
-          <TouchableOpacity style={styles.sheetDismiss} activeOpacity={1} onPress={() => setSelected(null)} />
+          <TouchableOpacity accessible={false} style={styles.sheetDismiss} activeOpacity={1} onPress={() => setSelected(null)} />
           <View style={[styles.sheetBody, { backgroundColor: c.bgBase }]}>
             <TouchableOpacity
               style={styles.sheetClose}
