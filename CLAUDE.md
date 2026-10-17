@@ -168,6 +168,11 @@ import { IconMapPin } from '@tabler/icons-react';        // web
   ni `cron.unschedule` antes de `cron.schedule`.
 - Si algo destructivo es imprescindible, va en un archivo aparte `NNN_destructive.sql` que aplica Juan
   en el SQL Editor. Nunca mezclado con una migración normal.
+- **Columnas de `businesses` editables por el dueño:** el UPDATE de `authenticated` sobre `public.businesses` es una
+  lista de columnas (allowlist). Toda columna nueva que el dueño edite desde la app entra a
+  `grant update (…) on public.businesses to authenticated` **en la misma migración que la crea**; si no, el dashboard
+  responde 403 "permission denied for table businesses" (migración 236). Las columnas que maneja el servidor (owner_id,
+  plan, status, stripe_*, verified_*) NO entran. `mobile/scripts/migrations-businesses-grants.test.mjs` lo hace cumplir.
 
 ### Scope
 - NO implementar: Event Tickets, Delivery Module → ambos marcados como Future.
