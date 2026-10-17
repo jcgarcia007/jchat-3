@@ -248,40 +248,6 @@ function Step1Identity({
     void pollStatus();
   }, [pollStatus]);
 
-  // TEMPORARY testing escape hatch: marks Identity approved without Stripe.
-  // Shown ALWAYS for now (until real Stripe Identity is wired up). Opt-out:
-  // set NEXT_PUBLIC_HIDE_TEST_SKIP="true" to hide it.
-  // REMOVE THIS (and the button below) BEFORE PUBLIC LAUNCH — once Stripe
-  // Identity is integrated, real owners must verify; this bypass must not ship.
-  const showTestSkip = process.env.NEXT_PUBLIC_HIDE_TEST_SKIP !== "true";
-
-  const handleTestSkip = useCallback(async () => {
-    setError(null);
-    try {
-      if (isSupabaseConfigured) {
-        const { data: existing } = await supabase
-          .from("business_verifications")
-          .select("id")
-          .eq("business_id", businessId)
-          .maybeSingle();
-        if (existing) {
-          await supabase
-            .from("business_verifications")
-            .update({ identity_status: "approved" })
-            .eq("business_id", businessId);
-        } else {
-          await supabase
-            .from("business_verifications")
-            .insert({ business_id: businessId, identity_status: "approved" });
-        }
-      }
-    } catch {
-      // Non-fatal in testing — still advance.
-    }
-    setIdentityStatus("approved");
-    onComplete();
-  }, [businessId, onComplete]);
-
   const isApproved = identityStatus === "approved";
   const isFailed = identityStatus === "failed";
 
@@ -398,17 +364,6 @@ function Step1Identity({
             <IconChevronRight size={15} />
           </button>
         )}
-        {showTestSkip && !isApproved && (
-          <button
-            type="button"
-            onClick={() => void handleTestSkip()}
-            style={{ ...S.ghostBtn, borderStyle: "dashed" }}
-            title="Testing only — bypasses Stripe Identity"
-          >
-            Skip for now (Testing)
-            <IconChevronRight size={15} />
-          </button>
-        )}
       </div>
     </div>
   );
@@ -491,18 +446,6 @@ function Step2CodeSelfie({
 
   const codeReady = codeState.status === "done" && dailyCode;
   const canContinue = codeReady && selfieSubmitted;
-
-  // TEMPORARY testing escape hatch (same as Step 1): bypasses the daily-code +
-  // selfie review and finishes the steps. Shown ALWAYS for now; opt-out with
-  // NEXT_PUBLIC_HIDE_TEST_SKIP="true".
-  // REMOVE THIS (and the button below) BEFORE PUBLIC LAUNCH.
-  const showTestSkip = process.env.NEXT_PUBLIC_HIDE_TEST_SKIP !== "true";
-
-  function handleTestSkip() {
-    setSelfieSubmitted(true);
-    setSelfieState({ status: "done", error: null });
-    onComplete();
-  }
 
   return (
     <div>
@@ -692,19 +635,6 @@ function Step2CodeSelfie({
         </div>
       )}
 
-      {showTestSkip && !canContinue && (
-        <div style={{ marginTop: "20px" }}>
-          <button
-            type="button"
-            onClick={handleTestSkip}
-            style={{ ...S.ghostBtn, borderStyle: "dashed" }}
-            title="Testing only — bypasses the code + selfie review"
-          >
-            Skip for now (Testing)
-            <IconChevronRight size={15} />
-          </button>
-        </div>
-      )}
     </div>
   );
 }
