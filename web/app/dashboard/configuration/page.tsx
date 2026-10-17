@@ -19,6 +19,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { isOvernight } from "@/lib/businessHours";
+import { describeSaveError } from "@/lib/saveError";
 import { useTranslations } from "next-intl";
 import {
   IconBuilding,
@@ -462,9 +463,11 @@ function Toggle({
 function AlertBanner({
   type,
   message,
+  code,
 }: {
   type: "error" | "success" | "warning";
   message: string;
+  code?: string | null;
 }) {
   const palettes = {
     error:   { bg: "rgba(239,68,68,0.10)",   color: "var(--db-danger)"  },
@@ -487,9 +490,33 @@ function AlertBanner({
         marginBottom: "16px",
       }}
     >
-      <Icon size={16} />
-      {message}
+      <Icon size={16} style={{ flexShrink: 0 }} />
+      <span>
+        {message}
+        {code && (
+          <small style={{ display: "block", fontSize: "11px", opacity: 0.75, marginTop: "2px" }}>{code}</small>
+        )}
+      </span>
     </div>
+  );
+}
+
+/** The error of a failed save, shown right under the Save button that was pressed (the page-top banner may be off screen). */
+function InlineSaveError({ message, code }: { message: string; code: string | null }) {
+  const ref = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    ref.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [message]);
+  return (
+    <p
+      ref={ref}
+      role="alert"
+      data-testid="save-error-inline"
+      style={{ margin: "10px 0 0", fontSize: "13px", color: "var(--db-danger)" }}
+    >
+      {message}
+      {code && <small style={{ display: "block", fontSize: "11px", opacity: 0.75, marginTop: "2px" }}>{code}</small>}
+    </p>
   );
 }
 
@@ -561,6 +588,33 @@ export default function ConfigurationPage() {
   const [loadingBiz, setLoadingBiz] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  // Who failed and the small technical code: the inline note appears under the Save button of `owner` (its saving setter).
+  const [saveFail, setSaveFail] = useState<{ text: string; code: string | null; owner: unknown } | null>(null);
+  const errorBannerRef = useRef<HTMLDivElement>(null);
+
+  /** Human message for a failed save (permission / offline / generic + small code), remembered for the inline note. */
+  const showSaveError = useCallback(
+    (e: unknown, owner?: unknown) => {
+      const info = describeSaveError(e);
+      const text =
+        info.kind === "permission"
+          ? t("configurationSaveNoPermission")
+          : info.kind === "network"
+            ? t("configurationSaveOffline")
+            : t("configurationSaveFailed");
+      setSaveFail({ text, code: info.code, owner });
+      setError(text);
+    },
+    [t]
+  );
+
+  // The banner sits at the top of a long page: bring it into view when a failure has no Save button of its own (toggles, uploads).
+  // When a Save button failed, the inline note under it scrolls itself into view instead — the owner is already looking there.
+  useEffect(() => {
+    if (error && !(saveFail && saveFail.owner && saveFail.text === error)) {
+      errorBannerRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+  }, [error, saveFail]);
 
   // ── Section 1: Business info ──────────────────────────────────────────────────
   const [name, setName] = useState("");
@@ -798,12 +852,12 @@ export default function ConfigurationPage() {
         await patch(payload);
         setSuccess(successMsg);
       } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : String(e));
+        showSaveError(e, setter);
       } finally {
         setter(false);
       }
     },
-    [patch]
+    [patch, showSaveError]
   );
 
   // ── Storage upload helper ─────────────────────────────────────────────────────
@@ -1001,7 +1055,7 @@ export default function ConfigurationPage() {
       );
     if (upsertErr) {
       setMatchEnabled(previous);
-      setError(upsertErr.message);
+      showSaveError(upsertErr);
     } else {
       setSuccess(v ? t("configurationMatchEnabledSuccess") : t("configurationMatchDisabledSuccess"));
     }
@@ -1024,7 +1078,7 @@ export default function ConfigurationPage() {
       );
     if (upsertErr) {
       setTodEnabled(previous);
-      setError(upsertErr.message);
+      showSaveError(upsertErr);
     } else {
       setSuccess(v ? t("configurationTodEnabledSuccess") : t("configurationTodDisabledSuccess"));
     }
@@ -1049,7 +1103,7 @@ export default function ConfigurationPage() {
       );
     if (upsertErr) {
       setTodCategories(previous);
-      setError(upsertErr.message);
+      showSaveError(upsertErr);
     } else {
       setSuccess(t("configurationTodCategoriesSuccess"));
     }
@@ -1069,7 +1123,7 @@ export default function ConfigurationPage() {
       setSuccess(t("configurationPaymentModeSavedSuccess"));
     } catch (e: unknown) {
       setPosPaymentMode(prev);
-      setError(e instanceof Error ? e.message : String(e));
+      showSaveError(e);
     } finally {
       setSavingPaymentMode(false);
     }
@@ -1099,12 +1153,12 @@ export default function ConfigurationPage() {
         await patch({ dashboard_theme_id: id });
         setSuccess(t("configurationThemeSavedSuccess"));
       } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : String(e));
+        showSaveError(e);
       } finally {
         setSavingTheme(false);
       }
     },
-    [patch, setThemeId, t]
+    [patch, setThemeId, showSaveError, t]
   );
 
   const handlePalettePick = useCallback(
@@ -1117,12 +1171,12 @@ export default function ConfigurationPage() {
         await patch({ dashboard_palette_id: id });
         setSuccess(t("configurationPaletteSavedSuccess"));
       } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : String(e));
+        showSaveError(e);
       } finally {
         setSavingPalette(false);
       }
     },
-    [patch, setPaletteId, t]
+    [patch, setPaletteId, showSaveError, t]
   );
 
   const handleSaveTips = () =>
@@ -1200,7 +1254,11 @@ export default function ConfigurationPage() {
       </div>
 
       {/* Global banners */}
-      {error && <AlertBanner type="error" message={error} />}
+      {error && (
+        <div ref={errorBannerRef} role="alert">
+          <AlertBanner type="error" message={error} code={saveFail && saveFail.text === error ? saveFail.code : null} />
+        </div>
+      )}
       {success && <AlertBanner type="success" message={success} />}
       {noSupabase && (
         <AlertBanner
@@ -1286,6 +1344,9 @@ export default function ConfigurationPage() {
         >
           {t("configurationSaveInfoButton")}
         </PrimaryBtn>
+        {error && saveFail?.owner === setSavingInfo && saveFail.text === error && (
+          <InlineSaveError message={error} code={saveFail.code} />
+        )}
       </Section>
 
       {/* ── 📍 Location & Geofence ───────────────────────────────────────────── */}
@@ -1496,6 +1557,9 @@ export default function ConfigurationPage() {
         >
           {t("configurationSaveHoursButton")}
         </PrimaryBtn>
+        {error && saveFail?.owner === setSavingHours && saveFail.text === error && (
+          <InlineSaveError message={error} code={saveFail.code} />
+        )}
       </Section>
 
       {/* ── 3. Cover Photo + Icon ───────────────────────────────────────────── */}
@@ -1627,6 +1691,9 @@ export default function ConfigurationPage() {
         >
           {t("configurationSaveCoverButton")}
         </PrimaryBtn>
+        {error && saveFail?.owner === setSavingCover && saveFail.text === error && (
+          <InlineSaveError message={error} code={saveFail.code} />
+        )}
       </Section>
 
       {/* ── 4. Photo Gallery ────────────────────────────────────────────────── */}
@@ -1777,6 +1844,9 @@ export default function ConfigurationPage() {
         >
           {t("configurationSaveGalleryButton")}
         </PrimaryBtn>
+        {error && saveFail?.owner === setSavingGallery && saveFail.text === error && (
+          <InlineSaveError message={error} code={saveFail.code} />
+        )}
       </Section>
 
       {/* ── 5. Menu Enabled ─────────────────────────────────────────────────── */}
@@ -2371,6 +2441,9 @@ export default function ConfigurationPage() {
         >
           {t("configurationSaveTipsButton")}
         </PrimaryBtn>
+        {error && saveFail?.owner === setSavingTips && saveFail.text === error && (
+          <InlineSaveError message={error} code={saveFail.code} />
+        )}
       </Section>
 
       {/* ── 8. Payout Frequency ─────────────────────────────────────────────── */}
@@ -2424,6 +2497,9 @@ export default function ConfigurationPage() {
         >
           {t("configurationSavePayoutButton")}
         </PrimaryBtn>
+        {error && saveFail?.owner === setSavingPayout && saveFail.text === error && (
+          <InlineSaveError message={error} code={saveFail.code} />
+        )}
       </Section>
 
       {/* ── 9. Logo del negocio (sidebar) ───────────────────────────────────── */}
@@ -2492,6 +2568,9 @@ export default function ConfigurationPage() {
           >
             {t("configurationLogoSaveButton")}
           </PrimaryBtn>
+          {error && saveFail?.owner === setSavingLogo && saveFail.text === error && (
+            <InlineSaveError message={error} code={saveFail.code} />
+          )}
         </div>
       </Section>
     </div>

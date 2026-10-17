@@ -2568,7 +2568,10 @@
     "todReportReason_impersonation": "Impersonation",
     "todReportReason_copyright": "Copyright",
     "todReportReason_other": "Other",
-    "configurationHoursOvernight": "Closes the next day"
+    "configurationHoursOvernight": "Closes the next day",
+    "configurationSaveNoPermission": "You don't have permission to save this change. If you think this is a mistake, contact us.",
+    "configurationSaveOffline": "No connection. Try again.",
+    "configurationSaveFailed": "We couldn't save your changes. Try again."
   },
   "superAdmin": {
     "shell": {

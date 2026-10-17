@@ -2568,7 +2568,10 @@
     "todReportReason_impersonation": "Suplantación",
     "todReportReason_copyright": "Derechos de autor",
     "todReportReason_other": "Otro",
-    "configurationHoursOvernight": "Cierra al día siguiente"
+    "configurationHoursOvernight": "Cierra al día siguiente",
+    "configurationSaveNoPermission": "No tienes permiso para guardar este cambio. Si crees que es un error, contáctanos.",
+    "configurationSaveOffline": "Sin conexión. Reintenta.",
+    "configurationSaveFailed": "No pudimos guardar los cambios. Inténtalo de nuevo."
   },
   "superAdmin": {
     "shell": {
