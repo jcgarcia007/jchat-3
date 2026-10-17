@@ -2673,8 +2673,8 @@
       "noApproverOnRecord": "Sin aprobador registrado",
       "notVerified": "No verificado",
       "stripeConnectedLabel": "Stripe conectado",
-      "stepIdentityLabel": "Identidad",
-      "stepSelfieLabel": "Selfie",
+      "stepIdentityLabel": "Identidad (heredado)",
+      "stepSelfieLabel": "Selfie (heredado)",
       "stepSmsLabel": "SMS (heredado)",
       "approveButton": "Aprobar",
       "revokeButton": "Revocar",
@@ -3489,12 +3489,15 @@
     "signOut": "Cerrar sesión"
   },
   "businessVerify": {
-    "intro": "Completa los dos pasos y un administrador revisará tu negocio. Cuando lo apruebe, quedas verificado en JChat y puedes activar los pagos.",
-    "sendForReview": "Enviar a revisión",
-    "doneTitle": "Listo",
-    "doneSubtitle": "Tu información ya está con nosotros",
-    "doneMessage": "Recibimos tu información. Un administrador revisará tu negocio en menos de 24 h; te avisaremos por correo.",
-    "goToDashboard": "Ir al panel"
+    "pageTitle": "Verifica tu negocio",
+    "loading": "Cargando",
+    "reviewMessage": "Recibimos tu negocio. Un administrador lo revisará en menos de 24 h; te avisaremos por correo. Mientras tanto ya puedes preparar tu menú y tu local.",
+    "verifiedTitle": "Tu negocio ya está verificado",
+    "goToDashboard": "Ir a mi dashboard",
+    "noBusiness": "No hay ningún negocio seleccionado para verificar.",
+    "registerFirst": "Primero registra tu negocio →",
+    "questions": "¿Dudas sobre la verificación?",
+    "contactSupport": "Escríbenos a soporte"
   },
   "businessRegister": {
     "profileMissing": "No encontramos tu perfil. Cierra sesión e inicia sesión de nuevo, o contacta a soporte.",

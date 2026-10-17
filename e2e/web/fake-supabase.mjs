@@ -12,6 +12,7 @@ import { createServer } from 'node:http';
 const PORT = Number(process.argv[2] ?? 4180);
 const USER_ID = '00000000-0000-4000-8000-0000000000a1';
 const BUSINESS_ID = '00000000-0000-4000-8000-0000000000b1';
+const PENDING_BUSINESS_ID = '00000000-0000-4000-8000-0000000000b2'; // /business/verify?id=… shows the "in review" view for this one
 const attempts = [];
 
 const USER = {
@@ -86,7 +87,7 @@ createServer((req, res) => {
   if (req.method === 'GET' || req.method === 'HEAD') {
     const row =
       table === 'users' ? { id: USER_ID, active_business_id: null, age_confirmed_at: '2000-01-01T00:00:00Z', plan: 'business', plan_status: 'active', plan_trial_end: null }
-      : table === 'businesses' ? BUSINESS
+      : table === 'businesses' ? (url.search.includes(PENDING_BUSINESS_ID) ? { ...BUSINESS, id: PENDING_BUSINESS_ID, status: 'pending_verification', is_verified: false } : BUSINESS)
       : null;
     if (wantsObject) return row ? send(res, 200, row) : send(res, 406, { code: 'PGRST116', message: 'no rows', details: '0 rows', hint: null });
     return send(res, 200, row ? [row] : []);

@@ -21,7 +21,3 @@ test('the page no longer writes business_verifications from the browser (identit
   assert.doesNotMatch(page, /from\("business_verifications"\)\s*\.(update|insert|upsert)/);
   assert.doesNotMatch(page, /identity_status:\s*"approved"/);
 });
-
-test('the only way out of step 1 is a server-confirmed approval', () => {
-  assert.match(page, /isApproved && \(\s*<button type="button" onClick=\{onComplete\}/);
-});

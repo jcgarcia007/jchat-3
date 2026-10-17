@@ -326,12 +326,15 @@ function BusinessRow({
 
       {/* Owner steps */}
       <div style={{ flex: "1 1 160px", display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <StepChip
-          label={t("verification.stepIdentityLabel")}
-          ok={row.identity_status === "approved"}
-          note={row.identity_status ? (identityStatusLabels[row.identity_status] ?? row.identity_status) : "—"}
-        />
-        <StepChip label={t("verification.stepSelfieLabel")} ok={row.selfie_submitted} />
+        {/* The owner steps (identity, selfie, SMS) left v1 (2026-10-17): chips only for legacy rows that did them. */}
+        {row.identity_status ? (
+          <StepChip
+            label={t("verification.stepIdentityLabel")}
+            ok={row.identity_status === "approved"}
+            note={identityStatusLabels[row.identity_status] ?? row.identity_status}
+          />
+        ) : null}
+        {row.selfie_submitted ? <StepChip label={t("verification.stepSelfieLabel")} ok /> : null}
         {/* The SMS step left v1 (2026-10-17): shown only for legacy rows that did complete it. */}
         {row.sms_verified ? <StepChip label={t("verification.stepSmsLabel")} ok /> : null}
       </div>

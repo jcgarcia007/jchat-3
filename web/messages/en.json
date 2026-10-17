@@ -2673,8 +2673,8 @@
       "noApproverOnRecord": "No approver on record",
       "notVerified": "Not verified",
       "stripeConnectedLabel": "Stripe connected",
-      "stepIdentityLabel": "Identity",
-      "stepSelfieLabel": "Selfie",
+      "stepIdentityLabel": "Identity (legacy)",
+      "stepSelfieLabel": "Selfie (legacy)",
       "stepSmsLabel": "SMS (legacy)",
       "approveButton": "Approve",
       "revokeButton": "Revoke",
@@ -3489,12 +3489,15 @@
     "signOut": "Sign out"
   },
   "businessVerify": {
-    "intro": "Complete both steps and an administrator will review your business. Once it is approved you are verified on JChat and can enable payments.",
-    "sendForReview": "Send for review",
-    "doneTitle": "All done",
-    "doneSubtitle": "Your information is in",
-    "doneMessage": "We received your information. An administrator will review your business in less than 24 hours; we will let you know by email.",
-    "goToDashboard": "Go to the dashboard"
+    "pageTitle": "Verify your business",
+    "loading": "Loading",
+    "reviewMessage": "We received your business. An administrator will review it within 24 hours; we'll let you know by email. In the meantime you can start setting up your menu and your venue.",
+    "verifiedTitle": "Your business is already verified",
+    "goToDashboard": "Go to my dashboard",
+    "noBusiness": "No business selected for verification.",
+    "registerFirst": "Register your business first →",
+    "questions": "Questions about verification?",
+    "contactSupport": "Contact support"
   },
   "businessRegister": {
     "profileMissing": "We couldn't find your profile. Sign out and sign in again, or contact support.",
