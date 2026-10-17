@@ -18,6 +18,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { isOvernight } from "@/lib/businessHours";
 import { useTranslations } from "next-intl";
 import {
   IconBuilding,
@@ -1478,6 +1479,11 @@ export default function ConfigurationPage() {
                 >
                   <IconCopy size={14} />
                 </button>
+                {isOvernight(d) && (
+                  <p style={{ flexBasis: "100%", margin: 0, fontSize: "12px", color: "var(--db-text-tertiary)" }}>
+                    {t("configurationHoursOvernight")}
+                  </p>
+                )}
               </div>
             );
           })}

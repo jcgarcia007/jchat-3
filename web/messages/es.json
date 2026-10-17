@@ -2567,7 +2567,8 @@
     "todReportReason_child_safety": "Seguridad de menores",
     "todReportReason_impersonation": "Suplantación",
     "todReportReason_copyright": "Derechos de autor",
-    "todReportReason_other": "Otro"
+    "todReportReason_other": "Otro",
+    "configurationHoursOvernight": "Cierra al día siguiente"
   },
   "superAdmin": {
     "shell": {
@@ -3499,7 +3500,10 @@
     "located": "Ubicación encontrada a partir de tu dirección. Revisa las coordenadas y pulsa Continuar.",
     "geocodeFailed": "No pudimos encontrar esa dirección en el mapa. Revísala o escribe la latitud y la longitud abajo.",
     "geocodeUnavailable": "La ubicación automática no está disponible ahora. Escribe la latitud y la longitud abajo.",
-    "coordsRequired": "La ubicación es obligatoria: así confirmamos que las personas están en tu local. Escribe la dirección, o la latitud y la longitud."
+    "coordsRequired": "La ubicación es obligatoria: así confirmamos que las personas están en tu local. Escribe la dirección, o la latitud y la longitud.",
+    "hoursCopyToAll": "Copiar a todos los días",
+    "hoursOpen24h": "Abierto 24 h",
+    "hoursOvernight": "Cierra al día siguiente"
   },
   "authErrors": {
     "generic": "Algo salió mal. Inténtalo de nuevo.",

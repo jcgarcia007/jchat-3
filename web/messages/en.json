@@ -2567,7 +2567,8 @@
     "todReportReason_child_safety": "Child safety",
     "todReportReason_impersonation": "Impersonation",
     "todReportReason_copyright": "Copyright",
-    "todReportReason_other": "Other"
+    "todReportReason_other": "Other",
+    "configurationHoursOvernight": "Closes the next day"
   },
   "superAdmin": {
     "shell": {
@@ -3499,7 +3500,10 @@
     "located": "Location found from your address. Check the coordinates and press Continue.",
     "geocodeFailed": "We couldn't find that address on the map. Check it, or type the latitude and longitude below.",
     "geocodeUnavailable": "Automatic location isn't available right now. Type the latitude and longitude below.",
-    "coordsRequired": "A location is required: it is how we confirm people are at your venue. Enter the address, or the latitude and longitude."
+    "coordsRequired": "A location is required: it is how we confirm people are at your venue. Enter the address, or the latitude and longitude.",
+    "hoursCopyToAll": "Copy to all days",
+    "hoursOpen24h": "Open 24 h",
+    "hoursOvernight": "Closes the next day"
   },
   "authErrors": {
     "generic": "Something went wrong. Please try again.",

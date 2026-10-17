@@ -11,6 +11,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { copyHoursToAll, isOpen24h, isOvernight, setOpen24h } from "@/lib/businessHours";
 import {
   IconBuilding,
   IconCalendarEvent,
@@ -672,6 +673,17 @@ function StepHours({
     });
   }
 
+  const tr = useTranslations("businessRegister");
+  // The times a day had before "Open 24 h" was ticked, so unticking gives them back.
+  const before24h = useRef<Partial<Record<DayKey, { open: string; close: string }>>>({});
+  const DEFAULT_TIMES = { open: "09:00", close: "21:00" };
+
+  function toggle24h(key: DayKey, on: boolean) {
+    const day = data.hours[key];
+    if (on && !isOpen24h(day)) before24h.current[key] = { open: day.open, close: day.close };
+    updateDay(key, setOpen24h(day, on, before24h.current[key] ?? null, DEFAULT_TIMES));
+  }
+
   function toggleAll(closed: boolean) {
     const next = { ...data.hours };
     (Object.keys(next) as DayKey[]).forEach((k) => {
@@ -728,6 +740,13 @@ function StepHours({
           >
             Clear all
           </button>
+          <button
+            type="button"
+            onClick={() => onChange({ hours: copyHoursToAll(data.hours, DAYS.map((d) => d.key)) })}
+            style={{ fontSize: "12px", color: "var(--color-brand)", background: "none", border: "none", cursor: "pointer", padding: 0, marginLeft: "auto" }}
+          >
+            {tr("hoursCopyToAll")}
+          </button>
         </div>
       </div>
 
@@ -741,6 +760,7 @@ function StepHours({
               style={{
                 display: "flex",
                 alignItems: "center",
+                flexWrap: "wrap",
                 gap: "10px",
                 padding: "10px 0",
                 borderBottom: "1px solid var(--border-subtle)",
@@ -784,12 +804,35 @@ function StepHours({
                 Closed
               </label>
 
+              {/* Open 24 h */}
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "5px",
+                  fontSize: "12px",
+                  color: "var(--text-secondary)",
+                  cursor: day.closed ? "default" : "pointer",
+                  userSelect: "none",
+                  flexShrink: 0,
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={isOpen24h(day)}
+                  disabled={day.closed}
+                  onChange={(e) => toggle24h(d.key, e.target.checked)}
+                  style={{ accentColor: "var(--color-brand)" }}
+                />
+                {tr("hoursOpen24h")}
+              </label>
+
               {/* Time inputs */}
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: "1 1 220px" }}>
                 <input
                   type="time"
                   value={day.open}
-                  disabled={day.closed}
+                  disabled={day.closed || isOpen24h(day)}
                   onChange={(e) => updateDay(d.key, { open: e.target.value })}
                   style={{
                     ...S.input,
@@ -806,7 +849,7 @@ function StepHours({
                 <input
                   type="time"
                   value={day.close}
-                  disabled={day.closed}
+                  disabled={day.closed || isOpen24h(day)}
                   onChange={(e) => updateDay(d.key, { close: e.target.value })}
                   style={{
                     ...S.input,
@@ -818,6 +861,11 @@ function StepHours({
                   }}
                 />
               </div>
+              {isOvernight(day) && (
+                <p style={{ flexBasis: "100%", margin: 0, fontSize: "12px", color: "var(--text-tertiary)" }}>
+                  {tr("hoursOvernight")}
+                </p>
+              )}
             </div>
           );
         })}
