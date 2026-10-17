@@ -118,9 +118,10 @@ export function ReportReasonSheet({ visible, targetName, contentType, contentId,
                 {t('report.successMessage')}
               </Text>
               <Pressable
+                testID="report-sent-close"
                 accessibilityRole="button"
                 onPress={onClose}
-                style={[styles.primary, { backgroundColor: colors.brandFill }]}
+                style={[styles.primary, styles.sentClose, { backgroundColor: colors.brandFill }]}
               >
                 <Text style={[styles.primaryLabel, { color: palette.onBrand }]}>{t('actions.close')}</Text>
               </Pressable>
@@ -251,5 +252,7 @@ const styles = StyleSheet.create({
   cancel: { alignItems: 'center', justifyContent: 'center', minHeight: 48 },
   cancelLabel: { fontSize: 16, fontWeight: '600' },
   sent: { alignItems: 'center', gap: 6, paddingVertical: 12 },
+  // The sent view centres its children, which shrank this button to its text: full width like every other primary button.
+  sentClose: { alignSelf: 'stretch', paddingHorizontal: 16 },
   sentIcon: { alignItems: 'center', borderRadius: 28, height: 56, justifyContent: 'center', marginBottom: 6, width: 56 },
 });
