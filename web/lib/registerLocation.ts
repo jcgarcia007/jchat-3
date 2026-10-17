@@ -59,6 +59,19 @@ export function needsGeocode(state: CoordState, address: string): boolean {
   return state.source === 'auto' && state.geocodedFor !== normalizeAddress(address);
 }
 
+/** An address shorter than this is still being typed (or is not an address): the blur does not geocode it. */
+export const MIN_BLUR_ADDRESS_LENGTH = 8;
+
+/**
+ * Whether leaving the address field should geocode it now (silently, ahead of "Continue"): the same condition as Continue
+ * (needsGeocode) plus a minimum length, and never while another geocoding is running.
+ */
+export function shouldGeocodeOnBlur(input: { address: string; state: CoordState; busy: boolean }): boolean {
+  if (input.busy) return false;
+  if (input.address.trim().length < MIN_BLUR_ADDRESS_LENGTH) return false;
+  return needsGeocode(input.state, input.address);
+}
+
 export type GeocodeOutcome =
   | { ok: true; coords: Coords }
   | { ok: false; reason: 'empty_address' | 'unavailable' | 'no_results' | 'error' };

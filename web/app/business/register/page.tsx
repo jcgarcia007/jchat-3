@@ -8,7 +8,7 @@
  *            → redirects to /business/verify
  */
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
@@ -38,7 +38,9 @@ import {
   geocodeAddress,
   needsGeocode,
   normalizeAddress,
+  shouldGeocodeOnBlur,
   type CoordSource,
+  type GeocodeOutcome,
   type GeocoderLike,
 } from "@/lib/registerLocation";
 
@@ -498,6 +500,7 @@ function StepLocation({
   onChange,
   errors,
   onManualCoords,
+  onAddressBlur,
   geocoding,
   located,
 }: {
@@ -506,6 +509,8 @@ function StepLocation({
   errors: Record<string, string>;
   /** The owner typed a coordinate: it is theirs from now on (the geocoder never replaces it). */
   onManualCoords: () => void;
+  /** The address field lost focus: the wizard may geocode it ahead of "Continue" (silently). */
+  onAddressBlur: () => void;
   geocoding: boolean;
   /** The coordinates in the boxes were just found from the address. */
   located: boolean;
@@ -543,6 +548,7 @@ function StepLocation({
           style={{ ...S.input, ...(errors.address ? S.inputError : {}) }}
           value={data.address}
           onChange={(e) => onChange({ address: e.target.value })}
+          onBlur={onAddressBlur}
           placeholder="123 Main St, City, State, ZIP"
         />
         {errors.address && (
@@ -1197,6 +1203,41 @@ function BusinessRegisterWizard() {
     setData((prev) => ({ ...prev, ...update }));
   }
 
+  // The ONE place that geocodes (Continue and the address blur both come here): never two at once. A request for the address that
+  // is already being resolved shares that answer; a request for another address waits for the running one first.
+  const inflight = useRef<{ key: string; job: Promise<GeocodeOutcome> } | null>(null);
+  async function geocodeNow(address: string): Promise<GeocodeOutcome> {
+    const key = normalizeAddress(address);
+    while (inflight.current) {
+      if (inflight.current.key === key) return inflight.current.job;
+      await inflight.current.job;
+    }
+    setLocated(false);
+    setGeocoding(true);
+    const job = geocodeAddress(geocoder, address).then((outcome) => {
+      if (outcome.ok) {
+        patch({ lat: String(outcome.coords.lat), lng: String(outcome.coords.lng) });
+        setCoordSource("auto");
+        setGeocodedFor(key);
+        setLocated(true);
+      }
+      return outcome;
+    });
+    inflight.current = { key, job };
+    try {
+      return await job;
+    } finally {
+      inflight.current = null;
+      setGeocoding(false);
+    }
+  }
+
+  /** Leaving the address field: find the coordinates ahead of time. Silent: a failure here shows nothing (only Continue does). */
+  function handleAddressBlur() {
+    if (!shouldGeocodeOnBlur({ address: data.address, state: { lat: data.lat, lng: data.lng, source: coordSource, geocodedFor }, busy: inflight.current !== null })) return;
+    void geocodeNow(data.address);
+  }
+
   async function handleNext() {
     const errs = validateStep(currentStep.key, data, isEventMode);
     if (Object.keys(errs).length > 0) {
@@ -1205,10 +1246,7 @@ function BusinessRegisterWizard() {
     }
     // Location: coordinates are required (without them the venue has no geofence and the server refuses everyone at the door).
     if (currentStep.key === "location" && needsGeocode({ lat: data.lat, lng: data.lng, source: coordSource, geocodedFor }, data.address)) {
-      setLocated(false);
-      setGeocoding(true);
-      const outcome = await geocodeAddress(geocoder, data.address);
-      setGeocoding(false);
+      const outcome = await geocodeNow(data.address);
       if (!outcome.ok) {
         setErrors({
           lat:
@@ -1220,10 +1258,6 @@ function BusinessRegisterWizard() {
         });
         return;
       }
-      patch({ lat: String(outcome.coords.lat), lng: String(outcome.coords.lng) });
-      setCoordSource("auto");
-      setGeocodedFor(normalizeAddress(data.address));
-      setLocated(true);
       setErrors({}); // stay on the step: the owner sees the coordinates found and presses Continue again
       return;
     }
@@ -1527,6 +1561,7 @@ function BusinessRegisterWizard() {
               }}
               errors={errors}
               onManualCoords={() => setCoordSource("manual")}
+              onAddressBlur={handleAddressBlur}
               geocoding={geocoding}
               located={located}
             />

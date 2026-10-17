@@ -12,7 +12,7 @@ import ts from 'typescript';
 const dir = mkdtempSync(join(tmpdir(), 'register-location-'));
 const out = join(dir, 'registerLocation.mjs');
 writeFileSync(out, ts.transpileModule(readFileSync(new URL('../lib/registerLocation.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 } }).outputText);
-const { parseCoordinate, coordsFrom, normalizeAddress, needsGeocode, geocodeAddress } = await import(pathToFileURL(out).href);
+const { parseCoordinate, coordsFrom, normalizeAddress, needsGeocode, geocodeAddress, shouldGeocodeOnBlur, MIN_BLUR_ADDRESS_LENGTH } = await import(pathToFileURL(out).href);
 
 /** A geocoder that answers once with (results, status). */
 const geocoderReturning = (results, status, seen = []) => ({
@@ -66,4 +66,23 @@ test('geocodeAddress: every failure is a reason, never a throw', async () => {
   assert.deepEqual(await geocodeAddress(geocoderReturning([], 'OK'), 'x'), { ok: false, reason: 'error' }, 'OK with no result');
   assert.deepEqual(await geocodeAddress(geocoderReturning(place(0, 0), 'OK'), 'x'), { ok: false, reason: 'error' }, '(0,0) is not an answer');
   assert.deepEqual(await geocodeAddress({ geocode() { throw new Error('boom'); } }, 'x'), { ok: false, reason: 'error' });
+});
+
+test('shouldGeocodeOnBlur: needs an address of 8+ characters, not busy, and the same condition as Continue', () => {
+  assert.equal(MIN_BLUR_ADDRESS_LENGTH, 8);
+  const empty = { lat: '', lng: '', source: null, geocodedFor: '' };
+  const addr = '6511 Nova Dr, Davie, FL';
+  assert.equal(shouldGeocodeOnBlur({ address: addr, state: empty, busy: false }), true);
+  // too short: still typing / not an address
+  assert.equal(shouldGeocodeOnBlur({ address: '6511 Nov', state: empty, busy: false }), true, 'exactly 8 characters');
+  assert.equal(shouldGeocodeOnBlur({ address: '6511 No', state: empty, busy: false }), false, '7 characters');
+  assert.equal(shouldGeocodeOnBlur({ address: '   123   ', state: empty, busy: false }), false, 'spaces do not count');
+  assert.equal(shouldGeocodeOnBlur({ address: '', state: empty, busy: false }), false);
+  // never two at once
+  assert.equal(shouldGeocodeOnBlur({ address: addr, state: empty, busy: true }), false);
+  // coordinates the owner typed are never replaced; auto coordinates for the same address are not searched again
+  assert.equal(shouldGeocodeOnBlur({ address: addr, state: { lat: '26.08', lng: '-80.23', source: 'manual', geocodedFor: '' }, busy: false }), false);
+  const auto = { lat: '26.08', lng: '-80.23', source: 'auto', geocodedFor: normalizeAddress(addr) };
+  assert.equal(shouldGeocodeOnBlur({ address: `  ${addr.toUpperCase()} `, state: auto, busy: false }), false, 'same address');
+  assert.equal(shouldGeocodeOnBlur({ address: '700 Main St, Davie, FL', state: auto, busy: false }), true, 'the address changed');
 });
