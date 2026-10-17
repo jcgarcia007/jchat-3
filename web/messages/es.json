@@ -3485,7 +3485,13 @@
     "signOut": "Cerrar sesión"
   },
   "businessRegister": {
-    "profileMissing": "No encontramos tu perfil. Cierra sesión e inicia sesión de nuevo, o contacta a soporte."
+    "profileMissing": "No encontramos tu perfil. Cierra sesión e inicia sesión de nuevo, o contacta a soporte.",
+    "locationNote": "Encontramos tu ubicación a partir de la dirección al pulsar Continuar, para que solo entre al chat quien está en tu local. También puedes escribir o corregir la latitud y la longitud.",
+    "locating": "Buscando tu dirección en el mapa…",
+    "located": "Ubicación encontrada a partir de tu dirección. Revisa las coordenadas y pulsa Continuar.",
+    "geocodeFailed": "No pudimos encontrar esa dirección en el mapa. Revísala o escribe la latitud y la longitud abajo.",
+    "geocodeUnavailable": "La ubicación automática no está disponible ahora. Escribe la latitud y la longitud abajo.",
+    "coordsRequired": "La ubicación es obligatoria: así confirmamos que las personas están en tu local. Escribe la dirección, o la latitud y la longitud."
   },
   "authErrors": {
     "generic": "Algo salió mal. Inténtalo de nuevo.",
