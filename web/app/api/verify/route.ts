@@ -1,6 +1,6 @@
 /**
  * JChat 3.0 — Business Verification API Route (Task 2.2)
- * Server-side handler for all 3 verification steps.
+ * Server-side handler for the verification steps (identity, daily code + selfie; an admin approves afterwards).
  * Uses supabaseAdmin (service role) — never imported in client components.
  *
  * POST /api/verify
@@ -10,8 +10,7 @@
  *   "identity_status"  → Step 1: poll identity_status from business_verifications
  *   "generate_code"    → Step 2: upsert daily_code + code_date; return the code
  *   "submit_selfie"    → Step 2: store selfie_url (stub)
- *   "send_sms"         → Step 3: generate sms_code, store + sms_expires_at
- *   "verify_sms"       → Step 3: check submitted code against DB; if ok set verified
+ *   "send_sms" / "verify_sms" → REMOVED from v1 (2026-10-17): answer 410 { error: "sms_verification_removed" }
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -21,10 +20,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Generate a random uppercase alphanumeric string of `len` characters. */
-function randomCode(len: number, numeric = false): string {
-  const chars = numeric
-    ? "0123456789"
-    : "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no ambiguous chars (0/O/1/I)
+function randomCode(len: number): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no ambiguous chars (0/O/1/I)
   let result = "";
   for (let i = 0; i < len; i++) {
     result += chars[Math.floor(Math.random() * chars.length)];
@@ -36,17 +33,6 @@ function randomCode(len: number, numeric = false): string {
 function todayUTC(): string {
   return new Date().toISOString().slice(0, 10);
 }
-
-/**
- * Kill-switch (FIX #1d): the SMS step is a stub — Twilio is not wired up. Until the
- * three TWILIO_* secrets exist, send_sms/verify_sms return 503 instead of simulating
- * a verification the app can't actually perform.
- */
-const isTwilioConfigured = !!(
-  process.env.TWILIO_ACCOUNT_SID &&
-  process.env.TWILIO_AUTH_TOKEN &&
-  process.env.TWILIO_PHONE_NUMBER
-);
 
 /**
  * Auth gate (P0-3): assert the caller owns `businessId` (or is a platform admin).
@@ -232,110 +218,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ ok: true });
     }
 
-    // ── Step 3a: Send SMS verification code ───────────────────────────────────
-    case "send_sms": {
-      // Kill-switch (FIX #1d): no Twilio → don't simulate a verification.
-      if (!isTwilioConfigured) {
-        return NextResponse.json(
-          { error: "Verification flow not available yet." },
-          { status: 503 }
-        );
-      }
-
-      const sms_code = randomCode(6, true); // 6-digit numeric
-      const sms_expires_at = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // now + 10 min
-
-      const { error } = await supabaseAdmin
-        .from("business_verifications")
-        .upsert(
-          { business_id, sms_code, sms_expires_at, sms_verified: false },
-          { onConflict: "business_id" }
-        );
-
-      if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
-      }
-
-      /*
-       * TODO(Twilio): send the actual SMS here.
-       * const phone = await getBusinessPhone(business_id);
-       * await twilioClient.messages.create({
-       *   body: `Your JChat verification code: ${sms_code}. Expires in 10 minutes.`,
-       *   from: process.env.TWILIO_PHONE_NUMBER,
-       *   to: phone,
-       * });
-       */
-
-      // The code is NEVER returned to the client — it is a verification secret and is
-      // delivered only via SMS (once Twilio is wired up above).
-      return NextResponse.json({
-        ok: true,
-        expires_at: sms_expires_at,
-      });
-    }
-
-    // ── Step 3b: Verify SMS code ──────────────────────────────────────────────
+    // ── The SMS step left v1 (decision 2026-10-17) ─────────────────────────────
+    // Kept in the switch on purpose: an old client that still sends these actions gets a clear 410 Gone instead of a generic
+    // 400 "Unknown action". business_verifications.sms_* columns stay as they are (no migration); an admin still approves the
+    // business from /super-admin/verification — this route never flips businesses.status to 'verified'.
+    case "send_sms":
     case "verify_sms": {
-      // Kill-switch (FIX #1d): no Twilio → the SMS step doesn't exist yet.
-      if (!isTwilioConfigured) {
-        return NextResponse.json(
-          { error: "Verification flow not available yet." },
-          { status: 503 }
-        );
-      }
-
-      const submitted_code = body.code;
-      if (typeof submitted_code !== "string" || !submitted_code.trim()) {
-        return NextResponse.json({ error: "code is required." }, { status: 400 });
-      }
-
-      const { data: bv, error: fetchErr } = await supabaseAdmin
-        .from("business_verifications")
-        .select("sms_code, sms_expires_at, sms_verified")
-        .eq("business_id", business_id)
-        .maybeSingle();
-
-      if (fetchErr) {
-        return NextResponse.json({ error: fetchErr.message }, { status: 500 });
-      }
-      if (!bv || !bv.sms_code) {
-        return NextResponse.json({ error: "No code found. Request a new one." }, { status: 400 });
-      }
-      if (bv.sms_verified) {
-        return NextResponse.json({ ok: true, already_verified: true });
-      }
-
-      // Expiry check
-      const expiresAt = new Date(bv.sms_expires_at as string).getTime();
-      if (Date.now() > expiresAt) {
-        return NextResponse.json(
-          { error: "Code expired. Please request a new code." },
-          { status: 400 }
-        );
-      }
-
-      // Code match check
-      if (submitted_code.trim() !== (bv.sms_code as string)) {
-        return NextResponse.json({ error: "Incorrect code. Please try again." }, { status: 400 });
-      }
-
-      // Mark ONLY the SMS step as verified. This route must NOT flip
-      // businesses.status to 'verified' — that flag enables Stripe payments and
-      // must never be settable by the business owner (FIX #1c). The subject of a
-      // verification cannot self-approve it.
-      //
-      // TODO: the flip to businesses.status='verified' is performed exclusively by
-      //   (a) a super_admin action, or (b) a real Stripe Identity webhook — never here.
-      const { error: smsUpdateErr } = await supabaseAdmin
-        .from("business_verifications")
-        .update({ sms_verified: true })
-        .eq("business_id", business_id);
-
-      if (smsUpdateErr) {
-        return NextResponse.json({ error: smsUpdateErr.message }, { status: 500 });
-      }
-
-      return NextResponse.json({ ok: true, sms_verified: true });
+      return NextResponse.json({ error: "sms_verification_removed" }, { status: 410 });
     }
 
     default:

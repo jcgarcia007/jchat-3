@@ -332,7 +332,8 @@ function BusinessRow({
           note={row.identity_status ? (identityStatusLabels[row.identity_status] ?? row.identity_status) : "—"}
         />
         <StepChip label={t("verification.stepSelfieLabel")} ok={row.selfie_submitted} />
-        <StepChip label={t("verification.stepSmsLabel")} ok={!!row.sms_verified} />
+        {/* The SMS step left v1 (2026-10-17): shown only for legacy rows that did complete it. */}
+        {row.sms_verified ? <StepChip label={t("verification.stepSmsLabel")} ok /> : null}
       </div>
 
       {/* Actions */}

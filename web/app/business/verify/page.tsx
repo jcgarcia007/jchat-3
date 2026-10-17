@@ -2,21 +2,24 @@
 
 /**
  * JChat 3.0 — Business Verification Wizard (Task 2.2)
- * 3-step identity verification after business registration:
+ * 2-step identity verification after business registration, then a manual review:
  *   Step 1 — Stripe Identity (stub poll)
  *   Step 2 — Daily code + selfie for Super Admin review
- *   Step 3 — SMS one-time code
+ *   Then an administrator approves the business from /super-admin/verification.
+ *
+ * The SMS one-time-code step is NOT part of v1 (decision 2026-10-17): /api/verify answers 410 to send_sms / verify_sms.
  *
  * Status transitions (all via /api/verify):
  *   businesses.status: 'pending_verification'
  *     → (after Step 1 approved) 'pending'         — visible on map w/ Pending badge
- *     → (after Step 3 verified) 'verified'         — payments enabled
+ *     → (admin approval)        'verified'         — payments enabled (only an admin flips it)
  *
  * Demo mode: when Supabase is not configured, UI works end-to-end with stubs.
  */
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   IconShieldCheck,
   IconCheck,
@@ -24,9 +27,7 @@ import {
   IconAlertCircle,
   IconRefresh,
   IconPhoto,
-  IconMessageCircle,
   IconFingerprint,
-  IconLock,
   IconCircleCheck,
   IconChevronRight,
 } from "@tabler/icons-react";
@@ -122,7 +123,6 @@ const S = {
 const STEPS = [
   { number: 1, label: "Identity",  icon: IconFingerprint },
   { number: 2, label: "Code + Selfie", icon: IconPhoto },
-  { number: 3, label: "Phone SMS", icon: IconMessageCircle },
 ];
 
 function StepBar({ current, completed }: { current: number; completed: Set<number> }) {
@@ -423,6 +423,7 @@ function Step2CodeSelfie({
   businessId: string;
   onComplete: () => void;
 }) {
+  const tr = useTranslations("businessVerify");
   const [codeState, setCodeState] = useState<StepState>({ status: "idle", error: null });
   const [selfieState, setSelfieState] = useState<StepState>({ status: "idle", error: null });
   const [dailyCode, setDailyCode] = useState<string | null>(null);
@@ -492,7 +493,7 @@ function Step2CodeSelfie({
   const canContinue = codeReady && selfieSubmitted;
 
   // TEMPORARY testing escape hatch (same as Step 1): bypasses the daily-code +
-  // selfie review and advances to Step 3. Shown ALWAYS for now; opt-out with
+  // selfie review and finishes the steps. Shown ALWAYS for now; opt-out with
   // NEXT_PUBLIC_HIDE_TEST_SKIP="true".
   // REMOVE THIS (and the button below) BEFORE PUBLIC LAUNCH.
   const showTestSkip = process.env.NEXT_PUBLIC_HIDE_TEST_SKIP !== "true";
@@ -685,7 +686,7 @@ function Step2CodeSelfie({
       {canContinue && (
         <div style={{ marginTop: "20px" }}>
           <button type="button" onClick={onComplete} style={S.primaryBtn}>
-            Continue to Step 3
+            {tr("sendForReview")}
             <IconChevronRight size={15} />
           </button>
         </div>
@@ -708,327 +709,14 @@ function Step2CodeSelfie({
   );
 }
 
-// ─── Step 3 — SMS Verification ─────────────────────────────────────────────────
-
-function Step3SMS({
-  businessId,
-  onComplete,
-}: {
-  businessId: string;
-  onComplete: () => void;
-}) {
-  const [sendState, setSendState] = useState<StepState>({ status: "idle", error: null });
-  const [verifyState, setVerifyState] = useState<StepState>({ status: "idle", error: null });
-  const [codeSent, setCodeSent] = useState(false);
-  const [expiresAt, setExpiresAt] = useState<Date | null>(null);
-  const [devCode, setDevCode] = useState<string | null>(null); // shown in stub mode
-  const [inputCode, setInputCode] = useState("");
-  const [verified, setVerified] = useState(false);
-
-  // Countdown timer display
-  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
-  useEffect(() => {
-    if (!expiresAt) return;
-    const interval = setInterval(() => {
-      const diff = Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000));
-      setSecondsLeft(diff);
-      if (diff === 0) clearInterval(interval);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [expiresAt]);
-
-  async function handleSendSMS() {
-    setSendState({ status: "loading", error: null });
-    try {
-      if (!isSupabaseConfigured) {
-        // Demo stub
-        const fakeExpiry = new Date(Date.now() + 10 * 60 * 1000);
-        setExpiresAt(fakeExpiry);
-        setDevCode("123456");
-        setCodeSent(true);
-        setSendState({ status: "done", error: null });
-        return;
-      }
-      const res = await fetch("/api/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "send_sms", business_id: businessId }),
-      });
-      const json = (await res.json()) as {
-        ok?: boolean;
-        expires_at?: string;
-        __dev_code?: string;
-        error?: string;
-      };
-      if (!res.ok) throw new Error(json.error ?? "Failed to send SMS.");
-      setExpiresAt(json.expires_at ? new Date(json.expires_at) : null);
-      setDevCode(json.__dev_code ?? null); // TODO(Twilio): remove once SMS is live
-      setCodeSent(true);
-      setSendState({ status: "done", error: null });
-    } catch (err) {
-      setSendState({ status: "error", error: err instanceof Error ? err.message : "Unknown error." });
-    }
-  }
-
-  async function handleVerify() {
-    if (!inputCode.trim()) {
-      setVerifyState({ status: "error", error: "Please enter the 6-digit code." });
-      return;
-    }
-    setVerifyState({ status: "loading", error: null });
-    try {
-      if (!isSupabaseConfigured) {
-        // Demo stub: accept any code
-        setVerified(true);
-        setVerifyState({ status: "done", error: null });
-        return;
-      }
-      const res = await fetch("/api/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "verify_sms",
-          business_id: businessId,
-          code: inputCode.trim(),
-        }),
-      });
-      const json = (await res.json()) as { ok?: boolean; verified?: boolean; error?: string };
-      if (!res.ok) throw new Error(json.error ?? "Verification failed.");
-      setVerified(true);
-      setVerifyState({ status: "done", error: null });
-    } catch (err) {
-      setVerifyState({
-        status: "error",
-        error: err instanceof Error ? err.message : "Unknown error.",
-      });
-    }
-  }
-
-  const isExpired = secondsLeft === 0;
-  const minutesLeft = secondsLeft !== null ? Math.floor(secondsLeft / 60) : null;
-  const secsDisplay = secondsLeft !== null ? secondsLeft % 60 : null;
-
-  return (
-    <div>
-      {verified ? (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "32px 24px",
-            background: "color-mix(in srgb, var(--color-success) 10%, transparent)",
-            border: "1px solid var(--color-success)",
-            borderRadius: "12px",
-          }}
-        >
-          <IconCircleCheck size={48} color="var(--color-success)" style={{ marginBottom: "12px" }} />
-          <h3
-            style={{
-              fontSize: "18px",
-              fontWeight: 700,
-              color: "var(--color-success)",
-              margin: "0 0 8px",
-            }}
-          >
-            Phone Verified!
-          </h3>
-          <p style={{ fontSize: "14px", color: "var(--text-secondary)", margin: "0 0 20px" }}>
-            All 3 verification steps are complete. Your business is now verified and payments
-            are enabled.
-          </p>
-          <button type="button" onClick={onComplete} style={S.primaryBtn}>
-            <IconShieldCheck size={16} />
-            Complete Verification
-          </button>
-        </div>
-      ) : (
-        <>
-          <div style={S.infoBox}>
-            <p style={{ margin: "0 0 8px" }}>
-              We&apos;ll send a 6-digit code to the phone number on your business profile.
-              Enter it below to verify ownership.
-            </p>
-            {/*
-             * TODO(Twilio): wire up real SMS sending.
-             * 1. Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER to env
-             * 2. In /api/verify route, import twilio and send the message
-             * 3. Remove __dev_code from the API response
-             */}
-            <p style={{ fontSize: "12px", color: "var(--text-tertiary)", margin: 0 }}>
-              <em>Note: Twilio SMS integration is pending. The code is shown below in dev mode.</em>
-            </p>
-          </div>
-
-          {!codeSent ? (
-            <div style={{ marginTop: "16px" }}>
-              <button
-                type="button"
-                onClick={() => void handleSendSMS()}
-                disabled={sendState.status === "loading"}
-                style={{
-                  ...S.primaryBtn,
-                  opacity: sendState.status === "loading" ? 0.6 : 1,
-                  cursor: sendState.status === "loading" ? "wait" : "pointer",
-                }}
-              >
-                {sendState.status === "loading" ? (
-                  <IconLoader2 size={15} style={{ animation: "spin 1s linear infinite" }} />
-                ) : (
-                  <IconMessageCircle size={15} />
-                )}
-                {sendState.status === "loading" ? "Sending…" : "Send Verification Code"}
-              </button>
-              {sendState.status === "error" && sendState.error && (
-                <div style={S.errorBox}>
-                  <IconAlertCircle size={14} />
-                  {sendState.error}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div style={{ marginTop: "16px" }}>
-              {/* Dev code hint */}
-              {devCode && (
-                <div
-                  style={{
-                    ...S.infoBox,
-                    marginBottom: "14px",
-                    borderColor: "var(--color-warning)",
-                    background:
-                      "color-mix(in srgb, var(--color-warning) 8%, transparent)",
-                  }}
-                >
-                  <strong style={{ color: "var(--color-warning)" }}>Dev mode:</strong> SMS not
-                  sent (Twilio not configured). Your code is{" "}
-                  <span
-                    style={{
-                      fontFamily: "var(--font-mono, monospace)",
-                      fontWeight: 700,
-                      color: "var(--text-primary)",
-                      letterSpacing: "0.15em",
-                    }}
-                  >
-                    {devCode}
-                  </span>
-                </div>
-              )}
-
-              {/* Expiry countdown */}
-              {secondsLeft !== null && !isExpired && (
-                <p
-                  style={{
-                    fontSize: "12px",
-                    color: "var(--text-secondary)",
-                    marginBottom: "10px",
-                  }}
-                >
-                  Code expires in{" "}
-                  <strong style={{ color: "var(--text-primary)" }}>
-                    {minutesLeft}:{String(secsDisplay).padStart(2, "0")}
-                  </strong>
-                </p>
-              )}
-              {isExpired && (
-                <p
-                  style={{
-                    fontSize: "12px",
-                    color: "var(--color-danger)",
-                    marginBottom: "10px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px",
-                  }}
-                >
-                  <IconAlertCircle size={13} /> Code expired.{" "}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCodeSent(false);
-                      setInputCode("");
-                      setSendState({ status: "idle", error: null });
-                      setVerifyState({ status: "idle", error: null });
-                    }}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      color: "var(--color-brand)",
-                      cursor: "pointer",
-                      padding: 0,
-                      fontSize: "12px",
-                    }}
-                  >
-                    Request a new code
-                  </button>
-                </p>
-              )}
-
-              {/* Code input + verify button */}
-              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                <input
-                  style={{
-                    ...S.input,
-                    flex: 1,
-                    minWidth: "160px",
-                    fontFamily: "var(--font-mono, monospace)",
-                    fontSize: "20px",
-                    letterSpacing: "0.2em",
-                    textAlign: "center",
-                    ...(verifyState.status === "error" ? S.inputError : {}),
-                  }}
-                  value={inputCode}
-                  onChange={(e) => setInputCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  placeholder="000000"
-                  maxLength={6}
-                  inputMode="numeric"
-                  disabled={verifyState.status === "loading" || isExpired}
-                />
-                <button
-                  type="button"
-                  onClick={() => void handleVerify()}
-                  disabled={
-                    verifyState.status === "loading" ||
-                    inputCode.length < 6 ||
-                    isExpired
-                  }
-                  style={{
-                    ...S.primaryBtn,
-                    opacity:
-                      verifyState.status === "loading" ||
-                      inputCode.length < 6 ||
-                      isExpired
-                        ? 0.6
-                        : 1,
-                    cursor:
-                      verifyState.status === "loading" ? "wait" : "pointer",
-                  }}
-                >
-                  {verifyState.status === "loading" ? (
-                    <IconLoader2 size={14} style={{ animation: "spin 1s linear infinite" }} />
-                  ) : (
-                    <IconLock size={14} />
-                  )}
-                  {verifyState.status === "loading" ? "Verifying…" : "Verify"}
-                </button>
-              </div>
-
-              {verifyState.status === "error" && verifyState.error && (
-                <div style={S.errorBox}>
-                  <IconAlertCircle size={14} />
-                  {verifyState.error}
-                </div>
-              )}
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
 // ─── Main page ─────────────────────────────────────────────────────────────────
 
 export default function BusinessVerifyPage() {
   const router = useRouter();
+  const tr = useTranslations("businessVerify");
   const [currentStep, setCurrentStep] = useState(1);
+  // Both steps done: nothing left for the owner, an administrator reviews the business.
+  const [submitted, setSubmitted] = useState(false);
   const [completed, setCompleted] = useState<Set<number>>(new Set());
   const [businessId, setBusinessId] = useState<string>("");
 
@@ -1047,19 +735,19 @@ export default function BusinessVerifyPage() {
       void (async () => {
         const { data } = await supabase
           .from("business_verifications")
-          .select("identity_status, sms_verified, daily_code")
+          .select("identity_status, daily_code")
           .eq("business_id", id)
           .maybeSingle();
         if (!data) return;
         const done = new Set<number>();
         if ((data.identity_status as string) === "approved") done.add(1);
         if (data.daily_code) done.add(2);
-        if (data.sms_verified) done.add(3);
         if (done.size > 0) {
           setCompleted(done);
-          // Jump to the first incomplete step
-          const next = [1, 2, 3].find((s) => !done.has(s));
+          // Jump to the first incomplete step; with both done the owner only waits for the review.
+          const next = [1, 2].find((s) => !done.has(s));
           if (next) setCurrentStep(next);
+          else setSubmitted(true);
         }
       })();
     }
@@ -1071,23 +759,21 @@ export default function BusinessVerifyPage() {
       next.add(step);
       return next;
     });
-    if (step < 3) {
+    if (step < 2) {
       setCurrentStep(step + 1);
     } else {
-      // All steps done — redirect to the business dashboard.
-      router.push("/dashboard");
+      // Step 2 is the last one: the owner has nothing else to do, an administrator reviews the business.
+      setSubmitted(true);
     }
   }
 
   const stepTitles: Record<number, string> = {
     1: "Stripe Identity Verification",
     2: "Daily Code + Selfie",
-    3: "SMS Phone Verification",
   };
   const stepSubtitles: Record<number, string> = {
     1: "Confirm you are the authorized business owner",
     2: "Show your code to a Super Admin and submit a selfie",
-    3: "Verify your registered business phone number",
   };
 
   return (
@@ -1135,7 +821,7 @@ export default function BusinessVerifyPage() {
               Verify your business
             </h1>
             <p style={{ fontSize: "14px", color: "var(--text-secondary)", margin: 0 }}>
-              Complete all 3 steps to get verified on JChat and enable payments.
+              {tr("intro")}
             </p>
           </div>
 
@@ -1159,11 +845,27 @@ export default function BusinessVerifyPage() {
                 margin: "0 0 4px",
               }}
             >
-              Step {currentStep} — {stepTitles[currentStep]}
+              {submitted ? tr("doneTitle") : `Step ${currentStep} — ${stepTitles[currentStep]}`}
             </h2>
             <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: "0 0 20px" }}>
-              {stepSubtitles[currentStep]}
+              {submitted ? tr("doneSubtitle") : stepSubtitles[currentStep]}
             </p>
+
+            {/* Both steps done: the final screen (no more steps; an admin approves from the super-admin panel). */}
+            {submitted && businessId && (
+              <div style={{ textAlign: "center", padding: "8px 0 4px" }}>
+                <div style={{ display: "flex", justifyContent: "center" }}>
+                  <IconCircleCheck size={44} color="var(--color-success)" />
+                </div>
+                <p style={{ fontSize: "14px", color: "var(--text-primary)", lineHeight: 1.6, margin: "12px 0 20px" }}>
+                  {tr("doneMessage")}
+                </p>
+                <button type="button" onClick={() => router.push("/dashboard")} style={S.primaryBtn}>
+                  {tr("goToDashboard")}
+                  <IconChevronRight size={15} />
+                </button>
+              </div>
+            )}
 
             {/* No business id in the URL — nothing to verify yet. */}
             {!businessId && (
@@ -1192,22 +894,16 @@ export default function BusinessVerifyPage() {
             )}
 
             {/* Step content */}
-            {currentStep === 1 && businessId && (
+            {!submitted && currentStep === 1 && businessId && (
               <Step1Identity
                 businessId={businessId}
                 onComplete={() => completeStep(1)}
               />
             )}
-            {currentStep === 2 && businessId && (
+            {!submitted && currentStep === 2 && businessId && (
               <Step2CodeSelfie
                 businessId={businessId}
                 onComplete={() => completeStep(2)}
-              />
-            )}
-            {currentStep === 3 && businessId && (
-              <Step3SMS
-                businessId={businessId}
-                onComplete={() => completeStep(3)}
               />
             )}
           </div>
@@ -1226,7 +922,7 @@ export default function BusinessVerifyPage() {
               }}
             >
               <strong style={{ color: "var(--text-primary)" }}>Completed:</strong>{" "}
-              {[1, 2, 3]
+              {[1, 2]
                 .filter((s) => completed.has(s))
                 .map((s) => `Step ${s} — ${stepTitles[s]}`)
                 .join(" · ")}

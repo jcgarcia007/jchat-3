@@ -2671,7 +2671,7 @@
       "stripeConnectedLabel": "Stripe connected",
       "stepIdentityLabel": "Identity",
       "stepSelfieLabel": "Selfie",
-      "stepSmsLabel": "SMS",
+      "stepSmsLabel": "SMS (legacy)",
       "approveButton": "Approve",
       "revokeButton": "Revoke",
       "reapproveButton": "Re-approve",
@@ -3483,6 +3483,14 @@
     "notEligibleMessage": "You don't meet the requirements to use JChat.",
     "backHome": "Back to start",
     "signOut": "Sign out"
+  },
+  "businessVerify": {
+    "intro": "Complete both steps and an administrator will review your business. Once it is approved you are verified on JChat and can enable payments.",
+    "sendForReview": "Send for review",
+    "doneTitle": "All done",
+    "doneSubtitle": "Your information is in",
+    "doneMessage": "We received your information. An administrator will review your business in less than 24 hours; we will let you know by email.",
+    "goToDashboard": "Go to the dashboard"
   },
   "businessRegister": {
     "profileMissing": "We couldn't find your profile. Sign out and sign in again, or contact support.",

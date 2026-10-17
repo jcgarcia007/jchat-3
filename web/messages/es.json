@@ -2671,7 +2671,7 @@
       "stripeConnectedLabel": "Stripe conectado",
       "stepIdentityLabel": "Identidad",
       "stepSelfieLabel": "Selfie",
-      "stepSmsLabel": "SMS",
+      "stepSmsLabel": "SMS (heredado)",
       "approveButton": "Aprobar",
       "revokeButton": "Revocar",
       "reapproveButton": "Volver a aprobar",
@@ -3483,6 +3483,14 @@
     "notEligibleMessage": "No cumples los requisitos para usar JChat.",
     "backHome": "Volver al inicio",
     "signOut": "Cerrar sesión"
+  },
+  "businessVerify": {
+    "intro": "Completa los dos pasos y un administrador revisará tu negocio. Cuando lo apruebe, quedas verificado en JChat y puedes activar los pagos.",
+    "sendForReview": "Enviar a revisión",
+    "doneTitle": "Listo",
+    "doneSubtitle": "Tu información ya está con nosotros",
+    "doneMessage": "Recibimos tu información. Un administrador revisará tu negocio en menos de 24 h; te avisaremos por correo.",
+    "goToDashboard": "Ir al panel"
   },
   "businessRegister": {
     "profileMissing": "No encontramos tu perfil. Cierra sesión e inicia sesión de nuevo, o contacta a soporte.",
