@@ -6,6 +6,44 @@
 - **Secretos:** ningún valor impreso ni guardado aquí. Los escáneres no encontraron secretos (SEC-01/02/03).
 - **Convención de resultado:** PASA · FALLA · N/A · BLOQUEADO. "FALLA" = hallazgo que Planning debe clasificar; no se arregló nada.
 
+## Actualización noche 5 (2026-10-17 → 18)
+
+Cadena para un solo merge: `fix/verify-no-sms` (`8114fb4`) → B `feat/register-geocode-onblur` (`eb76f54`) → C `feat/register-hours-ux` (`f0fed93`) → D `fix/dashboard-save-feedback` (`bd3b047`) → F `fix/verify-no-test-skip` (`c8e75f1`) → E `chore/release-evidence` (esta). Ninguna toca `main`; no se escribió nada en la base de datos (las pruebas usan red simulada o un Supabase de mentira local, `e2e/web/fake-supabase.mjs`); ningún secreto impreso.
+
+### Resueltos por Juan en producción (2026-10-17)
+
+| Qué | Estado |
+|---|---|
+| Geocodificación del registro con una dirección real (`6b884e9`) | **RESUELTO por Juan en producción 2026-10-17** |
+| Reportar / bloquear / desbloquear + resolución del administrador, en Android | **RESUELTO por Juan en producción 2026-10-17** |
+
+### Cambios de la noche (una fila por commit)
+
+| SHA | Rama | Qué | Prueba |
+|---|---|---|---|
+| `064b6ce` | `fix/businesses-owner-grants` | Migración 236 versionada (la aplicó Planning por MCP el 2026-10-17, versión `20261017183617`): `grant update` de `icon_url`, `dashboard_palette_id`, `pickup_enabled`, `receipt_brand_color`, `receipt_template_id` sobre `businesses`. Regla nueva en CLAUDE.md | `mobile/scripts/migrations-businesses-grants.test.mjs` (hace cumplir el grant por columna) |
+| `230af2f` | `feat/business-icon-url` | Se muestra el ícono que subió el dueño (`icon_url`, con el emoji como respaldo) en pin, tarjeta, lista de cercanos, barra del chat, hoja de entrada y encabezado de post (`BusinessIcon`) | pruebas de `mobile/scripts`; el megáfono/ofertas queda fuera (su RPC no devuelve `icon_url`: necesita migración) |
+| `dc893b6` | `fix/report-thanks-button` | El botón "Close" de la vista "Thank you" del reporte ocupa el ancho de la hoja (antes ~50 px a 390 px) | Playwright `report-sheet.spec.ts` con red simulada: falla sin el arreglo (49,8 px), pasa con él |
+| `6b884e9` | `feat/register-geocode` | El registro geocodifica la dirección al "Continuar" y exige coordenadas válidas | `web/scripts/register-location.test.mjs` |
+| `8114fb4` | `fix/verify-no-sms` | El paso SMS sale de v1: verificación = identidad + código/selfie + aprobación manual; `send_sms`/`verify_sms` → 410 | `web/scripts/verify-no-sms.test.mjs` (5) |
+| `eb76f54` | `feat/register-geocode-onblur` (B) | Al salir del campo dirección se geocodifica en silencio (≥ 8 caracteres, solo si `needsGeocode`), nunca dos a la vez; un fallo en blur no muestra error | `register-location.test.mjs`: 6 pruebas (`shouldGeocodeOnBlur`) |
+| `f0fed93` | `feat/register-hours-ux` (C) | Horario del registro: "Copiar a todos los días", "Abierto 24 h" por día, aviso "Cierra al día siguiente" (también en el editor del dashboard, que ya tenía copiar y todo el día). Mismo JSON de `hours`; sin BD ni móvil | `web/scripts/business-hours.test.mjs` (5) |
+| `bd3b047` | `fix/dashboard-save-feedback` (D) | Un guardado fallido en Configuración muestra un mensaje humano junto al botón Guardar (permiso / sin conexión / genérico + código pequeño) y se desplaza hasta él | `web/scripts/save-error.test.mjs` (4) + Playwright `dashboard-save-error.spec.ts` (403 simulado en el PATCH de `businesses`): falla sin el arreglo, pasa con él (390 px y escritorio) |
+| `c8e75f1` | `fix/verify-no-test-skip` (F) | Fuera los botones "Skip for now (Testing)" de `/business/verify` (ambos pasos), sus manejadores y `NEXT_PUBLIC_HIDE_TEST_SKIP` | `web/scripts/verify-no-test-skip.test.mjs` (3) + Playwright `dashboard-verify-no-skip.spec.ts`: falla con la página vieja, pasa con la nueva |
+
+### Verificaciones sobre la punta (código de `c8e75f1`)
+
+| ID | Comando | Resultado | Resumen |
+|---|---|---|---|
+| QA-02 | `npx tsc --noEmit` en `mobile/` y `web/` | **PASA** | 0 errores en ambos. |
+| QA-05 | `node scripts/<x>.test.mjs` (mobile) · `node --test scripts/*.test.mjs` (web) | **PASA** | mobile 35 de 35 archivos con salida 0; web 9 archivos, 42 pruebas, 0 fallan. |
+| i18n | `node scripts/i18n-hardcoded.test.mjs` (mobile) | **PASA** | 7 de 7; 0 literales sin traducir. |
+| SEC-03 | `npx expo export -p web` y `-p ios -p android --no-bytecode` + `grep -E 'service_role\|sk_live_\|sk_test_\|whsec_\|re_[A-Za-z0-9]{20,}\|sntrys_\|SUPABASE_SERVICE'` (solo conteo) | **PASA** | 0 archivos con coincidencias: bundle web 31 archivos, nativo 41. |
+| F8 | `cd e2e && npm run web:audit` | **PASA con 1 hallazgo nuevo** | 30 de 30 pruebas (14,6 min, solo lectura). **0 bloqueantes, 1 alta, 4 medias, 165 bajas** (931 apariciones en bruto; noche 4: 0/0/5/164). La **alta es nueva y única**: `pageerror` "The server could not finish this Suspense boundary… Switched to client rendering" ×1, en la hoja del menú del local a 768×1024 oscuro/en (servidor Next de desarrollo; no se repitió en los otros 5 tamaños/temas). No toca ningún archivo de esta noche; sin clasificar: Planning decide si se repite. Las medias: contraste axe (landing/legales) y 3 pasos de navegación del recorrido (tarjeta rápida, mantener pulsado, Mi foto: `click` agotó 8 s ×6), todas ya conocidas. Informe: `raw/night5-web-audit-REPORTE.md`. |
+| E2E nuevas | `cd e2e && npx playwright test -c dashboard.config.ts` (Next de producción local + `fake-supabase.mjs`) | **PASA** | 4 de 4 (2 especificaciones × 390 px y escritorio). |
+
+Crudo en `raw/night5-*` (fuera de git).
+
 ## Actualización noche 4 (2026-10-15, madrugada)
 
 Cadena para un solo merge (cada rama sale de la punta de la anterior): `chore/release-evidence` rebaseada sobre `origin/main` (`c881da2`, paso 0) → A `feat/web-games` (`b07f19d`) → B `fix/i18n-hardcoded` (`1a8b5b0`) → C `fix/polish-leftovers` (`5102b1b`) → D `docs/store-listing` (`be20038`) → E `chore/release-evidence` (esta). Ninguna toca `main`, producción, migraciones ni Edge Functions. Nadie empujó a `main` desde esta sesión (todos los `git push` fueron `git push origin <rama>`).
