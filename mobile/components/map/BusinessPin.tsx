@@ -26,11 +26,12 @@
  * Pending businesses: grey teardrop + "Pending" badge, no heat color.
  */
 
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Marker } from 'react-native-maps';
 import { useTranslation } from 'react-i18next';
 import { palette } from '../../theme/tokens';
+import { BusinessIcon } from '../common/BusinessIcon';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -47,6 +48,8 @@ export interface BusinessPinBusiness {
   lng: number;
   /** Single emoji representing the business category / brand. */
   icon_emoji: string;
+  /** The icon image the owner uploaded; shown instead of the emoji when it exists and loads. */
+  icon_url?: string | null;
   /**
    * Approval status.
    * 'pending' renders a distinct grey teardrop with a Pending badge.
@@ -133,6 +136,15 @@ export default function BusinessPin({ business, onPress }: BusinessPinProps) {
   const { boxSize, emojiSize, badgeFontSize, badgePadH, badgePadV } =
     useMemo(() => getSizeTier(business.activeCount), [business.activeCount]);
 
+  // A Marker freezes its view after the first frame; with a remote icon image keep tracking until it has loaded (or failed),
+  // with a ceiling so a slow image never keeps the marker re-rendering.
+  const [tracking, setTracking] = useState(!!business.icon_url);
+  useEffect(() => {
+    if (!tracking) return undefined;
+    const timer = setTimeout(() => setTracking(false), 4000);
+    return () => clearTimeout(timer);
+  }, [tracking]);
+
   const isPending = business.status === 'pending';
   const pinColor = isPending ? PENDING_COLOR : getHeatColor(business.activeCount);
 
@@ -148,7 +160,7 @@ export default function BusinessPin({ business, onPress }: BusinessPinProps) {
       anchor={TEARDROP_ANCHOR}
       calloutAnchor={TEARDROP_CALL_ANCHOR}
       onPress={() => onPress(business)}
-      tracksViewChanges={false}
+      tracksViewChanges={tracking}
       accessible
       accessibilityRole="button"
       accessibilityLabel={business.name || undefined}
@@ -181,9 +193,13 @@ export default function BusinessPin({ business, onPress }: BusinessPinProps) {
         >
           {/* Emoji counter-rotated +45deg so it's upright */}
           <View style={styles.emojiWrapper}>
-            <Text style={[styles.emoji, { fontSize: emojiSize }]}>
-              {business.icon_emoji}
-            </Text>
+            <BusinessIcon
+              iconUrl={business.icon_url}
+              emoji={business.icon_emoji}
+              size={Math.round(emojiSize * 1.25)}
+              emojiStyle={[styles.emoji, { fontSize: emojiSize }]}
+              onSettled={() => setTracking(false)}
+            />
           </View>
         </View>
 

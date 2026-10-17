@@ -7,6 +7,7 @@ import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { type NearbyBusiness } from '../../services/nearby';
 import { getOpenStatus } from '../../utils/hours';
+import { BusinessIcon } from '../common/BusinessIcon';
 
 interface BusinessCardProps {
   item: NearbyBusiness;
@@ -22,7 +23,7 @@ export default function BusinessCard({ item, onEnter }: BusinessCardProps) {
   return (
     <View style={[styles.card, { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }]}>
       <View style={[styles.avatar, { backgroundColor: colors.bgElevated }]}>
-        <Text style={styles.emoji}>{item.icon_emoji ?? '🏪'}</Text>
+        <BusinessIcon iconUrl={item.icon_url} emoji={item.icon_emoji} size={48} radius={13} emojiStyle={styles.emoji} />
       </View>
       <View style={styles.content}>
         <View style={styles.titleRow}>

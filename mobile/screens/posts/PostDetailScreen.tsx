@@ -189,7 +189,7 @@ export default function PostDetailScreen(): React.JSX.Element {
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView keyboardShouldPersistTaps="handled">
           <View style={styles.authorRow}>
-            {post.business_id ? <BusinessAvatar emoji={business?.icon_emoji ?? null} logoUrl={business?.logo_url ?? null} size={42} /> : author?.avatar_url ? <Image source={{ uri: author.avatar_url }} style={[styles.avatar, { backgroundColor: c.bgSurface }]} /> : <View style={[styles.avatar, { backgroundColor: c.bgSurface }]} />}
+            {post.business_id ? <BusinessAvatar emoji={business?.icon_emoji ?? null} iconUrl={business?.icon_url ?? null} logoUrl={business?.logo_url ?? null} size={42} /> : author?.avatar_url ? <Image source={{ uri: author.avatar_url }} style={[styles.avatar, { backgroundColor: c.bgSurface }]} /> : <View style={[styles.avatar, { backgroundColor: c.bgSurface }]} />}
             <View style={styles.authorCopy}>
               <Text style={[styles.authorName, { color: c.textPrimary }]}>{authorName}</Text>
               <Text style={[styles.date, { color: c.textTertiary }]}>{date}</Text>

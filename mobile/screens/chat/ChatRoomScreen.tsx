@@ -44,6 +44,7 @@ import {
 } from 'react-native';
 import { Spinner } from '../../components/common/Spinner';
 import { AppModal } from '../../components/common/AppModal';
+import { BusinessIcon } from '../../components/common/BusinessIcon';
 import { IconMapPin } from '@tabler/icons-react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -683,7 +684,7 @@ export default function ChatRoomScreen() {
         // Load business
         const { data: bizData } = await supabase
           .from('businesses')
-          .select('id, name, icon_emoji, menu_enabled, owner_id, slug, menu_mode, external_menu_url')
+          .select('id, name, icon_emoji, icon_url, menu_enabled, owner_id, slug, menu_mode, external_menu_url')
           .eq('id', typedRoom.business_id)
           .single();
 
@@ -1646,10 +1647,20 @@ export default function ChatRoomScreen() {
                 // Title, subtitle, notice and incognito scroll together (large text); Enter / Cancel stay pinned below.
                 <ScrollView style={gateStyles.gateScroll} contentContainerStyle={gateStyles.gateScrollContent} showsVerticalScrollIndicator={false}>
                   {/* Business name / room title */}
-                  <Text style={[gateStyles.roomTitle, { color: themeColors.textPrimary }]}>
-                    {business?.icon_emoji ?? '🏪'}{' '}
-                    {business?.name ?? t('chatRoom.chatRoomFallback')}
-                  </Text>
+                  {business?.icon_url ? (
+                    // The owner's uploaded icon next to the name (the emoji stays inline in the title when there is none).
+                    <View style={gateStyles.roomTitleRow}>
+                      <BusinessIcon iconUrl={business.icon_url} emoji={business.icon_emoji} size={36} radius={10} />
+                      <Text style={[gateStyles.roomTitle, { color: themeColors.textPrimary, flexShrink: 1 }]}>
+                        {business.name ?? t('chatRoom.chatRoomFallback')}
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text style={[gateStyles.roomTitle, { color: themeColors.textPrimary }]}>
+                      {business?.icon_emoji ?? '🏪'}{' '}
+                      {business?.name ?? t('chatRoom.chatRoomFallback')}
+                    </Text>
+                  )}
                   <Text style={[gateStyles.roomSub, { color: themeColors.textSecondary }]}>
                     {t('chatRoom.gateSubtitle')}
                   </Text>
@@ -2183,6 +2194,7 @@ const gateStyles = StyleSheet.create({
     marginBottom: 8,
   },
   gateScroll: { flexShrink: 1 },
+  roomTitleRow: { alignItems: 'center', flexDirection: 'row', gap: 10, justifyContent: 'center' },
   gateScrollContent: { gap: 16 },
   roomTitle: {
     fontSize: 20,

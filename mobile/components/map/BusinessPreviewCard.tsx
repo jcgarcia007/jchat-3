@@ -36,6 +36,7 @@ import {
 } from '@tabler/icons-react-native';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
+import { BusinessIcon } from '../common/BusinessIcon';
 import {
   DAY_ORDER,
   formatDayRange,
@@ -71,6 +72,8 @@ export interface BusinessPreviewCardProps {
     name: string;
     category: string;
     icon_emoji: string;
+    /** The icon image the owner uploaded; shown instead of the emoji when it exists and loads. */
+    icon_url?: string | null;
     cover_url: string | null;
     hours: HoursMap | null;
     address: string;
@@ -205,14 +208,14 @@ export default function BusinessPreviewCard({
 
         {/* Business emoji icon — absolute bottom-left, overlaps cover */}
         <View
+          accessible
+          accessibilityLabel={t('businessPreviewCard.iconA11y', { name: business.name })}
           style={[
             styles.emojiIcon,
             { backgroundColor: c.bgSurface, borderColor: c.bgBase },
           ]}
         >
-          <Text style={styles.emojiText} accessibilityLabel={t('businessPreviewCard.iconA11y', { name: business.name })}>
-            {business.icon_emoji}
-          </Text>
+          <BusinessIcon iconUrl={business.icon_url} emoji={business.icon_emoji} size={46} radius={11} emojiStyle={styles.emojiText} />
         </View>
       </View>
 

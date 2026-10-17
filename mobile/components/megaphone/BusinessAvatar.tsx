@@ -1,25 +1,25 @@
 import React from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { useThemeColors } from '../../theme/colors';
+import { BusinessIcon } from '../common/BusinessIcon';
 
 interface BusinessAvatarProps {
+  /** The icon image the owner uploaded (businesses.icon_url). */
+  iconUrl?: string | null;
   logoUrl: string | null;
   emoji: string | null;
   size?: number;
 }
 
-/** Business logo, or its emoji (🏪 by default) when there is no logo. */
-export default function BusinessAvatar({ logoUrl, emoji, size = 36 }: BusinessAvatarProps) {
+/** Business icon image, else its logo, else its emoji (🏪 by default). A picture that fails to load falls back to the emoji. */
+export default function BusinessAvatar({ iconUrl, logoUrl, emoji, size = 36 }: BusinessAvatarProps) {
   const colors = useThemeColors();
   const box = { borderRadius: size / 2, height: size, width: size };
 
-  if (logoUrl) {
-    return <Image source={{ uri: logoUrl }} style={[styles.base, box, { backgroundColor: colors.bgElevated }]} />;
-  }
   return (
     <View style={[styles.base, box, { backgroundColor: colors.bgElevated }]}>
-      <Text style={{ fontSize: size * 0.52 }}>{emoji ?? '🏪'}</Text>
+      <BusinessIcon iconUrl={iconUrl || logoUrl} emoji={emoji} size={size} radius={size / 2} emojiStyle={{ fontSize: size * 0.52 }} />
     </View>
   );
 }

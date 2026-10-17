@@ -21,6 +21,8 @@ export interface PostBusiness {
   /** Public page slug (https://jchat.cloud/b/{slug}); used when sharing a business post. */
   slug?: string | null;
   icon_emoji: string | null;
+  /** The icon image the owner uploaded; wins over the logo and the emoji. */
+  icon_url?: string | null;
   logo_url: string | null;
 }
 
@@ -97,7 +99,7 @@ export async function getPostById(postId: string): Promise<PostRow | null> {
   if (!isSupabaseConfigured) return null;
   const { data, error } = await supabase
     .from('posts')
-    .select('*, business:businesses(name, slug, icon_emoji, logo_url)')
+    .select('*, business:businesses(name, slug, icon_emoji, icon_url, logo_url)')
     .eq('id', postId)
     .maybeSingle();
   if (error) throw error;

@@ -10,6 +10,8 @@ export interface NearbyBusiness {
   category: string;
   address: string | null;
   icon_emoji: string | null;
+  /** The icon image the owner uploaded (shown instead of the emoji when present). */
+  icon_url?: string | null;
   hours: BusinessHours | null;
   room_count: number;
   main_room_id?: string | null;
@@ -124,7 +126,7 @@ export async function fetchBusinesses(): Promise<NearbyBusiness[]> {
 
   const { data: businesses, error } = await supabase
     .from('businesses')
-    .select('id, name, slug, category, address, icon_emoji, hours, lat, lng')
+    .select('id, name, slug, category, address, icon_emoji, icon_url, hours, lat, lng')
     .eq('status', 'verified')
     .order('name');
 
@@ -157,6 +159,7 @@ export async function fetchBusinesses(): Promise<NearbyBusiness[]> {
     category: string;
     address: string | null;
     icon_emoji: string | null;
+    icon_url: string | null;
     hours: unknown;
     lat: number | null;
     lng: number | null;
@@ -167,6 +170,7 @@ export async function fetchBusinesses(): Promise<NearbyBusiness[]> {
     category: business.category,
     address: business.address,
     icon_emoji: business.icon_emoji,
+    icon_url: business.icon_url ?? null,
     hours: (business.hours as BusinessHours) ?? null,
     lat: typeof business.lat === 'number' ? business.lat : null,
     lng: typeof business.lng === 'number' ? business.lng : null,

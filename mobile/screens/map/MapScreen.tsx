@@ -68,6 +68,7 @@ interface MapBusiness {
   name: string;
   category: string;
   icon_emoji: string;
+  icon_url?: string | null;
   lat: number;
   lng: number;
   status: string;
@@ -226,7 +227,7 @@ export default function MapScreen() {
     try {
       const { data, error } = await supabase
         .from('businesses')
-        .select('id, name, category, icon_emoji, lat, lng, status, address, cover_url, hours, slug')
+        .select('id, name, category, icon_emoji, icon_url, lat, lng, status, address, cover_url, hours, slug')
         .eq('status', 'verified');
       if (error) throw error;
       if (!isMounted.current) return;
@@ -236,7 +237,7 @@ export default function MapScreen() {
           .filter((r) => typeof r.lat === 'number' && typeof r.lng === 'number')
           .map((r) => ({
             id: r.id!, name: r.name ?? '', category: r.category ?? '',
-            icon_emoji: r.icon_emoji ?? '📍', lat: r.lat!, lng: r.lng!,
+            icon_emoji: r.icon_emoji ?? '📍', icon_url: r.icon_url ?? null, lat: r.lat!, lng: r.lng!,
             status: r.status ?? 'verified', activeCount: 0, // TODO(presence): live count
             address: r.address ?? '', cover_url: r.cover_url ?? null, hours: r.hours ?? null,
             slug: r.slug ?? null,
@@ -323,7 +324,7 @@ export default function MapScreen() {
         {filtered.map((b) => (
           <BusinessPin
             key={b.id}
-            business={{ id: b.id, name: b.name, lat: b.lat, lng: b.lng, icon_emoji: b.icon_emoji, status: b.status, activeCount: b.activeCount }}
+            business={{ id: b.id, name: b.name, lat: b.lat, lng: b.lng, icon_emoji: b.icon_emoji, icon_url: b.icon_url, status: b.status, activeCount: b.activeCount }}
             onPress={() => setSelected(b)}
           />
         ))}
@@ -449,7 +450,7 @@ export default function MapScreen() {
               <BusinessPreviewCard
                 business={{
                   id: selected.id, name: selected.name, category: selected.category,
-                  icon_emoji: selected.icon_emoji, cover_url: selected.cover_url, hours: selected.hours,
+                  icon_emoji: selected.icon_emoji, icon_url: selected.icon_url, cover_url: selected.cover_url, hours: selected.hours,
                   address: selected.address, lat: selected.lat, lng: selected.lng,
                   rating: selected.rating, active_count: selected.activeCount,
                 }}

@@ -47,6 +47,7 @@ import { webSlop } from '../../utils/touchTarget';
 import { palette } from '../../theme/tokens';
 import type { UserAnchor } from './MessageBubble';
 import { getInitials } from '../../utils/initials';
+import { BusinessIcon } from '../common/BusinessIcon';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -54,6 +55,8 @@ export interface BusinessSummary {
   id: string;
   name: string;
   icon_emoji: string | null;
+  /** The icon image the owner uploaded; shown instead of the emoji when it exists and loads. */
+  icon_url?: string | null;
   menu_enabled: boolean;
 }
 
@@ -202,9 +205,7 @@ export function ChatTopBar({
 
         {/* Business icon + name + active count */}
         <View style={topBarStyles.titleArea}>
-          <Text style={topBarStyles.emoji}>
-            {business.icon_emoji ?? '🏪'}
-          </Text>
+          <BusinessIcon iconUrl={business.icon_url} emoji={business.icon_emoji} size={28} radius={8} emojiStyle={topBarStyles.emoji} />
           <View style={topBarStyles.titleText}>
             <Text style={[topBarStyles.businessName, { color: theme.bubbleInText }]} numberOfLines={1}>
               {business.name}
