@@ -32,6 +32,15 @@ import {
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { Json } from "@/lib/database.types";
 import { getUsageAndLimits, type UsageAndLimits } from "@/lib/planLimits";
+import { APIProvider, useMapsLibrary } from "@vis.gl/react-google-maps";
+import {
+  coordsFrom,
+  geocodeAddress,
+  needsGeocode,
+  normalizeAddress,
+  type CoordSource,
+  type GeocoderLike,
+} from "@/lib/registerLocation";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -488,14 +497,22 @@ function StepLocation({
   data,
   onChange,
   errors,
+  onManualCoords,
+  geocoding,
+  located,
 }: {
   data: WizardData;
   onChange: (patch: Partial<WizardData>) => void;
   errors: Record<string, string>;
+  /** The owner typed a coordinate: it is theirs from now on (the geocoder never replaces it). */
+  onManualCoords: () => void;
+  geocoding: boolean;
+  /** The coordinates in the boxes were just found from the address. */
+  located: boolean;
 }) {
+  const tr = useTranslations("businessRegister");
   return (
     <div>
-      {/* TODO(Stage 4): replace lat/lng inputs with Google Maps radius-draw widget once API key is available */}
       <div
         style={{
           background: "var(--bg-elevated)",
@@ -507,9 +524,18 @@ function StepLocation({
           color: "var(--text-secondary)",
         }}
       >
-        <strong style={{ color: "var(--text-primary)" }}>Note:</strong> Google Maps radius
-        drawing requires an API key (Stage 4). Enter coordinates and radius manually for now.
+        {tr("locationNote")}
       </div>
+      {geocoding && (
+        <p role="status" style={{ ...S.errorMsg, color: "var(--text-secondary)", marginBottom: "12px" }}>
+          {tr("locating")}
+        </p>
+      )}
+      {located && !geocoding && (
+        <p role="status" style={{ ...S.errorMsg, color: "var(--color-success)", marginBottom: "12px" }}>
+          {tr("located")}
+        </p>
+      )}
 
       <div style={S.field()}>
         <label style={S.label}>Street Address *</label>
@@ -528,11 +554,14 @@ function StepLocation({
 
       <div style={{ ...S.row, marginBottom: "16px" }}>
         <div style={S.field()}>
-          <label style={S.label}>Latitude</label>
+          <label style={S.label}>Latitude *</label>
           <input
             style={{ ...S.input, ...(errors.lat ? S.inputError : {}) }}
             value={data.lat}
-            onChange={(e) => onChange({ lat: e.target.value })}
+            onChange={(e) => {
+              onManualCoords();
+              onChange({ lat: e.target.value });
+            }}
             placeholder="e.g. 25.7617"
             type="number"
             step="any"
@@ -544,11 +573,14 @@ function StepLocation({
           )}
         </div>
         <div style={S.field()}>
-          <label style={S.label}>Longitude</label>
+          <label style={S.label}>Longitude *</label>
           <input
             style={{ ...S.input, ...(errors.lng ? S.inputError : {}) }}
             value={data.lng}
-            onChange={(e) => onChange({ lng: e.target.value })}
+            onChange={(e) => {
+              onManualCoords();
+              onChange({ lng: e.target.value });
+            }}
             placeholder="e.g. -80.1918"
             type="number"
             step="any"
@@ -1121,6 +1153,13 @@ function BusinessRegisterWizard() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [usage, setUsage] = useState<UsageAndLimits | null>(null);
   const [usageLoaded, setUsageLoaded] = useState(false);
+  // Location: the coordinates come from the address (Google Maps Geocoder) unless the owner types them.
+  const geocodingLib = useMapsLibrary("geocoding");
+  const geocoder = useMemo<GeocoderLike | null>(() => (geocodingLib ? new geocodingLib.Geocoder() : null), [geocodingLib]);
+  const [coordSource, setCoordSource] = useState<CoordSource>(null);
+  const [geocodedFor, setGeocodedFor] = useState("");
+  const [geocoding, setGeocoding] = useState(false);
+  const [located, setLocated] = useState(false);
 
   // Step flow depends on the mode: events get an extra "Dates" step.
   const steps = useMemo<StepDef[]>(
@@ -1158,10 +1197,38 @@ function BusinessRegisterWizard() {
     setData((prev) => ({ ...prev, ...update }));
   }
 
-  function handleNext() {
+  async function handleNext() {
     const errs = validateStep(currentStep.key, data, isEventMode);
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
+      return;
+    }
+    // Location: coordinates are required (without them the venue has no geofence and the server refuses everyone at the door).
+    if (currentStep.key === "location" && needsGeocode({ lat: data.lat, lng: data.lng, source: coordSource, geocodedFor }, data.address)) {
+      setLocated(false);
+      setGeocoding(true);
+      const outcome = await geocodeAddress(geocoder, data.address);
+      setGeocoding(false);
+      if (!outcome.ok) {
+        setErrors({
+          lat:
+            outcome.reason === "unavailable"
+              ? tr("geocodeUnavailable")
+              : outcome.reason === "empty_address"
+                ? tr("coordsRequired")
+                : tr("geocodeFailed"),
+        });
+        return;
+      }
+      patch({ lat: String(outcome.coords.lat), lng: String(outcome.coords.lng) });
+      setCoordSource("auto");
+      setGeocodedFor(normalizeAddress(data.address));
+      setLocated(true);
+      setErrors({}); // stay on the step: the owner sees the coordinates found and presses Continue again
+      return;
+    }
+    if (currentStep.key === "location" && !coordsFrom(data.lat, data.lng)) {
+      setErrors({ lat: tr("coordsRequired") });
       return;
     }
     setErrors({});
@@ -1204,6 +1271,15 @@ function BusinessRegisterWizard() {
         .maybeSingle();
       if (profileError || !profileRow) throw new Error(tr("profileMissing"));
 
+      // Defence in depth: the location step does not let anyone through without coordinates, but never save a business without them.
+      const coords = coordsFrom(data.lat, data.lng);
+      if (!coords) {
+        setStep(steps.findIndex((st) => st.key === "location") + 1);
+        setErrors({ lat: tr("coordsRequired") });
+        setSubmitting(false);
+        return;
+      }
+
       // 1) Insert business row (owned by the signed-in user)
       // Append a short random suffix so the slug never collides with an
       // existing business (businesses_slug_key is UNIQUE).
@@ -1220,8 +1296,8 @@ function BusinessRegisterWizard() {
           cover_url: data.cover_url.trim() || null,
           icon_emoji: data.icon_emoji || "🏢",
           address: data.address.trim(),
-          lat: data.lat !== "" ? parseFloat(data.lat) : null,
-          lng: data.lng !== "" ? parseFloat(data.lng) : null,
+          lat: coords.lat,
+          lng: coords.lng,
           radius_m: data.radius_m !== "" ? parseInt(data.radius_m) : 100,
           phone: data.phone.trim(),
           website: data.website.trim() || null,
@@ -1443,7 +1519,17 @@ function BusinessRegisterWizard() {
             <StepEventDates data={data} onChange={patch} errors={errors} />
           )}
           {currentStep.key === "location" && (
-            <StepLocation data={data} onChange={patch} errors={errors} />
+            <StepLocation
+              data={data}
+              onChange={(update) => {
+                setLocated(false);
+                patch(update);
+              }}
+              errors={errors}
+              onManualCoords={() => setCoordSource("manual")}
+              geocoding={geocoding}
+              located={located}
+            />
           )}
           {currentStep.key === "hours" && (
             <StepHours data={data} onChange={patch} />
@@ -1508,8 +1594,9 @@ function BusinessRegisterWizard() {
             {step < steps.length ? (
               <button
                 type="button"
-                onClick={handleNext}
-                style={S.primaryBtn}
+                onClick={() => void handleNext()}
+                disabled={geocoding}
+                style={{ ...S.primaryBtn, opacity: geocoding ? 0.6 : 1, cursor: geocoding ? "wait" : "pointer" }}
               >
                 Continue
                 <IconChevronRight size={15} />
@@ -1561,10 +1648,14 @@ function BusinessRegisterWizard() {
   );
 }
 
+const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "";
+
 export default function BusinessRegisterPage() {
-  return (
+  const wizard = (
     <Suspense fallback={null}>
       <BusinessRegisterWizard />
     </Suspense>
   );
+  // Same Maps key and loader as the dashboard (configuration page); without a key the owner types the coordinates.
+  return MAPS_KEY ? <APIProvider apiKey={MAPS_KEY}>{wizard}</APIProvider> : wizard;
 }

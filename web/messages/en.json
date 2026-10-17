@@ -3485,7 +3485,13 @@
     "signOut": "Sign out"
   },
   "businessRegister": {
-    "profileMissing": "We couldn't find your profile. Sign out and sign in again, or contact support."
+    "profileMissing": "We couldn't find your profile. Sign out and sign in again, or contact support.",
+    "locationNote": "We find your location from the address when you press Continue, so people can only join your chat when they are at your venue. You can also type or correct the latitude and longitude yourself.",
+    "locating": "Finding your address on the map…",
+    "located": "Location found from your address. Check the coordinates and press Continue.",
+    "geocodeFailed": "We couldn't find that address on the map. Check it, or type the latitude and longitude below.",
+    "geocodeUnavailable": "Automatic location isn't available right now. Type the latitude and longitude below.",
+    "coordsRequired": "A location is required: it is how we confirm people are at your venue. Enter the address, or the latitude and longitude."
   },
   "authErrors": {
     "generic": "Something went wrong. Please try again.",
