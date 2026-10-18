@@ -56,7 +56,7 @@ const config: ExpoConfig = {
   },
   ios: {
     supportsTablet: false,
-    bundleIdentifier: 'com.juangarciacruz.jchatapp',
+    bundleIdentifier: 'com.otunitylabs.jchat',
     // Universal Links: the AASA file is served from public/.well-known/ (added with the real IDs).
     associatedDomains: ['applinks:jchat.cloud', 'applinks:*.jchat.cloud'],
     // La app usa Sign in with Apple (OAuth de Supabase hoy, botón nativo después). Sin esta línea EAS intenta
@@ -88,9 +88,9 @@ const config: ExpoConfig = {
     },
   },
   android: {
-    package: 'com.juangarciacruz.jchatapp',
+    package: 'com.otunitylabs.jchat',
     adaptiveIcon: {
-      backgroundColor: '#E6F4FE',
+      backgroundColor: '#4263EB',
       foregroundImage: './assets/android-icon-foreground.png',
       backgroundImage: './assets/android-icon-background.png',
       monochromeImage: './assets/android-icon-monochrome.png',
@@ -121,6 +121,8 @@ const config: ExpoConfig = {
       'android.permission.READ_MEDIA_IMAGES',
       'android.permission.READ_MEDIA_VIDEO',
       'android.permission.ACCESS_BACKGROUND_LOCATION',
+      // The app uses no advertising and no advertising ID; the libraries' AD_ID permission is removed (consistent with Data safety).
+      'com.google.android.gms.permission.AD_ID',
       ...(process.env.EAS_BUILD_PROFILE === 'production' ? ['android.permission.SYSTEM_ALERT_WINDOW'] : []),
     ],
     // Firebase Cloud Messaging — local file in dev, EAS file secret in CI.
@@ -168,7 +170,7 @@ const config: ExpoConfig = {
     [
       '@stripe/stripe-react-native',
       {
-        merchantIdentifier: 'merchant.com.juangarciacruz.jchatapp',
+        merchantIdentifier: 'merchant.com.otunitylabs.jchat',
         enableGooglePay: false,
       },
     ],
