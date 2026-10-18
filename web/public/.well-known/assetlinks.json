@@ -6,5 +6,17 @@
       "package_name": "com.juangarciacruz.jchatapp",
       "sha256_cert_fingerprints": ["18:5C:CB:48:B3:C6:48:DC:28:4C:4E:CB:D2:AE:7E:38:DD:AC:FD:7B:C7:15:74:93:88:B2:6F:8F:8F:84:BE:C6"]
     }
+  },
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.otunitylabs.jchat",
+      "sha256_cert_fingerprints": [
+        "BA:38:F9:3A:83:AC:B6:FC:2A:5D:93:0C:C8:1B:EC:3F:8D:15:7B:23:6E:06:97:1E:5A:21:21:86:9C:A2:63:E2",
+        "62:28:E8:A8:9F:D7:28:B9:6A:F4:6D:7E:85:A2:30:45:EB:BF:06:46:3D:6B:72:E7:61:C5:96:D6:03:E1:B2:18",
+        "4E:17:99:0F:F9:F3:A4:21:E1:27:4A:2C:FC:82:DA:54:CA:EB:0A:1B:F7:49:67:2C:6D:E1:5E:90:BC:F5:95:04"
+      ]
+    }
   }
 ]
