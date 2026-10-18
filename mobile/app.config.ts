@@ -20,6 +20,7 @@ const IOS_GOOGLE_SERVICES = process.env.GOOGLE_SERVICE_INFO_PLIST ?? './GoogleSe
 const LOCATION_WHEN_IN_USE = 'JChat uses your location to show nearby venues on the map and to connect to nearby card readers.';
 const CAMERA = 'JChat uses the camera to take photos for chat, posts and your profile, and to scan inventory barcodes.';
 const FACE_ID = 'JChat uses Face ID to unlock the app when you turn on biometric lock.';
+const MOTION = "JChat uses your device's motion sensors to detect how you are holding it, so photos you take with the camera are saved the right way up.";
 
 const config: ExpoConfig = {
   name: 'JChat',
@@ -200,14 +201,17 @@ const config: ExpoConfig = {
       'expo-location',
       {
         // "When in use" only (M8). Proximity/geofencing runs in the FOREGROUND — there is no real background
-        // location yet. The plugin adds the "Always" keys and NSMotionUsageDescription with a generic text unless
-        // told otherwise: `false` deletes the key (applyPermissions in @expo/config-plugins), so only
-        // NSLocationWhenInUseUsageDescription remains. Restore locationAlways* + UIBackgroundModes when Stage 4 wires
-        // real background geofencing (see services/geofence.ts TODO). Motion activity is not used.
+        // location yet. The plugin adds the "Always" keys with a generic text unless told otherwise: `false` deletes
+        // the key (applyPermissions in @expo/config-plugins), so only NSLocationWhenInUseUsageDescription remains.
+        // Restore locationAlways* + UIBackgroundModes when Stage 4 wires real background geofencing (see
+        // services/geofence.ts TODO).
+        // NSMotionUsageDescription must NOT be `false`: expo-camera reads the accelerometer (CMMotionManager) to
+        // detect device orientation, and Apple rejects the binary without the key (ITMS-90683). Passing the text here
+        // (not via ios.infoPlist) keeps this plugin from deleting it.
         locationWhenInUsePermission: LOCATION_WHEN_IN_USE,
         locationAlwaysAndWhenInUsePermission: false,
         locationAlwaysPermission: false,
-        motionUsagePermission: false,
+        motionUsagePermission: MOTION,
       },
     ],
     // Biometric lock (services/biometric.ts): its plugin runs by default with a generic Face ID text.
