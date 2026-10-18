@@ -50,7 +50,7 @@ Objetivo: **un solo QR por sala que sirva a todos**: con la app instalada abre l
 ### 2.1 Enlaces universales (abrir la app si está instalada)
 
 - **Dominio único:** `https://jchat.cloud` (fijar `NEXT_PUBLIC_SITE_URL` y usarlo en `roomQrUrl`; redirección 301 desde `jchat-3.vercel.app/c/*` para QR ya impresos).
-- **iOS:** `ios.associatedDomains: ['applinks:jchat.cloud']` en `app.config.ts` y servir `/.well-known/apple-app-site-association` (sin extensión, `Content-Type: application/json`) con `appID: <TeamID>.com.juangarciacruz.jchatapp` y `paths: ["/c/*", "/t/*"]`.
+- **iOS:** `ios.associatedDomains: ['applinks:jchat.cloud']` en `app.config.ts` y servir `/.well-known/apple-app-site-association` (sin extensión, `Content-Type: application/json`) con `appID: <TeamID>.com.otunitylabs.jchat` y `paths: ["/c/*", "/t/*"]`.
 - **Android App Links:** `android.intentFilters` con `autoVerify: true`, `scheme: https`, `host: jchat.cloud`, `pathPrefix: /c/` y `/t/`; servir `/.well-known/assetlinks.json` con `package_name` y las huellas SHA-256 del certificado de firma (Play App Signing **y** la de subida).
 - **En la web (Next):** los dos archivos como Route Handlers o ficheros en `public/.well-known/` con cabecera `Content-Type` correcta y **sin redirección** (Apple/Google no siguen redirecciones).
 - **En la app:** añadir `https://jchat.cloud` a `linking.prefixes` y rutas `c/:token` → pantalla nueva `QrEntry`.

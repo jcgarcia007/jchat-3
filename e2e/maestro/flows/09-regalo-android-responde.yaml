@@ -2,7 +2,7 @@
 # (ACTION / TABLE come from e2e/run.sh defaults: a header `env:` would beat the -e of the command line)
 # 09 — Gift, RECIPIENT = Android account "test": waits for the gift card from "test1" in the 1:1 chat and answers.
 #   ACTION=decline → taps "No, thanks"        ACTION=accept → "Accept" with table 12
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 env:
   VENUE: Bar XZX
 ---

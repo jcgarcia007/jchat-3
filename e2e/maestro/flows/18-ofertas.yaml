@@ -1,7 +1,7 @@
 # location: 26.083048,-80.223725
 # 18 — Offers loads without waiting for the position: the time between tapping the megaphone (screenshot 01) and the first
 # card / empty state (screenshot 02) is the difference of the file times (it used to wait up to 8 s for the GPS fix).
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 ---
 - runFlow: ../helpers/open-app.yaml
 - runFlow: ../helpers/login.yaml

@@ -1,7 +1,7 @@
 # location: 26.083048,-80.223725
 # 01 — Venue session: enter the chat inside the area → back (minimize) → the "You're at …" bar → Back
 # reopens the chat with NO entry notice. Ends by leaving the venue (⋯ → Leave the venue).
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 env:
   VENUE: Bar XZX
 ---

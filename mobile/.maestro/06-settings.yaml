@@ -1,5 +1,5 @@
 # Ajustes abre; NO existe la fila "Planes"; el idioma muestra su valor actual (no se cambia).
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 ---
 - launchApp
 - extendedWaitUntil:

@@ -1,6 +1,6 @@
 # Flujos Maestro — JChat (plan F9, DEV-02)
 
-Pruebas automáticas de la app nativa (`com.juangarciacruz.jchatapp`) con [Maestro](https://docs.maestro.dev).
+Pruebas automáticas de la app nativa (`com.otunitylabs.jchat`) con [Maestro](https://docs.maestro.dev).
 Los flujos **no escriben en la base de datos**: los que llegarían a escribir (entrar a un local, reportar, bloquear,
 eliminar cuenta, cambiar foto) se detienen en la hoja o confirmación y la **cancelan**.
 

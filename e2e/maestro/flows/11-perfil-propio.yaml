@@ -1,7 +1,7 @@
 # location: 26.083048,-80.223725
 # 11 — Own profile tab: action row [Edit] [+ Post] [Share], the content must start in its final place (no jump):
 # two screenshots, right after the tab opens and 4 s later, are compared by eye (and the header position by hierarchy).
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 ---
 - runFlow: ../helpers/open-app.yaml
 - runFlow: ../helpers/login.yaml

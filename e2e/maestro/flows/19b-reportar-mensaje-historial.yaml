@@ -2,7 +2,7 @@
 # 19b — Report a venue-chat message WITHOUT the iOS pair (Android, account "test"): reports an EXISTING message of "test1" already in the
 # Bar XZX chat history ("Hola qué tal"). Same steps as 19; reason "Spam or scam" ON PURPOSE (never child_safety: it e-mails safety@).
 # The report row is created by the test account; the nightly report lists its id and removes it afterwards.
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 env:
   VENUE: Bar XZX
 ---

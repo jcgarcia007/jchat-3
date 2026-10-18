@@ -1,6 +1,6 @@
 # Texto grande: Ajustes (arriba, medio y abajo). Solo mira. Capturas: ${PHASE}-settings-*.
 # Requiere -e PHASE=before|after (prefijo de las capturas).
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 ---
 - launchApp
 - extendedWaitUntil:

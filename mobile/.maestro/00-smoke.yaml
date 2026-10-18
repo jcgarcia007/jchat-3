@@ -1,6 +1,6 @@
 # Smoke: la app abre y llega a la pantalla principal con la sesión ya iniciada.
 # En nativo la pantalla principal es el mapa (pestaña "Mapa" seleccionada).
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 ---
 - launchApp
 # El build de desarrollo necesita Metro; damos margen al primer bundle.

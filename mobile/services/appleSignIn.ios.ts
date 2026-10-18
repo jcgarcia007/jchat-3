@@ -4,7 +4,7 @@
  * Flow: a random raw nonce → Apple gets its SHA-256 (hex) → `signInAsync` → the identity token goes to Supabase with the RAW
  * nonce (`signInWithIdToken`, provider apple). Apple returns the name and e-mail only the first time: when the profile has no
  * display name yet the name is saved there. Console side: the Apple provider in Supabase needs the BUNDLE ID
- * (com.juangarciacruz.jchatapp) in "Client IDs" — the native flow uses it, not the Service ID.
+ * (com.otunitylabs.jchat) in "Client IDs" — the native flow uses it, not the Service ID.
  *
  * Nothing sensitive is logged (no token, nonce, e-mail).
  */

@@ -2,7 +2,7 @@
 # 15 — Settings and Privacy: no raw i18n keys on screen (the Match / message preview hints used to show
 # "main.previewHint.undefined"), the real-time location notice is fixed (no switch), and a privacy switch (profile tab "Posts")
 # is toggled off and back on (original value restored).
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 ---
 - runFlow: ../helpers/open-app.yaml
 - runFlow: ../helpers/login.yaml

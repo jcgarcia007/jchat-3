@@ -1,7 +1,7 @@
 # location: 26.083048,-80.223725
 # 13 — DM with a photo (iOS simulator, account test1 → "Test"): picks the VERTICAL sample photo (EXIF 6) and sends it; the
 # bubble must show it upright and the thread must not error. Needs the sample photos in the simulator library.
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 ---
 - runFlow: ../helpers/open-app.yaml
 - runFlow: ../helpers/login.yaml

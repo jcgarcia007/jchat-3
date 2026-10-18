@@ -1,6 +1,6 @@
 # Texto grande: confirmación de eliminar cuenta. Se CANCELA; nunca "Continuar".
 # Requiere -e PHASE=before|after (prefijo de las capturas).
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 ---
 - launchApp
 - extendedWaitUntil:

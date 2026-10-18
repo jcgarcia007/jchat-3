@@ -7,7 +7,7 @@
 export const APP_STORE_URL: string | null = null;
 
 /** Android package id of the app (app.config.ts). */
-export const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.juangarciacruz.jchatapp';
+export const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.otunitylabs.jchat';
 
 /**
  * Download page for desktop browsers (and iOS until APP_STORE_URL is set).

@@ -2,7 +2,7 @@
 # En Android nace arriba a la derecha (≈90%,10%) y tapa el botón de Ajustes del perfil y el ⋯ de los DMs.
 # Se arrastra al borde izquierdo, a media altura. Si no existe (build de producción) no hace nada.
 # En iOS el botón ya queda en el borde izquierdo (posición guardada), no estorba.
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 ---
 - runFlow:
     when:

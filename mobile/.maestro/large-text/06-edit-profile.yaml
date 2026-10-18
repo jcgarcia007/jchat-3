@@ -1,6 +1,6 @@
 # Texto grande: Editar perfil (arriba y abajo). Solo mira; no guarda.
 # Requiere -e PHASE=before|after (prefijo de las capturas).
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 ---
 - launchApp
 - extendedWaitUntil:

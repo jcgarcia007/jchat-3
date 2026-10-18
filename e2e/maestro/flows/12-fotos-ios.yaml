@@ -5,7 +5,7 @@
 # The dev client's floating gear (dev builds only) was dragged to the left edge (it covers the picker's confirm button at the
 # right). Needs the sample photos in the simulator library:  xcrun simctl addmedia <udid> e2e/fixtures/*.jpg  (see README) and the
 # Photos permission granted to the app.
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 ---
 - runFlow: ../helpers/open-app.yaml
 - runFlow: ../helpers/login.yaml

@@ -24,7 +24,7 @@ set -u
 export PATH="$PATH:$HOME/.maestro/bin"
 root="$(cd "$(dirname "$0")" && pwd)"
 repo="$(cd "$root/.." && pwd)"
-pkg=com.juangarciacruz.jchatapp
+pkg=com.otunitylabs.jchat
 ROOT_E2E="$root"
 # Local credentials (git-ignored): e2e/.env.local, plus the two PUBLIC Supabase variables of mobile/.env. Never printed.
 [ -f "$ROOT_E2E/.env.local" ] && { set -a; . "$ROOT_E2E/.env.local"; set +a; }

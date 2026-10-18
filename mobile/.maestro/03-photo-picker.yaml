@@ -1,6 +1,6 @@
 # Perfil → Editar perfil → cambiar foto → aparece el selector del sistema → cancelar.
 # No se guarda nada.
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 ---
 - launchApp
 - extendedWaitUntil:

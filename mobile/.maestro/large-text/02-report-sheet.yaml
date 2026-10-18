@@ -1,7 +1,7 @@
 # Texto grande: hoja de motivos de reporte. Se CANCELA. Sin captura en iOS por defecto (el DM de test1 tiene una
 # imagen explícita detrás); en iOS solo comprueba que los botones están en pantalla.
 # Requiere -e PHASE=before|after (prefijo de las capturas).
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 ---
 - launchApp
 - extendedWaitUntil:

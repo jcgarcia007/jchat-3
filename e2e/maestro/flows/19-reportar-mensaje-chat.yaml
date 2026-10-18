@@ -3,7 +3,7 @@
 # flow 19-reportar-mensaje-chat-ios-envia.yaml sends "[QA] mensaje para reportar") → "Report message" → reason → success.
 # The reason is "Spam or scam" ON PURPOSE: child_safety would trigger the urgent e-mail to safety@ every night.
 # The report row is created by the test account; the nightly report lists its id and removes it afterwards.
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 env:
   VENUE: Bar XZX
 ---

@@ -46,6 +46,6 @@ test('links: App Store on iOS (download page while there is no listing), Play St
 });
 
 test('the shipped defaults are real URLs', () => {
-  assert.match(storeLinkFor('android'), /^https:\/\/play\.google\.com\/store\/apps\/details\?id=com\.juangarciacruz\.jchatapp$/);
+  assert.match(storeLinkFor('android'), /^https:\/\/play\.google\.com\/store\/apps\/details\?id=com\.otunitylabs\.jchat$/);
   assert.match(storeLinkFor('desktop'), /^https:\/\//);
 });

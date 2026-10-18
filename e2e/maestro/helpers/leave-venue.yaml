@@ -1,5 +1,5 @@
 # Ends the venue session from the chat (⋯ → Leave the venue → confirm) so the next flow starts clean.
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 ---
 - runFlow: dismiss-logbox.yaml
 - runFlow:

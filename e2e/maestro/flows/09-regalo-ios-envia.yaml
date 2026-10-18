@@ -3,7 +3,7 @@
 # Android at the same time (same ACTION). The card on the sender's side must change by itself (realtime) to the answer;
 # the screenshot "03-card-changed" is taken the moment it does (its file time vs gift_offers.responded_at = latency).
 #   ACTION=decline → "Test didn't accept your gift. You weren't charged."   ACTION=accept → "Test accepted your gift"
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 env:
   VENUE: Bar XZX
   GIFT_ITEM_1: Mini Corn Dogs

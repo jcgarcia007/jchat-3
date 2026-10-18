@@ -1,6 +1,6 @@
 # location: 26.083048,-80.223725
 # 06 — Gift REJECTED (SENDER): same as 05; on the iPhone run 06-regalo-ios-rechaza.yaml (taps "No, thanks").
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 env:
   VENUE: Bar XZX
   RECIPIENT: test1

@@ -1,6 +1,6 @@
 # Stripe PaymentSheet (TEST mode): fills the published test card and pays. The "Pay" button is not
 # exposed to the accessibility tree by the sheet, so it is tapped by position.
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 env:
   CARD_NUMBER: "4242424242424242"
   CARD_EXPIRY: "1234"

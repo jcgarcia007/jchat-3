@@ -1,7 +1,7 @@
 # Texto grande: barra de entrada (composer) de un DM. No envía nada. Sin captura en iOS (imagen explícita en el
 # DM de test1): ahí solo se comprueba que el campo, foto y enviar están en pantalla.
 # Requiere -e PHASE=before|after (prefijo de las capturas).
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 ---
 - launchApp
 - extendedWaitUntil:

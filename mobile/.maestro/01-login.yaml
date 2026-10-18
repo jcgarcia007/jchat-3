@@ -2,7 +2,7 @@
 # MAESTRO_PASSWORD existen en el entorno (maestro test -e MAESTRO_EMAIL=... -e MAESTRO_PASSWORD=...)
 # Y la app está en la pantalla de inicio de sesión. Si falta algo, se omite sin fallar.
 # Las credenciales nunca se escriben en archivos ni se capturan en pantalla.
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 env:
   MAESTRO_EMAIL: ""
   MAESTRO_PASSWORD: ""

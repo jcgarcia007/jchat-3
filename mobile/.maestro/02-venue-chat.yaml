@@ -1,6 +1,6 @@
 # Bar XZX desde la lista "Cerca de mí": aparece el aviso de entrada y se pulsa "Ahora no".
 # NO se acepta la entrada (no se escribe nada). Comprueba que vuelve sin crash.
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 ---
 - launchApp
 - extendedWaitUntil:

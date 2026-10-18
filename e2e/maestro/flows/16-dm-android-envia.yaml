@@ -1,6 +1,6 @@
 # location: 26.083048,-80.223725
 # 16 — DM text + emoji (SENDER, Android account "test" → "test1"). Pair: 16-dm-ios-recibe.yaml on the simulator at the same time.
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 env:
   VENUE: Bar XZX
 ---

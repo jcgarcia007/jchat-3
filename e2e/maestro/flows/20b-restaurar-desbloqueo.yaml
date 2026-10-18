@@ -2,7 +2,7 @@
 # 20b — Restores the state after flow 20 (Android, account "test"): checks whether the blocked conversation disappears after a REFRESH (leave
 # the Messages tab and come back), then Settings → Privacy → Blocked users → Unblock, and the conversation must be back.
 # Run it whenever flow 20 stops half way (a failed assertion leaves "test1" blocked).
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 ---
 - runFlow: ../helpers/open-app.yaml
 - runFlow: ../helpers/login.yaml

@@ -2,7 +2,7 @@
 # menú ⋯ → Bloquear → confirmación → cancelar. NUNCA se envía el reporte ni se bloquea.
 # NUNCA guardar capturas de este DM en iOS (también las que Maestro hace solo al fallar un paso: bórralas).
 # El botón flotante "Tools" del dev-client tapa el ⋯ del encabezado: _dev-tools-away.yaml lo aparta.
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 ---
 - launchApp
 - extendedWaitUntil:

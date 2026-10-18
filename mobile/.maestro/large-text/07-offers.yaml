@@ -1,6 +1,6 @@
 # Texto grande: pestaña Ofertas. Solo mira.
 # Requiere -e PHASE=before|after (prefijo de las capturas).
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 ---
 - launchApp
 - extendedWaitUntil:

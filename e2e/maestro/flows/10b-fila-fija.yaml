@@ -1,6 +1,6 @@
 # location: 26.083048,-80.223725
 # 10b — Pinned "In progress" rows (after flow 10 with PIN=1): they are in Messages, tapping one opens the order tracking.
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 ---
 - runFlow: ../helpers/open-app.yaml
 - runFlow: ../helpers/login.yaml

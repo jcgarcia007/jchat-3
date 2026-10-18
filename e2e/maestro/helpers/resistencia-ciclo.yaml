@@ -3,7 +3,7 @@
 # Env: VENUE, QUIET_MS (set by the flow).
 # Tunables (CYCLES, QUIET_MS, IDLE_MS, HOLD_MS, WAIT_MATCH_MS) get their defaults from e2e/run.sh: a flow-header `env:` value
 # would override the -e given on the command line, so none is declared here.
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 env:
   VENUE: Bar XZX
 ---

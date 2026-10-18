@@ -4,7 +4,7 @@
 # run.sh's logcat is checked for repeated REQUEST_PERMISSIONS launches (the Android permission loop).
 # Tunables (CYCLES, QUIET_MS, IDLE_MS, HOLD_MS, WAIT_MATCH_MS) get their defaults from e2e/run.sh: a flow-header `env:` value
 # would override the -e given on the command line, so none is declared here.
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 env:
   VENUE: Bar XZX
 ---

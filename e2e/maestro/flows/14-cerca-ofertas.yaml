@@ -2,7 +2,7 @@
 # 14 — Nearby shows a distance on each card (the tab asks for location once if never answered) and Offers loads its first page
 # without waiting for the GPS fix: the time from tapping the Offers entry to the first card/empty state is in the log
 # (screenshots 02-ofertas-t0 / 03-ofertas-lista; compare file times).
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 ---
 - runFlow: ../helpers/open-app.yaml
 - runFlow: ../helpers/login.yaml

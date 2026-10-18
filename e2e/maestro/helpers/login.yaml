@@ -1,6 +1,6 @@
 # Signs in ONLY if the Welcome screen is showing. Credentials come from the environment
 # (MAESTRO_TEST_EMAIL / MAESTRO_TEST_PASSWORD) — never write them in this repo.
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 ---
 - runFlow:
     when:

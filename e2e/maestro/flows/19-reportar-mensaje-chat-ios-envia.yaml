@@ -1,7 +1,7 @@
 # location: 26.083048,-80.223725
 # 19 (pair, iOS side — account "test1"): sits in the Bar XZX chat and writes ONE message so the Android account "test" has a message from
 # ANOTHER person to report. Run 19-reportar-mensaje-chat.yaml on Android at the same time (Android starts ~60-90 s later).
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 env:
   VENUE: Bar XZX
 ---

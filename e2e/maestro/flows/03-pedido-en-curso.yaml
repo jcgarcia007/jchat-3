@@ -1,7 +1,7 @@
 # location: 26.083048,-80.223725
 # 03 — Table order INSIDE the area (Stripe TEST card) → "Payment confirmed" → back to the tabs →
 # the bar shows "Order #N · status" (or "N orders in progress" when there are several).
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 env:
   VENUE: Bar XZX
   ITEM: Burger Angus

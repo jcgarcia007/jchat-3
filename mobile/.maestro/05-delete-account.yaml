@@ -1,6 +1,6 @@
 # Ajustes → Eliminar cuenta → aparece la confirmación → cancelar.
 # NUNCA se pulsa "Continuar" (ni hay segunda confirmación).
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 ---
 - launchApp
 - extendedWaitUntil:

@@ -1,7 +1,7 @@
 # location: 26.2,-80.223725
 # 02 — Outside the area: the entry says "You're not at …", offers "Allow location / Retry" and the
 # menu (and pick-up if the venue allows it). No chat, no waiter.
-appId: com.juangarciacruz.jchatapp
+appId: com.otunitylabs.jchat
 env:
   VENUE: Bar XZX
 ---
