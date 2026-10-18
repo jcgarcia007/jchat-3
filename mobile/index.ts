@@ -1,3 +1,7 @@
+// Must stay the FIRST import: it adds the WebCrypto pieces Hermes lacks before anything creates the Supabase client
+// (PKCE needs crypto.subtle / getRandomValues / TextEncoder, see polyfills/installWebCrypto.ts).
+import './polyfills/webcrypto';
+
 import { registerRootComponent } from 'expo';
 
 import App from './App';
