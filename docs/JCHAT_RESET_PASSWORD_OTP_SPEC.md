@@ -1,7 +1,7 @@
 # JCHAT — Recuperar contraseña con CÓDIGO de 6 dígitos (reemplaza el enlace)
 
 **Versión:** 1.0 · **Fecha:** 2026-09-28 · **Autor:** Planning
-**Repo:** `jcgarcia007/jchat-3` · carpeta `/Users/jcgarcia/Projects/JchatVer3.0`
+**Repo:** `jcgarcia007/jchat-3` · carpeta `/Users/jcgarcia/Projects/OtunityLabs/JchatVer3.0`
 **Rama nueva:** `feat/reset-otp`, creada desde `origin/feat/auth-emails` (commit `a1dca0f`) y luego `git merge origin/main` para traer `AGENTS.md` (no debe haber conflictos: `main` solo agregó `AGENTS.md`).
 **Checkpoint:** NO (Paso 0 corto, reportar y continuar). **Sin migraciones.** Solo `mobile/` + `supabase/templates/recovery.html` + `supabase/config.toml`.
 
@@ -42,7 +42,7 @@ Hoy "Olvidé mi contraseña" envía un **enlace** que abre la app con `jchat://r
 
 ---
 
-## 4. Cambios en la app (`/Users/jcgarcia/Projects/JchatVer3.0/mobile`)
+## 4. Cambios en la app (`/Users/jcgarcia/Projects/OtunityLabs/JchatVer3.0/mobile`)
 
 ### 4.1 `screens/auth/ForgotPasswordScreen.tsx`
 - Dos pasos en la misma pantalla: `email` → `code`.
@@ -72,7 +72,7 @@ Claves nuevas (sugeridas, bajo `auth.forgotPassword.*` y `auth.resetPassword.*`)
 
 ---
 
-## 5. Plantilla del correo (`/Users/jcgarcia/Projects/JchatVer3.0/supabase/templates/recovery.html`)
+## 5. Plantilla del correo (`/Users/jcgarcia/Projects/OtunityLabs/JchatVer3.0/supabase/templates/recovery.html`)
 
 Reemplazar el contenido por esta versión (código grande, sin enlace, bilingüe). En `supabase/config.toml` actualizar el `subject` de `[auth.email.template.recovery]` a:
 `JChat — Tu código para restablecer la contraseña · Your password reset code`
@@ -162,7 +162,7 @@ Proyecto **otunity-platform** (`klfsgcfoahdtkojyqspd`):
 - [ ] "Reenviar código" respeta los 60 s.
 - [ ] Textos en EN y ES correctos.
 
-**Calidad:** `cd /Users/jcgarcia/Projects/JchatVer3.0/mobile && npx tsc --noEmit` → 0 errores. Entregar SHA + `git diff --stat origin/main..HEAD`.
+**Calidad:** `cd /Users/jcgarcia/Projects/OtunityLabs/JchatVer3.0/mobile && npx tsc --noEmit` → 0 errores. Entregar SHA + `git diff --stat origin/main..HEAD`.
 
 ---
 

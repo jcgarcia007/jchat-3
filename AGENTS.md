@@ -4,7 +4,7 @@ Este archivo es la guía operativa común para cualquier agente que trabaje en e
 
 ## Alcance y rutas
 
-- Raíz única de trabajo: `/Users/jcgarcia/Projects/JchatVer3.0`.
+- Raíz única de trabajo: `/Users/jcgarcia/Projects/OtunityLabs/JchatVer3.0`.
 - No leer, crear ni modificar archivos fuera de esa carpeta sin avisar primero al usuario.
 - `mobile/`: aplicación React Native con Expo SDK 56 y React Navigation; no usa Expo Router.
 - `web/`: aplicación web y dashboards con Next.js App Router.

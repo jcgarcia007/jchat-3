@@ -7,7 +7,7 @@
       "runtimeArgs": ["run", "dev"],
       "port": 3000,
       "url": "http://localhost:3000",
-      "cwd": "/Users/jcgarcia/Projects/JchatVer3.0/web"
+      "cwd": "/Users/jcgarcia/Projects/OtunityLabs/JchatVer3.0/web"
     }
   ]
 }

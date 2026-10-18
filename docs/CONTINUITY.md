@@ -30,7 +30,7 @@ WEB_CLIENT_PLAN, and the original `.docx` of every spec + the deployment guide.
 
 ## Working agreement (to keep chats long-lived)
 - Prefer pasting text/errors over screenshots. Claude reads code directly from GitHub via MCP. Screenshots only for genuinely visual UI matters.
-- Local repo: /Users/jcgarcia/Projects/JchatVer3.0 (NO space — has web/ + mobile/). If Claude Code lands in mobile/ and can't find web/, run: git rev-parse --show-toplevel and cd to root.
+- Local repo: /Users/jcgarcia/Projects/OtunityLabs/JchatVer3.0 (NO space — has web/ + mobile/). If Claude Code lands in mobile/ and can't find web/, run: git rev-parse --show-toplevel and cd to root.
 - Planning Claude (web/app): writes specs, audits every SHA via GitHub MCP, checks Vercel deploys. Its GitHub WRITE returns 403 → ALL commits via Claude Code CLI.
 - Claude Code (CLI): implements, commits, migrates, builds (Supabase MCP + GitHub write + XcodeBuildMCP).
 - With ignoreBuildErrors active, build won't catch type errors — run npx tsc --noEmit manually on touched files.

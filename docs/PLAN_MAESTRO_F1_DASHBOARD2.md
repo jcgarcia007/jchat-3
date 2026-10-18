@@ -2,7 +2,7 @@
 
 **Proyecto:** JChat 3.0 · Repo: `jcgarcia007/jchat-3` · Rama base: `main` (HEAD verificado: `c35cd50`)
 **Autor:** Planning Claude (Fable 5) · Fecha: 2026-07-31
-**Ejecutor:** Claude Code (Opus 4.8) en `/Users/jcgarcia/Projects/JchatVer3.0`
+**Ejecutor:** Claude Code (Opus 4.8) en `/Users/jcgarcia/Projects/OtunityLabs/JchatVer3.0`
 **Auditor:** Planning Claude vía GitHub MCP (`get_commit` con `full_patch`) — cada commit se audita contra el diff real.
 
 > Este plan fue construido sobre el reporte Paso 0 de Claude Code **verificado línea por línea contra el código real de `main`** por Planning Claude. Incluye 2 correcciones al reporte (ver §1). Ejecutar en orden. No saltar pasos. No improvisar fuera de lo escrito.

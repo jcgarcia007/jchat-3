@@ -3,7 +3,7 @@
 > Ejecutar EN ORDEN. El PROMPT A va solo y se verifica antes de seguir (es el
 > único con riesgo de romper `select *` del cliente). Después el B y el C.
 > Recuerda: si Claude Code cae en `mobile/`, corre `git rev-parse --show-toplevel`
-> y `cd` a la raíz `/Users/jcgarcia/Projects/JchatVer3.0`.
+> y `cd` a la raíz `/Users/jcgarcia/Projects/OtunityLabs/JchatVer3.0`.
 
 ---
 
