@@ -121,7 +121,9 @@ export default function BusinessVerifyPage() {
 
           {view === "verified" && (
             <>
-              <IconCircleCheck size={44} color="var(--color-success)" />
+              <div style={{ display: "flex", justifyContent: "center" }}>
+                <IconCircleCheck size={44} color="var(--color-success)" />
+              </div>
               <h2 style={{ fontSize: "17px", fontWeight: 700, margin: "12px 0 20px" }}>{tr("verifiedTitle")}</h2>
               <button type="button" onClick={() => router.push("/dashboard")} style={primaryBtn}>
                 {tr("goToDashboard")}
@@ -132,7 +134,9 @@ export default function BusinessVerifyPage() {
 
           {view === "in_review" && (
             <>
-              <IconClockHour4 size={44} color="var(--color-brand)" />
+              <div style={{ display: "flex", justifyContent: "center" }}>
+                <IconClockHour4 size={44} color="var(--color-brand)" />
+              </div>
               <p style={{ fontSize: "14px", color: "var(--text-primary)", lineHeight: 1.6, margin: "12px 0 20px" }}>
                 {tr("reviewMessage")}
               </p>
