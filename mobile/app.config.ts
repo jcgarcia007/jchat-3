@@ -97,15 +97,23 @@ const config: ExpoConfig = {
       monochromeImage: './assets/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
-    // App Links: open *.jchat.cloud and jchat.cloud/c/* in the app (assetlinks.json goes in public/.well-known/).
+    // App Links: open *.jchat.cloud (any path) and jchat.cloud/c/* in the app (assetlinks.json goes in public/.well-known/).
+    // TWO filters on purpose: Android merges every <data> of one <intent-filter> (hosts x paths), so a single filter
+    // with pathPrefix '/c/' on the apex would also restrict the wildcard to '/c/'. Venue subdomains
+    // (https://<venue>.jchat.cloud/ and /<mesa>-<código>, see utils/entryUrl.ts) must open the app at any path.
+    // Android cannot exclude hosts from a wildcard: the reserved subdomains (www, app, support…) also open the
+    // app, which ignores them (entryUrl.ts returns null for them). iOS decides per host (its AASA), so it is unaffected.
     intentFilters: [
       {
         action: 'VIEW',
         autoVerify: true,
-        data: [
-          { scheme: 'https', host: '*.jchat.cloud' },
-          { scheme: 'https', host: 'jchat.cloud', pathPrefix: '/c/' },
-        ],
+        data: [{ scheme: 'https', host: '*.jchat.cloud' }],
+        category: ['BROWSABLE', 'DEFAULT'],
+      },
+      {
+        action: 'VIEW',
+        autoVerify: true,
+        data: [{ scheme: 'https', host: 'jchat.cloud', pathPrefix: '/c/' }],
         category: ['BROWSABLE', 'DEFAULT'],
       },
     ],
