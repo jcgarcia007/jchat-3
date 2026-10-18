@@ -2,7 +2,7 @@
   "applinks": {
     "details": [
       {
-        "appIDs": ["5H45ZXU67Q.com.juangarciacruz.jchatapp"],
+        "appIDs": ["5H45ZXU67Q.com.juangarciacruz.jchatapp", "2GGN7VT2BS.com.otunitylabs.jchat"],
         "components": [{ "/": "/*", "comment": "Todo el subdominio del local abre la app" }]
       }
     ]
