@@ -3,7 +3,7 @@
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "com.juangarciacruz.jchatapp",
+      "package_name": "com.otunitylabs.jchat",
       "sha256_cert_fingerprints": ["18:5C:CB:48:B3:C6:48:DC:28:4C:4E:CB:D2:AE:7E:38:DD:AC:FD:7B:C7:15:74:93:88:B2:6F:8F:8F:84:BE:C6"]
     }
   }
