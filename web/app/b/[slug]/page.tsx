@@ -434,7 +434,7 @@ function DownloadCTA({ businessName }: { businessName: string }) {
   const t = useTranslations("businessPage");
   // TODO: replace placeholder URLs with real App Store / Google Play production links
   const APP_STORE_URL = "https://apps.apple.com/app/jchat/id000000000"; // TODO: real App Store link
-  const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.jchat.app"; // TODO: real Play Store link
+  const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.otunitylabs.jchat"; // TODO: real Play Store link
 
   return (
     <div

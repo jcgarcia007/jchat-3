@@ -326,7 +326,7 @@ async function presentSheetForParams(params: PaymentSheetParams): Promise<Stripe
   // (allows the key to come from env without baking it into the bundle at build time)
   await initStripe({
     publishableKey: params.publishableKey,
-    merchantIdentifier: 'merchant.com.jchat.app',
+    merchantIdentifier: 'merchant.com.otunitylabs.jchat',
     // TODO(paypal): add urlScheme if PayPal redirect flow is enabled
   });
 
@@ -450,7 +450,7 @@ export async function saveCard(userId: string): Promise<SaveCardResult> {
 
     await initStripe({
       publishableKey: data.publishableKey,
-      merchantIdentifier: 'merchant.com.jchat.app',
+      merchantIdentifier: 'merchant.com.otunitylabs.jchat',
     });
 
     const { error: initError } = await initPaymentSheet({

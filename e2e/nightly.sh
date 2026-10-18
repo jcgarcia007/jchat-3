@@ -201,7 +201,7 @@ if has_phase 5; then
         echo "$now,${apid:-},${pss:-}" >> "$samples_a"
       fi
       if [ $ios_ok = 1 ]; then
-        ipid="$(xcrun simctl spawn "$ios_udid" launchctl list 2>/dev/null | awk '/jchatapp/ {print $1; exit}')"
+        ipid="$(xcrun simctl spawn "$ios_udid" launchctl list 2>/dev/null | awk '/otunitylabs\.jchat/ {print $1; exit}')"
         rss=""; [ -n "${ipid:-}" ] && [ "$ipid" != "-" ] && rss="$(ps -o rss= -p "$ipid" 2>/dev/null | tr -d ' ')"
         echo "$now,${ipid:-},${rss:-}" >> "$samples_i"
       fi

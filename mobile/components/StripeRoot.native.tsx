@@ -33,7 +33,7 @@ export default function StripeRoot({ children }: StripeRootProps): React.ReactEl
   return (
     <StripeProvider
       publishableKey={STRIPE_PK}
-      merchantIdentifier="merchant.com.jchat.app"
+      merchantIdentifier="merchant.com.otunitylabs.jchat"
       urlScheme="jchat"
     >
       {children}
