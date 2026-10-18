@@ -114,7 +114,8 @@ const config: ExpoConfig = {
     //  - READ_MEDIA_IMAGES / READ_MEDIA_VIDEO: the app picks photos through the system picker, never browses the media library.
     //  - ACCESS_BACKGROUND_LOCATION: location is foreground only (the expo-location plugin below adds nothing "Always").
     //  - SYSTEM_ALERT_WINDOW (draw over other apps): comes from the Expo prebuild template / React Native's debug
-    //    manifest, only a debug tool; blocked in store builds (EAS profile `production`, which has no development client).
+    //    manifest, only a debug tool; blocked in every build so the config (and the runtime fingerprint) is identical
+    //    locally and on EAS, with no dependency on EAS-only env vars.
     blockedPermissions: [
       'android.permission.READ_EXTERNAL_STORAGE',
       'android.permission.WRITE_EXTERNAL_STORAGE',
@@ -123,7 +124,7 @@ const config: ExpoConfig = {
       'android.permission.ACCESS_BACKGROUND_LOCATION',
       // The app uses no advertising and no advertising ID; the libraries' AD_ID permission is removed (consistent with Data safety).
       'com.google.android.gms.permission.AD_ID',
-      ...(process.env.EAS_BUILD_PROFILE === 'production' ? ['android.permission.SYSTEM_ALERT_WINDOW'] : []),
+      'android.permission.SYSTEM_ALERT_WINDOW',
     ],
     // Firebase Cloud Messaging — local file in dev, EAS file secret in CI.
     googleServicesFile: ANDROID_GOOGLE_SERVICES,
