@@ -76,3 +76,6 @@ e2e/.auth/
 
 # Release evidence: raw scanner output stays out of git (may contain secrets)
 release-evidence/*/raw/
+
+# gstack QA reports (local evidence, not for the repo)
+.gstack/
