@@ -132,7 +132,7 @@ Las carpetas de capacidades propias de una herramienta, como `.claude/`, no son 
 
 - **Instalado:** ECC (`ecc@ecc`) versión **2.2.3**, el 2026-10-02, con `npx ecc-universal@2.2.3 setup --mode claude-plugin --scope project`. Fuente oficial: repo `github.com/affaan-m/ECC` y paquete npm `ecc-universal`.
 - **Dónde:** scope `project`. Config en `.claude/settings.json` (`extraKnownMarketplaces.ecc` + `enabledPlugins."ecc@ecc": true`). Los archivos del plugin viven en la caché de plugins de Claude Code (`~/.claude/plugins/cache/ecc/ecc/2.2.3/`), no en el repo. Hooks en preferencia `standard`.
-- **Backup previo:** `.backup-claude-2026-10-02/` (ignorado por git; contiene `~/.claude.json`, así que no se sube ni se comparte).
+- **Backup previo:** `/Users/jcgarcia/Projects/OtunityLabs/_archive/JchatVer3.0-backups/.backup-claude-2026-10-02/` (fuera del repo; contiene `~/.claude.json`, así que no se sube ni se comparte).
 - **Flujo estándar, siempre y sin preguntar:** `plan → test → implement → review → verify → remember`.
   1. **Plan:** planificar antes de codificar (`/plan`, agente `planner`/`architect`).
   2. **Test:** escribir o verificar tests primero (`tdd-workflow`, agente `tdd-guide`).
