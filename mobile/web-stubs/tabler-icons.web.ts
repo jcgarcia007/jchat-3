@@ -37,6 +37,7 @@ export { default as IconChevronDown } from '@tabler/icons-react-native/IconChevr
 export { default as IconChevronLeft } from '@tabler/icons-react-native/IconChevronLeft';
 export { default as IconChevronRight } from '@tabler/icons-react-native/IconChevronRight';
 export { default as IconChevronUp } from '@tabler/icons-react-native/IconChevronUp';
+export { default as IconCircle } from '@tabler/icons-react-native/IconCircle';
 export { default as IconCircleCheckFilled } from '@tabler/icons-react-native/IconCircleCheckFilled';
 export { default as IconClipboardList } from '@tabler/icons-react-native/IconClipboardList';
 export { default as IconClock } from '@tabler/icons-react-native/IconClock';

@@ -375,6 +375,14 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
       });
 
       if (signUpError) {
+        // Leaked / weak password (Supabase "Prevent use of leaked passwords"): back to step 1, which is still mounted
+        // in the stack, so name and email are kept and the password field shows the error.
+        const code = (signUpError as { code?: string }).code;
+        if (code === 'weak_password' || /weak|leaked|pwned/i.test(signUpError.message ?? '')) {
+          setSubmitting(false);
+          navigation.navigate('RegisterStep1', { passwordError: 'leaked' });
+          return;
+        }
         showAlert(t('register.alerts.signUpFailedTitle'), toUserMessage(signUpError, 'auth:register.alerts.unexpectedError'));
         setSubmitting(false);
         return;

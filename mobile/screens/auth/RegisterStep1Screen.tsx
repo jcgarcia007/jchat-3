@@ -14,7 +14,7 @@
  *  • "Already have an account? Log in" link
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -27,7 +27,8 @@ import {
   Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as WebBrowser from 'expo-web-browser';
@@ -37,6 +38,8 @@ import {
   IconEyeOff,
   IconBrandGoogle,
   IconBrandApple,
+  IconCheck,
+  IconCircle,
 } from '@tabler/icons-react-native';
 
 import { palette } from '../../theme/tokens';
@@ -44,6 +47,9 @@ import { brandLogos } from '../../theme/brandLogos';
 import { useThemeColors } from '../../theme/colors';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { toUserMessage } from '../../utils/errors';
+import { passwordRules, isPasswordValid } from '../../utils/password';
+import { checkPwnedPassword, type PwnedResult } from '../../services/pwned';
+import { Spinner } from '../../components/common/Spinner';
 import type { AuthStackParamList } from '../../navigation/AppNavigator';
 import { showAlert } from '../../utils/dialog';
 import { readAuthCode } from '../../utils/authUrl';
@@ -61,6 +67,7 @@ const LOCAL_COLORS = {
 } as const;
 
 type RegisterStep1Nav = NativeStackNavigationProp<AuthStackParamList, 'RegisterStep1'>;
+type RegisterStep1Route = RouteProp<AuthStackParamList, 'RegisterStep1'>;
 
 // ---------------------------------------------------------------------------
 // Validation helpers
@@ -74,7 +81,8 @@ type ValidationErrorKey =
   | 'validation.emailRequired'
   | 'validation.emailInvalid'
   | 'validation.passwordRequired'
-  | 'validation.passwordTooShort'
+  | 'validation.passwordWeak'
+  | 'validation.passwordLeaked'
   | 'validation.confirmRequired'
   | 'validation.passwordsMismatch';
 
@@ -91,7 +99,7 @@ function validateEmail(v: string): ValidationErrorKey | null {
 
 function validatePassword(v: string): ValidationErrorKey | null {
   if (!v) return 'validation.passwordRequired';
-  if (v.length < 8) return 'validation.passwordTooShort';
+  if (!isPasswordValid(v)) return 'validation.passwordWeak';
   return null;
 }
 
@@ -107,6 +115,7 @@ function validateConfirmPassword(password: string, confirm: string): ValidationE
 export default function RegisterStep1Screen() {
   const c = useThemeColors();
   const navigation = useNavigation<RegisterStep1Nav>();
+  const route = useRoute<RegisterStep1Route>();
   const { t } = useTranslation('auth');
 
   // Form state
@@ -127,17 +136,45 @@ export default function RegisterStep1Screen() {
     confirmPassword: false,
   });
 
+  // Password rules list (shown once the field has focus or text), the leaked-password check and its cache.
+  const passwordInputRef = useRef<TextInput>(null);
+  const passwordValueRef = useRef('');
+  passwordValueRef.current = password;
+  const [passwordFocused, setPasswordFocused] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [leakedPassword, setLeakedPassword] = useState<string | null>(null); // the password found in a breach
+  const pwnedCache = useRef(new Map<string, PwnedResult>());
+  const rules = passwordRules(password);
+
   // Derived errors
   const errors = {
     name:            touched.name            ? validateName(name)                             : null,
     email:           touched.email           ? validateEmail(email)                           : null,
-    password:        touched.password        ? validatePassword(password)                     : null,
+    password:        touched.password
+      ? validatePassword(password) ?? (leakedPassword !== null && leakedPassword === password ? 'validation.passwordLeaked' : null)
+      : null,
     confirmPassword: touched.confirmPassword ? validateConfirmPassword(password, confirmPassword) : null,
   };
+
+  // Continue stays off until every field passes its validator (errors above only show once touched).
+  const formInvalid = !!(
+    validateName(name) || validateEmail(email) || validatePassword(password) || validateConfirmPassword(password, confirmPassword)
+  );
 
   const markTouched = useCallback((field: keyof typeof touched) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
   }, []);
+
+  // Step 2 sends us back with { passwordError: 'leaked' } when Supabase rejects the password at sign-up.
+  const passwordErrorParam = route.params?.passwordError;
+  useEffect(() => {
+    if (passwordErrorParam !== 'leaked') return;
+    const leaked = passwordValueRef.current;
+    pwnedCache.current.set(leaked, 'leaked');
+    setLeakedPassword(leaked);
+    setTouched((prev) => ({ ...prev, password: true }));
+    passwordInputRef.current?.focus();
+  }, [route.params, passwordErrorParam]);
 
   // ---------------------------------------------------------------------------
   // Social OAuth
@@ -177,7 +214,9 @@ export default function RegisterStep1Screen() {
   // ---------------------------------------------------------------------------
   // Continue — validate all fields, navigate if clean
   // ---------------------------------------------------------------------------
-  const handleContinue = useCallback(() => {
+  const handleContinue = useCallback(async () => {
+    if (checking) return;
+
     // Mark all as touched to reveal any remaining errors
     const allTouched = { name: true, email: true, password: true, confirmPassword: true };
     setTouched(allTouched);
@@ -189,12 +228,30 @@ export default function RegisterStep1Screen() {
 
     if (nameErr || emailErr || passwordErr || confirmErr) return;
 
+    // Leaked-password check (Have I Been Pwned: only 5 chars of the hash leave the phone). 'unknown' lets it through:
+    // Supabase checks again at sign-up. The last answer per password is cached so a retry does not ask twice.
+    let result = pwnedCache.current.get(password);
+    if (!result) {
+      setChecking(true);
+      try {
+        result = await checkPwnedPassword(password);
+      } finally {
+        setChecking(false);
+      }
+      pwnedCache.current.set(password, result);
+    }
+    if (result === 'leaked') {
+      setLeakedPassword(password);
+      passwordInputRef.current?.focus();
+      return;
+    }
+
     navigation.navigate('RegisterStep2', {
       name: name.trim(),
       email: email.trim().toLowerCase(),
       password,
     });
-  }, [name, email, password, confirmPassword, navigation]);
+  }, [checking, name, email, password, confirmPassword, navigation]);
 
   // ---------------------------------------------------------------------------
   // Render helpers
@@ -355,6 +412,7 @@ export default function RegisterStep1Screen() {
             </Text>
             <View style={styles.inputRow}>
               <TextInput
+                ref={passwordInputRef}
                 style={[
                   styles.input,
                   styles.inputFlex,
@@ -372,7 +430,11 @@ export default function RegisterStep1Screen() {
                 returnKeyType="next"
                 value={password}
                 onChangeText={setPassword}
-                onBlur={() => markTouched('password')}
+                onFocus={() => setPasswordFocused(true)}
+                onBlur={() => {
+                  setPasswordFocused(false);
+                  markTouched('password');
+                }}
                 accessibilityLabel={t('register.passwordA11y')}
               />
               <Pressable
@@ -389,6 +451,33 @@ export default function RegisterStep1Screen() {
                 )}
               </Pressable>
             </View>
+            {passwordFocused || password.length > 0 ? (
+              <View style={styles.rulesList}>
+                {([
+                  ['ruleMinLength', rules.minLength],
+                  ['ruleLetter', rules.hasLetter],
+                  ['ruleNumber', rules.hasNumber],
+                ] as const).map(([key, met]) => {
+                  const label = t(`validation.${key}`);
+                  const ruleColor = met ? c.success : c.textTertiary;
+                  return (
+                    <View
+                      key={key}
+                      style={styles.ruleRow}
+                      accessible
+                      accessibilityLabel={`${label}, ${t(met ? 'validation.ruleMet' : 'validation.rulePending')}`}
+                    >
+                      {met ? (
+                        <IconCheck size={14} color={ruleColor} strokeWidth={2} />
+                      ) : (
+                        <IconCircle size={14} color={ruleColor} strokeWidth={1.75} />
+                      )}
+                      <Text style={[styles.ruleText, { color: ruleColor }]}>{label}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            ) : null}
             {errors.password ? (
               <Text style={[styles.errorText, { color: palette.danger }]}>
                 {t(errors.password)}
@@ -447,15 +536,21 @@ export default function RegisterStep1Screen() {
 
           {/* ── Continue button ────────────────────────────────────────── */}
           <TouchableOpacity
-            style={[styles.continueButton, { backgroundColor: palette.brandFill }]}
+            style={[styles.continueButton, { backgroundColor: palette.brandFill }, formInvalid && styles.continueButtonDisabled]}
             onPress={handleContinue}
+            disabled={formInvalid || checking}
             activeOpacity={0.85}
             accessibilityRole="button"
             accessibilityLabel={t('register.continue')}
+            accessibilityState={{ disabled: formInvalid || checking, busy: checking }}
           >
-            <Text style={styles.continueButtonText}>
-              {t('register.continue')}
-            </Text>
+            {checking ? (
+              <Spinner color={LOCAL_COLORS.onBrand} />
+            ) : (
+              <Text style={styles.continueButtonText}>
+                {t('register.continue')}
+              </Text>
+            )}
           </TouchableOpacity>
 
           {/* ── Already have an account ───────────────────────────────── */}
@@ -592,6 +687,19 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginLeft: 2,
   },
+  rulesList: {
+    marginTop: 8,
+    gap: 4,
+    marginLeft: 2,
+  },
+  ruleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  ruleText: {
+    fontSize: 12,
+  },
 
   // ── Continue button ────────────────────────────────────────────────────────
   continueButton: {
@@ -601,6 +709,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 8,
     marginBottom: 20,
+  },
+  continueButtonDisabled: {
+    opacity: 0.4,
   },
   continueButtonText: {
     color: LOCAL_COLORS.onBrand,

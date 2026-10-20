@@ -99,7 +99,7 @@ export type AuthStackParamList = {
   Welcome: undefined;
   Login: undefined;
   LoginEmail: undefined;
-  RegisterStep1: undefined;
+  RegisterStep1: { passwordError?: 'leaked' } | undefined;
   RegisterStep2: { name?: string; email?: string; password?: string };
   ForgotPassword: undefined;
 };
