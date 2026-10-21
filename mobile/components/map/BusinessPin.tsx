@@ -3,59 +3,69 @@
  * Source of truth: JCHAT_3.0_DEV_PLAN.docx · Task 4.2
  *                  JCHAT_3.0_DESIGN_SYSTEM.docx · Section 12 (Map)
  *
- * A react-native-maps Marker with a custom teardrop view.
+ * A react-native-maps Marker drawing the "P2" pin (the teardrop with an emoji was replaced):
+ *   - a circle with the venue's logo, or its two initials on a colour that is stable per venue, a 3 px white
+ *     border and a soft shadow; 40 / 48 / 54 / 60 px by activity;
+ *   - a small round category chip centred below it (bar, restaurant, café, club, other), its border in the
+ *     activity colour;
+ *   - the people counter at the top right in the heat colours (palette.heatCool / Mild / Warm / Hot), a soft halo
+ *     at the top level, nothing when there is nobody;
+ *   - grey (no heat colour, no halo) while the venue is closed or pending.
+ * What it shows is decided in utils/mapPin.ts, which has its own tests.
  *
- * Teardrop shape (RN equivalents of CSS `border-radius: 50% 50% 50% 0`):
- *   - borderTopLeftRadius / borderTopRightRadius / borderBottomRightRadius = size / 2
- *   - borderBottomLeftRadius = 0
- *   - transform: [{ rotate: '-45deg' }]  (points down-left like a classic map pin)
- *   - Inner emoji counter-rotated +45deg so it reads upright.
- *
- * Size tiers (by activeCount):
- *   small   < 5      36 × 36
- *   medium  5–19     44 × 44
- *   large   20–49    52 × 52
- *   featured ≥ 50    62 × 62
- *
- * Color tiers (by activeCount → heat level → palette.heat*):
- *   heatCool  count < 5   (palette.heatCool  #34C759)
- *   heatMild  5–19        (palette.heatMild  #FFCC00)
- *   heatWarm  20–49       (palette.heatWarm  #FF9500)
- *   heatHot   ≥ 50        (palette.heatHot   #FF3B30)
- *
- * Pending businesses: grey teardrop + "Pending" badge, no heat color.
+ * Android performance: a Marker freezes its view after the first frame (tracksViewChanges={false}). The pin tracks
+ * changes only until its logo has loaded (or failed, or a ceiling passes) and again, briefly, when what it draws
+ * changes; then it goes back to false so the map does not keep re-rendering every marker.
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Marker } from 'react-native-maps';
-import { useTranslation } from 'react-i18next';
+import { Image } from 'expo-image';
+import { IconCoffee, IconGlass, IconMapPin, IconMusic, IconToolsKitchen2 } from '@tabler/icons-react-native';
 import { palette } from '../../theme/tokens';
-import { BusinessIcon } from '../common/BusinessIcon';
+import {
+  colorIndex,
+  counterLabel,
+  heatLevel,
+  initials,
+  isMuted,
+  pinCategory,
+  pinSize,
+  showCounter,
+  showHalo,
+  type HeatLevel,
+  type PinCategory,
+} from '../../utils/mapPin';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type HeatLevel = 'cool' | 'mild' | 'warm' | 'hot';
+export type { HeatLevel };
 
 export interface BusinessPinBusiness {
-  /** Unique business identifier. */
+  /** Unique business identifier (also the seed of the initials colour). */
   id: string;
-  /** Business name — the pin's accessibility label (VoiceOver / UI tests). */
+  /** Business name — the pin's accessibility label and the source of the initials. */
   name?: string;
   /** Latitude coordinate. */
   lat: number;
   /** Longitude coordinate. */
   lng: number;
-  /** Single emoji representing the business category / brand. */
-  icon_emoji: string;
-  /** The icon image the owner uploaded; shown instead of the emoji when it exists and loads. */
+  /** Kept for callers that still pass it; the pin no longer draws the emoji. */
+  icon_emoji?: string;
+  /** businesses.logo_url — the logo shown in the circle (preferred). */
+  logo_url?: string | null;
+  /** businesses.icon_url — the icon the owner uploaded; the logo when there is no logo_url. */
   icon_url?: string | null;
+  /** businesses.category (free text chosen at registration): picks the chip icon. */
+  category?: string | null;
   /**
-   * Approval status.
-   * 'pending' renders a distinct grey teardrop with a Pending badge.
-   * Any other value (e.g. 'active', 'approved') renders the heat-colored pin.
+   * Approval status. 'pending' renders the grey pin without counter.
+   * Any other value renders the heat-coloured pin.
    */
   status: string;
+  /** The venue is closed right now (from its hours): grey pin. */
+  closed?: boolean;
   /** Number of users currently active in this business's chat room(s). */
   activeCount: number;
 }
@@ -66,99 +76,86 @@ export interface BusinessPinProps {
   onPress: (business: BusinessPinBusiness) => void;
 }
 
-// ── Size tiers ────────────────────────────────────────────────────────────────
+// ── Colours (tokens only) ─────────────────────────────────────────────────────
 
-interface SizeTier {
-  /** Outer teardrop box (square before rotation). */
-  boxSize: number;
-  /** Emoji font size. */
-  emojiSize: number;
-  /** Badge pill dimensions. */
-  badgeFontSize: number;
-  badgePadH: number;
-  badgePadV: number;
-}
+/** Fill of the circle when there is no logo: one per venue, stable. */
+const INITIALS_COLORS = [palette.brandFill, palette.brandPurple, palette.success, palette.gold, palette.brandArtCoral] as const;
 
-function getSizeTier(count: number): SizeTier {
-  if (count < 5) {
-    return { boxSize: 36, emojiSize: 14, badgeFontSize: 7, badgePadH: 3, badgePadV: 1 };
-  }
-  if (count < 20) {
-    return { boxSize: 44, emojiSize: 18, badgeFontSize: 7, badgePadH: 3, badgePadV: 1 };
-  }
-  if (count < 50) {
-    return { boxSize: 52, emojiSize: 22, badgeFontSize: 7, badgePadH: 3, badgePadV: 1 };
-  }
-  return { boxSize: 62, emojiSize: 26, badgeFontSize: 7, badgePadH: 3, badgePadV: 1 };
-}
+const HEAT_COLORS: Record<HeatLevel, string> = {
+  cool: palette.heatCool,
+  mild: palette.heatMild,
+  warm: palette.heatWarm,
+  hot: palette.heatHot,
+};
 
-// ── Color / heat level mapping ────────────────────────────────────────────────
+/** Closed / pending: neutral grey, distinct from every heat colour. */
+const MUTED_COLOR = palette.textTertiary;
 
-/**
- * Maps an active-user count to a heat level name, then to the exact
- * palette token color. Uses palette.heat* — NO hardcoded hex.
- */
-function getHeatColor(count: number): string {
-  if (count >= 50) return palette.heatHot;    // #FF3B30 — featured
-  if (count >= 20) return palette.heatWarm;   // #FF9500 — large
-  if (count >= 5)  return palette.heatMild;   // #FFCC00 — medium
-  return palette.heatCool;                    // #34C759 — small / quiet
-}
+const CATEGORY_ICONS: Record<PinCategory, typeof IconMapPin> = {
+  bar: IconGlass,
+  restaurant: IconToolsKitchen2,
+  cafe: IconCoffee,
+  club: IconMusic,
+  other: IconMapPin,
+};
 
-function getHeatLevel(count: number): HeatLevel {
-  if (count >= 50) return 'hot';
-  if (count >= 20) return 'warm';
-  if (count >= 5)  return 'mild';
-  return 'cool';
-}
+// ── Layout constants ──────────────────────────────────────────────────────────
 
-// ── Teardrop anchor ──────────────────────────────────────────────────────────
-//
-// react-native-maps uses "anchor" to align the pin to the coordinate:
-//   { x: 0.5, y: 1 } = bottom center (default balloon)
-// After -45deg rotation the visual tip of our teardrop is the bottom-left
-// corner of the box. We compensate with a slight offset so the coordinate
-// stays at the visual tip.
-//
-// The teardrop rotated -45deg: its bottom-left corner (borderBottomLeftRadius=0)
-// becomes the lowest visual point. Anchor (0.25, 0.75) places the callout
-// close enough to the pin tip without MapView jitter.
-const TEARDROP_ANCHOR = { x: 0.25, y: 0.75 };
-const TEARDROP_CALL_ANCHOR = { x: 0.5, y: 0 };
-
-// ── Pending color ──────────────────────────────────────────────────────────
-const PENDING_COLOR = palette.textTertiary; // #636366 — neutral, distinct from heat
+const BORDER = 3;
+const CHIP_SIZE = 22;
+/** How far the chip overlaps the bottom of the circle. */
+const CHIP_OVERLAP = 7;
+/** Room around the circle for the counter (top right) and the halo. */
+const PAD = 10;
+const HALO_EXTRA = 6;
+const COUNTER_HEIGHT = 18;
+/** Tracking ceiling while a logo loads, and the short window after a change in what the pin draws. */
+const TRACKING_IMAGE_MS = 4000;
+const TRACKING_CHANGE_MS = 400;
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function BusinessPin({ business, onPress }: BusinessPinProps) {
-  const { t } = useTranslation('map');
-  const { boxSize, emojiSize, badgeFontSize, badgePadH, badgePadV } =
-    useMemo(() => getSizeTier(business.activeCount), [business.activeCount]);
+  const count = Math.max(0, business.activeCount);
+  const level = heatLevel(count);
+  const size = pinSize(count);
+  const muted = isMuted(business.status, business.closed);
+  const accent = muted ? MUTED_COLOR : HEAT_COLORS[level];
+  const fill = muted ? MUTED_COLOR : INITIALS_COLORS[colorIndex(business.id, INITIALS_COLORS.length)];
 
-  // A Marker freezes its view after the first frame; with a remote icon image keep tracking until it has loaded (or failed),
-  // with a ceiling so a slow image never keeps the marker re-rendering.
-  const [tracking, setTracking] = useState(!!business.icon_url);
+  const imageUrl = business.logo_url || business.icon_url || null;
+  const [imageFailed, setImageFailed] = useState(false);
+  useEffect(() => setImageFailed(false), [imageUrl]); // a new url gets its own chance
+  const showImage = !!imageUrl && !imageFailed;
+
+  const label = useMemo(() => initials(business.name), [business.name]);
+  const ChipIcon = CATEGORY_ICONS[pinCategory(business.category)];
+  const counterShown = showCounter(count, business.status);
+  const haloShown = showHalo(count, muted);
+  const counterBackground = muted ? MUTED_COLOR : HEAT_COLORS[level];
+  // Dark text on the light heat colours (green / yellow / orange), white on red and on grey.
+  const counterText = !muted && level !== 'hot' ? palette.bgBase : palette.onBrand;
+
+  // tracksViewChanges: true until the logo has loaded (or failed / the ceiling), and briefly when the pin changes.
+  const signature = `${size}|${muted}|${level}|${showImage}|${counterShown}|${counterLabel(count)}`;
+  const [tracking, setTracking] = useState(true);
   useEffect(() => {
-    if (!tracking) return undefined;
-    const timer = setTimeout(() => setTracking(false), 4000);
+    setTracking(true);
+    const timer = setTimeout(() => setTracking(false), showImage ? TRACKING_IMAGE_MS : TRACKING_CHANGE_MS);
     return () => clearTimeout(timer);
-  }, [tracking]);
+  }, [signature, showImage]);
+  const settle = () => setTracking(false);
 
-  const isPending = business.status === 'pending';
-  const pinColor = isPending ? PENDING_COLOR : getHeatColor(business.activeCount);
-
-  const radius = boxSize / 2;
-
-  // Badge count string — clamp at 99+
-  const badgeLabel =
-    business.activeCount > 99 ? '99+' : String(business.activeCount);
+  const width = size + PAD * 2;
+  const height = PAD + size + CHIP_SIZE - CHIP_OVERLAP + 2;
+  // The coordinate is the bottom centre of the chip: the tip of the pin.
+  const anchor = { x: 0.5, y: (PAD + size + CHIP_SIZE - CHIP_OVERLAP) / height };
 
   return (
     <Marker
       coordinate={{ latitude: business.lat, longitude: business.lng }}
-      anchor={TEARDROP_ANCHOR}
-      calloutAnchor={TEARDROP_CALL_ANCHOR}
+      anchor={anchor}
+      calloutAnchor={{ x: 0.5, y: 0 }}
       onPress={() => onPress(business)}
       tracksViewChanges={tracking}
       accessible
@@ -166,188 +163,138 @@ export default function BusinessPin({ business, onPress }: BusinessPinProps) {
       accessibilityLabel={business.name || undefined}
       testID={`map-pin-${business.id}`}
     >
-      {/* Outer wrapper gives the Marker a sized container */}
-      <View
-        style={[
-          styles.markerWrapper,
-          {
-            width: boxSize + BADGE_OFFSET + BADGE_SIZE,
-            height: boxSize + BADGE_OFFSET + BADGE_SIZE,
-          },
-        ]}
-      >
-        {/* ── Teardrop ───────────────────────────────────────────────────── */}
+      <View style={{ width, height }}>
+        {/* Soft halo at the top level */}
+        {haloShown ? (
+          <View
+            style={[
+              styles.halo,
+              {
+                left: PAD - HALO_EXTRA,
+                top: PAD - HALO_EXTRA,
+                width: size + HALO_EXTRA * 2,
+                height: size + HALO_EXTRA * 2,
+                borderRadius: (size + HALO_EXTRA * 2) / 2,
+                backgroundColor: accent,
+              },
+            ]}
+          />
+        ) : null}
+
+        {/* Logo circle: the outer view carries border + shadow, the inner one clips the image */}
         <View
           style={[
-            styles.teardrop,
-            {
-              width: boxSize,
-              height: boxSize,
-              borderTopLeftRadius: radius,
-              borderTopRightRadius: radius,
-              borderBottomRightRadius: radius,
-              borderBottomLeftRadius: 0,
-              backgroundColor: pinColor,
-            },
+            styles.circle,
+            { left: PAD, top: PAD, width: size, height: size, borderRadius: size / 2, backgroundColor: fill },
           ]}
         >
-          {/* Emoji counter-rotated +45deg so it's upright */}
-          <View style={styles.emojiWrapper}>
-            <BusinessIcon
-              iconUrl={business.icon_url}
-              emoji={business.icon_emoji}
-              size={Math.round(emojiSize * 1.25)}
-              emojiStyle={[styles.emoji, { fontSize: emojiSize }]}
-              onSettled={() => setTracking(false)}
-            />
+          <View style={[styles.clip, { borderRadius: size / 2 - BORDER }]}>
+            {showImage ? (
+              <Image
+                source={{ uri: imageUrl as string }}
+                style={StyleSheet.absoluteFill}
+                contentFit="cover"
+                accessible={false}
+                onLoad={settle}
+                onError={() => {
+                  setImageFailed(true); // back to the initials
+                  settle();
+                }}
+              />
+            ) : (
+              <Text style={[styles.initials, { fontSize: Math.round(size * 0.36) }]}>{label}</Text>
+            )}
           </View>
         </View>
 
-        {/* ── Active user count badge (top-right) ────────────────────────── */}
-        {business.activeCount > 0 && !isPending && (
-          <View
-            style={[
-              styles.badge,
-              {
-                paddingHorizontal: badgePadH,
-                paddingVertical: badgePadV,
-              },
-            ]}
-          >
-            <Text style={[styles.badgeText, { fontSize: badgeFontSize }]}>
-              {badgeLabel}
-            </Text>
-          </View>
-        )}
+        {/* Category chip, centred below the circle */}
+        <View
+          style={[
+            styles.chip,
+            { left: (width - CHIP_SIZE) / 2, top: PAD + size - CHIP_OVERLAP, borderColor: accent },
+          ]}
+        >
+          <ChipIcon size={12} color={palette.textPrimaryLight} strokeWidth={2.2} />
+        </View>
 
-        {/* ── Pending badge ───────────────────────────────────────────────── */}
-        {isPending && (
-          <View style={styles.pendingBadge}>
-            <Text style={styles.pendingBadgeText}>
-              {t('businessPin.pendingBadge')}
-            </Text>
+        {/* People counter, top right */}
+        {counterShown ? (
+          <View style={[styles.counter, { backgroundColor: counterBackground }]}>
+            <Text style={[styles.counterText, { color: counterText }]}>{counterLabel(count)}</Text>
           </View>
-        )}
+        ) : null}
       </View>
     </Marker>
   );
 }
 
-// ── Layout constants ──────────────────────────────────────────────────────────
-
-/** Diameter of the active-user count badge pill. */
-const BADGE_SIZE = 14;
-/** How far the badge overflows the top-right corner of the teardrop. */
-const BADGE_OFFSET = 4;
-
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  /**
-   * markerWrapper: a transparent container that gives the Marker enough room
-   * for the teardrop plus the badge overflow. Position absolute lets us place
-   * the badge at (boxSize - BADGE_SIZE/2, 0) relative to the wrapper.
-   */
-  markerWrapper: {
-    alignItems: 'flex-start',
-    justifyContent: 'flex-end',
-    // The teardrop sits at the bottom-left; the badge overflows top-right.
-  },
-
-  /**
-   * teardrop: the square box that becomes a teardrop via asymmetric border
-   * radii + -45deg rotation.
-   *
-   * CSS equivalent: border-radius: 50% 50% 50% 0; transform: rotate(-45deg);
-   *
-   * In RN:
-   *   borderTopLeftRadius = boxSize / 2   (round)
-   *   borderTopRightRadius = boxSize / 2  (round)
-   *   borderBottomRightRadius = boxSize / 2 (round)
-   *   borderBottomLeftRadius = 0           (sharp tip)
-   *   transform: [{ rotate: '-45deg' }]   (rotates the sharp corner to point down-left)
-   *
-   * backgroundColor and radii are applied inline (depend on boxSize/pinColor).
-   */
-  teardrop: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    // Subtle shadow so pin lifts off the map
+  halo: { position: 'absolute', opacity: 0.28 },
+  circle: {
+    position: 'absolute',
+    borderWidth: BORDER,
+    borderColor: palette.bgSurfaceLight, // white
+    // Soft shadow so the pin lifts off the map
     shadowColor: palette.bgBase,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.35,
-    shadowRadius: 3,
-    elevation: 6,
-    transform: [{ rotate: '-45deg' }],
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
-
-  /**
-   * emojiWrapper: counter-rotates the emoji +45deg so it faces upright
-   * despite the teardrop being rotated -45deg.
-   */
-  emojiWrapper: {
-    transform: [{ rotate: '45deg' }],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  emoji: {
-    // fontSize applied inline
-    lineHeight: undefined, // let OS pick natural line height
-    textAlign: 'center',
-  },
-
-  /**
-   * badge: red pill in the top-right corner showing the live user count.
-   * Positioned absolutely relative to markerWrapper so it sits above the
-   * rotated teardrop without affecting layout.
-   */
-  badge: {
+  clip: {
     position: 'absolute',
     top: 0,
-    right: 0,
-    minWidth: BADGE_SIZE,
-    height: BADGE_SIZE,
-    borderRadius: BADGE_SIZE / 2,
-    backgroundColor: palette.danger, // #ef4444 — design system danger token
-    alignItems: 'center',
-    justifyContent: 'center',
-    // Border so it stays readable on any pin color
-    borderWidth: 1,
-    borderColor: palette.bgSurfaceLight,
-  },
-
-  badgeText: {
-    color: palette.bgSurfaceLight,
-    fontWeight: '700',
-    letterSpacing: -0.2,
-    // fontSize applied inline
-  },
-
-  /**
-   * pendingBadge: shown below the teardrop for status==='pending' businesses.
-   * Uses a neutral pill distinct from the heat-colored active badge.
-   */
-  pendingBadge: {
-    position: 'absolute',
-    bottom: -2,
     left: 0,
     right: 0,
-    alignItems: 'center',
-  },
-
-  pendingBadgeText: {
-    fontSize: 7,
-    fontWeight: '700',
-    color: palette.textSecondary, // #aeaeb2
-    backgroundColor: palette.bgOverlay, // #2a2a2e — semi-opaque dark pill
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderRadius: 4,
+    bottom: 0,
     overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  initials: {
+    color: palette.onBrand,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+    textAlign: 'center',
+  },
+  chip: {
+    position: 'absolute',
+    width: CHIP_SIZE,
+    height: CHIP_SIZE,
+    borderRadius: CHIP_SIZE / 2,
+    borderWidth: 2,
+    backgroundColor: palette.bgSurfaceLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: palette.bgBase,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.25,
+    shadowRadius: 2,
+    elevation: 6,
+  },
+  counter: {
+    position: 'absolute',
+    top: PAD - COUNTER_HEIGHT / 2,
+    right: PAD - COUNTER_HEIGHT / 2,
+    minWidth: COUNTER_HEIGHT,
+    height: COUNTER_HEIGHT,
+    borderRadius: COUNTER_HEIGHT / 2,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: palette.bgSurfaceLight,
+    elevation: 7,
+  },
+  counterText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: -0.2,
   },
 });
 
 // ── Exports ───────────────────────────────────────────────────────────────────
 
-export { getHeatColor, getHeatLevel, getSizeTier };
+export { heatLevel, pinSize };

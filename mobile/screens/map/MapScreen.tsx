@@ -37,7 +37,7 @@ import JChatMap, { type MapStyleVariant } from '../../components/map/JChatMap';
 import BusinessPin from '../../components/map/BusinessPin';
 import FilterPanel, { defaultFilters, type MapFilters } from '../../components/map/FilterPanel';
 import BusinessPreviewCard from '../../components/map/BusinessPreviewCard';
-import { isOpenNow, type HoursMap } from '../../utils/hours';
+import { getOpenStatus, isOpenNow, type HoursMap } from '../../utils/hours';
 import { haversineMeters } from '../../services/geofence';
 import { buildCategoryOptions, categoryMatches } from '../../utils/categories';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
@@ -69,6 +69,8 @@ interface MapBusiness {
   category: string;
   icon_emoji: string;
   icon_url?: string | null;
+  /** businesses.logo_url: the logo drawn in the map pin. */
+  logo_url?: string | null;
   lat: number;
   lng: number;
   status: string;
@@ -227,7 +229,7 @@ export default function MapScreen() {
     try {
       const { data, error } = await supabase
         .from('businesses')
-        .select('id, name, category, icon_emoji, icon_url, lat, lng, status, address, cover_url, hours, slug')
+        .select('id, name, category, icon_emoji, icon_url, logo_url, lat, lng, status, address, cover_url, hours, slug')
         .eq('status', 'verified');
       if (error) throw error;
       if (!isMounted.current) return;
@@ -237,7 +239,7 @@ export default function MapScreen() {
           .filter((r) => typeof r.lat === 'number' && typeof r.lng === 'number')
           .map((r) => ({
             id: r.id!, name: r.name ?? '', category: r.category ?? '',
-            icon_emoji: r.icon_emoji ?? '📍', icon_url: r.icon_url ?? null, lat: r.lat!, lng: r.lng!,
+            icon_emoji: r.icon_emoji ?? '📍', icon_url: r.icon_url ?? null, logo_url: r.logo_url ?? null, lat: r.lat!, lng: r.lng!,
             status: r.status ?? 'verified', activeCount: 0, // TODO(presence): live count
             address: r.address ?? '', cover_url: r.cover_url ?? null, hours: r.hours ?? null,
             slug: r.slug ?? null,
@@ -324,7 +326,19 @@ export default function MapScreen() {
         {filtered.map((b) => (
           <BusinessPin
             key={b.id}
-            business={{ id: b.id, name: b.name, lat: b.lat, lng: b.lng, icon_emoji: b.icon_emoji, icon_url: b.icon_url, status: b.status, activeCount: b.activeCount }}
+            business={{
+              id: b.id,
+              name: b.name,
+              lat: b.lat,
+              lng: b.lng,
+              icon_emoji: b.icon_emoji,
+              logo_url: b.logo_url,
+              icon_url: b.icon_url,
+              category: b.category,
+              status: b.status,
+              closed: getOpenStatus(b.hours) === 'closed', // grey pin while closed ('unknown' hours are not "closed")
+              activeCount: b.activeCount,
+            }}
             onPress={() => setSelected(b)}
           />
         ))}
