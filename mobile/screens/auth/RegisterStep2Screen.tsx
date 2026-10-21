@@ -5,51 +5,31 @@
  * Validates 18+ on submission, real-time debounced username availability check,
  * then calls supabase.auth.signUp and inserts the profile row into `users`.
  *
- * Design:
- *  • Progress dots — BOTH filled (brand color)
- *  • Title "Almost there!" + subtitle
- *  • Date-of-birth picker via @react-native-community/datetimepicker
+ * Design ("boleto", same look as the login):
+ *  • TicketShell: night photo + paper ticket, ES · EN pill, back button
+ *  • Step indicator "2 of 2" + title "Almost there!" + subtitle
+ *  • Date of birth in three numeric boxes (TicketBirthDate / utils/birthDate.ts), 18+ checked on submit
  *  • Language selector (EN / ES)
  *  • @username field with real-time availability (debounced 300ms)
  *  • Terms + Privacy Policy checkbox (links via expo-web-browser)
  *  • "Create my account 🎉" button
+ * Fixed artwork: it does not follow light/dark mode (theme/ticket.ts).
  *
  * Auth guard: supabase.auth.signUp → AuthContext session listener flips
  * isAuthenticated → AppNavigator switches to main tabs automatically.
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-} from 'react-native';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Spinner } from '../../components/common/Spinner';
-import { AppModal } from '../../components/common/AppModal';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import DatePicker from '../../components/common/DatePicker';
-import type { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import * as WebBrowser from 'expo-web-browser';
 import { useTranslation } from 'react-i18next';
-import {
-  IconAt,
-  IconCheck,
-  IconAlertCircle,
-  IconChevronDown,
-  IconCalendar,
-  IconLoader2,
-} from '@tabler/icons-react-native';
+import { IconAlertCircle, IconArrowLeft, IconAt, IconCheck } from '@tabler/icons-react-native';
 
-import { palette } from '../../theme/tokens';
-import { useThemeColors } from '../../theme/colors';
+import { ticket } from '../../theme/ticket';
+import { loginFont, useLoginFonts } from '../../theme/loginFonts';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { toUserMessage } from '../../utils/errors';
 import { useAuth } from '../../context/AuthContext';
@@ -59,16 +39,12 @@ import { useCaptcha, captchaErrorI18nKeys } from '../../services/captcha';
 import type { AuthStackParamList } from '../../navigation/AppNavigator';
 import i18n, { changeAppLanguage, type SupportedLanguage } from '../../i18n';
 import { showAlert } from '../../utils/dialog';
-
-// ---------------------------------------------------------------------------
-// Screen-local color constants — only values not already in palette/tokens
-// ---------------------------------------------------------------------------
-const LOCAL_COLORS = {
-  onBrand: palette.onBrand,            // text on filled brand button
-  dividerLine: palette.neutralLine,
-  checkboxBorder: palette.neutralBorder,
-  overlayBackdrop: palette.scrimMedium,
-} as const;
+import { parseBirthDate, type DateParts } from '../../utils/birthDate';
+import { TicketPlaceholder, TicketShell } from '../../components/auth/TicketShell';
+import { TicketHeader } from '../../components/auth/TicketHeader';
+import { TicketTitle } from '../../components/auth/TicketReveal';
+import { TicketStep } from '../../components/auth/TicketStep';
+import { TicketBirthDate } from '../../components/auth/TicketBirthDate';
 
 // ---------------------------------------------------------------------------
 // Types / navigation
@@ -85,6 +61,10 @@ const LANGUAGE_OPTIONS: { value: Language; label: string; flag: string }[] = [
   { value: 'es', label: 'Español', flag: '🇲🇽' },
 ];
 
+/** A shorter photo than the login: this ticket carries a whole form. */
+const PHOTO_FRACTION = 0.22;
+const EMPTY_DATE: DateParts = { day: '', month: '', year: '' };
+
 // ---------------------------------------------------------------------------
 // Legal URL stubs
 // ---------------------------------------------------------------------------
@@ -95,13 +75,6 @@ const PRIVACY_URL = 'https://jchat.cloud/privacy';
 // Helpers
 // ---------------------------------------------------------------------------
 const USERNAME_REGEX = /^[a-z0-9_]{3,30}$/;
-
-function formatDate(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${m}/${d}/${y}`;
-}
 
 function isAtLeast18(dob: Date): boolean {
   const today = new Date();
@@ -131,26 +104,25 @@ type AvailabilityStatus = 'idle' | 'checking' | 'available' | 'taken' | 'error';
 // Component
 // ---------------------------------------------------------------------------
 export default function RegisterStep2Screen({ route, navigation }: Props) {
-  const c = useThemeColors();
   const { t } = useTranslation('auth');
+  const fontsReady = useLoginFonts();
   // hCaptcha (D-38): token pedido en el submit; `CaptchaGate` se monta abajo.
   const { captchaEnabled, getCaptchaToken, CaptchaGate } = useCaptcha();
   const { holdAgeGate, refreshAge, signOut } = useAuth();
   const { name = '', email = '', password = '' } = route.params ?? {};
 
   // ── Date of birth ──────────────────────────────────────────────────────────
-  // No default value: `dob` stays null until the user picks a date. The full date is
-  // only sent to rpc confirm_age (server stores the year only) — never persisted here.
-  const [dob, setDob] = useState<Date | null>(null);
-  const [pickerValue, setPickerValue] = useState<Date>(() => new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [dobTouched, setDobTouched] = useState(false);
+  // The three boxes start empty (no default date). `dob` is derived: null until they read as a real, past date.
+  // The full date is only sent to rpc confirm_age (server stores the year only) — never persisted here.
+  const [dobParts, setDobParts] = useState<DateParts>(EMPTY_DATE);
+  const parsedDob = useMemo(() => parseBirthDate(dobParts), [dobParts]);
+  const dob = parsedDob.ok ? parsedDob.date : null;
+  const dobFilled = dobParts.day !== '' && dobParts.month !== '' && dobParts.year !== '';
 
   // ── Language selector ──────────────────────────────────────────────────────
   const [language, setLanguage] = useState<Language>(
     (i18n.language === 'es' ? 'es' : 'en') as Language,
   );
-  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
 
   // ── Username ───────────────────────────────────────────────────────────────
   const [username, setUsername] = useState('');
@@ -168,10 +140,15 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
   // ---------------------------------------------------------------------------
   // Derived errors (only after touch or submit attempt)
   // ---------------------------------------------------------------------------
-  const dobError: string | null =
-    dobTouched && dob && !isAtLeast18(dob)
-      ? t('register.dobError')
-      : null;
+  // Once the three boxes are filled: a date that does not exist / is in the future, or an 18+ failure.
+  const dobError: string | null = (() => {
+    if (!dobFilled) return null;
+    if (!parsedDob.ok) {
+      if (parsedDob.reason === 'future') return t('age.dateFuture');
+      return parsedDob.reason === 'invalid' ? t('age.dateInvalid') : null;
+    }
+    return isAtLeast18(parsedDob.date) ? null : t('register.dobError');
+  })();
 
   const usernameFormatError: string | null = usernameTouched
     ? validateUsername(username)
@@ -231,27 +208,6 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
   }, [username]);
 
   // ---------------------------------------------------------------------------
-  // Date picker handlers
-  // ---------------------------------------------------------------------------
-  const handleDateChange = useCallback(
-    (event: DateTimePickerEvent, selectedDate?: Date) => {
-      // On Android (and the web <input type="date">) the picker dismisses itself after selection / cancellation
-      if (Platform.OS !== 'ios') {
-        setShowDatePicker(false);
-      }
-      if (event.type === 'set' && selectedDate) {
-        setPickerValue(selectedDate);
-        // Android's dialog / the web input commit on selection; the iOS spinner commits on "Done".
-        if (Platform.OS !== 'ios') {
-          setDob(selectedDate);
-          setDobTouched(true);
-        }
-      }
-    },
-    [],
-  );
-
-  // ---------------------------------------------------------------------------
   // Legal links
   // ---------------------------------------------------------------------------
   const openTerms = useCallback(async () => {
@@ -267,7 +223,6 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
   // ---------------------------------------------------------------------------
   const handleCreateAccount = useCallback(async () => {
     // Mark all as touched to surface any hidden errors
-    setDobTouched(true);
     setUsernameTouched(true);
     setTermsTouched(true);
 
@@ -468,590 +423,273 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
   }, [holdAgeGate, refreshAge, signOut, dob, username, availability, termsAccepted, email, password, name, language, captchaEnabled, getCaptchaToken, t, navigation]);
 
   // ---------------------------------------------------------------------------
-  // Computed values for rendering
-  // ---------------------------------------------------------------------------
-  const inputBg = c.bgSurface;
-  const inputBorder = c.borderSubtle;
-  const selectedLanguage = LANGUAGE_OPTIONS.find((o) => o.value === language)!;
-
-  // Max date: today (can't claim a future DOB)
-  const maxDate = new Date();
-
-  // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
+  if (!fontsReady) return <TicketPlaceholder photoFraction={PHOTO_FRACTION} />;
+
+  const backButton = (
+    <Pressable
+      onPress={() => navigation.goBack()}
+      style={styles.back}
+      accessibilityRole="button"
+      accessibilityLabel={t('register.backA11y')}
+    >
+      <IconArrowLeft size={22} color={ticket.ticketPillText} strokeWidth={2} />
+    </Pressable>
+  );
+
+  const usernameBorder =
+    usernameFormatError || availability === 'taken' ? ticket.ticketError : ticket.ticketFieldBorder;
+
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: c.bgBase }]}>
+    <TicketShell photoFraction={PHOTO_FRACTION} overlap={44} leftSlot={backButton}>
       {/* hCaptcha (D-38): invisible; renderiza null salvo cuando el reto está activo. */}
       {CaptchaGate}
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-      >
-        <ScrollView
-          style={styles.flex}
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* ── Progress dots — both filled ─────────────────────────────── */}
-          <View style={styles.dotsRow} accessible accessibilityRole="image" accessibilityLabel={t('register.step2Indicator')}>
-            <View style={[styles.dot, { backgroundColor: palette.brand, width: 20 }]} />
-            <View style={[styles.dot, { backgroundColor: palette.brand, width: 20 }]} />
-          </View>
+      <TicketHeader />
+      <TicketStep step={2} />
+      <TicketTitle text={t('register.step2Title')} dot={false} />
+      <Text style={styles.subtitle}>{t('register.step2Subtitle')}</Text>
 
-          {/* ── Title ────────────────────────────────────────────────────── */}
-          <Text style={[styles.title, { color: c.textPrimary }]}>
-            {t('register.step2Title')}
-          </Text>
-          <Text style={[styles.subtitle, { color: c.textSecondary }]}>
-            {t('register.step2Subtitle')}
-          </Text>
+      {/* ── Date of birth ─────────────────────────────────────────────── */}
+      <TicketBirthDate parts={dobParts} onChangeParts={setDobParts} error={dobError} />
 
-          {/* ── Date of birth ─────────────────────────────────────────────── */}
-          <View style={styles.fieldWrap}>
-            <Text style={[styles.label, { color: c.textSecondary }]}>
-              {t('register.dobLabel')}
-            </Text>
-            <TouchableOpacity
-              style={[
-                styles.input,
-                styles.selectorRow,
-                {
-                  backgroundColor: inputBg,
-                  borderColor: dobError ? palette.danger : inputBorder,
-                },
-              ]}
-              onPress={() => {
-                setShowDatePicker(true);
-                setDobTouched(true);
-              }}
-              activeOpacity={0.75}
-              accessibilityRole="button"
-              accessibilityLabel={t('register.dobA11y')}
-            >
-              <IconCalendar size={18} color={c.textTertiary} strokeWidth={1.75} />
-              <Text
-                style={[
-                  styles.selectorText,
-                  {
-                    color: dob ? c.textPrimary : c.textTertiary,
-                    marginLeft: 8,
-                    flex: 1,
-                  },
-                ]}
-              >
-                {dob ? formatDate(dob) : t('register.dobPlaceholder')}
-              </Text>
-            </TouchableOpacity>
-            {dobError ? (
-              <Text style={[styles.errorText, { color: palette.danger }]}>
-                {dobError}
-              </Text>
-            ) : null}
-          </View>
-
-          {/* iOS: inline picker when triggered */}
-          {showDatePicker && Platform.OS === 'ios' && (
-            <View
-              style={[
-                styles.iosPickerWrap,
-                { backgroundColor: inputBg, borderColor: inputBorder },
-              ]}
-            >
-              <DatePicker
-                value={pickerValue}
-                mode="date"
-                display="spinner"
-                maximumDate={maxDate}
-                onChange={handleDateChange}
-                textColor={c.textPrimary}
-              />
-              <TouchableOpacity
-                style={[styles.iosDoneButton, { borderTopColor: inputBorder }]}
-                onPress={() => {
-                  setDob(pickerValue);
-                  setDobTouched(true);
-                  setShowDatePicker(false);
-                }}
-              >
-                <Text style={[styles.iosDoneText, { color: palette.brand }]}>
-                  {t('register.dobDone')}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Android: modal picker — shown imperatively. Web: native <input type="date">. */}
-          {showDatePicker && Platform.OS !== 'ios' && (
-            <DatePicker
-              value={pickerValue}
-              mode="date"
-              display="default"
-              maximumDate={maxDate}
-              onChange={handleDateChange}
-            />
-          )}
-
-          {/* ── Language selector ─────────────────────────────────────────── */}
-          <View style={styles.fieldWrap}>
-            <Text style={[styles.label, { color: c.textSecondary }]}>
-              {t('register.languageLabel')}
-            </Text>
-            <TouchableOpacity
-              style={[
-                styles.input,
-                styles.selectorRow,
-                { backgroundColor: inputBg, borderColor: inputBorder },
-              ]}
-              onPress={() => setShowLanguagePicker(true)}
-              activeOpacity={0.75}
-              accessibilityRole="button"
-              accessibilityLabel={t('register.languageA11y')}
-            >
-              <Text style={[styles.selectorText, { color: c.textPrimary }]}>
-                {selectedLanguage.flag}{'  '}{selectedLanguage.label}
-              </Text>
-              <IconChevronDown size={18} color={c.textTertiary} strokeWidth={1.75} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Language picker modal */}
-          <AppModal
-            visible={showLanguagePicker}
-            transparent
-            animationType="fade"
-            onRequestClose={() => setShowLanguagePicker(false)}
-          >
+      {/* ── Language selector ─────────────────────────────────────────── */}
+      <Text style={styles.fieldLabel}>{t('register.languageLabel')}</Text>
+      <View style={styles.languageRow} role="radiogroup" accessibilityLabel={t('register.languageA11y')}>
+        {LANGUAGE_OPTIONS.map((opt) => {
+          const selected = opt.value === language;
+          return (
             <Pressable
-              style={styles.modalBackdrop}
-              onPress={() => setShowLanguagePicker(false)}
-            >
-              <View
-                style={[
-                  styles.languageSheet,
-                  { backgroundColor: c.bgSurface, borderColor: inputBorder },
-                ]}
-              >
-                {LANGUAGE_OPTIONS.map((opt) => (
-                  <TouchableOpacity
-                    key={opt.value}
-                    style={[
-                      styles.languageOption,
-                      opt.value === language && {
-                        backgroundColor: palette.brandLight,
-                      },
-                    ]}
-                    onPress={() => {
-                      setLanguage(opt.value);
-                      changeAppLanguage(opt.value as SupportedLanguage);
-                      setShowLanguagePicker(false);
-                    }}
-                    activeOpacity={0.75}
-                    accessibilityRole="button"
-                    accessibilityLabel={opt.label}
-                  >
-                    <Text style={styles.languageFlag}>{opt.flag}</Text>
-                    <Text style={[styles.languageLabel, { color: c.textPrimary }]}>
-                      {opt.label}
-                    </Text>
-                    {opt.value === language && (
-                      <IconCheck size={18} color={palette.brand} strokeWidth={2} />
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </Pressable>
-          </AppModal>
-
-          {/* ── @username ─────────────────────────────────────────────────── */}
-          <View style={styles.fieldWrap}>
-            <Text style={[styles.label, { color: c.textSecondary }]}>
-              {t('register.usernameLabel')}
-            </Text>
-            <View
-              style={[
-                styles.usernameInputWrapper,
-                {
-                  backgroundColor: inputBg,
-                  borderColor:
-                    usernameFormatError || availability === 'taken'
-                      ? palette.danger
-                      : availability === 'available'
-                      ? palette.success
-                      : inputBorder,
-                },
-              ]}
-            >
-              {/* @ prefix icon */}
-              <IconAt size={18} color={c.textTertiary} strokeWidth={1.75} style={styles.atIcon} />
-
-              <TextInput
-                style={[styles.usernameInput, { color: c.textPrimary }]}
-                placeholder={t('register.usernamePlaceholder')}
-                placeholderTextColor={c.textTertiary}
-                autoCapitalize="none"
-                autoCorrect={false}
-                returnKeyType="done"
-                value={username}
-                onChangeText={(v) => {
-                  // Normalise to lowercase as the user types
-                  setUsername(v.toLowerCase());
-                }}
-                onBlur={() => setUsernameTouched(true)}
-                accessibilityLabel={t('register.usernameA11y')}
-              />
-
-              {/* Availability indicator */}
-              <View style={styles.availabilityIcon}>
-                {availability === 'checking' && (
-                  <Spinner size="small" color={c.textTertiary} />
-                )}
-                {availability === 'available' && !usernameFormatError && (
-                  <IconCheck size={18} color={palette.success} strokeWidth={2.5} />
-                )}
-                {availability === 'taken' && (
-                  <IconAlertCircle size={18} color={palette.danger} strokeWidth={2} />
-                )}
-              </View>
-            </View>
-
-            {/* Inline status messages */}
-            {usernameFormatError && usernameTouched ? (
-              <Text style={[styles.errorText, { color: palette.danger }]}>
-                {t(usernameFormatError)}
-              </Text>
-            ) : availability === 'taken' ? (
-              <Text style={[styles.errorText, { color: palette.danger }]}>
-                {t('register.usernameTaken')}
-              </Text>
-            ) : availability === 'available' && !usernameFormatError ? (
-              <Text style={[styles.statusText, { color: palette.success }]}>
-                {t('register.usernameAvailable')}
-              </Text>
-            ) : availability === 'error' ? (
-              <Text style={[styles.errorText, { color: palette.warning }]}>
-                {t('register.usernameCheckError')}
-              </Text>
-            ) : null}
-          </View>
-
-          {/* ── Terms & Privacy checkbox ──────────────────────────────────── */}
-          <View style={styles.fieldWrap}>
-            <TouchableOpacity
-              style={styles.termsRow}
+              key={opt.value}
+              style={[styles.languageOption, selected && styles.languageOptionOn]}
               onPress={() => {
-                setTermsAccepted((v) => !v);
-                setTermsTouched(true);
+                setLanguage(opt.value);
+                changeAppLanguage(opt.value as SupportedLanguage);
               }}
-              activeOpacity={0.75}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: termsAccepted }}
-              accessibilityLabel={t('register.termsA11y')}
+              accessibilityRole="radio"
+              accessibilityState={{ selected, checked: selected }}
+              accessibilityLabel={opt.label}
             >
-              {/* Checkbox */}
-              <View
-                style={[
-                  styles.checkbox,
-                  {
-                    borderColor: termsError
-                      ? palette.danger
-                      : termsAccepted
-                      ? palette.brand
-                      : LOCAL_COLORS.checkboxBorder,
-                    backgroundColor: termsAccepted ? palette.brandFill : 'transparent',
-                  },
-                ]}
-              >
-                {termsAccepted && (
-                  <IconCheck size={14} color={LOCAL_COLORS.onBrand} strokeWidth={2.5} />
-                )}
-              </View>
+              <Text style={styles.languageFlag}>{opt.flag}</Text>
+              <Text style={[styles.languageLabel, selected && styles.languageLabelOn]}>{opt.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
 
-              {/* Label with tappable links */}
-              <View style={styles.termsTextWrap}>
-                <Text style={[styles.termsText, { color: c.textSecondary }]}>
-                  {t('register.termsAgree')}
-                </Text>
-                <TouchableOpacity
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    void openTerms();
-                  }}
-                  hitSlop={6}
-                >
-                  <Text style={[styles.termsLink, { color: palette.brand }]}>
-                    {t('register.termsOfService')}
-                  </Text>
-                </TouchableOpacity>
-                <Text style={[styles.termsText, { color: c.textSecondary }]}>
-                  {t('register.termsAnd')}
-                </Text>
-                <TouchableOpacity
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    void openPrivacy();
-                  }}
-                  hitSlop={6}
-                >
-                  <Text style={[styles.termsLink, { color: palette.brand }]}>
-                    {t('register.privacyPolicy')}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-            {termsError ? (
-              <Text style={[styles.errorText, { color: palette.danger }]}>
-                {termsError}
-              </Text>
-            ) : null}
-          </View>
+      {/* ── @username ─────────────────────────────────────────────────── */}
+      <Text style={styles.fieldLabel}>{t('register.usernameLabel')}</Text>
+      <View style={[styles.usernameWrapper, { borderColor: usernameBorder }]}>
+        <IconAt size={18} color={ticket.ticketInkMuted} strokeWidth={1.75} />
+        <TextInput
+          style={styles.usernameInput}
+          placeholder={t('register.usernamePlaceholder')}
+          placeholderTextColor={ticket.ticketInkMuted}
+          autoCapitalize="none"
+          autoCorrect={false}
+          returnKeyType="done"
+          value={username}
+          onChangeText={(v) => {
+            // Normalise to lowercase as the user types
+            setUsername(v.toLowerCase());
+          }}
+          onBlur={() => setUsernameTouched(true)}
+          accessibilityLabel={t('register.usernameA11y')}
+        />
+        {/* Availability indicator */}
+        <View style={styles.availabilityIcon}>
+          {availability === 'checking' && <Spinner size="small" color={ticket.ticketInkMuted} />}
+          {availability === 'available' && !usernameFormatError && (
+            <IconCheck size={18} color={ticket.brandAccent} strokeWidth={2.5} />
+          )}
+          {availability === 'taken' && <IconAlertCircle size={18} color={ticket.ticketError} strokeWidth={2} />}
+        </View>
+      </View>
+      {/* Inline status messages */}
+      {usernameFormatError && usernameTouched ? (
+        <Text style={styles.errorText}>{t(usernameFormatError)}</Text>
+      ) : availability === 'taken' ? (
+        <Text style={styles.errorText}>{t('register.usernameTaken')}</Text>
+      ) : availability === 'available' && !usernameFormatError ? (
+        <Text style={styles.statusText}>{t('register.usernameAvailable')}</Text>
+      ) : availability === 'error' ? (
+        <Text style={styles.mutedText}>{t('register.usernameCheckError')}</Text>
+      ) : null}
 
-          {/* ── Create account button ─────────────────────────────────────── */}
-          <TouchableOpacity
-            style={[
-              styles.createButton,
-              {
-                backgroundColor: palette.brandFill,
-                opacity: submitting ? 0.7 : 1,
-              },
-            ]}
-            onPress={() => { void handleCreateAccount(); }}
-            activeOpacity={0.85}
-            disabled={submitting}
-            accessibilityRole="button"
-            accessibilityLabel={t('register.createA11y')}
+      {/* ── Terms & Privacy checkbox ──────────────────────────────────── */}
+      <Pressable
+        style={styles.termsRow}
+        onPress={() => {
+          setTermsAccepted((v) => !v);
+          setTermsTouched(true);
+        }}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: termsAccepted }}
+        accessibilityLabel={t('register.termsA11y')}
+      >
+        <View
+          style={[
+            styles.checkbox,
+            termsError ? styles.checkboxError : null,
+            termsAccepted && styles.checkboxOn,
+          ]}
+        >
+          {termsAccepted && <IconCheck size={14} color={ticket.ticketButtonText} strokeWidth={2.5} />}
+        </View>
+        {/* Label with tappable links */}
+        <View style={styles.termsTextWrap}>
+          <Text style={styles.termsText}>{t('register.termsAgree')}</Text>
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              void openTerms();
+            }}
+            hitSlop={6}
           >
-            {submitting ? (
-              <Spinner color={LOCAL_COLORS.onBrand} />
-            ) : (
-              <Text style={styles.createButtonText}>
-                {t('register.createButton')}
-              </Text>
-            )}
-          </TouchableOpacity>
-
-          {/* ── Back link ─────────────────────────────────────────────────── */}
-          <TouchableOpacity
-            style={styles.backRow}
-            onPress={() => navigation.goBack()}
-            activeOpacity={0.75}
-            accessibilityRole="button"
-            accessibilityLabel={t('register.backA11y')}
+            <Text style={styles.termsLink}>{t('register.termsOfService')}</Text>
+          </Pressable>
+          <Text style={styles.termsText}>{t('register.termsAnd')}</Text>
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              void openPrivacy();
+            }}
+            hitSlop={6}
           >
-            <Text style={[styles.backText, { color: c.textTertiary }]}>
-              {t('register.back')}
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+            <Text style={styles.termsLink}>{t('register.privacyPolicy')}</Text>
+          </Pressable>
+        </View>
+      </Pressable>
+      {termsError ? <Text style={styles.errorText}>{termsError}</Text> : null}
+
+      {/* ── Create account button ─────────────────────────────────────── */}
+      <Pressable
+        style={[styles.primary, submitting && styles.primaryBusy]}
+        onPress={() => { void handleCreateAccount(); }}
+        disabled={submitting}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: submitting, busy: submitting }}
+        accessibilityLabel={t('register.createA11y')}
+      >
+        {submitting ? (
+          <Spinner color={ticket.ticketButtonText} />
+        ) : (
+          <Text style={styles.primaryText}>{t('register.createButton')}</Text>
+        )}
+      </Pressable>
+    </TicketShell>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Styles — no hardcoded hex except in LOCAL_COLORS above
+// Styles — ticket tokens only (theme/ticket.ts), no hex here
 // ---------------------------------------------------------------------------
 const styles = StyleSheet.create({
-  safe: { flex: 1 },
-  flex: { flex: 1 },
-  scroll: {
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 48,
-  },
-
-  // ── Progress dots ──────────────────────────────────────────────────────────
-  dotsRow: {
-    flexDirection: 'row',
+  back: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 28,
-  },
-  dot: {
-    height: 6,
-    width: 6,
-    borderRadius: 3,
-  },
-
-  // ── Title ──────────────────────────────────────────────────────────────────
-  title: {
-    fontSize: 26,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-    marginBottom: 8,
+    justifyContent: 'center',
+    backgroundColor: ticket.ticketBackBg,
   },
   subtitle: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 28,
+    marginTop: 8,
+    marginBottom: 4,
+    fontFamily: loginFont.text,
+    fontSize: 15,
+    lineHeight: 22,
+    color: ticket.ticketInkMuted,
   },
-
-  // ── Shared field wrapper ───────────────────────────────────────────────────
-  fieldWrap: { marginBottom: 18 },
-  label: {
-    fontSize: 13,
-    fontWeight: '500',
+  fieldLabel: {
+    marginTop: 18,
     marginBottom: 6,
+    fontFamily: loginFont.mono,
+    fontSize: 11,
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
+    color: ticket.ticketInkMuted,
   },
 
-  // ── Generic input / selector ───────────────────────────────────────────────
-  input: {
-    height: 48,
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    fontSize: 15,
-  },
-  selectorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  selectorText: {
-    fontSize: 15,
-    flex: 1,
-  },
-
-  // ── iOS date picker inline ─────────────────────────────────────────────────
-  iosPickerWrap: {
-    borderRadius: 12,
-    borderWidth: 1,
-    overflow: 'hidden',
-    marginTop: -12,
-    marginBottom: 18,
-  },
-  iosDoneButton: {
-    borderTopWidth: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  iosDoneText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-
-  // ── Language picker modal ──────────────────────────────────────────────────
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: LOCAL_COLORS.overlayBackdrop,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  languageSheet: {
-    width: 260,
-    borderRadius: 16,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
+  // ── Language selector ──────────────────────────────────────────────────────
+  languageRow: { flexDirection: 'row', gap: 10 },
   languageOption: {
+    flex: 1,
+    height: 52,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: ticket.ticketFieldBorder,
+    backgroundColor: ticket.ticketField,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    gap: 12,
+    justifyContent: 'center',
+    gap: 8,
   },
-  languageFlag: {
-    fontSize: 22,
-  },
-  languageLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    flex: 1,
-  },
+  languageOptionOn: { borderColor: ticket.ticketButton, borderWidth: 2 },
+  languageFlag: { fontSize: 18 },
+  languageLabel: { fontFamily: loginFont.text, fontSize: 15, color: ticket.ticketInkMuted },
+  languageLabelOn: { fontFamily: loginFont.textBold, color: ticket.ticketInk },
 
   // ── @username field ────────────────────────────────────────────────────────
-  usernameInputWrapper: {
-    height: 48,
+  usernameWrapper: {
+    height: 52,
     borderRadius: 12,
     borderWidth: 1,
+    backgroundColor: ticket.ticketField,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
     gap: 6,
   },
-  atIcon: {
-    // Keep the icon vertically centred; no extra margins needed — gap handles spacing
-  },
   usernameInput: {
     flex: 1,
     height: '100%',
-    fontSize: 15,
+    fontFamily: loginFont.text,
+    fontSize: 16,
+    color: ticket.ticketInk,
   },
-  availabilityIcon: {
-    width: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  availabilityIcon: { width: 24, alignItems: 'center', justifyContent: 'center' },
 
   // ── Inline feedback text ───────────────────────────────────────────────────
-  errorText: {
-    fontSize: 12,
-    marginTop: 4,
-    marginLeft: 2,
-  },
-  statusText: {
-    fontSize: 12,
-    marginTop: 4,
-    marginLeft: 2,
-  },
+  errorText: { marginTop: 6, fontFamily: loginFont.text, fontSize: 12, color: ticket.ticketError },
+  statusText: { marginTop: 6, fontFamily: loginFont.textSemi, fontSize: 12, color: ticket.ticketInk },
+  mutedText: { marginTop: 6, fontFamily: loginFont.text, fontSize: 12, color: ticket.ticketInkMuted },
 
   // ── Terms checkbox row ─────────────────────────────────────────────────────
-  termsRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-  },
+  termsRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginTop: 20, minHeight: 44 },
   checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 5,
+    width: 22,
+    height: 22,
+    borderRadius: 6,
     borderWidth: 1.5,
+    borderColor: ticket.ticketFieldBorder,
+    backgroundColor: ticket.ticketField,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 2,       // align with first text line
+    marginTop: 1,
     flexShrink: 0,
   },
-  termsTextWrap: {
-    flex: 1,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-  },
-  termsText: {
-    fontSize: 13,
-    lineHeight: 20,
-  },
+  checkboxOn: { borderColor: ticket.ticketButton, backgroundColor: ticket.ticketButton },
+  checkboxError: { borderColor: ticket.ticketError },
+  termsTextWrap: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' },
+  termsText: { fontFamily: loginFont.text, fontSize: 13, lineHeight: 22, color: ticket.ticketInkMuted },
   termsLink: {
+    fontFamily: loginFont.textBold,
     fontSize: 13,
-    lineHeight: 20,
-    fontWeight: '600',
+    lineHeight: 22,
+    color: ticket.ticketButton,
     textDecorationLine: 'underline',
   },
 
   // ── Create account button ──────────────────────────────────────────────────
-  createButton: {
-    height: 52,
+  primary: {
+    height: 54,
     borderRadius: 14,
+    marginTop: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
-    marginBottom: 16,
+    backgroundColor: ticket.ticketButton,
   },
-  createButtonText: {
-    color: LOCAL_COLORS.onBrand,
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.1,
-  },
-
-  // ── Back link ──────────────────────────────────────────────────────────────
-  backRow: {
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  backText: {
-    fontSize: 14,
-  },
+  primaryBusy: { opacity: 0.7 },
+  primaryText: { fontFamily: loginFont.textXBold, fontSize: 16, color: ticket.ticketButtonText },
 });

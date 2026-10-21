@@ -81,10 +81,13 @@ export function useTicketCascade(count: number, titleIndex: number): TicketCasca
 export function TicketTitle({
   text,
   reveal,
+  dot = true,
 }: {
   text: string;
   /** Sweep progress; omit for a static title. */
   reveal?: Animated.Value;
+  /** The accent dot after the title; off for titles that already end in punctuation ("¡Ya casi!"). */
+  dot?: boolean;
 }) {
   const [width, setWidth] = useState(0);
   const onLayout = useCallback((e: { nativeEvent: { layout: { width: number } } }) => {
@@ -95,7 +98,7 @@ export function TicketTitle({
     <View onLayout={onLayout} style={styles.titleWrap}>
       <Text style={styles.title} accessibilityRole="header">
         {text}
-        <Text style={styles.titleDot}>.</Text>
+        {dot ? <Text style={styles.titleDot}>.</Text> : null}
       </Text>
       {reveal && width > 0 ? (
         <Animated.View
