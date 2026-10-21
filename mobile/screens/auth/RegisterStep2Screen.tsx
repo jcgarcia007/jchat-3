@@ -104,7 +104,7 @@ type AvailabilityStatus = 'idle' | 'checking' | 'available' | 'taken' | 'error';
 // Component
 // ---------------------------------------------------------------------------
 export default function RegisterStep2Screen({ route, navigation }: Props) {
-  const { t } = useTranslation('auth');
+  const { t, i18n: appI18n } = useTranslation('auth');
   const fontsReady = useLoginFonts();
   // hCaptcha (D-38): token pedido en el submit; `CaptchaGate` se monta abajo.
   const { captchaEnabled, getCaptchaToken, CaptchaGate } = useCaptcha();
@@ -123,6 +123,12 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
   const [language, setLanguage] = useState<Language>(
     (i18n.language === 'es' ? 'es' : 'en') as Language,
   );
+  // The ES · EN pill of the shell changes the app language: the selector (and the language saved in the profile)
+  // follows it instead of staying on what it was when the screen opened.
+  const appLanguage: Language = appI18n.language === 'es' ? 'es' : 'en';
+  useEffect(() => {
+    setLanguage(appLanguage);
+  }, [appLanguage]);
 
   // ── Username ───────────────────────────────────────────────────────────────
   const [username, setUsername] = useState('');
