@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconArrowLeft, IconMapPin, IconSpeakerphone } from '@tabler/icons-react-native';
 import { useTranslation } from 'react-i18next';
 
+import { useHomeBarInset } from '../../components/venue/HomeBarInset';
 import MegaphoneOfferCard from '../../components/megaphone/MegaphoneOfferCard';
 import MegaphonePostCard from '../../components/megaphone/MegaphonePostCard';
 import RadiusSheet from '../../components/megaphone/RadiusSheet';
@@ -48,6 +49,8 @@ const REFOCUS_STALE_MS = 60_000;
 export default function OffersScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
+  // The venue bar floats over the top while a venue session is active: the header starts below it.
+  const homeBarInset = useHomeBarInset();
   const navigation = useNavigation<OffersNavigation>();
   const { user } = useAuth();
   const translation = useTranslation('offers');
@@ -228,7 +231,7 @@ export default function OffersScreen() {
   ), [enterBusiness, openComments, toggleLike]);
 
   return (
-    <View style={[styles.root, { backgroundColor: colors.bgBase, paddingTop: insets.top }]}>
+    <View style={[styles.root, { backgroundColor: colors.bgBase, paddingTop: insets.top + homeBarInset }]}>
       <View style={[styles.header, { borderBottomColor: colors.borderSubtle }]}>
         <Pressable
           accessibilityLabel={commonTranslation.t('back')}

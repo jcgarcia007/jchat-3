@@ -212,10 +212,10 @@ const TAB_ROUTE_NAMES = new Set(['Map', 'Nearby', 'Messages', 'Profile']);
 
 /**
  * Leaf routes without a tab bar where the venue bar ("Estás en {negocio} · Volver al chat") also shows
- * while a venue session is active: the DM inbox and a DM conversation opened from the venue chat.
+ * while a venue session is active: the DM inbox, a DM conversation opened from the venue chat, and Business offers.
  * navigationRef.getCurrentRoute() already returns the focused leaf of nested stacks (DMs → DMInbox).
  */
-const VENUE_BAR_ROUTE_NAMES = new Set(['DMInbox', 'DMChat']);
+const VENUE_BAR_ROUTE_NAMES = new Set(['DMInbox', 'DMChat', 'Offers']);
 
 function venueBarPlacement(routeName: string | null): HomeStatusBarPlacement {
   if (routeName === null) return 'hidden';

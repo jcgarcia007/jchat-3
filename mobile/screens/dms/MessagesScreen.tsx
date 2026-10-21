@@ -141,8 +141,8 @@ export default function MessagesScreen() {
         styles.root,
         {
           backgroundColor: colors.bgBase,
-          paddingBottom: 102 + insets.bottom + homeBarInset,
-          paddingTop: insets.top,
+          paddingBottom: 102 + insets.bottom,
+          paddingTop: insets.top + homeBarInset,
         },
       ]}
     >

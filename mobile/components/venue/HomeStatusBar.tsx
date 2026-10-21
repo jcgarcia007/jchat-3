@@ -1,15 +1,16 @@
 /**
  * JChat 3.0 — HomeStatusBar
  *
- * One fixed bar above the tab bar with up to two segments:
+ * One fixed bar at the TOP of the screen (full width, 16 px margin, TOP_OFFSET below the safe area) with up to two
+ * segments:
  *   • venue session  — "Estás en {negocio} · N mensajes · N likes"  [Volver] (reopens the chat instantly)
  *   • order in progress — "Pedido #N · {estado}" [Ver]  /  "N pedidos en curso" [Ver] (→ My orders)
- * With neither, nothing is drawn. Always mounted (the hooks keep running); `placement` says where the bar is:
- *   'tabs'     — a tab screen: above the tab bar, venue session and/or orders.
- *   'detached' — the DM inbox / a DM conversation reached from the venue chat: no tab bar, so the bar sits
- *                insets.bottom + 10 from the edge, and only while there is a venue session.
+ * With neither, nothing is drawn. Always mounted (the hooks keep running); `placement` says when the bar shows:
+ *   'tabs'     — a tab screen: venue session and/or orders.
+ *   'detached' — the DM inbox / a DM conversation reached from the venue chat: only while there is a venue session.
  *   'hidden'   — everywhere else.
- * (the segment text and actions are the same everywhere)
+ * (the bar sits in the same place for 'tabs' and 'detached'; the segment text and actions are the same everywhere)
+ * Its height is published through HomeBarInset as a TOP inset: the screens under it start below the bar.
  *
  * ONLY the orders segment can be swiped left away ("Moved to notifications · Undo", 4 s). The orders it hides
  * live on as pinned "In progress" rows in Notifications (context/OrdersBarContext). Screen readers get the same
@@ -31,9 +32,9 @@ import { useAppWindow } from '../../utils/appWindow';
 
 export type HomeStatusBarPlacement = 'tabs' | 'detached' | 'hidden';
 
-/** Tab bar geometry (components/navigation/NotchTabBar): bottom offset 26 + inset, height 68. */
-const TAB_BAR_TOP_OFFSET = 26 + 68;
-const GAP = 10;
+/** Distance below the safe area, and the gap between the bar and the content under it. */
+const TOP_OFFSET = 8;
+const GAP = 8;
 
 interface Props {
   /** Where the current screen wants the bar (see the file header). */
@@ -100,7 +101,7 @@ export function HomeStatusBar({ placement, onOpenChat, onOpenOrder, onOpenOrders
     : t('venueSession.orders', { count: orders.length });
 
   return (
-    <View testID="venue-home-bar" pointerEvents="box-none" style={[styles.wrap, { bottom: insets.bottom + (placement === 'tabs' ? TAB_BAR_TOP_OFFSET + GAP : GAP) }]}>
+    <View testID="venue-home-bar" pointerEvents="box-none" style={[styles.wrap, { top: insets.top + TOP_OFFSET }]}>
       {toast ? (
         <View
           accessibilityLiveRegion="polite"
@@ -123,7 +124,7 @@ export function HomeStatusBar({ placement, onOpenChat, onOpenOrder, onOpenOrders
       {showCard ? (
         <View
           style={[styles.card, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}
-          onLayout={(event) => reportInset(event.nativeEvent.layout.height + GAP)}
+          onLayout={(event) => reportInset(event.nativeEvent.layout.height + TOP_OFFSET + GAP)}
         >
           {session ? (
             <Segment
@@ -273,7 +274,9 @@ function Segment({
 }
 
 const styles = StyleSheet.create({
-  wrap: { position: 'absolute', left: 16, right: 16, zIndex: 900, gap: 8 },
+  // column-reverse: the card (second child) is on top and the undo toast (first child) hangs below it, so the card
+  // stays inside the space reported through HomeBarInset and the toast, which reserves none, floats over the content.
+  wrap: { position: 'absolute', left: 16, right: 16, zIndex: 900, gap: 8, flexDirection: 'column-reverse' },
   card: {
     borderRadius: 16,
     borderWidth: 1,

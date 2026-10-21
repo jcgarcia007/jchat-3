@@ -331,7 +331,7 @@ export default function MapScreen() {
         {/* TODO(Task 4.5): <MapReactionOverlay> — needs coordinate→point resolver */}
       </JChatMap>
 
-      <View style={[styles.overlayContainer, { paddingTop: insets.top + 8 }]} pointerEvents="box-none">
+      <View style={[styles.overlayContainer, { paddingTop: insets.top + Math.max(8, homeBarInset) }]} pointerEvents="box-none">
         {locationState === 'denied' && (
           <TouchableOpacity
             style={[styles.deniedBanner, { backgroundColor: palette.warning }]}
@@ -407,7 +407,7 @@ export default function MapScreen() {
           style={[
             styles.styleSwitcher,
             {
-              bottom: 68 + 26 + 12 + insets.bottom + homeBarInset,
+              bottom: 68 + 26 + 12 + insets.bottom,
               backgroundColor: c.bgSurface,
               borderColor: c.borderSubtle,
             },

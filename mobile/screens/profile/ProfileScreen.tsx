@@ -320,7 +320,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
     });
   }, [actionBusy, blocked, handleUnblock, navigation, profile, relationBusy, t, targetId]);
 
-  const topInset = inSheet ? 4 : insets.top;
+  const topInset = inSheet ? 4 : insets.top + (route.name === 'Profile' ? homeBarInset : 0);
   if (initialLoading) return <ProfileSkeleton theme={theme} topInset={topInset} />;
   if (error || !profile) {
     return <View style={[styles.errorRoot, { backgroundColor: c.bgBase }]}><Text style={[styles.errorText, { color: c.dangerText }]}>{error ?? t('view.profileNotFound')}</Text></View>;
@@ -343,7 +343,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
       />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 102 + insets.bottom + (route.name === 'Profile' ? homeBarInset : 0) }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 102 + insets.bottom }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadProfile('pull')} tintColor={theme.tabActive} colors={[theme.tabActive]} progressBackgroundColor={theme.statsBg} />}
       >
         <ProfileHeader

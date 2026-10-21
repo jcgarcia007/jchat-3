@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   Pressable,
   StyleSheet,
+  Text,
   View,
   type LayoutChangeEvent,
 } from 'react-native';
@@ -64,8 +65,9 @@ export default function NotchTabBar({ state, descriptors, navigation }: BottomTa
     if (!route) return null;
     const focused = state.index === routeIndex;
     const descriptor = descriptors[route.key];
-    const labelKey = `tabs.${route.name.toLowerCase()}`;
-    const color = focused ? colors.brand : colors.textSecondary;
+    const label = commonTranslation.t(`tabs.${route.name.toLowerCase()}`);
+    // brandText, not brand: the 11 px label needs the text-contrast variant of the primary colour.
+    const color = focused ? colors.brandText : colors.textSecondary;
     const onPress = () => {
       const event = navigation.emit({
         type: 'tabPress',
@@ -94,16 +96,26 @@ export default function NotchTabBar({ state, descriptors, navigation }: BottomTa
     return (
       <Pressable
         key={route.key}
-        accessibilityLabel={commonTranslation.t(labelKey)}
-        accessibilityRole="button"
+        accessibilityLabel={label}
+        accessibilityRole="tab"
         accessibilityState={{ selected: focused }}
         onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
         onPress={onPress}
         style={styles.tabItem}
         testID={descriptor.options.tabBarButtonTestID ?? `tab-${route.name.toLowerCase()}`}
       >
-        {focused ? <View style={[styles.activeDot, { backgroundColor: colors.brand }]} /> : null}
-        {icon}
+        <View style={[styles.pill, focused && { backgroundColor: colors.brandLight }]}>
+          <View style={styles.iconSlot}>{icon}</View>
+          <Text
+            adjustsFontSizeToFit
+            maxFontSizeMultiplier={1.2}
+            minimumFontScale={0.85}
+            numberOfLines={1}
+            style={[styles.label, { color }]}
+          >
+            {label}
+          </Text>
+        </View>
       </Pressable>
     );
   };
@@ -180,12 +192,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minWidth: 48,
   },
-  activeDot: {
-    borderRadius: 3,
-    height: 6,
-    position: 'absolute',
-    top: 8,
-    width: 6,
+  pill: {
+    alignItems: 'center',
+    borderRadius: 16,
+    gap: 2,
+    maxWidth: '100%',
+    paddingHorizontal: 6,
+    paddingVertical: 5,
+  },
+  // As tall as the profile avatar (30), so every pill and label lines up whatever the icon is.
+  iconSlot: {
+    alignItems: 'center',
+    height: 30,
+    justifyContent: 'center',
+  },
+  label: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   unreadDot: {
     borderRadius: 5,

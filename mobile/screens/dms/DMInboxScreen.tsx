@@ -18,7 +18,7 @@ export default function DMInboxScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<InboxNavigation>();
-  // The venue bar floats over the bottom when the chat is pinned: the last conversation stays reachable.
+  // The venue bar floats over the top when the chat is pinned: the header starts below it.
   const homeBarInset = useHomeBarInset();
   const translation = useTranslation('social');
   const commonTranslation = useTranslation('common');
@@ -31,7 +31,7 @@ export default function DMInboxScreen() {
   }, [navigation]);
 
   return (
-    <View style={[styles.root, { backgroundColor: colors.bgBase, paddingTop: insets.top }]}>
+    <View style={[styles.root, { backgroundColor: colors.bgBase, paddingTop: insets.top + homeBarInset }]}>
       <View style={[styles.header, { borderBottomColor: colors.borderSubtle }]}>
         <Pressable
           accessibilityLabel={commonTranslation.t('back')}
@@ -46,7 +46,7 @@ export default function DMInboxScreen() {
           {translation.t('inbox.title')}
         </Text>
       </View>
-      <ConversationList onConversationPress={openConversation} contentContainerStyle={{ paddingBottom: homeBarInset }} />
+      <ConversationList onConversationPress={openConversation} />
     </View>
   );
 }

@@ -61,7 +61,7 @@ export default function NearbyScreen() {
           styles.header,
           {
             borderBottomColor: colors.borderSubtle,
-            paddingTop: insets.top + 12,
+            paddingTop: insets.top + 12 + homeBarInset,
           },
         ]}
       >
@@ -82,7 +82,7 @@ export default function NearbyScreen() {
         />
       </View>
       <FlatList
-        contentContainerStyle={[styles.list, { paddingBottom: 102 + insets.bottom + homeBarInset }]}
+        contentContainerStyle={[styles.list, { paddingBottom: 102 + insets.bottom }]}
         data={nearby.filtered}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
