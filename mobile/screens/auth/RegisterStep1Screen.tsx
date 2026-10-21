@@ -302,7 +302,6 @@ export default function RegisterStep1Screen() {
           secureTextEntry={!showPassword}
           autoCapitalize="none"
           autoCorrect={false}
-          textContentType="newPassword"
           returnKeyType="next"
           value={password}
           onChangeText={setPassword}
@@ -365,7 +364,6 @@ export default function RegisterStep1Screen() {
           secureTextEntry={!showConfirm}
           autoCapitalize="none"
           autoCorrect={false}
-          textContentType="newPassword"
           returnKeyType="done"
           value={confirmPassword}
           onChangeText={setConfirmPassword}
