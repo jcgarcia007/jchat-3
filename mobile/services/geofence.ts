@@ -46,6 +46,8 @@ export interface Coords {
   lng: number;
   /** Android only: the OS flagged this reading as a mock location (Match anti-spoofing). */
   mocked?: boolean;
+  /** Horizontal accuracy in metres as the OS reports it (null / absent when unknown). Silent exit checks ignore > 50 m. */
+  accuracy?: number | null;
 }
 
 /**

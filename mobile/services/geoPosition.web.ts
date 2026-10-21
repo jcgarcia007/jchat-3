@@ -80,7 +80,12 @@ export async function getCurrentPosition(): Promise<Coords> {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         readingSucceeded = true;
-        resolve({ lat: position.coords.latitude, lng: position.coords.longitude, mocked: false });
+        resolve({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          mocked: false,
+          accuracy: Number.isFinite(position.coords.accuracy) ? position.coords.accuracy : null,
+        });
       },
       (error) => {
         if (error.code === error.PERMISSION_DENIED) readingSucceeded = false;

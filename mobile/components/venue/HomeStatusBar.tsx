@@ -49,7 +49,7 @@ export function HomeStatusBar({ placement, onOpenChat, onOpenOrder, onOpenOrders
   const insets = useSafeAreaInsets();
   const { t } = useTranslation('chat');
   const { t: tPos } = useTranslation('pos');
-  const { session, unreadMessages, likeCount } = useVenueSession();
+  const { session, unreadMessages, likeCount, reconnecting } = useVenueSession();
   const { barOrders: orders, dismiss, restore } = useOrdersBar();
   const reduceMotion = useReduceMotion();
   const [toast, setToast] = useState<{ ids: string[]; snapshot: ReturnType<typeof dismiss> } | null>(null);
@@ -91,6 +91,7 @@ export function HomeStatusBar({ placement, onOpenChat, onOpenOrder, onOpenOrders
   const venueParts = session ? [t('venueSession.here', { business: session.businessName })] : [];
   if (session && unreadMessages > 0) venueParts.push(t('venueSession.messages', { count: unreadMessages }));
   if (session && likeCount > 0) venueParts.push(t('venueSession.likes', { count: likeCount }));
+  if (session && reconnecting) venueParts.push(t('venueSession.reconnecting')); // discreet; never an expulsion
 
   const single = orders.length === 1 ? orders[0] : null;
   const orderText = single

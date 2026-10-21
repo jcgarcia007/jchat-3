@@ -9,6 +9,13 @@
  * server's geo-presence (10 min TTL) stays fresh. If the client failed to
  * expel a user for any reason, the server-side TTL still cuts access.
  *
+ * Silent exit verification: nobody is taken out of a venue because of one reading, and locking the phone does not
+ * take them out. Every automatic check adds a reading to a buffer (utils/exitCheck.ts); only three good readings
+ * in a row, all clearly outside, over at least three minutes, confirm an exit — then the session ends through
+ * the same path as before (onExpelled / VenueSessionContext.endSession). Until then nothing is shown, and a
+ * reading that is not a good one inside the radius is NEVER sent to the server, because the server revokes the
+ * presence as soon as it receives a coordinate outside the radius.
+ *
  * Owner bypass: `checkAndEnter` short-circuits to granted for the business
  * owner without touching permission/GPS/RPC — this is UX only, the server
  * independently grants the owner access regardless (can_access_room).
@@ -31,27 +38,28 @@ import {
   getCurrentPosition,
   type Coords,
 } from '../../services/geofence';
+import {
+  classifyReading,
+  evaluateExit,
+  pushReading,
+  type ExitReading,
+  type ExitVerdict,
+} from '../../utils/exitCheck';
 
 const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000; // renew geo-presence every 5 min while open+foreground
-const GRACE_DURATION_MS = 2 * 60 * 1000; // §3.3 of the design doc: warn, then 2 min to return
-const GRACE_RECHECK_INTERVAL_MS = 20 * 1000; // check more often during grace to detect "back inside" promptly
-const GRACE_COUNTDOWN_TICK_MS = 1000;
+/** While an outside reading is not confirmed yet, look again this often (foreground only, nothing is shown). */
+export const SILENT_VERIFY_INTERVAL_MS = 60 * 1000;
 /** No GPS fix after this long → 'position_error' ("couldn't read your location · Retry") instead of an endless spinner. */
 const POSITION_TIMEOUT_MS = 20 * 1000;
 /** A resume from the background re-checks only if the last automatic check is at least this old. */
 export const RESUME_RECHECK_MIN_GAP_MS = 60 * 1000;
+/** How long the server keeps a geo-presence after its last renewal (check_geofence_and_join_room: 10 min). */
+export const PRESENCE_TTL_MS = 10 * 60 * 1000;
 
 /** Rounds to whole meters below 1000 m, otherwise one decimal of km. */
 export function formatDistanceM(distanceM: number): string {
   if (distanceM >= 1000) return `${(distanceM / 1000).toFixed(1)} km`;
   return `${Math.round(distanceM)} m`;
-}
-
-/** mm:ss for the grace-period countdown banner. */
-export function formatGraceCountdown(secondsLeft: number): string {
-  const m = Math.floor(secondsLeft / 60);
-  const s = secondsLeft % 60;
-  return `${m}:${String(s).padStart(2, '0')}`;
 }
 
 export type GeoGateStatus =
@@ -75,16 +83,92 @@ export interface GeoCheckResult {
   distanceM: number | null;
 }
 
+/** Centre and radius of the venue's geofence (businesses.lat / lng / geofence_radius_m, the server's own numbers). */
+export interface VenueGeometry {
+  lat: number;
+  lng: number;
+  radiusM: number;
+}
+
+// ── Shared state of the silent verification (module level: the chat's gate and the venue session share it) ──
+const readingBuffers = new Map<string, ExitReading[]>();
+const lastRenewedAt = new Map<string, number>();
+
+/** Forgets the readings and the renewal time of a room (or of all of them): a session starts or ends. */
+export function resetExitState(roomId?: string): void {
+  if (roomId === undefined) {
+    readingBuffers.clear();
+    lastRenewedAt.clear();
+    return;
+  }
+  readingBuffers.delete(roomId);
+  lastRenewedAt.delete(roomId);
+}
+
+function recordReading(roomId: string, coords: Coords): ExitReading {
+  const reading: ExitReading = { lat: coords.lat, lng: coords.lng, accuracy: coords.accuracy ?? null, timestamp: Date.now() };
+  readingBuffers.set(roomId, pushReading(readingBuffers.get(roomId) ?? [], reading));
+  return reading;
+}
+
+function markPresenceRenewed(roomId: string): void {
+  lastRenewedAt.set(roomId, Date.now());
+}
+
+/** True when the server presence of this room has certainly lapsed (no renewal for more than its 10 min TTL). */
+export function presenceLooksExpired(roomId: string, now: number = Date.now()): boolean {
+  const renewed = lastRenewedAt.get(roomId);
+  return renewed !== undefined && now - renewed > PRESENCE_TTL_MS;
+}
+
+/** One GPS fix, or a rejection after POSITION_TIMEOUT_MS. */
+async function readPosition(): Promise<Coords> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error('position timeout')), POSITION_TIMEOUT_MS);
+  });
+  try {
+    return await Promise.race([getCurrentPosition(), timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+/** The server call. Its answer to a coordinate OUTSIDE the radius also revokes the presence. */
+async function callGeofenceRpc(roomId: string, coords: Coords): Promise<GeoCheckResult> {
+  const { data, error } = await supabase.rpc('check_geofence_and_join_room', {
+    _room_id: roomId,
+    _lat: coords.lat,
+    _lng: coords.lng,
+  });
+
+  if (error || !Array.isArray(data) || data.length === 0) {
+    return { granted: false, reason: 'unavailable', distanceM: null };
+  }
+
+  const row = data[0] as GeoRpcRow;
+  if (row.access_granted) {
+    markPresenceRenewed(roomId);
+    return { granted: true, reason: 'granted', distanceM: row.distance_m };
+  }
+  if (row.reason === 'outside_radius') {
+    return { granted: false, reason: 'outside_radius', distanceM: row.distance_m };
+  }
+  // no_geofence / invalid_room / auth_required — degrade safely, generic message.
+  return { granted: false, reason: 'unavailable', distanceM: null };
+}
+
 /**
  * Never rejects — every step (permission, GPS, RPC) is wrapped so a native or
  * network hiccup degrades to a result object instead of an unhandled crash.
  * "Degrade with security, not permissiveness": any unexpected failure here
  * falls through to `unavailable` (no access), never a silent grant.
  *
- * Permission: automatic checks (heartbeat, resume, re-opening the chat) only READ the permission
- * state — on Android a request launches the system permission activity, which sends the app
- * inactive → active and re-triggers the check in a loop. Only a user action (`interactive`:
- * Enter, Retry, Allow location) may show the system prompt.
+ * This is the INTERACTIVE check (entering a venue, check-in): it sends the reading to the server whatever it is.
+ * Automatic checks of an ongoing session use runSilentGeoCheck instead.
+ *
+ * Permission: only a user action (`interactive`: Enter, Retry, Allow location) may show the system prompt; on
+ * Android a request launches the system permission activity, which sends the app inactive → active.
  */
 export async function runGeoCheck(
   roomId: string,
@@ -104,41 +188,78 @@ export async function runGeoCheck(
 
     let coords: Coords;
     try {
-      let timer: ReturnType<typeof setTimeout> | undefined;
-      const timeout = new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new Error('position timeout')), POSITION_TIMEOUT_MS);
-      });
-      try {
-        coords = await Promise.race([getCurrentPosition(), timeout]);
-      } finally {
-        if (timer) clearTimeout(timer);
-      }
+      coords = await readPosition();
     } catch {
       return { granted: false, reason: 'position_error', distanceM: null };
     }
     onReading?.(coords); // the single GPS read of this check is shared (Match presence reuses it)
+    recordReading(roomId, coords);
 
-    const { data, error } = await supabase.rpc('check_geofence_and_join_room', {
-      _room_id: roomId,
-      _lat: coords.lat,
-      _lng: coords.lng,
-    });
-
-    if (error || !Array.isArray(data) || data.length === 0) {
-      return { granted: false, reason: 'unavailable', distanceM: null };
-    }
-
-    const row = data[0] as GeoRpcRow;
-    if (row.access_granted) {
-      return { granted: true, reason: 'granted', distanceM: row.distance_m };
-    }
-    if (row.reason === 'outside_radius') {
-      return { granted: false, reason: 'outside_radius', distanceM: row.distance_m };
-    }
-    // no_geofence / invalid_room / auth_required — degrade safely, generic message.
-    return { granted: false, reason: 'unavailable', distanceM: null };
+    return await callGeofenceRpc(roomId, coords);
   } catch {
     return { granted: false, reason: 'unavailable', distanceM: null };
+  }
+}
+
+export interface SilentCheckResult {
+  /** 'inside' = presence renewed; 'outside_confirmed' = the exit is confirmed; 'uncertain' = do nothing visible. */
+  status: ExitVerdict;
+  /** An outside reading is waiting for confirmation: look again soon (foreground only). */
+  pendingExit: boolean;
+}
+
+const UNCERTAIN: SilentCheckResult = { status: 'uncertain', pendingExit: false };
+
+/**
+ * The automatic check of an ongoing venue session. Never rejects, never asks for permission, never shows anything.
+ *   1. read the position and add it to the room's buffer;
+ *   2. a reading with accuracy > 50 m is ignored: nothing is sent to the server;
+ *   3. three good readings in a row clearly outside over ≥ 3 min → 'outside_confirmed' (the last reading is sent so the
+ *      server revokes the presence, the same effect the old immediate expulsion had);
+ *   4. a good reading inside the radius is sent to the server (renews the presence) → 'inside';
+ *   5. any other reading (outside, or in the 30 m margin) is NOT sent: the server would revoke the presence on it.
+ */
+export async function runSilentGeoCheck(
+  roomId: string,
+  geometry: VenueGeometry,
+  onReading?: (coords: Coords) => void,
+): Promise<SilentCheckResult> {
+  try {
+    let permitted = false;
+    try {
+      permitted = await hasForegroundPermission();
+    } catch {
+      permitted = false;
+    }
+    if (!permitted) return UNCERTAIN;
+
+    let coords: Coords;
+    try {
+      coords = await readPosition();
+    } catch {
+      return UNCERTAIN;
+    }
+    onReading?.(coords);
+    const reading = recordReading(roomId, coords);
+
+    const kind = classifyReading(reading, geometry, geometry.radiusM);
+    if (kind === 'invalid') return UNCERTAIN;
+
+    const verdict = evaluateExit(readingBuffers.get(roomId) ?? [], geometry, geometry.radiusM);
+    if (verdict === 'outside_confirmed') {
+      await callGeofenceRpc(roomId, coords).catch(() => undefined); // revokes the server presence
+      return { status: 'outside_confirmed', pendingExit: false };
+    }
+
+    if (kind === 'inside') {
+      const result = await callGeofenceRpc(roomId, coords);
+      // Even if the server disagrees (different centre, network error) one answer never ends a session.
+      return result.granted ? { status: 'inside', pendingExit: false } : UNCERTAIN;
+    }
+
+    return { status: 'uncertain', pendingExit: true };
+  } catch {
+    return UNCERTAIN;
   }
 }
 
@@ -151,20 +272,21 @@ export function autoCheckAgeMs(): number {
 }
 
 /**
- * An automatic (non-interactive) check shared by every owner of a heartbeat: never two at once, and
- * with `minGapMs` skipped when the previous one is too recent. Resolves null when skipped.
+ * A silent check shared by every owner of a heartbeat: never two at once, and with `minGapMs` skipped when the
+ * previous one is too recent. Resolves null when skipped.
  */
-export async function runAutoGeoCheck(
+export async function runAutoSilentCheck(
   roomId: string,
+  geometry: VenueGeometry,
   onReading?: (coords: Coords) => void,
   minGapMs = 0,
-): Promise<GeoCheckResult | null> {
+): Promise<SilentCheckResult | null> {
   if (autoChecksInFlight > 0) return null;
   if (minGapMs > 0 && Date.now() - lastAutoCheckAt < minGapMs) return null;
   autoChecksInFlight += 1;
   lastAutoCheckAt = Date.now();
   try {
-    return await runGeoCheck(roomId, onReading);
+    return await runSilentGeoCheck(roomId, geometry, onReading);
   } finally {
     autoChecksInFlight -= 1;
   }
@@ -175,7 +297,9 @@ interface UseGeofenceGateArgs {
   isOwner: boolean;
   /** True once the user is inside the chat (entryVisible === false) — enables the heartbeat. */
   entered: boolean;
-  /** Called when the grace period expires without the user returning to the radius. */
+  /** The venue's centre and radius; null while unknown (the silent checks wait for it). */
+  geometry: VenueGeometry | null;
+  /** Called when the exit is CONFIRMED (never on a single reading). */
   onExpelled: () => void;
 }
 
@@ -185,9 +309,8 @@ interface UseGeofenceGateResult {
   gateStatus: GeoGateStatus;
   /** Distance in meters, only meaningful when gateStatus === 'outside_radius'. */
   outsideDistanceM: number | null;
-  graceWarningVisible: boolean;
-  /** Seconds left in the grace period, for an optional countdown display. */
-  graceSecondsLeft: number | null;
+  /** The server presence lapsed (e.g. the phone was locked for a while) and has not been renewed yet. */
+  reconnecting: boolean;
   /** The reading used by the most recent geofence check (same GPS read), or null before the first. */
   lastCoords: GeoReading | null;
   /** True when that reading was flagged as a mock location (Android). */
@@ -206,23 +329,23 @@ export function useGeofenceGate({
   roomId,
   isOwner,
   entered,
+  geometry,
   onExpelled,
 }: UseGeofenceGateArgs): UseGeofenceGateResult {
   const [gateStatus, setGateStatus] = useState<GeoGateStatus>('idle');
   const [outsideDistanceM, setOutsideDistanceM] = useState<number | null>(null);
-  const [graceWarningVisible, setGraceWarningVisible] = useState(false);
-  const [graceSecondsLeft, setGraceSecondsLeft] = useState<number | null>(null);
+  const [reconnecting, setReconnecting] = useState(false);
   const [lastCoords, setLastCoords] = useState<GeoReading | null>(null);
 
   const roomIdRef = useRef(roomId);
   roomIdRef.current = roomId;
+  const geometryRef = useRef(geometry);
+  geometryRef.current = geometry;
   const onExpelledRef = useRef(onExpelled);
   onExpelledRef.current = onExpelled;
 
   const heartbeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const graceRecheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const graceCountdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const graceDeadlineRef = useRef<number | null>(null);
+  const verifyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const hadReadingRef = useRef(false);
   const handleReading = useCallback((c: Coords) => {
@@ -230,18 +353,11 @@ export function useGeofenceGate({
     setLastCoords({ lat: c.lat, lng: c.lng, mocked: c.mocked === true, readAt: Date.now() });
   }, []);
 
-  const clearGrace = useCallback(() => {
-    if (graceRecheckIntervalRef.current) {
-      clearInterval(graceRecheckIntervalRef.current);
-      graceRecheckIntervalRef.current = null;
+  const clearVerifyTimer = useCallback(() => {
+    if (verifyTimerRef.current) {
+      clearTimeout(verifyTimerRef.current);
+      verifyTimerRef.current = null;
     }
-    if (graceCountdownIntervalRef.current) {
-      clearInterval(graceCountdownIntervalRef.current);
-      graceCountdownIntervalRef.current = null;
-    }
-    graceDeadlineRef.current = null;
-    setGraceWarningVisible(false);
-    setGraceSecondsLeft(null);
   }, []);
 
   const clearHeartbeat = useCallback(() => {
@@ -252,49 +368,38 @@ export function useGeofenceGate({
   }, []);
 
   /**
-   * The single check used by both the 5-min heartbeat and the grace re-checks.
-   * Self-referential (starts the grace timers, which call this again) — safe
-   * because by the time any timer fires, this const is already fully bound.
+   * The single silent check used by the 5-min heartbeat, the resume from the background and the follow-up after an
+   * unconfirmed outside reading. 'inside' / 'uncertain' show nothing; only 'outside_confirmed' ends the session.
+   * Self-referential (the follow-up timer calls it again) — safe because by the time the timer fires the const is bound.
    */
   const performBackgroundCheck = useCallback(async (minGapMs = 0) => {
     if (AppState.currentState !== 'active') return; // never read GPS while backgrounded
-    const result = await runAutoGeoCheck(roomIdRef.current, handleReading, minGapMs);
-    if (!result) return; // another check is running, or this one is too soon after the last
+    const venueGeometry = geometryRef.current;
+    if (!venueGeometry) return; // centre and radius not known yet: wait, nothing is shown
+    const room = roomIdRef.current;
+    if (presenceLooksExpired(room)) setReconnecting(true); // a discreet "Reconnecting…", never an expulsion
 
-    if (result.granted) {
-      if (graceDeadlineRef.current != null) clearGrace(); // was in grace, back inside → cancel
+    const result = await runAutoSilentCheck(room, venueGeometry, handleReading, minGapMs);
+    if (!result) return; // another check is running, or this one is too soon after the last
+    clearVerifyTimer();
+
+    if (result.status === 'inside') {
+      setReconnecting(false);
       return;
     }
-
-    if (result.reason === 'outside_radius' && graceDeadlineRef.current == null) {
-      // Not yet in grace — start the warn + 2 min countdown.
-      setGraceWarningVisible(true);
-      const deadline = Date.now() + GRACE_DURATION_MS;
-      graceDeadlineRef.current = deadline;
-      setGraceSecondsLeft(Math.ceil(GRACE_DURATION_MS / 1000));
-
-      graceCountdownIntervalRef.current = setInterval(() => {
-        const d = graceDeadlineRef.current;
-        if (d == null) return;
-        const secsLeft = Math.round((d - Date.now()) / 1000);
-        if (secsLeft <= 0) {
-          clearGrace();
-          clearHeartbeat();
-          onExpelledRef.current();
-          return;
-        }
-        setGraceSecondsLeft(secsLeft);
-      }, GRACE_COUNTDOWN_TICK_MS);
-
-      graceRecheckIntervalRef.current = setInterval(() => {
-        void performBackgroundCheck();
-      }, GRACE_RECHECK_INTERVAL_MS);
+    if (result.status === 'outside_confirmed') {
+      setReconnecting(false);
+      clearHeartbeat();
+      onExpelledRef.current();
+      return;
     }
-    // Other transient failures (permission_denied/position_error/unavailable)
-    // while already inside: don't escalate to expulsion on a single blip — try
-    // again next tick. The server-side geo-presence TTL (10 min) is the real
-    // backstop if the client keeps failing silently.
-  }, [clearGrace, clearHeartbeat, handleReading]);
+    if (result.pendingExit) {
+      verifyTimerRef.current = setTimeout(() => {
+        verifyTimerRef.current = null;
+        void performBackgroundCheck();
+      }, SILENT_VERIFY_INTERVAL_MS);
+    }
+  }, [clearHeartbeat, clearVerifyTimer, handleReading]);
 
   const checkAndEnter = useCallback(async (): Promise<boolean> => {
     if (!isSupabaseConfigured || isOwner) {
@@ -306,6 +411,7 @@ export function useGeofenceGate({
     const result = await runGeoCheck(roomIdRef.current, handleReading, { interactive: true });
     if (result.granted) {
       setGateStatus('idle');
+      setReconnecting(false);
       return true;
     }
     setGateStatus(result.reason as GeoGateStatus);
@@ -327,9 +433,10 @@ export function useGeofenceGate({
 
     const sub = AppState.addEventListener('change', (next) => {
       if (next === 'active') {
-        // Resumed foreground — re-check rather than waiting for the next scheduled tick, so a stale
-        // "outside" state resolves fast; throttled so brief inactive→active flips don't re-check.
-        void performBackgroundCheck(RESUME_RECHECK_MIN_GAP_MS);
+        // Back in the foreground — feed the silent check rather than waiting for the next scheduled tick;
+        // throttled so brief inactive→active flips don't re-check. A long absence (the server presence has
+        // lapsed) re-checks at once and shows "Reconnecting…" until a good reading inside renews it.
+        void performBackgroundCheck(presenceLooksExpired(roomIdRef.current) ? 0 : RESUME_RECHECK_MIN_GAP_MS);
       }
       // Background: do nothing. No GPS read happens — performBackgroundCheck
       // itself guards on AppState.currentState === 'active'.
@@ -337,10 +444,16 @@ export function useGeofenceGate({
 
     return () => {
       clearHeartbeat();
-      clearGrace();
+      clearVerifyTimer();
       sub.remove();
     };
-  }, [entered, isOwner, performBackgroundCheck, clearHeartbeat, clearGrace]);
+  }, [entered, isOwner, performBackgroundCheck, clearHeartbeat, clearVerifyTimer]);
+
+  // The venue's centre and radius arrive after the chat mounted: take the first reading then.
+  const hasGeometry = geometry !== null;
+  useEffect(() => {
+    if (hasGeometry && entered && !isOwner && isSupabaseConfigured && !hadReadingRef.current) void performBackgroundCheck();
+  }, [hasGeometry, entered, isOwner, performBackgroundCheck]);
 
   // Web: re-check when the network comes back or the page is restored (AppState already covers visibilitychange).
   useWebResumeRecheck({
@@ -354,8 +467,7 @@ export function useGeofenceGate({
     checkAndEnter,
     gateStatus,
     outsideDistanceM,
-    graceWarningVisible,
-    graceSecondsLeft,
+    reconnecting,
     lastCoords,
     lastMocked: lastCoords?.mocked === true,
   };

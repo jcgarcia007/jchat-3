@@ -46,8 +46,16 @@ test('no Permissions API and no reading yet → false (the first reading must co
 
 test('no Permissions API, a reading succeeded on this page → true (heartbeat keeps working)', async () => {
   const geo = await load({ permission: 'none', positions: ['ok'] });
-  assert.deepEqual(await geo.getCurrentPosition(), { lat: 25.7, lng: -80.2, mocked: false });
+  // the fake browser gives no accuracy: it is reported as null (the silent exit check then ignores the reading)
+  assert.deepEqual(await geo.getCurrentPosition(), { lat: 25.7, lng: -80.2, mocked: false, accuracy: null });
   assert.equal(await geo.hasForegroundPermission(), true);
+});
+
+test('the accuracy the browser reports is passed on (the silent exit check ignores readings above 50 m)', async () => {
+  const geo = await load({ permission: 'none', positions: [] });
+  const { geolocation } = globalThis.navigator;
+  geolocation.getCurrentPosition = (ok) => ok({ coords: { latitude: 25.7, longitude: -80.2, accuracy: 12.5 } });
+  assert.deepEqual(await geo.getCurrentPosition(), { lat: 25.7, lng: -80.2, mocked: false, accuracy: 12.5 });
 });
 
 test("'prompt' (Safari: only this time) after a successful reading → true; before it → false", async () => {

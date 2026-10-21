@@ -3,7 +3,7 @@
  *
  * A browser tab in the background has its timers throttled (or is suspended altogether on iOS Safari), so the 5-minute
  * heartbeat can miss its window and the presence (15 min) lapses. Coming back to the tab or getting the network back must
- * re-check at once, through the SAME check the chat gate uses (runAutoGeoCheck → runGeoCheck), never a second path.
+ * re-check at once, through the SAME check the chat gate uses (runAutoSilentCheck → runSilentGeoCheck), never a second path.
  *
  * `visible` (visibilitychange → visible) is already delivered by react-native-web's AppState 'change' to the gate and to the
  * venue session; the web hook adds what AppState does not report: `online` and a page restored from the back-forward cache.

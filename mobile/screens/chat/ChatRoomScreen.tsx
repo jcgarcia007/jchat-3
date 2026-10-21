@@ -53,7 +53,7 @@ import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
-import { useGeofenceGate, formatDistanceM, formatGraceCountdown } from './useGeofenceGate';
+import { useGeofenceGate, formatDistanceM } from './useGeofenceGate';
 import { getChatPermissions, EMPTY_PERMISSIONS, getBusinessRoleMap } from '../../services/permissions';
 import type { ChatPermissions, ChatRole } from '../../services/permissions';
 import { uploadImage } from '../../services/storage';
@@ -421,6 +421,7 @@ export default function ChatRoomScreen() {
     roomId: rootRoomId,
     isOwner,
     entered: !entryVisible,
+    geometry: venue.geometry,
     onExpelled: handleExpelled,
   });
 
@@ -1881,13 +1882,14 @@ export default function ChatRoomScreen() {
         canUnpin={viewerRole !== 'user'}
       />
 
-      {/* Geofence grace warning — left the radius, ~2 min to return (épica geocerca Fase 3.2). */}
-      {geoGate.graceWarningVisible && (
-        <View style={[chatStyles.geoGraceBanner, { backgroundColor: themeColors.warning }]}>
-          <Text style={[chatStyles.geoGraceBannerText, { color: themeColors.bgSurface }]}>
-            {t('chatRoom.geoGraceWarning', { business: business?.name ?? '' })}
-            {geoGate.graceSecondsLeft != null ? ` (${formatGraceCountdown(geoGate.graceSecondsLeft)})` : ''}
-          </Text>
+      {/* The venue presence lapsed (e.g. the phone was locked a while): a discreet "Reconnecting…" until a good
+          reading inside renews it. Never an expulsion — only a confirmed exit ends the session (useGeofenceGate). */}
+      {(geoGate.reconnecting || venue.reconnecting) && (
+        <View
+          accessibilityLiveRegion="polite"
+          style={[chatStyles.geoReconnectingBanner, { backgroundColor: themeColors.bgSurface, borderBottomColor: themeColors.borderSubtle }]}
+        >
+          <Text style={[chatStyles.geoReconnectingText, { color: themeColors.textSecondary }]}>{t('chatRoom.geoReconnecting')}</Text>
         </View>
       )}
       {/* TODO(Task 2.5/2.6): wire PinMessageSheet (message long-press) + CreateOfferSheet
@@ -2259,14 +2261,15 @@ const chatStyles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  geoGraceBanner: {
-    paddingVertical: 8,
+  geoReconnectingBanner: {
+    paddingVertical: 4,
     paddingHorizontal: 14,
     alignItems: 'center',
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  geoGraceBannerText: {
-    fontSize: 13,
-    fontWeight: '600',
+  geoReconnectingText: {
+    fontSize: 12,
+    fontWeight: '500',
     textAlign: 'center',
   },
   flex: {

@@ -39,5 +39,6 @@ export async function getCurrentPosition(): Promise<Coords> {
     lat: location.coords.latitude,
     lng: location.coords.longitude,
     mocked: location.mocked,
+    accuracy: location.coords.accuracy ?? null,
   };
 }

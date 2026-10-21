@@ -2,12 +2,14 @@
  * JChat 3.0 — VenueSessionProvider
  *
  * A "venue session" starts when the geofence gate lets the user into a venue's chat and lasts until
- * they leave on purpose ("Salir del local"), the geofence says they are outside, or they come back
- * from the background after >15 min and the check-in fails. The chat screen can be minimized and
- * reopened without verification or entry notice; meanwhile this provider keeps the presence alive
- * (geofence + Match check-in every 5 min, foreground only) and counts new messages / likes.
+ * they leave on purpose ("Salir del local") or the silent exit verification CONFIRMS they are outside
+ * (three good readings in a row, clearly outside, over ≥ 3 min — utils/exitCheck.ts). One reading, a locked
+ * phone or a long time in the background never end it: if the server presence lapsed, `reconnecting` is true
+ * until a good reading inside renews it. The chat screen can be minimized and reopened without verification
+ * or entry notice; meanwhile this provider keeps the presence alive (geofence + Match check-in every 5 min,
+ * foreground only) and counts new messages / likes.
  *
- * While the chat is mounted it owns the heartbeat (useGeofenceGate has the grace/expulsion UX);
+ * While the chat is mounted it owns the heartbeat (useGeofenceGate does the same silent check);
  * the provider's own heartbeat runs only while the chat is NOT mounted. One venue at a time.
  */
 
@@ -24,7 +26,15 @@ import { AppState } from 'react-native';
 import i18n from '../i18n';
 import { useAuth } from './AuthContext';
 import { supabase, isSupabaseConfigured, channelTopic } from '../services/supabase';
-import { runAutoGeoCheck, autoCheckAgeMs, RESUME_RECHECK_MIN_GAP_MS } from '../screens/chat/useGeofenceGate';
+import {
+  runAutoSilentCheck,
+  autoCheckAgeMs,
+  presenceLooksExpired,
+  resetExitState,
+  RESUME_RECHECK_MIN_GAP_MS,
+  SILENT_VERIFY_INTERVAL_MS,
+  type VenueGeometry,
+} from '../screens/chat/useGeofenceGate';
 import { useWebResumeRecheck } from '../hooks/useWebResumeRecheck';
 import { resetMatchPresence, runMatchCheckIn, setMatchReading } from '../services/matchPresence';
 import { getMatchActivity } from '../services/matchDeck';
@@ -34,8 +44,6 @@ import { shouldCountUnread } from '../utils/venueUnread';
 import { clearEntryTableToken } from '../services/venueTable';
 
 const HEARTBEAT_MS = 5 * 60 * 1000;
-/** Back from the background after this long: the server presence has lapsed → check again or end. */
-const STALE_AFTER_MS = 15 * 60 * 1000;
 
 export interface VenueSession {
   businessId: string;
@@ -46,10 +54,14 @@ export interface VenueSession {
   since: number;
 }
 
-export type VenueEndReason = 'user' | 'outside' | 'stale' | 'switch';
+export type VenueEndReason = 'user' | 'outside' | 'switch';
 
 interface VenueSessionContextValue {
   session: VenueSession | null;
+  /** Centre and radius of the venue's geofence (null while unknown / without a session). */
+  geometry: VenueGeometry | null;
+  /** The server presence lapsed (e.g. the phone was locked a while) and a good reading inside has not renewed it yet. */
+  reconnecting: boolean;
   /** New chat messages since the chat was last open (not mine). */
   unreadMessages: number;
   /** People who liked me at this venue (Match). */
@@ -72,6 +84,8 @@ const noop = () => undefined;
 
 const VenueSessionContext = createContext<VenueSessionContextValue>({
   session: null,
+  geometry: null,
+  reconnecting: false,
   unreadMessages: 0,
   likeCount: 0,
   startSession: () => Promise.resolve(true),
@@ -94,13 +108,18 @@ export function VenueSessionProvider({ children }: { children: React.ReactNode }
   const [session, setSession] = useState<VenueSession | null>(null);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [likeCount, setLikeCount] = useState(0);
+  const [geometry, setGeometry] = useState<VenueGeometry | null>(null);
+  const [geometryRetry, setGeometryRetry] = useState(0);
+  const [reconnecting, setReconnecting] = useState(false);
 
   const sessionRef = useRef<VenueSession | null>(null);
   sessionRef.current = session;
+  const geometryRef = useRef<VenueGeometry | null>(null);
+  geometryRef.current = geometry;
   const chatMountedRef = useRef(false);
   const chatCoveredRef = useRef(false);
   const matchActiveRef = useRef(false);
-  const backgroundedAtRef = useRef<number | null>(null);
+  const verifyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Ending ───────────────────────────────────────────────────────────────────
 
@@ -112,10 +131,13 @@ export function VenueSessionProvider({ children }: { children: React.ReactNode }
     setSession(null);
     setUnreadMessages(0);
     setLikeCount(0);
+    setReconnecting(false);
     matchActiveRef.current = false;
+    resetExitState(current.roomId);
     resetMatchPresence();
     setMatchReading(null);
-    if (reason === 'outside' || reason === 'stale') {
+    // Only a CONFIRMED exit tells the user: "You're outside the area… scan the QR to come back".
+    if (reason === 'outside') {
       showAlert(
         i18n.t('chatRoom.errorTitle', { ns: 'chat' }) as string,
         i18n.t('chatRoom.geoRemoved', { ns: 'chat', business: current.businessName }) as string,
@@ -168,6 +190,8 @@ export function VenueSessionProvider({ children }: { children: React.ReactNode }
         setSession(next);
         setUnreadMessages(0);
         setLikeCount(0);
+        setReconnecting(false);
+        resetExitState(info.roomId); // a fresh session starts with no readings from an earlier visit
       }
       matchActiveRef.current = info.matchActive === true;
       return true;
@@ -200,50 +224,103 @@ export function VenueSessionProvider({ children }: { children: React.ReactNode }
   const businessId = session?.businessId ?? null;
   const roomId = session?.roomId ?? null;
 
-  const heartbeat = useCallback(async (mustPass: boolean, minGapMs = 0) => {
+  // The venue's centre and radius (the server's own numbers) — needed to tell inside from outside on the phone.
+  useEffect(() => {
+    setGeometry(null);
+    if (!businessId || !isSupabaseConfigured) return undefined;
+    let alive = true;
+    void supabase
+      .from('businesses')
+      .select('lat, lng, geofence_radius_m')
+      .eq('id', businessId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!alive || !data) return;
+        const row = data as { lat: number | null; lng: number | null; geofence_radius_m: number | null };
+        if (typeof row.lat === 'number' && typeof row.lng === 'number' && typeof row.geofence_radius_m === 'number' && row.geofence_radius_m > 0) {
+          setGeometry({ lat: row.lat, lng: row.lng, radiusM: row.geofence_radius_m });
+        }
+      });
+    return () => {
+      alive = false;
+    };
+  }, [businessId, geometryRetry]);
+
+  const clearVerifyTimer = useCallback(() => {
+    if (verifyTimerRef.current) {
+      clearTimeout(verifyTimerRef.current);
+      verifyTimerRef.current = null;
+    }
+  }, []);
+
+  /**
+   * The silent check while the chat is NOT mounted. 'inside' renews the presence (and the Match check-in);
+   * 'uncertain' shows nothing; only 'outside_confirmed' ends the session (same endSession path as before).
+   * An unconfirmed outside reading is looked at again after a minute (foreground only).
+   */
+  const heartbeat = useCallback(async (minGapMs = 0): Promise<void> => {
     const current = sessionRef.current;
     if (!current || AppState.currentState !== 'active') return;
-    const result = await runAutoGeoCheck(
+    const venueGeometry = geometryRef.current;
+    if (!venueGeometry) {
+      setGeometryRetry((n) => n + 1); // centre and radius not loaded yet: ask again, nothing is shown
+      return;
+    }
+    if (presenceLooksExpired(current.roomId)) setReconnecting(true); // a discreet "Reconnecting…", never an expulsion
+    const result = await runAutoSilentCheck(
       current.roomId,
+      venueGeometry,
       (coords) => setMatchReading({ lat: coords.lat, lng: coords.lng, mocked: coords.mocked === true }),
       minGapMs,
     );
     if (!result) return; // another check is running, or too soon after the last one
     if (sessionRef.current?.businessId !== current.businessId) return; // changed meanwhile
-    if (result.granted) {
+    clearVerifyTimer();
+    if (result.status === 'inside') {
+      setReconnecting(false);
       if (matchActiveRef.current) void runMatchCheckIn(current.businessId, current.roomId);
       return;
     }
-    // Outside the area → the session is over. Other failures (no GPS fix, network) are tolerated
-    // unless we are coming back from a long absence (mustPass): then presence can't be assumed.
-    if (result.reason === 'outside_radius' || mustPass) endSession(mustPass && result.reason !== 'outside_radius' ? 'stale' : 'outside');
-  }, [endSession]);
+    if (result.status === 'outside_confirmed') {
+      endSession('outside');
+      return;
+    }
+    if (result.pendingExit) {
+      verifyTimerRef.current = setTimeout(() => {
+        verifyTimerRef.current = null;
+        if (!chatMountedRef.current) void heartbeat();
+      }, SILENT_VERIFY_INTERVAL_MS);
+    }
+  }, [endSession, clearVerifyTimer]);
 
   useEffect(() => {
     if (!businessId || !roomId || !isSupabaseConfigured) return;
     const timer = setInterval(() => {
-      if (!chatMountedRef.current) void heartbeat(false);
+      if (!chatMountedRef.current) void heartbeat();
     }, HEARTBEAT_MS);
     const sub = AppState.addEventListener('change', (next) => {
-      if (next !== 'active') {
-        backgroundedAtRef.current = Date.now();
-        return;
-      }
-      const away = backgroundedAtRef.current != null ? Date.now() - backgroundedAtRef.current : 0;
-      backgroundedAtRef.current = null;
-      // One owner at a time: while the chat is mounted its own gate re-checks on resume.
+      if (next !== 'active') return;
+      // One owner at a time: while the chat is mounted its own gate re-checks on resume. Back from a long absence
+      // (the server presence lapsed) the check runs at once; it never ends the session by itself.
       if (chatMountedRef.current) return;
-      void heartbeat(away > STALE_AFTER_MS, away > STALE_AFTER_MS ? 0 : RESUME_RECHECK_MIN_GAP_MS);
+      void heartbeat(presenceLooksExpired(roomId) ? 0 : RESUME_RECHECK_MIN_GAP_MS);
     });
     return () => {
       clearInterval(timer);
+      clearVerifyTimer();
       sub.remove();
     };
-  }, [businessId, roomId, heartbeat]);
+  }, [businessId, roomId, heartbeat, clearVerifyTimer]);
+
+  // The venue's geometry arrived after the session started: take a first silent reading (chat not mounted only).
+  const hasGeometry = geometry !== null;
+  useEffect(() => {
+    if (hasGeometry && !chatMountedRef.current) void heartbeat();
+  }, [hasGeometry, heartbeat]);
 
   // Web: network back / page restored → re-check (only while the chat is not mounted; the chat's own gate does it otherwise).
   useWebResumeRecheck({
-    onResume: () => { if (!chatMountedRef.current) void heartbeat(false, RESUME_RECHECK_MIN_GAP_MS); },
+    onResume: () => { if (!chatMountedRef.current) void heartbeat(RESUME_RECHECK_MIN_GAP_MS); },
     enabled: !!businessId && !!roomId && isSupabaseConfigured,
     ageMs: autoCheckAgeMs,
     minGapMs: RESUME_RECHECK_MIN_GAP_MS,
@@ -312,8 +389,8 @@ export function VenueSessionProvider({ children }: { children: React.ReactNode }
   }, [userId, endSession]);
 
   const value = useMemo<VenueSessionContextValue>(
-    () => ({ session, unreadMessages, likeCount, startSession, leaveVenue, endSession, setChatMounted, setChatCovered, setMatchActive, setTableLabel }),
-    [session, unreadMessages, likeCount, startSession, leaveVenue, endSession, setChatMounted, setChatCovered, setMatchActive, setTableLabel],
+    () => ({ session, geometry, reconnecting, unreadMessages, likeCount, startSession, leaveVenue, endSession, setChatMounted, setChatCovered, setMatchActive, setTableLabel }),
+    [session, geometry, reconnecting, unreadMessages, likeCount, startSession, leaveVenue, endSession, setChatMounted, setChatCovered, setMatchActive, setTableLabel],
   );
 
   return <VenueSessionContext.Provider value={value}>{children}</VenueSessionContext.Provider>;
