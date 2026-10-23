@@ -97,55 +97,84 @@ export function formatHourLabel(time24: unknown, locale: string): string | null 
   }
 }
 
-/** Minutes since midnight → "HH:MM" (1440 → "24:00"), the shape formatHourLabel reads. */
-function minutesToTime(total: number): string {
-  const hours = Math.floor(total / 60);
-  const minutes = total % 60;
-  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+/**
+ * A time as 12 h with a lower-case am / pm, the same in every language: "9:00 am", "2:00 am", "6:30 pm", "12:00 pm".
+ * Takes "HH:MM" or minutes since midnight (1440, "24:00" → "12:00 am"). Null when it is not a valid time.
+ */
+export function format12h(time: unknown): string | null {
+  const total = typeof time === 'number' ? time : parseTimeToMinutes(time);
+  if (total === null || !Number.isFinite(total) || total < 0 || total > MINUTES_PER_DAY) return null;
+  const hour24 = Math.floor(total / 60) % 24;
+  const minutes = Math.floor(total) % 60;
+  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+  return `${hour12}:${String(minutes).padStart(2, '0')} ${hour24 < 12 ? 'am' : 'pm'}`;
+}
+
+/** The full weekday name in the locale for Date.getDay()-style index (0 = Sunday): "lunes" / "Monday". */
+export function weekdayName(dayIndex: number, locale: string): string {
+  try {
+    // 2023-01-01 is a Sunday: only a reference date to format weekday names.
+    return new Intl.DateTimeFormat(locale, { weekday: 'long', timeZone: 'UTC' }).format(new Date(Date.UTC(2023, 0, 1 + (((dayIndex % 7) + 7) % 7))));
+  } catch {
+    return DAY_ORDER[((dayIndex % 7) + 7) % 7];
+  }
 }
 
 /**
- * The closing time while the business is open now ("2:00 AM"), or null when it is not open, when the hours can't be
+ * The closing time while the business is open now ("2:00 am"), or null when it is not open, when the hours can't be
  * read, or when it is open all day. Handles the cut after midnight: 20:00–02:00 closes at 2:00 the next morning,
  * and at 1:00 that morning it still reads the shift that started yesterday.
  */
-export function closesAtLabel(hours: unknown, locale: string, now: Date = new Date()): string | null {
+export function closesAtLabel(hours: unknown, _locale: string, now: Date = new Date()): string | null {
   if (getOpenStatus(hours, now) !== 'open') return null;
   const map = hours as Record<string, unknown>;
   const today = parseDay(map[DAY_ORDER[now.getDay()]]);
   const yesterday = parseDay(map[DAY_ORDER[(now.getDay() + 6) % 7]]);
   const minutes = now.getHours() * 60 + now.getMinutes();
   if (yesterday.kind === 'range' && yesterday.close < yesterday.open && minutes < yesterday.close) {
-    return formatHourLabel(minutesToTime(yesterday.close), locale);
+    return format12h(yesterday.close);
   }
-  if (today.kind === 'range' && !isAllDay(today)) return formatHourLabel(minutesToTime(today.close), locale);
+  if (today.kind === 'range' && !isAllDay(today)) return format12h(today.close);
   return null;
 }
 
+/** When the business opens next: the time ("6:00 pm") and the day it is on. */
+export interface OpensAt {
+  time: string;
+  /** 'today' (later today), 'tomorrow', or 'later' (another day: dayIndex says which). */
+  when: 'today' | 'tomorrow' | 'later';
+  /** Date.getDay()-style index (0 = Sunday) of the opening day. */
+  dayIndex: number;
+}
+
 /**
- * The next opening time while the business is closed now ("6:00 PM"): later today if it has not opened yet, else the
- * first open day after today (up to a week ahead). Null when it is open, when the hours can't be read ('unknown' is
- * not "closed") or when no day has an opening time.
+ * The next opening while the business is closed now: the time ("6:00 pm") and the day (later today, tomorrow or
+ * another weekday up to a week ahead). Null when it is open, when the hours can't be read ('unknown' is not
+ * "closed") or when no day has an opening time.
  */
-export function opensAtLabel(hours: unknown, locale: string, now: Date = new Date()): string | null {
+export function opensAtLabel(hours: unknown, _locale: string, now: Date = new Date()): OpensAt | null {
   if (getOpenStatus(hours, now) !== 'closed') return null;
   const map = hours as Record<string, unknown>;
   const minutes = now.getHours() * 60 + now.getMinutes();
   for (let offset = 0; offset <= 7; offset += 1) {
-    const day = parseDay(map[DAY_ORDER[(now.getDay() + offset) % 7]]);
+    const dayIndex = (now.getDay() + offset) % 7;
+    const day = parseDay(map[DAY_ORDER[dayIndex]]);
     if (day.kind !== 'range') continue;
     if (offset === 0 && day.open <= minutes) continue; // today's opening already passed
-    return formatHourLabel(minutesToTime(day.open), locale);
+    const time = format12h(day.open);
+    if (!time) continue;
+    return { time, when: offset === 0 ? 'today' : offset === 1 ? 'tomorrow' : 'later', dayIndex };
   }
   return null;
 }
 
 /** The text for a day's row in the hours grid, or null when the entry can't be read. */
-export function formatDayRange(entry: unknown, locale: string): { kind: 'closed' } | { kind: 'range'; text: string } | { kind: 'unknown' } {
+export function formatDayRange(entry: unknown, _locale: string): { kind: 'closed' } | { kind: 'range'; text: string } | { kind: 'unknown' } {
   const day = parseDay(entry);
   if (day.kind === 'closed') return { kind: 'closed' };
   if (day.kind === 'invalid') return { kind: 'unknown' };
-  const open = formatHourLabel(entry && (entry as DayHours).open, locale);
-  const close = formatHourLabel(entry && (entry as DayHours).close, locale);
+  // 12 h with am / pm in every language, as the status chip of the business card reads (the locale is not used).
+  const open = format12h(entry && (entry as DayHours).open);
+  const close = format12h(entry && (entry as DayHours).close);
   return open && close ? { kind: 'range', text: `${open} – ${close}` } : { kind: 'unknown' };
 }

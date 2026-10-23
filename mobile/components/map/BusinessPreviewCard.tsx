@@ -52,6 +52,7 @@ import {
   formatDayRange,
   getOpenStatus,
   opensAtLabel,
+  weekdayName,
   type DayHours,
   type DayKey,
   type HoursMap,
@@ -164,8 +165,11 @@ export default function BusinessPreviewCard({
       return until ? t('businessPreviewCard.openUntil', { time: until }) : t('businessPreviewCard.openBadge');
     }
     if (status === 'closed') {
-      const opensAt = opensAtLabel(business.hours, i18n.language);
-      return opensAt ? t('businessPreviewCard.closedOpensAt', { time: opensAt }) : t('businessPreviewCard.closedBadge');
+      const next = opensAtLabel(business.hours, i18n.language);
+      if (!next) return t('businessPreviewCard.closedBadge');
+      if (next.when === 'today') return t('businessPreviewCard.closedOpensAt', { time: next.time });
+      if (next.when === 'tomorrow') return t('businessPreviewCard.closedOpensTomorrow', { time: next.time });
+      return t('businessPreviewCard.closedOpensOn', { day: weekdayName(next.dayIndex, i18n.language), time: next.time });
     }
     return t('businessPreviewCard.hoursUnavailable');
   }, [status, business.hours, i18n.language, t]);
@@ -259,7 +263,7 @@ export default function BusinessPreviewCard({
             accessible
             accessibilityLabel={statusText}
           >
-            <Text style={styles.statusChipText} numberOfLines={1}>{statusText}</Text>
+            <Text style={styles.statusChipText} numberOfLines={2}>{statusText}</Text>
           </View>
 
           {/* Logo + name + category + distance · city — bottom left, over the gradient */}
@@ -643,10 +647,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 14,
     left: 14,
-    maxWidth: '62%',
+    maxWidth: '66%', // leaves room for the share and close buttons; a long text wraps to two lines
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 999,
+    borderRadius: 16,
   },
   statusChipText: {
     color: palette.onBrand,

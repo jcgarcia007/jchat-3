@@ -41,6 +41,8 @@
     "hoursUnavailable": "Hours unavailable",
     "openUntil": "Open · until {{time}}",
     "closedOpensAt": "Closed · opens at {{time}}",
+    "closedOpensTomorrow": "Closed · opens tomorrow at {{time}}",
+    "closedOpensOn": "Closed · opens {{day}} at {{time}}",
     "logoA11y": "{{name}} logo",
     "ratingA11y": "Rated {{rating}} out of 5",
     "directionsButton": "Directions",

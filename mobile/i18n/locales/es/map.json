@@ -41,6 +41,8 @@
     "hoursUnavailable": "Horario no disponible",
     "openUntil": "Abierto · hasta {{time}}",
     "closedOpensAt": "Cerrado · abre a las {{time}}",
+    "closedOpensTomorrow": "Cerrado · abre mañana a las {{time}}",
+    "closedOpensOn": "Cerrado · abre el {{day}} a las {{time}}",
     "logoA11y": "Logo de {{name}}",
     "ratingA11y": "Calificación {{rating}} de 5",
     "directionsButton": "Cómo llegar",
