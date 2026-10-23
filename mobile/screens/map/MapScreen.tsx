@@ -378,6 +378,20 @@ export default function MapScreen() {
         style={StyleSheet.absoluteFill}
         initialRegion={region ?? FALLBACK_REGION}
         onRegionChangeComplete={(r) => setViewRegion(r)}
+        // iOS shows a region different from the one asked for (it fits it to the portrait view) and does not always
+        // report it before the first gesture: read the real visible area once the map is ready, so the first
+        // pill / dot decision is not taken with a wrong zoom.
+        onMapReady={() => {
+          void mapRef.current?.getMapBoundaries().then(({ northEast, southWest }) => {
+            if (!isMounted.current) return;
+            setViewRegion({
+              latitude: (northEast.latitude + southWest.latitude) / 2,
+              longitude: (northEast.longitude + southWest.longitude) / 2,
+              latitudeDelta: Math.abs(northEast.latitude - southWest.latitude),
+              longitudeDelta: Math.abs(northEast.longitude - southWest.longitude),
+            });
+          }).catch(() => undefined);
+        }}
       >
         {filtered.map((b) => (
           <BusinessPin
