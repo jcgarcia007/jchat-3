@@ -93,6 +93,17 @@ test('a logo above the pill makes the box taller: two pins one above the other c
   assert.deepEqual(resolvePinModes([withLogo, upper], viewport), { a: 'pill', b: 'dot' });
 });
 
+test('a pin with a logo is two rectangles (pill + narrow ring), not one big box: diagonal pins that do not touch stay pills', () => {
+  // `a`'s logo ring is narrower than its pill; `b` sits down and to the right, under the empty upper-right corner of
+  // `a`'s bounding box. The bounding boxes overlap, the drawn pins do not.
+  const a = pin('a', 'Bar', 1, 0, { logo: true });
+  const b = { ...pin('b', 'Bar', 1, 95, { logo: true }), lat: 26 - 60 / (PX_PER_LNG / Math.cos((26 * Math.PI) / 180)) };
+  assert.deepEqual(resolvePinModes([a, b], viewport), { a: 'pill', b: 'pill' });
+  // Moving `b` onto `a`'s pill does collide.
+  const onTop = { ...pin('b', 'Bar', 0, 20, { logo: true }) };
+  assert.deepEqual(resolvePinModes([a, onTop], viewport), { a: 'pill', b: 'dot' });
+});
+
 test('pins far outside the view take no space; an empty view size keeps every pill', () => {
   const far = pin('far', 'Far Bar', 9, 5000);
   assert.deepEqual(resolvePinModes([pin('a', 'Bar', 1, 0), far], viewport), { a: 'pill', far: 'pill' });

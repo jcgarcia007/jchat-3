@@ -118,13 +118,29 @@ interface Box {
   bottom: number;
 }
 
-function boxAt(pin: CollisionPin, point: { x: number; y: number }): Box {
-  const { width, height } = pinBox(pin);
-  return { left: point.x - width / 2, right: point.x + width / 2, top: point.y - height, bottom: point.y };
+/**
+ * The pin as the rectangles it really fills: the pill with its tail, and (iOS) the narrower logo ring with its stem
+ * above it. Two pins collide only when one of their rectangles touches one of the other's: the bounding box of a pin
+ * with a logo is mostly empty at its upper corners, and using it hid pins that did not touch on screen.
+ */
+function rectsAt(pin: CollisionPin, point: { x: number; y: number }): Box[] {
+  const pillBottom = point.y;
+  const pillTop = point.y - (pin.closed ? CLOSED_PILL_HEIGHT : PILL_HEIGHT) - PILL_TAIL;
+  const half = pillWidth(pin) / 2;
+  const rects: Box[] = [{ left: point.x - half, right: point.x + half, top: pillTop, bottom: pillBottom }];
+  if (pin.logo) {
+    const ring = logoDiameter(pin.count) + LOGO_RING * 2;
+    rects.push({ left: point.x - ring / 2, right: point.x + ring / 2, top: pillTop - PILL_STEM - ring, bottom: pillTop });
+  }
+  return rects;
 }
 
-function intersects(a: Box, b: Box): boolean {
+function touches(a: Box, b: Box): boolean {
   return a.left < b.right + GAP && a.right + GAP > b.left && a.top < b.bottom + GAP && a.bottom + GAP > b.top;
+}
+
+function intersects(pin: Box[], other: Box[]): boolean {
+  return pin.some((a) => other.some((b) => touches(a, b)));
 }
 
 // ── Priority ───────────────────────────────────────────────────────────────────
@@ -164,7 +180,7 @@ export function resolvePinModes(
     return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
   });
 
-  const kept: Box[] = [];
+  const kept: Box[][] = [];
   for (const pin of ordered) {
     const point = projectToPixels(pin.lat, pin.lng, viewport);
     const farOff = point.x < -300 || point.x > viewport.width + 300 || point.y < -400 || point.y > viewport.height + 200;
@@ -172,12 +188,12 @@ export function resolvePinModes(
       modes[pin.id] = 'pill';
       continue;
     }
-    const box = boxAt(pin, point);
-    if (kept.some((other) => intersects(box, other))) {
+    const rects = rectsAt(pin, point);
+    if (kept.some((other) => intersects(rects, other))) {
       modes[pin.id] = 'dot';
     } else {
       modes[pin.id] = 'pill';
-      kept.push(box);
+      kept.push(rects);
     }
   }
   return modes;
