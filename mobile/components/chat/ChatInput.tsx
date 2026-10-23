@@ -19,7 +19,6 @@
 
 import React, { useCallback, useRef, useState } from 'react';
 import {
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   StyleSheet,
@@ -45,6 +44,7 @@ import { normalizeImageUri } from '../../utils/normalizeImage';
 import { pickPhotoFromLibrary } from '../../services/photoPicker';
 import { checkMessage } from '../../utils/messageFilter';
 import { showAlert } from '../../utils/dialog';
+import { useComposerBottomPadding } from '../../hooks/useComposerBottomPadding';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -89,6 +89,8 @@ export function ChatInput({
   const [attachmentOpen, setAttachmentOpen] = useState(false);
   const [recordingVoice, setRecordingVoice] = useState(false);
   const inputRef = useRef<TextInput>(null);
+  // Closed keyboard: the bar (and its background) clears the home indicator; open keyboard: 8.
+  const bottomPadding = useComposerBottomPadding();
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
@@ -200,11 +202,9 @@ export function ChatInput({
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <KeyboardAvoidingView
-      // Off on web (no keyboard events there): the screen lifts the whole input with useVisualViewportInset.
-      enabled={Platform.OS !== 'web'}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    // The keyboard is handled once, by the KeyboardAvoidingView in ChatRoomScreen (it lifts the list and this bar as a
+    // unit; web uses useVisualViewportInset there). A second one here lifted the bar twice.
+    <View>
       {/* Attachment panel — above the input bar */}
       <AttachmentPanel
         visible={attachmentOpen}
@@ -229,16 +229,23 @@ export function ChatInput({
 
       {/* Input bar — replaced by the voice recorder while recording */}
       {recordingVoice ? (
-        <VoiceRecorderBar
-          onSend={handleVoiceSend}
-          onCancel={handleVoiceCancel}
-          textColor={theme.bubbleInText}
-          accentColor={theme.accent}
-          backgroundColor={theme.topBg}
-          borderColor={theme.border}
-        />
+        <View style={{ backgroundColor: theme.topBg, paddingBottom: bottomPadding - 8 }}>
+          <VoiceRecorderBar
+            onSend={handleVoiceSend}
+            onCancel={handleVoiceCancel}
+            textColor={theme.bubbleInText}
+            accentColor={theme.accent}
+            backgroundColor={theme.topBg}
+            borderColor={theme.border}
+          />
+        </View>
       ) : (
-      <View style={[barStyles.container, { backgroundColor: theme.topBg, borderTopColor: theme.border }]}>
+      <View
+        style={[
+          barStyles.container,
+          { backgroundColor: theme.topBg, borderTopColor: theme.border, paddingBottom: bottomPadding },
+        ]}
+      >
 
         {/* + / X toggle — opens AttachmentPanel */}
         <Pressable
@@ -319,7 +326,7 @@ export function ChatInput({
 
       </View>
       )}
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -331,8 +338,9 @@ const barStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    // paddingBottom comes from useComposerBottomPadding (safe-area aware).
     borderTopWidth: 1,
   },
   input: {

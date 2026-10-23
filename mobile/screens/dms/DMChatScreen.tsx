@@ -81,6 +81,7 @@ import { useGiftAvailable } from '../../hooks/useGiftAvailable';
 import { VoiceRecorderBar } from '../../components/common/VoiceRecorderBar';
 import { canRecordVoice } from '../../services/webVoice';
 import { useVisualViewportInset } from '../../hooks/useVisualViewportInset';
+import { useComposerBottomPadding } from '../../hooks/useComposerBottomPadding';
 import { retryWithTimeout } from '../../utils/retryWithTimeout';
 import type { VoiceRecording } from '../../components/common/VoiceRecorderBar';
 import { discardLocalRecording, uploadDmVoice } from '../../services/voiceNotes';
@@ -303,6 +304,8 @@ export default function DMChatScreen() {
   const { t: tm } = useTranslation('match');
   const { t: tg } = useTranslation('chat');
   const insets = useSafeAreaInsets();
+  // Same composer padding as the venue chat (ChatInput): safe-area aware when the keyboard is closed, 8 when open.
+  const composerBottom = useComposerBottomPadding();
   const [androidKeyboardHeight, setAndroidKeyboardHeight] = useState(0);
   // Web only (0 on iOS / Android): how much of the page the on-screen keyboard covers, to lift the composer.
   const webKeyboardInset = useVisualViewportInset();
@@ -698,7 +701,9 @@ export default function DMChatScreen() {
       // 'height' mode over-corrected and left a grey strip once the keyboard closed, so the keyboard height is
       // applied as bottom padding instead (androidKeyboardHeight).
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={insets.bottom}
+      // 0: this KeyboardAvoidingView is the screen root, so there is nothing above it to offset. A non-zero offset
+      // (it was insets.bottom) lifted the composer that much above the keys, leaving a gap.
+      keyboardVerticalOffset={0}
     >
       {/* Header */}
       <View
@@ -832,7 +837,7 @@ export default function DMChatScreen() {
 
       {/* Composer — replaced by the voice recorder while recording */}
       {recordingVoice ? (
-        <View style={{ paddingBottom: insets.bottom, backgroundColor: c.bgSurface }}>
+        <View style={{ paddingBottom: composerBottom - 8, backgroundColor: c.bgSurface }}>
           <VoiceRecorderBar
             onSend={(rec) => void handleVoiceSend(rec)}
             onCancel={handleVoiceCancel}
@@ -855,7 +860,7 @@ export default function DMChatScreen() {
           {
             backgroundColor: c.bgSurface,
             borderTopColor: c.borderSubtle,
-            paddingBottom: (androidKeyboardHeight > 0 ? 0 : insets.bottom) + 8,
+            paddingBottom: composerBottom,
           },
         ]}
       >
@@ -1086,13 +1091,17 @@ const styles = StyleSheet.create({
   composer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingTop: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
     gap: 8,
   },
+  // 44 x 44 pt touch target (the icon is 22).
   composerIconBtn: {
-    paddingBottom: 8,
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   textInput: {
     flex: 1,
@@ -1105,12 +1114,13 @@ const styles = StyleSheet.create({
     maxHeight: 120,
     lineHeight: 20,
   },
+  // 44 x 44 pt touch target, drawn as a 36 pt circle (hitSlop of 4 on the button makes up the rest).
   sendBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 1,
+    marginBottom: 4,
   },
 });
