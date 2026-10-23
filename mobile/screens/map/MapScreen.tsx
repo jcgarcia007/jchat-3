@@ -382,15 +382,22 @@ export default function MapScreen() {
         // report it before the first gesture: read the real visible area once the map is ready, so the first
         // pill / dot decision is not taken with a wrong zoom.
         onMapReady={() => {
-          void mapRef.current?.getMapBoundaries().then(({ northEast, southWest }) => {
-            if (!isMounted.current) return;
-            setViewRegion({
-              latitude: (northEast.latitude + southWest.latitude) / 2,
-              longitude: (northEast.longitude + southWest.longitude) / 2,
-              latitudeDelta: Math.abs(northEast.latitude - southWest.latitude),
-              longitudeDelta: Math.abs(northEast.longitude - southWest.longitude),
-            });
-          }).catch(() => undefined);
+          // Read now, and twice more after MapKit has finished fitting the region to the view (the first read can
+          // still see the region that was asked for).
+          const readVisibleArea = () => {
+            void mapRef.current?.getMapBoundaries().then(({ northEast, southWest }) => {
+              if (!isMounted.current) return;
+              setViewRegion({
+                latitude: (northEast.latitude + southWest.latitude) / 2,
+                longitude: (northEast.longitude + southWest.longitude) / 2,
+                latitudeDelta: Math.abs(northEast.latitude - southWest.latitude),
+                longitudeDelta: Math.abs(northEast.longitude - southWest.longitude),
+              });
+            }).catch(() => undefined);
+          };
+          readVisibleArea();
+          setTimeout(readVisibleArea, 500);
+          setTimeout(readVisibleArea, 1500);
         }}
       >
         {filtered.map((b) => (
