@@ -13,6 +13,9 @@
  *   - grey (no heat colour, no halo) while the venue is closed or pending.
  * What it shows is decided in utils/mapPin.ts, which has its own tests.
  *
+ * Android: the pin shows the initials, not the logo (an image does not make it into the marker bitmap there; see
+ * pinLogoSupport.android.ts). iOS and web draw the logo.
+ *
  * Android performance: a Marker freezes its view after the first frame (tracksViewChanges={false}). The pin tracks
  * changes only until its logo has loaded (or failed, or a ceiling passes) and again, briefly, when what it draws
  * changes; then it goes back to false so the map does not keep re-rendering every marker.
@@ -22,6 +25,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Marker } from 'react-native-maps';
 import { Image } from 'expo-image';
+import { PIN_SHOWS_LOGO } from './pinLogoSupport';
 import { IconCoffee, IconGlass, IconMapPin, IconMusic, IconToolsKitchen2 } from '@tabler/icons-react-native';
 import { palette } from '../../theme/tokens';
 import {
@@ -123,7 +127,8 @@ export default function BusinessPin({ business, onPress }: BusinessPinProps) {
   const accent = muted ? MUTED_COLOR : HEAT_COLORS[level];
   const fill = muted ? MUTED_COLOR : INITIALS_COLORS[colorIndex(business.id, INITIALS_COLORS.length)];
 
-  const imageUrl = business.logo_url || business.icon_url || null;
+  // Android draws the initials instead of the logo (see pinLogoSupport.android.ts).
+  const imageUrl = PIN_SHOWS_LOGO ? business.logo_url || business.icon_url || null : null;
   const [imageFailed, setImageFailed] = useState(false);
   useEffect(() => setImageFailed(false), [imageUrl]); // a new url gets its own chance
   const showImage = !!imageUrl && !imageFailed;
