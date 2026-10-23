@@ -97,6 +97,49 @@ export function formatHourLabel(time24: unknown, locale: string): string | null 
   }
 }
 
+/** Minutes since midnight → "HH:MM" (1440 → "24:00"), the shape formatHourLabel reads. */
+function minutesToTime(total: number): string {
+  const hours = Math.floor(total / 60);
+  const minutes = total % 60;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+/**
+ * The closing time while the business is open now ("2:00 AM"), or null when it is not open, when the hours can't be
+ * read, or when it is open all day. Handles the cut after midnight: 20:00–02:00 closes at 2:00 the next morning,
+ * and at 1:00 that morning it still reads the shift that started yesterday.
+ */
+export function closesAtLabel(hours: unknown, locale: string, now: Date = new Date()): string | null {
+  if (getOpenStatus(hours, now) !== 'open') return null;
+  const map = hours as Record<string, unknown>;
+  const today = parseDay(map[DAY_ORDER[now.getDay()]]);
+  const yesterday = parseDay(map[DAY_ORDER[(now.getDay() + 6) % 7]]);
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  if (yesterday.kind === 'range' && yesterday.close < yesterday.open && minutes < yesterday.close) {
+    return formatHourLabel(minutesToTime(yesterday.close), locale);
+  }
+  if (today.kind === 'range' && !isAllDay(today)) return formatHourLabel(minutesToTime(today.close), locale);
+  return null;
+}
+
+/**
+ * The next opening time while the business is closed now ("6:00 PM"): later today if it has not opened yet, else the
+ * first open day after today (up to a week ahead). Null when it is open, when the hours can't be read ('unknown' is
+ * not "closed") or when no day has an opening time.
+ */
+export function opensAtLabel(hours: unknown, locale: string, now: Date = new Date()): string | null {
+  if (getOpenStatus(hours, now) !== 'closed') return null;
+  const map = hours as Record<string, unknown>;
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  for (let offset = 0; offset <= 7; offset += 1) {
+    const day = parseDay(map[DAY_ORDER[(now.getDay() + offset) % 7]]);
+    if (day.kind !== 'range') continue;
+    if (offset === 0 && day.open <= minutes) continue; // today's opening already passed
+    return formatHourLabel(minutesToTime(day.open), locale);
+  }
+  return null;
+}
+
 /** The text for a day's row in the hours grid, or null when the entry can't be read. */
 export function formatDayRange(entry: unknown, locale: string): { kind: 'closed' } | { kind: 'range'; text: string } | { kind: 'unknown' } {
   const day = parseDay(entry);

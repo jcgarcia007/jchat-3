@@ -27,7 +27,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { Linking } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { IconMap, IconSatellite, IconX, IconPlus, IconMinus, IconCurrentLocation } from '@tabler/icons-react-native';
+import { IconMap, IconSatellite, IconPlus, IconMinus, IconCurrentLocation } from '@tabler/icons-react-native';
 import type MapView from 'react-native-maps';
 import type { Region } from 'react-native-maps';
 import { useNavigation } from '@react-navigation/native';
@@ -39,6 +39,9 @@ import FilterPanel, { defaultFilters, type MapFilters } from '../../components/m
 import BusinessPreviewCard from '../../components/map/BusinessPreviewCard';
 import { getOpenStatus, isOpenNow, type HoursMap } from '../../utils/hours';
 import { haversineMeters } from '../../services/geofence';
+import { formatMeters } from '../../utils/businessCard';
+import { usesKilometers } from '../../utils/distanceUnits';
+import ReservationScreen from '../reservations/ReservationScreen';
 import { buildCategoryOptions, categoryMatches } from '../../utils/categories';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { useThemeColors } from '../../theme/colors';
@@ -81,6 +84,10 @@ interface MapBusiness {
   rating?: number;
   review_count?: number;
   slug?: string | null;
+  /** businesses.description: the card shows it under the buttons. */
+  description?: string | null;
+  /** businesses.geofence_radius_m (meters): inside it the user can enter the chat. */
+  geofence_radius_m?: number | null;
 }
 
 const FALLBACK_REGION: Region = {
@@ -161,6 +168,8 @@ export default function MapScreen() {
   const [businessesError, setBusinessesError] = useState(false);
   const [filters, setFilters] = useState<MapFilters>(defaultFilters);
   const [selected, setSelected] = useState<MapBusiness | null>(null);
+  /** The business a table is being reserved at (the reservation form is open); null = closed. */
+  const [reserveFor, setReserveFor] = useState<string | null>(null);
 
   /**
    * Reads the device position. The permission prompt is shown only when the user was never
@@ -229,7 +238,7 @@ export default function MapScreen() {
     try {
       const { data, error } = await supabase
         .from('businesses')
-        .select('id, name, category, icon_emoji, icon_url, logo_url, lat, lng, status, address, cover_url, hours, slug')
+        .select('id, name, category, icon_emoji, icon_url, logo_url, lat, lng, status, address, cover_url, hours, slug, description, geofence_radius_m')
         .eq('status', 'verified');
       if (error) throw error;
       if (!isMounted.current) return;
@@ -243,6 +252,8 @@ export default function MapScreen() {
             status: r.status ?? 'verified', activeCount: 0, // TODO(presence): live count
             address: r.address ?? '', cover_url: r.cover_url ?? null, hours: r.hours ?? null,
             slug: r.slug ?? null,
+            description: r.description ?? null,
+            geofence_radius_m: typeof r.geofence_radius_m === 'number' ? r.geofence_radius_m : null,
           })),
       );
     } catch (error) {
@@ -273,6 +284,20 @@ export default function MapScreen() {
       }),
     [businesses, filters, userCoords],
   );
+
+  // The tapped business, with the real distance from the user. inside_radius: inside the venue's radius or not;
+  // null (unknown) when there is no position or the venue has no radius — the card then does not warn and the
+  // server decides on entry.
+  const selectedGeo = useMemo(() => {
+    if (!selected || !userCoords) return { distance_m: undefined, distance: undefined, inside_radius: null as boolean | null };
+    const distance_m = haversineMeters(userCoords.lat, userCoords.lng, selected.lat, selected.lng);
+    const radius = selected.geofence_radius_m;
+    return {
+      distance_m,
+      distance: formatMeters(distance_m, usesKilometers()),
+      inside_radius: typeof radius === 'number' && radius > 0 ? distance_m <= radius : null,
+    };
+  }, [selected, userCoords]);
 
   // Recenter: a denied permission is never re-requested (the system would ignore it) — go to Settings.
   const recenterToUser = useCallback(async () => {
@@ -451,22 +476,28 @@ export default function MapScreen() {
       <AppModal visible={!!selected} transparent animationType="slide" onRequestClose={() => setSelected(null)}>
         <View style={styles.sheetBackdrop}>
           <TouchableOpacity accessible={false} style={styles.sheetDismiss} activeOpacity={1} onPress={() => setSelected(null)} />
-          <View style={[styles.sheetBody, { backgroundColor: c.bgBase }]}>
-            <TouchableOpacity
-              style={styles.sheetClose}
-              onPress={() => setSelected(null)}
-              accessibilityRole="button"
-              accessibilityLabel={t('mapScreen.closeSheetA11y')}
-            >
-              <IconX size={22} color={c.textSecondary} />
-            </TouchableOpacity>
+          <View style={[styles.sheetBody, { backgroundColor: c.bgBase, paddingBottom: insets.bottom + 8 }]}>
             {selected && (
               <BusinessPreviewCard
                 business={{
                   id: selected.id, name: selected.name, category: selected.category,
-                  icon_emoji: selected.icon_emoji, icon_url: selected.icon_url, cover_url: selected.cover_url, hours: selected.hours,
+                  icon_emoji: selected.icon_emoji, icon_url: selected.icon_url, logo_url: selected.logo_url, cover_url: selected.cover_url, hours: selected.hours,
                   address: selected.address, lat: selected.lat, lng: selected.lng,
+                  description: selected.description, geofence_radius_m: selected.geofence_radius_m,
+                  distance: selectedGeo.distance, distance_m: selectedGeo.distance_m,
                   rating: selected.rating, active_count: selected.activeCount,
+                  // has_active_offers is not passed: the feed does not tell by venue yet, so no red dot.
+                }}
+                inside_radius={selectedGeo.inside_radius}
+                onClose={() => setSelected(null)}
+                onOffers={() => {
+                  // NOTE: the Offers feed is not filtered by venue yet; this opens the general feed.
+                  setSelected(null);
+                  navigation.navigate('Offers');
+                }}
+                onReserve={(businessId) => {
+                  setSelected(null);
+                  setReserveFor(businessId);
                 }}
                 onEnterChat={(businessId) => {
                   void (async () => {
@@ -486,6 +517,19 @@ export default function MapScreen() {
               />
             )}
           </View>
+        </View>
+      </AppModal>
+
+      {/* Reservation form (ReservationScreen), full screen, opened from the card's Reserve button */}
+      <AppModal visible={reserveFor !== null} animationType="slide" onRequestClose={() => setReserveFor(null)}>
+        <View style={{ flex: 1, backgroundColor: c.bgBase, paddingTop: insets.top, paddingBottom: insets.bottom }}>
+          {reserveFor !== null && (
+            <ReservationScreen
+              businessId={reserveFor}
+              onSuccess={() => { /* the form shows its own confirmation; Done calls onCancel */ }}
+              onCancel={() => setReserveFor(null)}
+            />
+          )}
         </View>
       </AppModal>
     </View>
@@ -509,8 +553,8 @@ const styles = StyleSheet.create({
   styleBtnLabel: { fontSize: 13, fontWeight: '500' },
   sheetBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: palette.scrim },
   sheetDismiss: { flex: 1 },
-  sheetBody: { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: 8, paddingBottom: 24, maxHeight: '85%' },
-  sheetClose: { alignSelf: 'flex-end', padding: 12 },
+  // The card owns the top (its cover reaches the rounded corners) and the close button.
+  sheetBody: { borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden', maxHeight: '90%' },
   zoomRow: { alignItems: 'flex-end', marginTop: 8, marginRight: 16, pointerEvents: 'box-none' },
   zoomControls: {
     borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden',

@@ -26,10 +26,9 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Marker } from 'react-native-maps';
 import { Image } from 'expo-image';
 import { PIN_SHOWS_LOGO } from './pinLogoSupport';
-import { IconCoffee, IconGlass, IconMapPin, IconMusic, IconToolsKitchen2 } from '@tabler/icons-react-native';
 import { palette } from '../../theme/tokens';
+import { CATEGORY_ICONS, initialsColor } from './pinAppearance';
 import {
-  colorIndex,
   counterLabel,
   heatLevel,
   initials,
@@ -39,7 +38,6 @@ import {
   showCounter,
   showHalo,
   type HeatLevel,
-  type PinCategory,
 } from '../../utils/mapPin';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -82,9 +80,6 @@ export interface BusinessPinProps {
 
 // ── Colours (tokens only) ─────────────────────────────────────────────────────
 
-/** Fill of the circle when there is no logo: one per venue, stable. */
-const INITIALS_COLORS = [palette.brandFill, palette.brandPurple, palette.success, palette.gold, palette.brandArtCoral] as const;
-
 const HEAT_COLORS: Record<HeatLevel, string> = {
   cool: palette.heatCool,
   mild: palette.heatMild,
@@ -94,14 +89,6 @@ const HEAT_COLORS: Record<HeatLevel, string> = {
 
 /** Closed / pending: neutral grey, distinct from every heat colour. */
 const MUTED_COLOR = palette.textTertiary;
-
-const CATEGORY_ICONS: Record<PinCategory, typeof IconMapPin> = {
-  bar: IconGlass,
-  restaurant: IconToolsKitchen2,
-  cafe: IconCoffee,
-  club: IconMusic,
-  other: IconMapPin,
-};
 
 // ── Layout constants ──────────────────────────────────────────────────────────
 
@@ -125,7 +112,7 @@ export default function BusinessPin({ business, onPress }: BusinessPinProps) {
   const size = pinSize(count);
   const muted = isMuted(business.status, business.closed);
   const accent = muted ? MUTED_COLOR : HEAT_COLORS[level];
-  const fill = muted ? MUTED_COLOR : INITIALS_COLORS[colorIndex(business.id, INITIALS_COLORS.length)];
+  const fill = muted ? MUTED_COLOR : initialsColor(business.id);
 
   // Android draws the initials instead of the logo (see pinLogoSupport.android.ts).
   const imageUrl = PIN_SHOWS_LOGO ? business.logo_url || business.icon_url || null : null;

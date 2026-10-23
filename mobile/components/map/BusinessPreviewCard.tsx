@@ -1,25 +1,25 @@
 /**
- * JChat 3.0 — BusinessPreviewCard (Task 2.3)
+ * JChat 3.0 — BusinessPreviewCard (Task 2.3, redesigned: "Tarjeta B + A")
  * Source of truth: JCHAT_3.0_MASTER_SPEC.docx · Section 5.2
  *                  JCHAT_3.0_DESIGN_SYSTEM.docx · Section 11
  *
- * Presentational card displayed when a user taps a business pin on the Map tab.
+ * Presentational card displayed when a user taps a business pin on the Map tab. Top to bottom, in one ScrollView:
+ * the cover (status chip, share and close, logo + name + category + distance · city), the main buttons, the
+ * description, the gallery, the live strip, the opening hours (folded) and, outside the venue's radius, a notice.
  * All data is passed via props — no Supabase calls inside this component.
  *
  * Design constraints:
- *   - No hardcoded hex; CARD_COLORS below maps design-system accents to tokens (design-system
- *     accent values that are not global tokens).
+ *   - Tokens only (palette / useThemeColors); no hardcoded hex.
  *   - Dark + light mode via useThemeColors().
  *   - Icons: @tabler/icons-react-native only.
  *   - Cover gradient: expo-linear-gradient.
  */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Image,
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -28,19 +28,30 @@ import {
 import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
+  IconCalendarEvent,
+  IconChevronDown,
+  IconChevronUp,
   IconMapPin,
+  IconMessage,
   IconNavigation,
   IconShare,
-  IconStar,
   IconStarFilled,
+  IconTag,
+  IconToolsKitchen2,
+  IconX,
 } from '@tabler/icons-react-native';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
-import { BusinessIcon } from '../common/BusinessIcon';
+import { CATEGORY_ICONS, initialsColor } from './pinAppearance';
+import { initials, pinCategory } from '../../utils/mapPin';
+import { cityFromAddress, formatMeters } from '../../utils/businessCard';
+import { usesKilometers } from '../../utils/distanceUnits';
 import {
   DAY_ORDER,
+  closesAtLabel,
   formatDayRange,
   getOpenStatus,
+  opensAtLabel,
   type DayHours,
   type DayKey,
   type HoursMap,
@@ -48,9 +59,13 @@ import {
 
 // ── Design-System accents (DS §11), taken from the global tokens ─────────────
 const CARD_COLORS = {
-  starGold: palette.heatMild,   // star rating fill
-  openGreen: palette.heatCool,  // open badge green dot + today highlight
+  openGreen: palette.success, // open chip, today highlight, live dot
 } as const;
+
+const COVER_HEIGHT = 190;
+const LOGO_SIZE = 60;
+const MIN_TOUCH = 44;
+const DESCRIPTION_LINES = 3;
 
 // ── Hours type ────────────────────────────────────────────────────────────────
 
@@ -72,28 +87,45 @@ export interface BusinessPreviewCardProps {
     name: string;
     category: string;
     icon_emoji: string;
-    /** The icon image the owner uploaded; shown instead of the emoji when it exists and loads. */
+    /** The icon image the owner uploaded; the logo when there is no logo_url. */
     icon_url?: string | null;
+    /** businesses.logo_url: the circular logo on the cover. */
+    logo_url?: string | null;
     cover_url: string | null;
     hours: HoursMap | null;
     address: string;
     lat: number;
     lng: number;
+    /** businesses.description: shown under the buttons (3 lines + "show more"); nothing when empty. */
+    description?: string | null;
+    /** businesses.geofence_radius_m (meters). */
+    geofence_radius_m?: number | null;
     rating?: number;       // 0–5
     review_count?: number;
     gallery_urls?: string[];
     rooms?: RoomChip[];
     active_count?: number; // live users right now
     distance?: string;     // pre-formatted string, e.g. "0.3 mi"
+    distance_m?: number;   // the same distance in meters
+    /** The venue has active offers: a red dot on the Offers button. Absent → no dot. */
+    has_active_offers?: boolean;
   };
+  /**
+   * Is the user inside the venue's radius? true / false, or null / undefined when it is not known (no position or no
+   * radius): the card then does not warn and the server decides on entry.
+   */
+  inside_radius?: boolean | null;
   onEnterChat: (businessId: string) => void;
   onViewMenu: (businessId: string) => void;
   onNavigate: (lat: number, lng: number) => void;
   onShare: (businessId: string) => void;
+  onOffers: (businessId: string) => void;
+  onReserve: (businessId: string) => void;
+  /** Closes the sheet: the card owns the only close (X) button. */
+  onClose: () => void;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
 
 /**
  * Derives localized short weekday names (Sun/Mon/… or Dom/Lun/… in es) via
@@ -107,35 +139,63 @@ function getDayLabels(locale: string): string[] {
   return DAY_ORDER.map((_, idx) => formatter.format(new Date(Date.UTC(2023, 0, 1 + idx))));
 }
 
-/** Render up to 5 star icons for a rating value. */
-function StarRow({ rating, size, c }: { rating: number; size: number; c: ReturnType<typeof useThemeColors> }) {
-  return (
-    <View style={{ flexDirection: 'row', gap: 1 }}>
-      {[1, 2, 3, 4, 5].map((n) =>
-        n <= Math.round(rating) ? (
-          <IconStarFilled key={n} size={size} color={CARD_COLORS.starGold} />
-        ) : (
-          <IconStar key={n} size={size} color={c.textTertiary} />
-        ),
-      )}
-    </View>
-  );
-}
-
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function BusinessPreviewCard({
   business,
+  inside_radius,
   onEnterChat,
   onViewMenu,
   onNavigate,
   onShare,
+  onOffers,
+  onReserve,
+  onClose,
 }: BusinessPreviewCardProps) {
   const { t, i18n } = useTranslation('map');
   const c = useThemeColors();
 
+  // ── Status chip ────────────────────────────────────────────────────────────
   const status = useMemo(() => getOpenStatus(business.hours), [business.hours]);
   const open = status === 'open';
+  const statusText = useMemo(() => {
+    if (status === 'open') {
+      const until = closesAtLabel(business.hours, i18n.language);
+      return until ? t('businessPreviewCard.openUntil', { time: until }) : t('businessPreviewCard.openBadge');
+    }
+    if (status === 'closed') {
+      const opensAt = opensAtLabel(business.hours, i18n.language);
+      return opensAt ? t('businessPreviewCard.closedOpensAt', { time: opensAt }) : t('businessPreviewCard.closedBadge');
+    }
+    return t('businessPreviewCard.hoursUnavailable');
+  }, [status, business.hours, i18n.language, t]);
+
+  // ── Cover, logo, name row ──────────────────────────────────────────────────
+  const fill = initialsColor(business.id);
+  const logoUrl = business.logo_url || business.icon_url || null;
+  const [logoFailed, setLogoFailed] = useState(false);
+  const [coverFailed, setCoverFailed] = useState(false);
+  const showLogo = !!logoUrl && !logoFailed;
+  const showCover = !!business.cover_url && !coverFailed;
+  const CategoryIcon = CATEGORY_ICONS[pinCategory(business.category)];
+
+  const city = useMemo(() => cityFromAddress(business.address), [business.address]);
+  const distanceText =
+    business.distance ??
+    (business.distance_m != null ? formatMeters(business.distance_m, usesKilometers()) : null);
+  const distanceLine = [distanceText, city].filter(Boolean).join(' · ');
+
+  // ── Entry: outside the radius the button is disabled and a notice explains why ──
+  const blocked = inside_radius === false;
+
+  // ── Description: 3 lines + "show more" only when it really is longer ──────────
+  const description = business.description?.trim() || '';
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+  const [descriptionLines, setDescriptionLines] = useState(0);
+  const descriptionTruncated = descriptionLines > DESCRIPTION_LINES;
+
+  // ── Hours (folded) ─────────────────────────────────────────────────────────
+  const [hoursOpen, setHoursOpen] = useState(false);
 
   // One day's row in the hours grid: never throws, "Hours unavailable" when the entry can't be read.
   const dayRange = (entry: DayHours | undefined): string => {
@@ -167,178 +227,193 @@ export default function BusinessPreviewCard({
   const visiblePhotos = gallery.slice(0, MAX_VISIBLE);
   const extraCount = gallery.length - MAX_VISIBLE;
 
-  // Cover gradient stop color in rgba from the bgBase token
-  // We derive it from the current bgBase hex (always 6-char hex in tokens)
-  const bgBaseRgba = hexToRgba(c.bgBase, 0.96);
+  const closeLabel = t('mapScreen.closeSheetA11y');
 
   return (
     <View style={[styles.card, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
-
-      {/* ── Cover photo + gradient ───────────────────────────────────────────── */}
-      <View style={styles.coverWrap}>
-        {business.cover_url ? (
-          <Image
-            source={{ uri: business.cover_url }}
-            style={styles.coverImage}
-            resizeMode="cover"
-            accessibilityLabel={t('businessPreviewCard.coverPhotoA11y', { name: business.name })}
-          />
-        ) : (
-          <View style={[styles.coverImage, styles.coverFallback, { backgroundColor: c.bgElevated }]} />
-        )}
-
-        {/* Gradient overlay — transparent → bgBase 96% — 60px at bottom */}
-        <LinearGradient
-          colors={['transparent', bgBaseRgba]}
-          style={styles.coverGradient}
-          pointerEvents="none"
-        />
-
-        {/* Open / Closed badge — top-right */}
-        <View style={[styles.openBadge, { backgroundColor: c.bgSurface }]}>
-          <View style={[styles.openDot, { backgroundColor: open ? CARD_COLORS.openGreen : c.textTertiary }]} />
-          <Text style={[styles.openBadgeText, { color: open ? CARD_COLORS.openGreen : c.textSecondary }]}>
-            {status === 'open'
-              ? t('businessPreviewCard.openBadge')
-              : status === 'closed'
-                ? t('businessPreviewCard.closedBadge')
-                : t('businessPreviewCard.hoursUnavailable')}
-          </Text>
-        </View>
-
-        {/* Business emoji icon — absolute bottom-left, overlaps cover */}
-        <View
-          accessible
-          accessibilityLabel={t('businessPreviewCard.iconA11y', { name: business.name })}
-          style={[
-            styles.emojiIcon,
-            { backgroundColor: c.bgSurface, borderColor: c.bgBase },
-          ]}
-        >
-          <BusinessIcon iconUrl={business.icon_url} emoji={business.icon_emoji} size={46} radius={11} emojiStyle={styles.emojiText} />
-        </View>
-      </View>
-
-      {/* ── Scrollable body ──────────────────────────────────────────────────── */}
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.bodyContent}
         bounces={false}
       >
-        {/* ── Name + category + distance ────────────────────────────────────── */}
-        <View style={styles.nameSection}>
-          <Text style={[styles.businessName, { color: c.textPrimary }]} numberOfLines={1}>
-            {business.name}
-          </Text>
-          <View style={styles.metaRow}>
-            <Text style={[styles.metaText, { color: c.textSecondary }]}>
-              {business.category}
-            </Text>
-            {business.distance != null && (
-              <>
-                <Text style={[styles.metaDot, { color: c.textTertiary }]}>·</Text>
-                <Text style={[styles.metaText, { color: c.textSecondary }]}>
-                  {business.distance}
-                </Text>
-              </>
-            )}
+        {/* ── Cover: photo (or the venue colour), gradient, chip, logo, name, meta ───── */}
+        <View style={[styles.cover, { backgroundColor: fill }]}>
+          {showCover ? (
+            <Image
+              source={{ uri: business.cover_url as string }}
+              style={StyleSheet.absoluteFill}
+              resizeMode="cover"
+              onError={() => setCoverFailed(true)}
+              accessibilityLabel={t('businessPreviewCard.coverPhotoA11y', { name: business.name })}
+            />
+          ) : null}
+          <LinearGradient
+            colors={['transparent', palette.scrim]}
+            style={styles.coverGradient}
+            pointerEvents="none"
+          />
+
+          {/* Status chip — top left */}
+          <View
+            style={[styles.statusChip, { backgroundColor: open ? CARD_COLORS.openGreen : c.textTertiary }]}
+            accessible
+            accessibilityLabel={statusText}
+          >
+            <Text style={styles.statusChipText} numberOfLines={1}>{statusText}</Text>
           </View>
 
-          {/* Rating row */}
-          {business.rating != null && (
-            <View style={styles.ratingRow}>
-              <StarRow rating={business.rating} size={13} c={c} />
-              <Text style={[styles.ratingValue, { color: c.textPrimary }]}>
-                {business.rating.toFixed(1)}
-              </Text>
-              {business.review_count != null && (
-                <Text style={[styles.ratingCount, { color: c.textSecondary }]}>
-                  ({business.review_count})
-                </Text>
+          {/* Logo + name + category + distance · city — bottom left, over the gradient */}
+          <View style={styles.coverBottom} pointerEvents="none">
+            <View
+              accessible
+              accessibilityLabel={t('businessPreviewCard.logoA11y', { name: business.name })}
+              style={[styles.logo, { backgroundColor: fill }]}
+            >
+              {showLogo ? (
+                <Image
+                  source={{ uri: logoUrl as string }}
+                  style={StyleSheet.absoluteFill}
+                  resizeMode="cover"
+                  onError={() => setLogoFailed(true)}
+                />
+              ) : (
+                <Text style={styles.logoInitials}>{initials(business.name)}</Text>
               )}
             </View>
-          )}
-        </View>
-
-        {/* ── Divider ───────────────────────────────────────────────────────── */}
-        <View style={[styles.divider, { backgroundColor: c.borderSubtle }]} />
-
-        {/* ── Address row ───────────────────────────────────────────────────── */}
-        <View style={styles.addressRow}>
-          <IconMapPin size={13} color={palette.brand} style={styles.addressIcon} />
-          <Text style={[styles.addressText, { color: c.textSecondary }]} numberOfLines={2}>
-            {business.address}
-          </Text>
-        </View>
-
-        {/* ── Hours section ─────────────────────────────────────────────────── */}
-        {business.hours && (
-          <View style={styles.hoursSection}>
-            {/* 7-day working-day circle row */}
-            <View style={styles.workingDaysRow}>
-              {DAY_ORDER.map((dayKey, idx) => {
-                const entry = hoursEntries[idx];
-                const isToday = idx === todayIndex;
-                const isClosed = !entry.hours || entry.hours.closed;
-                return (
-                  <View
-                    key={dayKey}
-                    style={[
-                      styles.dayCircle,
-                      {
-                        backgroundColor: isToday
-                          ? CARD_COLORS.openGreen
-                          : c.bgElevated,
-                        opacity: isClosed && !isToday ? 0.4 : 1,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.dayCircleLabel,
-                        { color: isToday ? palette.bgSurfaceLight : c.textSecondary },
-                      ]}
-                    >
-                      {dayLabels[idx].charAt(0)}
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
-
-            {/* Hours grid — 2 columns */}
-            <View style={styles.hoursGrid}>
-              {hoursEntries.map(({ label, dayKey, hours: dayH, isToday }) => (
-                <View key={dayKey} style={styles.hoursGridItem}>
-                  <Text
-                    style={[
-                      styles.hoursGridDay,
-                      {
-                        color: isToday ? CARD_COLORS.openGreen : c.textSecondary,
-                        fontWeight: isToday ? '700' : '400',
-                      },
-                    ]}
-                  >
-                    {label}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.hoursGridTime,
-                      {
-                        color: isToday ? CARD_COLORS.openGreen : c.textTertiary,
-                        fontWeight: isToday ? '600' : '400',
-                      },
-                    ]}
-                  >
-                    {dayRange(dayH)}
-                  </Text>
+            <View style={styles.coverText}>
+              <Text style={styles.businessName} numberOfLines={2}>{business.name}</Text>
+              <View style={styles.metaRow}>
+                <View style={styles.categoryChip}>
+                  <CategoryIcon size={13} color={palette.onImage} strokeWidth={2} />
+                  <Text style={styles.categoryChipText} numberOfLines={1}>{business.category}</Text>
                 </View>
-              ))}
+                {business.rating != null ? (
+                  <View style={styles.ratingInline} accessible accessibilityLabel={t('businessPreviewCard.ratingA11y', { rating: business.rating.toFixed(1) })}>
+                    <IconStarFilled size={12} color={palette.heatMild} />
+                    <Text style={styles.metaText}>{business.rating.toFixed(1)}</Text>
+                  </View>
+                ) : null}
+                {distanceLine ? <Text style={styles.metaText} numberOfLines={1}>{distanceLine}</Text> : null}
+              </View>
             </View>
           </View>
-        )}
+        </View>
 
-        {/* ── Photo gallery ─────────────────────────────────────────────────── */}
+        {/* ── Main buttons: Enter chat (1.3) + Directions, then Menu / Offers / Reserve ──── */}
+        <View style={styles.buttons}>
+          <View style={styles.buttonRow}>
+            <TouchableOpacity
+              style={[styles.btnMain, styles.btnEnter, { backgroundColor: blocked ? c.bgElevated : c.brandFill }]}
+              onPress={() => onEnterChat(business.id)}
+              disabled={blocked}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: blocked }}
+              accessibilityLabel={blocked ? t('businessPreviewCard.enterChatBlockedA11y') : t('businessPreviewCard.enterChatA11y')}
+            >
+              <IconMessage size={18} color={blocked ? c.textTertiary : palette.onBrand} strokeWidth={2} />
+              <Text style={[styles.btnMainLabel, { color: blocked ? c.textTertiary : palette.onBrand }]} numberOfLines={1}>
+                {t('businessPreviewCard.enterChatButton')}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.btnMain, styles.btnDirections, { borderColor: c.borderSubtle, backgroundColor: c.bgElevated }]}
+              onPress={() => onNavigate(business.lat, business.lng)}
+              accessibilityRole="button"
+              accessibilityLabel={t('businessPreviewCard.navigateA11y')}
+            >
+              <IconNavigation size={18} color={c.brandText} strokeWidth={2} />
+              <Text style={[styles.btnMainLabel, { color: c.textPrimary }]} numberOfLines={1}>
+                {t('businessPreviewCard.directionsButton')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.buttonRow}>
+            <TouchableOpacity
+              style={[styles.btnSecondary, { borderColor: c.borderSubtle, backgroundColor: c.bgElevated }]}
+              onPress={() => onViewMenu(business.id)}
+              accessibilityRole="button"
+              accessibilityLabel={t('businessPreviewCard.menuA11y')}
+            >
+              <IconToolsKitchen2 size={17} color={c.textSecondary} strokeWidth={2} />
+              <Text style={[styles.btnSecondaryLabel, { color: c.textPrimary }]} numberOfLines={1}>
+                {t('businessPreviewCard.menuButton')}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.btnSecondary, { borderColor: c.borderSubtle, backgroundColor: c.bgElevated }]}
+              onPress={() => onOffers(business.id)}
+              accessibilityRole="button"
+              accessibilityLabel={business.has_active_offers ? t('businessPreviewCard.offersActiveA11y') : t('businessPreviewCard.offersA11y')}
+            >
+              <IconTag size={17} color={c.textSecondary} strokeWidth={2} />
+              <Text style={[styles.btnSecondaryLabel, { color: c.textPrimary }]} numberOfLines={1}>
+                {t('businessPreviewCard.offersButton')}
+              </Text>
+              {business.has_active_offers ? <View style={[styles.offersDot, { backgroundColor: palette.danger }]} /> : null}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.btnSecondary, { borderColor: c.borderSubtle, backgroundColor: c.bgElevated }]}
+              onPress={() => onReserve(business.id)}
+              accessibilityRole="button"
+              accessibilityLabel={t('businessPreviewCard.reserveA11y')}
+            >
+              <IconCalendarEvent size={17} color={c.textSecondary} strokeWidth={2} />
+              <Text style={[styles.btnSecondaryLabel, { color: c.textPrimary }]} numberOfLines={1}>
+                {t('businessPreviewCard.reserveButton')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* ── Address (kept from the previous card) ────────────────────────────────── */}
+        {business.address ? (
+          <View style={styles.addressRow}>
+            <IconMapPin size={14} color={palette.brand} style={styles.addressIcon} />
+            <Text style={[styles.addressText, { color: c.textSecondary }]} numberOfLines={2}>
+              {business.address}
+            </Text>
+          </View>
+        ) : null}
+
+        {/* ── Description: 3 lines + show more ─────────────────────────────────────── */}
+        {description ? (
+          <View style={styles.descriptionBlock}>
+            <Text
+              style={[styles.descriptionText, { color: c.textPrimary }]}
+              numberOfLines={descriptionExpanded ? undefined : DESCRIPTION_LINES}
+            >
+              {description}
+            </Text>
+            {/* Invisible copy without a line limit: tells how many lines the text needs on any platform. */}
+            <Text
+              style={[styles.descriptionText, styles.descriptionMeasure]}
+              onTextLayout={(e) => setDescriptionLines(e.nativeEvent.lines.length)}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            >
+              {description}
+            </Text>
+            {descriptionTruncated ? (
+              <Pressable
+                onPress={() => setDescriptionExpanded((v) => !v)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={styles.moreBtn}
+                accessibilityRole="button"
+                accessibilityLabel={descriptionExpanded ? t('businessPreviewCard.descriptionLess') : t('businessPreviewCard.descriptionMore')}
+              >
+                <Text style={[styles.moreLabel, { color: c.brandText }]}>
+                  {descriptionExpanded ? t('businessPreviewCard.descriptionLess') : t('businessPreviewCard.descriptionMore')}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
+
+        {/* ── Photo gallery ─────────────────────────────────────────────────────────── */}
         {gallery.length > 0 && (
           <ScrollView
             horizontal
@@ -364,13 +439,12 @@ export default function BusinessPreviewCard({
           </ScrollView>
         )}
 
-        {/* ── Live strip ────────────────────────────────────────────────────── */}
+        {/* ── Live strip (unchanged): people in the chat + room chips ─────────────────── */}
         {((business.active_count ?? 0) > 0 || (business.rooms?.length ?? 0) > 0) && (
           <View style={[styles.liveStrip, { borderTopColor: c.borderSubtle }]}>
             {/* Presence is not real yet (activeCount is 0 until it is): never show "0 active". */}
             {(business.active_count ?? 0) > 0 && (
               <View style={styles.liveLeft}>
-                {/* Green live dot */}
                 <View style={[styles.liveDot, { backgroundColor: CARD_COLORS.openGreen }]} />
                 <Text style={[styles.liveCount, { color: c.textSecondary }]}>
                   {t('businessPreviewCard.activeCount', { count: business.active_count ?? 0 })}
@@ -413,59 +487,115 @@ export default function BusinessPreviewCard({
           </View>
         )}
 
-        {/* ── Action buttons ────────────────────────────────────────────────── */}
-        <View style={styles.actionRow}>
-          {/* Enter Chat — primary */}
-          <TouchableOpacity
-            style={[styles.btnPrimary, { backgroundColor: c.brandFill }]}
-            onPress={() => onEnterChat(business.id)}
-            accessibilityRole="button"
-            accessibilityLabel={t('businessPreviewCard.enterChatA11y')}
-          >
-            <Text style={[styles.btnPrimaryLabel, { color: palette.bgSurfaceLight }]}>
-              {t('businessPreviewCard.enterChatButton')}
+        {/* ── Hours: folded under "See hours"; today highlighted ──────────────────────── */}
+        {business.hours ? (
+          <View style={styles.hoursSection}>
+            <Pressable
+              onPress={() => setHoursOpen((v) => !v)}
+              style={styles.hoursToggle}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: hoursOpen }}
+              accessibilityLabel={t('businessPreviewCard.hoursToggleA11y')}
+            >
+              <Text style={[styles.hoursToggleLabel, { color: c.textPrimary }]}>{t('businessPreviewCard.hoursToggle')}</Text>
+              {hoursOpen ? (
+                <IconChevronUp size={18} color={c.textSecondary} />
+              ) : (
+                <IconChevronDown size={18} color={c.textSecondary} />
+              )}
+            </Pressable>
+
+            {hoursOpen ? (
+              <View style={styles.hoursBody}>
+                {/* 7-day working-day circle row */}
+                <View style={styles.workingDaysRow}>
+                  {DAY_ORDER.map((dayKey, idx) => {
+                    const entry = hoursEntries[idx];
+                    const isToday = idx === todayIndex;
+                    const isClosed = !entry.hours || entry.hours.closed;
+                    return (
+                      <View
+                        key={dayKey}
+                        style={[
+                          styles.dayCircle,
+                          {
+                            backgroundColor: isToday ? CARD_COLORS.openGreen : c.bgElevated,
+                            opacity: isClosed && !isToday ? 0.4 : 1,
+                          },
+                        ]}
+                      >
+                        <Text style={[styles.dayCircleLabel, { color: isToday ? palette.onBrand : c.textSecondary }]}>
+                          {dayLabels[idx].charAt(0)}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+
+                {/* Hours grid — 2 columns */}
+                <View style={styles.hoursGrid}>
+                  {hoursEntries.map(({ label, dayKey, hours: dayH, isToday }) => (
+                    <View key={dayKey} style={styles.hoursGridItem}>
+                      <Text
+                        style={[
+                          styles.hoursGridDay,
+                          { color: isToday ? CARD_COLORS.openGreen : c.textSecondary, fontWeight: isToday ? '700' : '400' },
+                        ]}
+                      >
+                        {label}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.hoursGridTime,
+                          { color: isToday ? CARD_COLORS.openGreen : c.textTertiary, fontWeight: isToday ? '600' : '400' },
+                        ]}
+                      >
+                        {dayRange(dayH)}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
+        {/* ── Distance notice: only outside the radius ─────────────────────────────────── */}
+        {blocked ? (
+          <View style={[styles.notice, { backgroundColor: palette.warningTint, borderColor: palette.warningBorder }]} accessible>
+            <IconMapPin size={18} color={palette.warning} style={styles.noticeIcon} />
+            <Text style={[styles.noticeText, { color: c.textPrimary }]}>
+              {distanceText
+                ? t('businessPreviewCard.outsideRadiusNotice', { distance: distanceText })
+                : t('businessPreviewCard.outsideRadiusNoticeNoDistance')}
             </Text>
-          </TouchableOpacity>
-
-          {/* View Menu — secondary */}
-          <TouchableOpacity
-            style={[styles.btnSecondary, { borderColor: c.borderSubtle, backgroundColor: c.bgElevated }]}
-            onPress={() => onViewMenu(business.id)}
-            accessibilityRole="button"
-            accessibilityLabel={t('businessPreviewCard.viewMenuA11y')}
-          >
-            <Text style={[styles.btnSecondaryLabel, { color: c.textPrimary }]}>
-              {t('businessPreviewCard.viewMenuButton')}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Navigation icon button */}
-          <Pressable
-            style={({ pressed }) => [
-              styles.iconBtn,
-              { backgroundColor: c.bgElevated, opacity: pressed ? 0.7 : 1 },
-            ]}
-            onPress={() => onNavigate(business.lat, business.lng)}
-            accessibilityRole="button"
-            accessibilityLabel={t('businessPreviewCard.navigateA11y')}
-          >
-            <IconNavigation size={18} color={c.brandText} />
-          </Pressable>
-
-          {/* Share icon button */}
-          <Pressable
-            style={({ pressed }) => [
-              styles.iconBtn,
-              { backgroundColor: c.bgElevated, opacity: pressed ? 0.7 : 1 },
-            ]}
-            onPress={() => onShare(business.id)}
-            accessibilityRole="button"
-            accessibilityLabel={t('businessPreviewCard.shareA11y')}
-          >
-            <IconShare size={18} color={c.textSecondary} />
-          </Pressable>
-        </View>
+          </View>
+        ) : null}
       </ScrollView>
+
+      {/* ── Share + close: fixed at the top right, over the cover, 44 pt targets ───────────── */}
+      <View style={styles.headerButtons} pointerEvents="box-none">
+        <Pressable
+          onPress={() => onShare(business.id)}
+          style={styles.headerHit}
+          accessibilityRole="button"
+          accessibilityLabel={t('businessPreviewCard.shareA11y')}
+        >
+          <View style={styles.headerBtn}>
+            <IconShare size={18} color={palette.onImage} strokeWidth={2} />
+          </View>
+        </Pressable>
+        <Pressable
+          onPress={onClose}
+          style={styles.headerHit}
+          accessibilityRole="button"
+          accessibilityLabel={closeLabel}
+        >
+          <View style={styles.headerBtn}>
+            <IconX size={20} color={palette.onImage} strokeWidth={2} />
+          </View>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -482,7 +612,7 @@ function hexToRgba(hex: string, alpha: number): string {
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
-// Numbers and tokens only — zero hardcoded hex EXCEPT through c.* theme tokens.
+// Numbers and tokens only — zero hardcoded hex EXCEPT through c.* / palette.* theme tokens.
 
 const styles = StyleSheet.create({
   // Card shell
@@ -490,188 +620,234 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     borderWidth: 0.5,
     overflow: 'hidden',
+    flexShrink: 1, // inside the sheet's maxHeight the card shrinks and its ScrollView scrolls
     // Shadow rendered by the parent (bottom sheet / map overlay)
+  },
+  bodyContent: {
+    paddingBottom: 16,
   },
 
   // Cover
-  coverWrap: {
-    height: 120,
+  cover: {
+    height: COVER_HEIGHT,
     width: '100%',
-    overflow: 'visible', // allow emoji icon to overflow
-  },
-  coverImage: {
-    width: '100%',
-    height: 120,
-  },
-  coverFallback: {
-    // backgroundColor applied inline
   },
   coverGradient: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 60,
+    height: 130,
   },
-
-  // Open / Closed badge
-  openBadge: {
+  statusChip: {
     position: 'absolute',
-    top: 10,
-    right: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    top: 14,
+    left: 14,
+    maxWidth: '62%',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 999,
   },
-  openDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+  statusChipText: {
+    color: palette.onBrand,
+    fontSize: 12,
+    fontWeight: '700',
   },
-  openBadgeText: {
-    fontSize: 9,
-    fontWeight: '600',
-    letterSpacing: 0.2,
-  },
-
-  // Business emoji icon
-  emojiIcon: {
+  coverBottom: {
     position: 'absolute',
-    bottom: -20,
     left: 14,
-    width: 52,
-    height: 52,
-    borderRadius: 14,
-    borderWidth: 3,
-    zIndex: 3,
+    right: 14,
+    bottom: 12,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 12,
+  },
+  logo: {
+    width: LOGO_SIZE,
+    height: LOGO_SIZE,
+    borderRadius: LOGO_SIZE / 2,
+    borderWidth: 2,
+    borderColor: palette.onImage,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emojiText: {
-    fontSize: 26,
-    lineHeight: 34,
+  logoInitials: {
+    color: palette.onBrand,
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
-
-  // Scrollable body
-  bodyContent: {
-    paddingBottom: 16,
-  },
-
-  // Name section — marginTop: 28 from spec (below cover / emoji icon overlap)
-  nameSection: {
-    marginTop: 28,
-    paddingHorizontal: 14,
-    paddingBottom: 10,
-    gap: 4,
+  coverText: {
+    flex: 1,
+    gap: 6,
   },
   businessName: {
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: -0.2,
+    color: palette.onImage,
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: -0.4,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    flexWrap: 'wrap',
+    gap: 8,
   },
-  metaText: {
-    fontSize: 11,
-  },
-  metaDot: {
-    fontSize: 11,
-  },
-  ratingRow: {
+  categoryChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    marginTop: 2,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: palette.scrimMedium,
+    maxWidth: '100%',
   },
-  ratingValue: {
+  categoryChipText: {
+    color: palette.onImage,
     fontSize: 12,
     fontWeight: '600',
+    flexShrink: 1,
   },
-  ratingCount: {
-    fontSize: 11,
+  ratingInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  metaText: {
+    color: palette.onImageStrong,
+    fontSize: 12,
+    fontWeight: '500',
   },
 
-  // Divider
-  divider: {
-    height: 0.5,
-    marginHorizontal: 14,
+  // Share + close, over the cover
+  headerButtons: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerHit: {
+    width: MIN_TOUCH,
+    height: MIN_TOUCH,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: palette.scrimMedium,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Buttons
+  buttons: {
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    gap: 8,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  btnMain: {
+    height: 50,
+    borderRadius: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 10,
+  },
+  btnEnter: {
+    flex: 1.3,
+  },
+  btnDirections: {
+    flex: 1,
+    borderWidth: 0.5,
+  },
+  btnMainLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+    flexShrink: 1,
+  },
+  btnSecondary: {
+    flex: 1,
+    height: MIN_TOUCH,
+    borderRadius: 12,
+    borderWidth: 0.5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 6,
+  },
+  btnSecondaryLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    flexShrink: 1,
+  },
+  offersDot: {
+    position: 'absolute',
+    top: 7,
+    right: 9,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
 
   // Address
   addressRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 5,
+    gap: 6,
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingTop: 14,
   },
   addressIcon: {
     marginTop: 1,
   },
   addressText: {
     flex: 1,
-    fontSize: 11,
-    lineHeight: 16,
+    fontSize: 12,
+    lineHeight: 17,
   },
 
-  // Hours
-  hoursSection: {
+  // Description
+  descriptionBlock: {
     paddingHorizontal: 14,
-    paddingBottom: 10,
-    gap: 10,
+    paddingTop: 12,
   },
-
-  // 7-day circle row
-  workingDaysRow: {
-    flexDirection: 'row',
-    gap: 6,
-    marginTop: 4,
+  descriptionText: {
+    fontSize: 14,
+    lineHeight: 20,
   },
-  dayCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
+  descriptionMeasure: {
+    position: 'absolute',
+    left: 14,
+    right: 14,
+    top: 12,
+    opacity: 0,
+  },
+  moreBtn: {
+    alignSelf: 'flex-start',
+    minHeight: 28,
     justifyContent: 'center',
+    marginTop: 2,
   },
-  dayCircleLabel: {
-    fontSize: 9,
-    fontWeight: '600',
-  },
-
-  // Hours 2-column grid
-  hoursGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 2,
-  },
-  hoursGridItem: {
-    width: '50%',
-    paddingRight: 8,
-    paddingVertical: 2,
-    flexDirection: 'row',
-    gap: 4,
-    alignItems: 'center',
-  },
-  hoursGridDay: {
-    fontSize: 11,
-    width: 30,
-  },
-  hoursGridTime: {
-    fontSize: 10,
-    flex: 1,
+  moreLabel: {
+    fontSize: 13,
+    fontWeight: '700',
   },
 
   // Gallery
   galleryScroll: {
     paddingHorizontal: 14,
-    paddingBottom: 10,
+    paddingTop: 12,
     gap: 6,
   },
   galleryThumb: {
@@ -691,6 +867,7 @@ const styles = StyleSheet.create({
   // Live strip
   liveStrip: {
     borderTopWidth: 0.5,
+    marginTop: 12,
     paddingVertical: 8,
     paddingHorizontal: 14,
     flexDirection: 'row',
@@ -728,42 +905,79 @@ const styles = StyleSheet.create({
     letterSpacing: 0.1,
   },
 
-  // Action buttons
-  actionRow: {
+  // Hours (folded)
+  hoursSection: {
+    paddingHorizontal: 14,
+    paddingTop: 4,
+  },
+  hoursToggle: {
+    minHeight: MIN_TOUCH,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingTop: 10,
+    justifyContent: 'space-between',
   },
-  btnPrimary: {
-    flex: 1,
-    height: 38,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  btnPrimaryLabel: {
-    fontSize: 13,
+  hoursToggleLabel: {
+    fontSize: 14,
     fontWeight: '600',
   },
-  btnSecondary: {
-    flex: 1,
-    height: 38,
-    borderRadius: 10,
-    borderWidth: 0.5,
+  hoursBody: {
+    gap: 10,
+    paddingBottom: 6,
+  },
+  workingDaysRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  dayCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  btnSecondaryLabel: {
-    fontSize: 13,
+  dayCircleLabel: {
+    fontSize: 10,
     fontWeight: '600',
   },
-  iconBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
+  hoursGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 2,
+  },
+  hoursGridItem: {
+    width: '50%',
+    paddingRight: 8,
+    paddingVertical: 3,
+    flexDirection: 'row',
+    gap: 4,
     alignItems: 'center',
-    justifyContent: 'center',
+  },
+  hoursGridDay: {
+    fontSize: 12,
+    width: 34,
+  },
+  hoursGridTime: {
+    fontSize: 11,
+    flex: 1,
+  },
+
+  // Distance notice
+  notice: {
+    marginHorizontal: 14,
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  noticeIcon: {
+    marginTop: 1,
+  },
+  noticeText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
   },
 });
