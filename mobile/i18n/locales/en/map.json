@@ -20,7 +20,12 @@
   "nearbySwipe": "Swipe to see all",
   "nearbyEnter": "Enter",
   "businessPin": {
-    "pendingBadge": "Pending"
+    "pendingBadge": "Pending",
+    "closedPill": "{{name}} · closed",
+    "stateOpen": "open",
+    "stateClosed": "closed",
+    "a11y_one": "{{name}}, {{count}} person, {{state}}",
+    "a11y_other": "{{name}}, {{count}} people, {{state}}"
   },
   "businessPreviewCard": {
     "openBadge": "Open",

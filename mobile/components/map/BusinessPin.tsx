@@ -1,53 +1,61 @@
 /**
- * JChat 3.0 — BusinessPin (Task 4.2)
+ * JChat 3.0 — BusinessPin (Task 4.2, name-pill design)
  * Source of truth: JCHAT_3.0_DEV_PLAN.docx · Task 4.2
  *                  JCHAT_3.0_DESIGN_SYSTEM.docx · Section 12 (Map)
  *
- * A react-native-maps Marker drawing the "P2" pin (the teardrop with an emoji was replaced):
- *   - a circle with the venue's logo, or its two initials on a colour that is stable per venue, a 3 px white
- *     border and a soft shadow; 40 / 48 / 54 / 60 px by activity;
- *   - a small round category chip centred below it (bar, restaurant, café, club, other), its border in the
- *     activity colour;
- *   - the people counter at the top right in the heat colours (palette.heatCool / Mild / Warm / Hot), a soft halo
- *     at the top level, nothing when there is nobody;
- *   - grey (no heat colour, no halo) while the venue is closed or pending.
- * What it shows is decided in utils/mapPin.ts, which has its own tests.
- *
- * Android: the pin shows the initials, not the logo (an image does not make it into the marker bitmap there; see
- * pinLogoSupport.android.ts). iOS and web draw the logo.
+ * A react-native-maps Marker drawing the venue as a name pill:
+ *   - the pill (32 px high, radius 16, soft shadow): a 24 px circle with the category icon on the activity colour
+ *     (palette.heatCool / Mild / Warm / Hot), the venue name (13 px, weight 800, at most 18 characters) and " · N"
+ *     with the people in the chat (hidden when nobody), and an 8 px triangular tail pointing at the place;
+ *   - the top activity level: a dark pill with a soft halo of the hot colour; every other level: a light pill;
+ *   - closed: a smaller grey pill (28 px) reading "{name} · closed", no number;
+ *   - iOS (PIN_SHOWS_LOGO): above the pill the venue's logo in a 44–52 px circle with a 3 px white border and a ring in
+ *     the activity colour, joined to the pill by a 2 × 8 px stem. No logo → no circle, only the pill. Android: only
+ *     the pill (an image does not make it into the marker bitmap there; see pinLogoSupport.android.ts);
+ *   - mode 'dot': when pills would cover each other the pin is a 14 px dot of its activity colour
+ *     (utils/pinCollision.ts decides; MapScreen recomputes it when the map stops moving).
+ * What it shows is decided in utils/mapPin.ts and utils/pinCollision.ts, which have their own tests.
  *
  * Android performance: a Marker freezes its view after the first frame (tracksViewChanges={false}). The pin tracks
  * changes only until its logo has loaded (or failed, or a ceiling passes) and again, briefly, when what it draws
  * changes; then it goes back to false so the map does not keep re-rendering every marker.
  */
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Marker } from 'react-native-maps';
 import { Image } from 'expo-image';
+import { useTranslation } from 'react-i18next';
 import { PIN_SHOWS_LOGO } from './pinLogoSupport';
 import { palette } from '../../theme/tokens';
-import { CATEGORY_ICONS, initialsColor } from './pinAppearance';
+import { CATEGORY_ICONS } from './pinAppearance';
 import {
   counterLabel,
   heatLevel,
-  initials,
   isMuted,
+  pillName,
   pinCategory,
-  pinSize,
-  showCounter,
-  showHalo,
   type HeatLevel,
 } from '../../utils/mapPin';
+import {
+  CLOSED_PILL_HEIGHT,
+  DOT_SIZE,
+  LOGO_RING,
+  PILL_HEIGHT,
+  PILL_STEM,
+  PILL_TAIL,
+  logoDiameter,
+  type PinMode,
+} from '../../utils/pinCollision';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type { HeatLevel };
 
 export interface BusinessPinBusiness {
-  /** Unique business identifier (also the seed of the initials colour). */
+  /** Unique business identifier. */
   id: string;
-  /** Business name — the pin's accessibility label and the source of the initials. */
+  /** Business name — shown in the pill and in the accessibility label. */
   name?: string;
   /** Latitude coordinate. */
   lat: number;
@@ -55,18 +63,15 @@ export interface BusinessPinBusiness {
   lng: number;
   /** Kept for callers that still pass it; the pin no longer draws the emoji. */
   icon_emoji?: string;
-  /** businesses.logo_url — the logo shown in the circle (preferred). */
+  /** businesses.logo_url — the logo shown above the pill on iOS (preferred). */
   logo_url?: string | null;
   /** businesses.icon_url — the icon the owner uploaded; the logo when there is no logo_url. */
   icon_url?: string | null;
-  /** businesses.category (free text chosen at registration): picks the chip icon. */
+  /** businesses.category (free text chosen at registration): picks the pill's icon. */
   category?: string | null;
-  /**
-   * Approval status. 'pending' renders the grey pin without counter.
-   * Any other value renders the heat-coloured pin.
-   */
+  /** Approval status. A 'pending' venue is not drawn (the map only loads verified ones, this is a second guard). */
   status: string;
-  /** The venue is closed right now (from its hours): grey pin. */
+  /** The venue is closed right now (from its hours): grey pill. */
   closed?: boolean;
   /** Number of users currently active in this business's chat room(s). */
   activeCount: number;
@@ -74,6 +79,8 @@ export interface BusinessPinBusiness {
 
 export interface BusinessPinProps {
   business: BusinessPinBusiness;
+  /** 'pill' (default) or the 14 px 'dot' MapScreen picks when pills would cover each other. */
+  mode?: PinMode;
   /** Called when the marker is tapped — MapScreen mounts BusinessPreviewCard. */
   onPress: (business: BusinessPinBusiness) => void;
 }
@@ -87,134 +94,157 @@ const HEAT_COLORS: Record<HeatLevel, string> = {
   hot: palette.heatHot,
 };
 
-/** Closed / pending: neutral grey, distinct from every heat colour. */
+/** Closed: neutral grey, distinct from every heat colour. */
 const MUTED_COLOR = palette.textTertiary;
 
 // ── Layout constants ──────────────────────────────────────────────────────────
 
-const BORDER = 3;
-const CHIP_SIZE = 22;
-/** How far the chip overlaps the bottom of the circle. */
-const CHIP_OVERLAP = 7;
-/** Room around the circle for the counter (top right) and the halo. */
-const PAD = 10;
-const HALO_EXTRA = 6;
-const COUNTER_HEIGHT = 18;
+/** Room at the sides for the soft shadow and the halo. */
+const SIDE_PAD = 6;
+const HALO_EXTRA = 4;
 /** Tracking ceiling while a logo loads, and the short window after a change in what the pin draws. */
 const TRACKING_IMAGE_MS = 4000;
 const TRACKING_CHANGE_MS = 400;
+const LOGO_BORDER = 3;
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function BusinessPin({ business, onPress }: BusinessPinProps) {
+export default function BusinessPin({ business, mode = 'pill', onPress }: BusinessPinProps) {
+  const { t } = useTranslation('map');
   const count = Math.max(0, business.activeCount);
   const level = heatLevel(count);
-  const size = pinSize(count);
-  const muted = isMuted(business.status, business.closed);
-  const accent = muted ? MUTED_COLOR : HEAT_COLORS[level];
-  const fill = muted ? MUTED_COLOR : initialsColor(business.id);
+  const closed = isMuted(business.status, business.closed);
+  const hot = !closed && level === 'hot';
+  const accent = closed ? MUTED_COLOR : HEAT_COLORS[level];
+  const isDot = mode === 'dot';
 
-  // Android draws the initials instead of the logo (see pinLogoSupport.android.ts).
+  // iOS draws the venue logo above the pill; Android has none (see pinLogoSupport.android.ts).
   const imageUrl = PIN_SHOWS_LOGO ? business.logo_url || business.icon_url || null : null;
   const [imageFailed, setImageFailed] = useState(false);
   useEffect(() => setImageFailed(false), [imageUrl]); // a new url gets its own chance
-  const showImage = !!imageUrl && !imageFailed;
+  const showLogo = !isDot && !!imageUrl && !imageFailed;
 
-  const label = useMemo(() => initials(business.name), [business.name]);
-  const ChipIcon = CATEGORY_ICONS[pinCategory(business.category)];
-  const counterShown = showCounter(count, business.status);
-  const haloShown = showHalo(count, muted);
-  const counterBackground = muted ? MUTED_COLOR : HEAT_COLORS[level];
-  // Dark text on the light heat colours (green / yellow / orange), white on red and on grey.
-  const counterText = !muted && level !== 'hot' ? palette.bgBase : palette.onBrand;
+  const CategoryIcon = CATEGORY_ICONS[pinCategory(business.category)];
+  const name = pillName(business.name);
+  const countText = !closed && count > 0 ? ` · ${counterLabel(count)}` : '';
 
   // tracksViewChanges: true until the logo has loaded (or failed / the ceiling), and briefly when the pin changes.
-  const signature = `${size}|${muted}|${level}|${showImage}|${counterShown}|${counterLabel(count)}`;
+  const signature = `${mode}|${closed}|${level}|${showLogo}|${countText}|${name}`;
   const [tracking, setTracking] = useState(true);
   useEffect(() => {
     setTracking(true);
-    const timer = setTimeout(() => setTracking(false), showImage ? TRACKING_IMAGE_MS : TRACKING_CHANGE_MS);
+    const timer = setTimeout(() => setTracking(false), showLogo ? TRACKING_IMAGE_MS : TRACKING_CHANGE_MS);
     return () => clearTimeout(timer);
-  }, [signature, showImage]);
+  }, [signature, showLogo]);
   const settle = () => setTracking(false);
 
-  const width = size + PAD * 2;
-  const height = PAD + size + CHIP_SIZE - CHIP_OVERLAP + 2;
-  // The coordinate is the bottom centre of the chip: the tip of the pin.
-  const anchor = { x: 0.5, y: (PAD + size + CHIP_SIZE - CHIP_OVERLAP) / height };
+  // A pending venue is not drawn (after the hooks, so their order never changes).
+  if (business.status === 'pending') return null;
+
+  const accessibilityLabel = t('businessPin.a11y', {
+    name: business.name ?? '',
+    count,
+    state: t(closed ? 'businessPin.stateClosed' : 'businessPin.stateOpen'),
+  });
+
+  if (isDot) {
+    return (
+      <Marker
+        coordinate={{ latitude: business.lat, longitude: business.lng }}
+        anchor={{ x: 0.5, y: 0.5 }}
+        onPress={() => onPress(business)}
+        tracksViewChanges={tracking}
+        accessible
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
+        testID={`map-pin-${business.id}`}
+      >
+        <View style={styles.dotWrap}>
+          <View style={[styles.dot, { backgroundColor: accent }]} />
+        </View>
+      </Marker>
+    );
+  }
+
+  const pillHeight = closed ? CLOSED_PILL_HEIGHT : PILL_HEIGHT;
+  const circleSize = closed ? 20 : 24;
+  const pillBackground = closed ? palette.bgElevatedLight : hot ? palette.bgSurface : palette.bgSurfaceLight;
+  const textColor = closed ? palette.textTertiary : hot ? palette.onImage : palette.textPrimaryLight;
+  // Dark icon on the light heat colours (green / yellow / orange), white on red and on grey.
+  const iconColor = !closed && level !== 'hot' ? palette.bgBase : palette.onBrand;
+  const logoSize = logoDiameter(count);
+  const logoBlock = showLogo ? logoSize + LOGO_RING * 2 + PILL_STEM : 0;
+  const height = logoBlock + pillHeight + PILL_TAIL;
+  const label = closed ? t('businessPin.closedPill', { name }) : `${name}${countText}`;
 
   return (
     <Marker
       coordinate={{ latitude: business.lat, longitude: business.lng }}
-      anchor={anchor}
+      // The coordinate is the tip of the tail: the bottom centre of the pin.
+      anchor={{ x: 0.5, y: 1 }}
       calloutAnchor={{ x: 0.5, y: 0 }}
       onPress={() => onPress(business)}
       tracksViewChanges={tracking}
       accessible
       accessibilityRole="button"
-      accessibilityLabel={business.name || undefined}
+      accessibilityLabel={accessibilityLabel}
       testID={`map-pin-${business.id}`}
     >
-      <View style={{ width, height }}>
-        {/* Soft halo at the top level */}
-        {haloShown ? (
-          <View
-            style={[
-              styles.halo,
-              {
-                left: PAD - HALO_EXTRA,
-                top: PAD - HALO_EXTRA,
-                width: size + HALO_EXTRA * 2,
-                height: size + HALO_EXTRA * 2,
-                borderRadius: (size + HALO_EXTRA * 2) / 2,
-                backgroundColor: accent,
-              },
-            ]}
-          />
+      <View style={[styles.root, { height, paddingHorizontal: SIDE_PAD }]}>
+        {/* iOS: the logo in its ring, joined to the pill by a stem */}
+        {showLogo ? (
+          <>
+            <View
+              style={[
+                styles.logoRing,
+                {
+                  width: logoSize + LOGO_RING * 2,
+                  height: logoSize + LOGO_RING * 2,
+                  borderRadius: (logoSize + LOGO_RING * 2) / 2,
+                  borderColor: accent,
+                },
+              ]}
+            >
+              <View style={[styles.logoCircle, { width: logoSize, height: logoSize, borderRadius: logoSize / 2 }]}>
+                <Image
+                  source={{ uri: imageUrl as string }}
+                  style={StyleSheet.absoluteFill}
+                  contentFit="cover"
+                  accessible={false}
+                  onLoad={settle}
+                  onError={() => {
+                    setImageFailed(true); // no logo: only the pill
+                    settle();
+                  }}
+                />
+              </View>
+            </View>
+            <View style={[styles.stem, { backgroundColor: accent }]} />
+          </>
         ) : null}
 
-        {/* Logo circle: the outer view carries border + shadow, the inner one clips the image */}
-        <View
-          style={[
-            styles.circle,
-            { left: PAD, top: PAD, width: size, height: size, borderRadius: size / 2, backgroundColor: fill },
-          ]}
-        >
-          <View style={[styles.clip, { borderRadius: size / 2 - BORDER }]}>
-            {showImage ? (
-              <Image
-                source={{ uri: imageUrl as string }}
-                style={StyleSheet.absoluteFill}
-                contentFit="cover"
-                accessible={false}
-                onLoad={settle}
-                onError={() => {
-                  setImageFailed(true); // back to the initials
-                  settle();
-                }}
-              />
-            ) : (
-              <Text style={[styles.initials, { fontSize: Math.round(size * 0.36) }]}>{label}</Text>
-            )}
+        {/* The pill: soft halo at the top level, category circle, name and people */}
+        <View>
+          {hot ? (
+            <View
+              style={[
+                styles.halo,
+                { top: -HALO_EXTRA, bottom: -HALO_EXTRA, left: -HALO_EXTRA, right: -HALO_EXTRA, borderRadius: pillHeight / 2 + HALO_EXTRA, backgroundColor: accent },
+              ]}
+            />
+          ) : null}
+          <View style={[styles.pill, { height: pillHeight, borderRadius: pillHeight / 2, backgroundColor: pillBackground }]}>
+            <View style={[styles.categoryCircle, { width: circleSize, height: circleSize, borderRadius: circleSize / 2, backgroundColor: accent }]}>
+              <CategoryIcon size={closed ? 12 : 14} color={iconColor} strokeWidth={2.2} />
+            </View>
+            <Text style={[styles.pillText, { color: textColor, fontSize: closed ? 12 : 13 }]} numberOfLines={1}>
+              {label}
+            </Text>
           </View>
         </View>
 
-        {/* Category chip, centred below the circle */}
-        <View
-          style={[
-            styles.chip,
-            { left: (width - CHIP_SIZE) / 2, top: PAD + size - CHIP_OVERLAP, borderColor: accent },
-          ]}
-        >
-          <ChipIcon size={12} color={palette.textPrimaryLight} strokeWidth={2.2} />
-        </View>
-
-        {/* People counter, top right */}
-        {counterShown ? (
-          <View style={[styles.counter, { backgroundColor: counterBackground }]}>
-            <Text style={[styles.counterText, { color: counterText }]}>{counterLabel(count)}</Text>
-          </View>
-        ) : null}
+        {/* Tail */}
+        <View style={[styles.tail, { borderTopColor: pillBackground }]} />
       </View>
     </Marker>
   );
@@ -223,70 +253,61 @@ export default function BusinessPin({ business, onPress }: BusinessPinProps) {
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  root: { alignItems: 'center' },
   halo: { position: 'absolute', opacity: 0.28 },
-  circle: {
-    position: 'absolute',
-    borderWidth: BORDER,
-    borderColor: palette.bgSurfaceLight, // white
-    // Soft shadow so the pin lifts off the map
-    shadowColor: palette.bgBase,
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: 4,
+    paddingRight: 10,
+    gap: 6,
+    // Soft shadow so the pill lifts off the map
+    shadowColor: palette.shadow,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  clip: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  initials: {
-    color: palette.onBrand,
-    fontWeight: '800',
-    letterSpacing: 0.3,
-    textAlign: 'center',
-  },
-  chip: {
-    position: 'absolute',
-    width: CHIP_SIZE,
-    height: CHIP_SIZE,
-    borderRadius: CHIP_SIZE / 2,
-    borderWidth: 2,
-    backgroundColor: palette.bgSurfaceLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: palette.bgBase,
-    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.25,
-    shadowRadius: 2,
-    elevation: 6,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  counter: {
-    position: 'absolute',
-    top: PAD - COUNTER_HEIGHT / 2,
-    right: PAD - COUNTER_HEIGHT / 2,
-    minWidth: COUNTER_HEIGHT,
-    height: COUNTER_HEIGHT,
-    borderRadius: COUNTER_HEIGHT / 2,
-    paddingHorizontal: 4,
+  categoryCircle: { alignItems: 'center', justifyContent: 'center' },
+  pillText: { fontWeight: '800', letterSpacing: -0.1 },
+  tail: {
+    width: 0,
+    height: 0,
+    marginTop: -1,
+    borderLeftWidth: 6,
+    borderRightWidth: 6,
+    borderTopWidth: PILL_TAIL,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+  },
+  logoRing: {
+    borderWidth: LOGO_RING,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: palette.bgSurfaceLight,
-    elevation: 7,
+    backgroundColor: palette.bgSurfaceLight,
   },
-  counterText: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: -0.2,
+  logoCircle: {
+    borderWidth: LOGO_BORDER,
+    borderColor: palette.bgSurfaceLight, // white
+    overflow: 'hidden',
+    backgroundColor: palette.bgSurfaceLight,
+  },
+  stem: { width: 2, height: PILL_STEM },
+  dotWrap: { padding: 2 },
+  dot: {
+    width: DOT_SIZE,
+    height: DOT_SIZE,
+    borderRadius: DOT_SIZE / 2,
+    borderWidth: 2,
+    borderColor: palette.bgSurfaceLight,
+    shadowColor: palette.shadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 3,
   },
 });
 
 // ── Exports ───────────────────────────────────────────────────────────────────
 
-export { heatLevel, pinSize };
+export { heatLevel };

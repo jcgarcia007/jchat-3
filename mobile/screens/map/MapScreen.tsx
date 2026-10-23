@@ -40,6 +40,8 @@ import BusinessPreviewCard from '../../components/map/BusinessPreviewCard';
 import { getOpenStatus, isOpenNow, type HoursMap } from '../../utils/hours';
 import { haversineMeters } from '../../services/geofence';
 import { formatMeters } from '../../utils/businessCard';
+import { resolvePinModes, type CollisionPin } from '../../utils/pinCollision';
+import { PIN_SHOWS_LOGO } from '../../components/map/pinLogoSupport';
 import { usesKilometers } from '../../utils/distanceUnits';
 import ReservationScreen from '../reservations/ReservationScreen';
 import { buildCategoryOptions, categoryMatches } from '../../utils/categories';
@@ -168,6 +170,9 @@ export default function MapScreen() {
   const [businessesError, setBusinessesError] = useState(false);
   const [filters, setFilters] = useState<MapFilters>(defaultFilters);
   const [selected, setSelected] = useState<MapBusiness | null>(null);
+  /** Size of the map view and the region it shows when it last stopped moving: pills that would cover each other become dots. */
+  const [viewSize, setViewSize] = useState({ width: 0, height: 0 });
+  const [viewRegion, setViewRegion] = useState<Region | null>(null);
   /** The business a table is being reserved at (the reservation form is open); null = closed. */
   const [reserveFor, setReserveFor] = useState<string | null>(null);
 
@@ -285,6 +290,23 @@ export default function MapScreen() {
     [businesses, filters, userCoords],
   );
 
+  // Pill or dot for each pin (utils/pinCollision.ts). Recomputed when the map stops moving (onRegionChangeComplete),
+  // when the venues or the user's position change, never on every frame.
+  const pinModes = useMemo(() => {
+    const shown = viewRegion ?? region;
+    if (!shown) return {};
+    const pins: CollisionPin[] = filtered.map((b) => ({
+      id: b.id,
+      name: b.name,
+      lat: b.lat,
+      lng: b.lng,
+      count: b.activeCount,
+      closed: getOpenStatus(b.hours) === 'closed',
+      logo: PIN_SHOWS_LOGO && !!(b.logo_url || b.icon_url),
+    }));
+    return resolvePinModes(pins, { region: shown, width: viewSize.width, height: viewSize.height }, userCoords);
+  }, [filtered, viewRegion, region, viewSize, userCoords]);
+
   // The tapped business, with the real distance from the user. inside_radius: inside the venue's radius or not;
   // null (unknown) when there is no position or the venue has no radius — the card then does not warn and the
   // server decides on entry.
@@ -346,11 +368,21 @@ export default function MapScreen() {
   }
 
   return (
-    <View style={[styles.root, { backgroundColor: c.bgBase }]}>
-      <JChatMap ref={mapRef} mapStyleVariant={mapVariant} style={StyleSheet.absoluteFill} initialRegion={region ?? FALLBACK_REGION}>
+    <View
+      style={[styles.root, { backgroundColor: c.bgBase }]}
+      onLayout={(e) => setViewSize({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })}
+    >
+      <JChatMap
+        ref={mapRef}
+        mapStyleVariant={mapVariant}
+        style={StyleSheet.absoluteFill}
+        initialRegion={region ?? FALLBACK_REGION}
+        onRegionChangeComplete={(r) => setViewRegion(r)}
+      >
         {filtered.map((b) => (
           <BusinessPin
             key={b.id}
+            mode={pinModes[b.id] ?? 'pill'}
             business={{
               id: b.id,
               name: b.name,

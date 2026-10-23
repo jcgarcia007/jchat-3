@@ -46,6 +46,12 @@ export function initials(name: string | null | undefined): string {
   return letters.join('').toUpperCase();
 }
 
+/** The venue name as the pill shows it: at most `max` characters, "…" in place of the rest (unicode-safe). */
+export function pillName(name: string | null | undefined, max = 18): string {
+  const letters = Array.from((name ?? '').replace(/\s+/g, ' ').trim());
+  return letters.length <= max ? letters.join('') : `${letters.slice(0, max - 1).join('').trimEnd()}…`;
+}
+
 /** A stable index in [0, length) for a seed (djb2 hash): the same venue always gets the same colour. */
 export function colorIndex(seed: string, length: number): number {
   if (length <= 0) return 0;
