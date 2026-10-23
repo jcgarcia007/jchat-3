@@ -30,8 +30,14 @@ export type ExitVerdict = 'inside' | 'outside_confirmed' | 'uncertain';
 /** How one reading relates to the venue. 'buffer' = outside the radius but within the extra margin. */
 export type ReadingClass = 'invalid' | 'inside' | 'buffer' | 'outside';
 
-/** Readings less accurate than this are ignored (never counted, never sent to the server). */
+/**
+ * Readings less accurate than this are never used to END a session (not counted towards an exit). Asymmetric rule:
+ * to EXIT the accuracy must be ≤ 50 m; to RENEW the presence an INSIDE reading with accuracy up to
+ * RENEW_MAX_ACCURACY_M is enough (a worse fix that still falls inside the radius is good evidence the person is there).
+ */
 export const MAX_ACCURACY_M = 50;
+/** A reading INSIDE the radius with accuracy up to this renews the presence (is sent to the server). */
+export const RENEW_MAX_ACCURACY_M = 100;
 /** A reading counts as clearly outside only beyond radius + this margin. */
 export const OUTSIDE_MARGIN_M = 30;
 /** Consecutive good outside readings needed to confirm an exit. */
@@ -79,23 +85,58 @@ export function classifyReading(reading: ExitReading, center: VenueCenter, radiu
 }
 
 /**
- * Looks at the valid readings in time order:
- *  - no valid reading → 'uncertain'; the latest one inside the radius → 'inside';
- *  - otherwise the trailing run of clearly-outside readings (a reading inside the radius, or in the margin, ends
- *    it) must have at least CONFIRM_READINGS readings spanning at least CONFIRM_SPAN_MS → 'outside_confirmed';
+ * True when the reading can RENEW the presence: finite, accuracy known and at most RENEW_MAX_ACCURACY_M, and the
+ * point inside the radius. (The accuracy that can END a session is the stricter MAX_ACCURACY_M.)
+ */
+export function isRenewableReading(reading: ExitReading, center: VenueCenter, radiusM: number): boolean {
+  if (!Number.isFinite(reading.lat) || !Number.isFinite(reading.lng)) return false;
+  if (typeof reading.accuracy !== 'number' || !Number.isFinite(reading.accuracy) || reading.accuracy > RENEW_MAX_ACCURACY_M) return false;
+  return distanceMeters(reading.lat, reading.lng, center.lat, center.lng) <= radiusM;
+}
+
+/**
+ * What the automatic check does with one reading (the asymmetric rule):
+ *  - 'renew'  : inside the radius with accuracy ≤ 100 m → sent to the server (renews the presence);
+ *  - 'track'  : accuracy ≤ 50 m, outside the radius → kept in the buffer (may count towards an exit), NEVER sent
+ *               unless the exit is confirmed;
+ *  - 'ignore' : everything else (accuracy unknown or > 100 m; outside the radius with accuracy 50–100 m): not
+ *               counted, not sent.
+ */
+export type SilentAction = 'renew' | 'track' | 'ignore';
+
+export function silentAction(reading: ExitReading, center: VenueCenter, radiusM: number): SilentAction {
+  if (isRenewableReading(reading, center, radiusM)) return 'renew';
+  return isValidReading(reading) ? 'track' : 'ignore';
+}
+
+/**
+ * Looks at the readings that matter, in time order — accuracy ≤ 50 m, or inside the radius with accuracy ≤ 100 m:
+ *  - none → 'uncertain'; the latest one inside the radius → 'inside';
+ *  - otherwise the trailing run of clearly-outside readings (accuracy ≤ 50 m; a reading inside the radius, or in the
+ *    margin, ends it) must have at least CONFIRM_READINGS readings spanning at least CONFIRM_SPAN_MS →
+ *    'outside_confirmed';
  *  - anything else → 'uncertain'.
- * Readings with bad accuracy are skipped: they neither count nor break a run.
+ * Readings that do not matter (accuracy > 100 m, or outside with accuracy 50–100 m) are skipped: they neither
+ * count nor break a run.
  */
 export function evaluateExit(readings: readonly ExitReading[], center: VenueCenter, radiusM: number): ExitVerdict {
-  const valid = readings.filter(isValidReading).sort((a, b) => a.timestamp - b.timestamp);
-  if (valid.length === 0) return 'uncertain';
+  const relevant = readings
+    .filter((r) => isValidReading(r) || isRenewableReading(r, center, radiusM))
+    .sort((a, b) => a.timestamp - b.timestamp);
+  if (relevant.length === 0) return 'uncertain';
 
-  const latest = valid[valid.length - 1];
-  if (classifyReading(latest, center, radiusM) === 'inside') return 'inside';
+  const latest = relevant[relevant.length - 1];
+  if (isRenewableReading(latest, center, radiusM)) return 'inside';
 
-  let start = valid.length;
-  while (start > 0 && classifyReading(valid[start - 1], center, radiusM) === 'outside') start -= 1;
-  const run = valid.slice(start);
+  let start = relevant.length;
+  while (
+    start > 0 &&
+    !isRenewableReading(relevant[start - 1], center, radiusM) &&
+    classifyReading(relevant[start - 1], center, radiusM) === 'outside'
+  ) {
+    start -= 1;
+  }
+  const run = relevant.slice(start);
   if (run.length >= CONFIRM_READINGS && run[run.length - 1].timestamp - run[0].timestamp >= CONFIRM_SPAN_MS) {
     return 'outside_confirmed';
   }

@@ -39,9 +39,9 @@ import {
   type Coords,
 } from '../../services/geofence';
 import {
-  classifyReading,
   evaluateExit,
   pushReading,
+  silentAction,
   type ExitReading,
   type ExitVerdict,
 } from '../../utils/exitCheck';
@@ -213,11 +213,13 @@ const UNCERTAIN: SilentCheckResult = { status: 'uncertain', pendingExit: false }
 /**
  * The automatic check of an ongoing venue session. Never rejects, never asks for permission, never shows anything.
  *   1. read the position and add it to the room's buffer;
- *   2. a reading with accuracy > 50 m is ignored: nothing is sent to the server;
- *   3. three good readings in a row clearly outside over ≥ 3 min → 'outside_confirmed' (the last reading is sent so the
- *      server revokes the presence, the same effect the old immediate expulsion had);
- *   4. a good reading inside the radius is sent to the server (renews the presence) → 'inside';
- *   5. any other reading (outside, or in the 30 m margin) is NOT sent: the server would revoke the presence on it.
+ *   2. asymmetric rule (utils/exitCheck.ts silentAction): a reading with accuracy > 100 m, or outside the radius with
+ *      accuracy 50–100 m, is ignored: not counted, nothing is sent to the server;
+ *   3. three good readings (accuracy ≤ 50 m) in a row clearly outside over ≥ 3 min → 'outside_confirmed' (the last
+ *      reading is sent so the server revokes the presence, the same effect the old immediate expulsion had);
+ *   4. a reading INSIDE the radius with accuracy ≤ 100 m is sent to the server (renews the presence) → 'inside';
+ *   5. any other reading (outside with accuracy ≤ 50 m, or in the 30 m margin) is only kept: the server would revoke
+ *      the presence on it.
  */
 export async function runSilentGeoCheck(
   roomId: string,
@@ -242,8 +244,10 @@ export async function runSilentGeoCheck(
     onReading?.(coords);
     const reading = recordReading(roomId, coords);
 
-    const kind = classifyReading(reading, geometry, geometry.radiusM);
-    if (kind === 'invalid') return UNCERTAIN;
+    // Asymmetric rule (utils/exitCheck.ts): an inside reading up to 100 m accuracy renews; only readings up to 50 m
+    // accuracy can count towards an exit; an outside reading with accuracy 50–100 m is neither sent nor counted.
+    const action = silentAction(reading, geometry, geometry.radiusM);
+    if (action === 'ignore') return UNCERTAIN;
 
     const verdict = evaluateExit(readingBuffers.get(roomId) ?? [], geometry, geometry.radiusM);
     if (verdict === 'outside_confirmed') {
@@ -251,7 +255,7 @@ export async function runSilentGeoCheck(
       return { status: 'outside_confirmed', pendingExit: false };
     }
 
-    if (kind === 'inside') {
+    if (action === 'renew') {
       const result = await callGeofenceRpc(roomId, coords);
       // Even if the server disagrees (different centre, network error) one answer never ends a session.
       return result.granted ? { status: 'inside', pendingExit: false } : UNCERTAIN;

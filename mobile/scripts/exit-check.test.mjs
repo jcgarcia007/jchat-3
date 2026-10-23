@@ -19,8 +19,11 @@ const {
   classifyReading,
   distanceMeters,
   isValidReading,
+  isRenewableReading,
+  silentAction,
   pushReading,
   MAX_ACCURACY_M,
+  RENEW_MAX_ACCURACY_M,
   OUTSIDE_MARGIN_M,
   BUFFER_MAX_AGE_MS,
   BUFFER_MAX_LENGTH,
@@ -131,6 +134,48 @@ test('classifyReading says why a reading is not used', () => {
   assert.equal(classifyReading({ lat: Number.NaN, lng: 0, accuracy: 5, timestamp: T0 }, CENTER, RADIUS), 'invalid');
   assert.equal(classifyReading(at(10, 0), CENTER, RADIUS), 'inside');
   assert.equal(classifyReading(at(900, 0), CENTER, RADIUS), 'outside');
+});
+
+// ── Asymmetric rule: renew up to 100 m accuracy, exit only on readings up to 50 m ─────────────────────────────
+
+test('renewing: an INSIDE reading with accuracy up to 100 m renews, 100.01 m does not, outside never does', () => {
+  assert.equal(RENEW_MAX_ACCURACY_M, 100);
+  assert.equal(isRenewableReading(at(60, 0, RENEW_MAX_ACCURACY_M), CENTER, RADIUS), true);
+  assert.equal(isRenewableReading(at(60, 0, RENEW_MAX_ACCURACY_M + 0.01), CENTER, RADIUS), false);
+  assert.equal(isRenewableReading(at(60, 0, 80), CENTER, RADIUS), true);
+  assert.equal(isRenewableReading(at(900, 0, 10), CENTER, RADIUS), false);
+  assert.equal(isRenewableReading(at(60, 0, null), CENTER, RADIUS), false);
+  assert.equal(isRenewableReading({ lat: Number.NaN, lng: 0, accuracy: 5, timestamp: T0 }, CENTER, RADIUS), false);
+});
+
+test('what the automatic check does with a reading: renew, track (buffer only) or ignore', () => {
+  assert.equal(silentAction(at(60, 0, 10), CENTER, RADIUS), 'renew');
+  assert.equal(silentAction(at(60, 0, 80), CENTER, RADIUS), 'renew', 'inside with 50–100 m accuracy renews');
+  assert.equal(silentAction(at(900, 0, 30), CENTER, RADIUS), 'track', 'outside with ≤ 50 m: counts towards an exit, never sent');
+  assert.equal(silentAction(at(RADIUS + 15, 0, 30), CENTER, RADIUS), 'track', 'the margin is tracked too (it breaks a run)');
+  assert.equal(silentAction(at(900, 0, 80), CENTER, RADIUS), 'ignore', 'outside with 50–100 m: not counted, not sent');
+  assert.equal(silentAction(at(60, 0, 150), CENTER, RADIUS), 'ignore', 'worse than 100 m: ignored even inside');
+  assert.equal(silentAction(at(60, 0, null), CENTER, RADIUS), 'ignore');
+});
+
+test('outside readings with 50–100 m accuracy never count towards an exit', () => {
+  assert.equal(verdict([at(900, 0, 80), at(900, 2, 80), at(900, 4, 80)]), 'uncertain');
+  assert.equal(verdict([at(900, 0, 30), at(900, 2, 80), at(900, 4, 30)]), 'uncertain', 'only two count');
+});
+
+test('outside readings with 50–100 m accuracy in the middle neither count nor break the run', () => {
+  assert.equal(verdict([at(900, 0, 10), at(900, 1, 80), at(900, 2, 10), at(900, 3, 10)]), 'outside_confirmed');
+});
+
+test('an INSIDE reading with 50–100 m accuracy as the latest one is "inside" and it ends a run', () => {
+  assert.equal(verdict([at(900, 0), at(900, 2), at(900, 4), at(60, 5, 80)]), 'inside');
+  // out, out, IN (acc 80), out, out: only two outside after the reset
+  assert.equal(verdict([at(900, 0), at(900, 2), at(60, 3, 80), at(900, 4), at(900, 7)]), 'uncertain');
+});
+
+test('exit is as strict as before: three outside readings of ≤ 50 m over ≥ 3 minutes still confirm it', () => {
+  assert.equal(verdict([at(900, 0, 50), at(900, 1.5, 50), at(900, 3, 50)]), 'outside_confirmed');
+  assert.equal(verdict([at(900, 0, 50.01), at(900, 1.5, 50), at(900, 3, 50)]), 'uncertain');
 });
 
 test('pushReading keeps the newest readings and drops the old ones', () => {
