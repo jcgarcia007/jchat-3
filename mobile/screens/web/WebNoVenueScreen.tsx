@@ -19,9 +19,10 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { IconDownload, IconLogin2, IconQrcode, IconToolsKitchen2, IconUser } from '@tabler/icons-react-native';
+import { IconBell, IconDownload, IconLogin2, IconMessage, IconQrcode, IconSpeakerphone, IconToolsKitchen2, IconUser } from '@tabler/icons-react-native';
 
 import type { MainStackParamList } from '../../navigation/AppNavigator';
+import { useUnreadBadge } from '../../hooks/useUnreadBadge';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { supabase } from '../../services/supabase';
@@ -107,6 +108,14 @@ export default function WebNoVenueScreen(): React.ReactElement {
     navigation.navigate('ProfileSheet');
   }, [navigation]);
 
+  // Outside a chat the web still has the person's messages, notifications and the nearby offers (W2).
+  const hasUnread = useUnreadBadge();
+  const shortcuts: { key: string; testID: string; label: string; Icon: typeof IconMessage; dot: boolean; go: () => void }[] = [
+    { key: 'messages', testID: 'web-open-messages', label: t('webShell.messages'), Icon: IconMessage, dot: hasUnread, go: () => navigation.navigate('WebMessages') },
+    { key: 'notifications', testID: 'web-open-notifications', label: t('webShell.notifications'), Icon: IconBell, dot: false, go: () => navigation.navigate('WebMessages', { section: 'notifications' }) },
+    { key: 'offers', testID: 'web-open-offers', label: t('webShell.nearbyOffers'), Icon: IconSpeakerphone, dot: false, go: () => navigation.navigate('WebOffers') },
+  ];
+
   const names = offer ? describeOffer(offer.target, { resolved: offer.name }) : null;
   const venueLabel = names?.businessName ?? null;
   const showMenu = !!offer && (offer.menu.kind === 'web-sheet' || offer.menu.kind === 'external');
@@ -181,6 +190,25 @@ export default function WebNoVenueScreen(): React.ReactElement {
           <IconUser size={20} color={c.textPrimary} />
           <Text style={[styles.secondaryLabel, { color: c.textPrimary }]}>{t('webShell.myProfile')}</Text>
         </Pressable>
+
+        <View style={styles.shortcuts}>
+          {shortcuts.map(({ key, testID, label, Icon, dot, go }) => (
+            <Pressable
+              key={key}
+              testID={testID}
+              onPress={go}
+              accessibilityRole="button"
+              accessibilityLabel={label}
+              style={({ pressed }) => [styles.shortcut, { borderColor: c.borderSubtle, backgroundColor: c.bgSurface, opacity: pressed ? 0.85 : 1 }]}
+            >
+              <View>
+                <Icon size={22} color={c.textPrimary} />
+                {dot ? <View testID={`${testID}-dot`} style={[styles.dot, { backgroundColor: c.danger, borderColor: c.bgSurface }]} /> : null}
+              </View>
+              <Text numberOfLines={1} style={[styles.shortcutLabel, { color: c.textPrimary }]}>{label}</Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
     </View>
   );
@@ -197,4 +225,8 @@ const styles = StyleSheet.create({
   primaryLabel: { fontSize: 16, fontWeight: '700' },
   secondary: { minHeight: 52, alignSelf: 'center', maxWidth: 360, width: '100%', borderRadius: 14, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   secondaryLabel: { fontSize: 16, fontWeight: '600' },
+  shortcuts: { alignSelf: 'center', flexDirection: 'row', gap: 10, maxWidth: 360, width: '100%' },
+  shortcut: { flex: 1, minHeight: 72, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 6 },
+  shortcutLabel: { fontSize: 12, fontWeight: '600' },
+  dot: { position: 'absolute', top: -2, right: -4, width: 10, height: 10, borderRadius: 5, borderWidth: 2 },
 });

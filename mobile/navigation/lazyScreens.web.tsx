@@ -78,6 +78,9 @@ function lazyScreen(load: () => Promise<{ default: React.ComponentType }>): Reac
 
 export const MapScreen: React.ComponentType = lazyScreen(() => import('../screens/map/MapScreen'));
 export const PosNavigator: React.ComponentType = lazyScreen(() => import('./PosNavigator'));
+// The signed-in person's messages / notifications and nearby offers (MainStack WebMessages / WebOffers).
+export const MessagesScreen: React.ComponentType = lazyScreen(() => import('../screens/dms/MessagesScreen'));
+export const OffersScreen: React.ComponentType = lazyScreen(() => import('../screens/offers/OffersScreen'));
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 },

@@ -34,6 +34,7 @@ import {
 } from '../services/onboarding';
 // iOS / Android: the bottom tabs. Web: WebNoVenueScreen (no tabs, no map) — navigation/rootTabs.web.tsx.
 import RootTabs from './rootTabs';
+import { MessagesScreen as WebMessagesScreen, OffersScreen as WebOffersScreen } from './lazyScreens';
 import { navigationRef } from './navigationRef';
 import { HomeStatusBar } from '../components/venue/HomeStatusBar';
 import { venueBarPlacement } from './venueBarPlacement';
@@ -114,6 +115,10 @@ export type MainStackParamList = {
   Friends: { userId?: string; initialTab?: 'followers' | 'following' | 'requests' } | undefined;
   /** Lives in the bottom tabs (hidden route, see BottomTabs); typed here so navigate('Offers') compiles everywhere. */
   Offers: undefined;
+  /** Web only (no tabs there): DMs + notifications. `section` opens the notifications part first. */
+  WebMessages: { section?: 'messages' | 'notifications' } | undefined;
+  /** Web only: the nearby offers and posts feed (OffersScreen), reached from the "no venue" screen. */
+  WebOffers: undefined;
   /** `tableLabel`: table context from a table QR (shown in the venue session / pre-filled in the waiter call). */
   ChatRoom: { id: string; tableLabel?: string };
   /**
@@ -400,6 +405,9 @@ export default function AppNavigator() {
         <MainStack.Navigator screenOptions={defaultScreenOptions}>
           <MainStack.Screen name="Tabs" component={RootTabs} />
           <MainStack.Screen name="DMs" component={DMStack} />
+          {/* Web has no tabs: these two screens are reached from WebNoVenueScreen. Not registered on iOS / Android. */}
+          {Platform.OS === 'web' ? <MainStack.Screen name="WebMessages" component={WebMessagesScreen} /> : null}
+          {Platform.OS === 'web' ? <MainStack.Screen name="WebOffers" component={WebOffersScreen} /> : null}
           <MainStack.Screen name="Friends" component={FriendsScreen} />
           <MainStack.Screen name="ChatRoom" component={ChatRoomScreen} />
           <MainStack.Screen name="Onboarding" component={OnboardingScreen} />

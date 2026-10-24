@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   FlatList,
+  Platform,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -29,7 +30,7 @@ import {
   getLastKnownFeedCoords,
   type MegaphoneItem,
 } from '../../services/megaphone';
-import { haversineMeters } from '../../services/geofence';
+import { haversineMeters, requestForegroundPermission } from '../../services/geofence';
 import { likePost, unlikePost } from '../../services/posts';
 import { loadUserSettings, updateMySettings } from '../../services/userSettings';
 import { useThemeColors } from '../../theme/colors';
@@ -159,6 +160,15 @@ export default function OffersScreen() {
     setRefreshing(false);
   }, [loadFirst]);
 
+  // Web only: the feed never prompts, so without a position the person can ask for it from a tap (the browser's prompt
+  // needs a gesture). Denied → the hint stays and the radius chip keeps working (the feed shows what has no distance).
+  const isWeb = Platform.OS === 'web';
+  const allowLocation = useCallback(async () => {
+    await requestForegroundPermission();
+    lastLoadedAtRef.current = 0;
+    await refresh();
+  }, [refresh]);
+
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore || items.length === 0 || firstLoadPendingRef.current) return;
     const requestId = requestRef.current;
@@ -269,8 +279,22 @@ export default function OffersScreen() {
         </View>
       ) : (
         <FlatList
-          contentContainerStyle={[styles.list, items.length === 0 && styles.emptyList, { paddingBottom: 26 + insets.bottom + BAR_HEIGHT + 16 }]}
+          contentContainerStyle={[styles.list, items.length === 0 && styles.emptyList, { paddingBottom: 26 + insets.bottom + (isWeb ? 0 : BAR_HEIGHT + 16) }]}
           data={items}
+          ListHeaderComponent={isWeb && !hasLocation ? (
+            <View testID="web-offers-location" style={[styles.locationHint, { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }]}>
+              <IconMapPin size={20} color={colors.textSecondary} strokeWidth={2} />
+              <Text style={[styles.locationHintText, { color: colors.textSecondary }]}>{translation.t('webLocationHint')}</Text>
+              <Pressable
+                testID="web-offers-allow-location"
+                accessibilityRole="button"
+                onPress={() => { void allowLocation(); }}
+                style={[styles.locationButton, { backgroundColor: colors.brandLight }]}
+              >
+                <Text style={[styles.locationButtonText, { color: colors.brand }]}>{translation.t('webAllowLocation')}</Text>
+              </Pressable>
+            </View>
+          ) : null}
           keyExtractor={itemKey}
           ListFooterComponent={loadingMore ? <Spinner color={colors.brandText} style={styles.footer} /> : null}
           onEndReached={() => { void loadMore(); }}
@@ -324,4 +348,8 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', flex: 1, gap: 10, justifyContent: 'center', paddingHorizontal: 36 },
   emptyTitle: { fontSize: 18, fontWeight: '700', textAlign: 'center' },
   emptySubtitle: { fontSize: 14, lineHeight: 20, textAlign: 'center' },
+  locationHint: { alignItems: 'center', borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, gap: 8, marginBottom: 4, padding: 14 },
+  locationHintText: { fontSize: 14, lineHeight: 20, textAlign: 'center' },
+  locationButton: { borderRadius: 16, paddingHorizontal: 14, paddingVertical: 8 },
+  locationButtonText: { fontSize: 13, fontWeight: '700' },
 });

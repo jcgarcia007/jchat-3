@@ -16,5 +16,8 @@
   "radiusSheetTitle": "News radius",
   "radiusSheetSubtitle": "Show offers and posts from businesses within:",
   "radiusSaveErrorTitle": "Couldn't save",
-  "radiusSaveErrorMessage": "Your radius wasn't changed. Please try again."
+  "radiusSaveErrorMessage": "Your radius wasn't changed. Please try again.",
+  "webLocationHint": "Allow your location to see offers near you",
+  "webAllowLocation": "Allow location",
+  "webEnterNeedsQr": "Scan the venue's QR to enter the chat"
 }

@@ -16,5 +16,8 @@
   "radiusSheetTitle": "Radio de novedades",
   "radiusSheetSubtitle": "Mostrar ofertas y publicaciones de negocios dentro de:",
   "radiusSaveErrorTitle": "No se pudo guardar",
-  "radiusSaveErrorMessage": "Tu radio no se cambió. Inténtalo de nuevo."
+  "radiusSaveErrorMessage": "Tu radio no se cambió. Inténtalo de nuevo.",
+  "webLocationHint": "Permite tu ubicación para ver ofertas cerca de ti",
+  "webAllowLocation": "Permitir ubicación",
+  "webEnterNeedsQr": "Escanea el QR del local para entrar al chat"
 }

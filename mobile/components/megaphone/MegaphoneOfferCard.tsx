@@ -1,8 +1,10 @@
 import React, { useMemo } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
+import { useVenueSession } from '../../context/VenueSessionContext';
 import type { MegaphoneItem } from '../../services/megaphone';
+import { canEnterOffer } from '../../utils/offerEntry';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { formatDistance } from '../../utils/distanceUnits';
@@ -15,6 +17,9 @@ interface MegaphoneOfferCardProps {
 
 export default function MegaphoneOfferCard({ item, onEnter }: MegaphoneOfferCardProps) {
   const colors = useThemeColors();
+  const { session } = useVenueSession();
+  // D-13: on the web, "Entrar" needs an active session at this venue (devices: always enabled).
+  const canEnter = canEnterOffer({ platform: Platform.OS, activeBusinessId: session?.businessId, offerBusinessId: item.business_id });
   const translation = useTranslation('offers');
   const dateFormatter = useMemo(
     () => new Intl.DateTimeFormat(translation.i18n.language, { dateStyle: 'medium' }),
@@ -63,12 +68,17 @@ export default function MegaphoneOfferCard({ item, onEnter }: MegaphoneOfferCard
 
       <TouchableOpacity
         accessibilityRole="button"
+        accessibilityState={{ disabled: !canEnter }}
         activeOpacity={0.8}
+        disabled={!canEnter}
         onPress={() => onEnter(item)}
-        style={[styles.enterButton, { backgroundColor: colors.brandFill }]}
+        style={[styles.enterButton, { backgroundColor: canEnter ? colors.brandFill : colors.bgElevated }]}
       >
-        <Text style={[styles.enterText, { color: palette.bgSurfaceLight }]}>{translation.t('enter')}</Text>
+        <Text style={[styles.enterText, { color: canEnter ? palette.bgSurfaceLight : colors.textSecondary }]}>{translation.t('enter')}</Text>
       </TouchableOpacity>
+      {!canEnter ? (
+        <Text style={[styles.enterHint, { color: colors.textSecondary }]}>{translation.t('webEnterNeedsQr')}</Text>
+      ) : null}
     </View>
   );
 }
@@ -86,4 +96,5 @@ const styles = StyleSheet.create({
   code: { fontSize: 13, fontWeight: '700' },
   enterButton: { alignItems: 'center', borderRadius: 14, marginTop: 2, paddingVertical: 12 },
   enterText: { fontSize: 15, fontWeight: '800' },
+  enterHint: { fontSize: 12, textAlign: 'center' },
 });

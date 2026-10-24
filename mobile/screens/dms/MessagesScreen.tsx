@@ -12,10 +12,12 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import { IconArrowLeft } from '@tabler/icons-react-native';
 
 import ConversationList from '../../components/dms/ConversationList';
 import SwipeToDelete from '../../components/common/SwipeToDelete';
@@ -49,7 +51,12 @@ export default function MessagesScreen() {
   const { pinnedOrders } = useOrdersBar();
   const { height } = useWindowDimensions();
   const navigation = useNavigation<MessagesNavigation>();
+  // Web (WebMessages route, no tabs): `section: 'notifications'` makes the notifications the bigger part. Devices: undefined.
+  const route = useRoute<RouteProp<{ WebMessages: { section?: 'messages' | 'notifications' } | undefined }, 'WebMessages'>>();
+  const isWeb = Platform.OS === 'web';
+  const notificationsFirst = isWeb && route.params?.section === 'notifications';
   const translation = useTranslation('social');
+  const commonTranslation = useTranslation('common');
   const [dmUnreadCount, setDmUnreadCount] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const { notifications, markRead, refresh, remove } = useNotifications({ passive: true });
@@ -141,12 +148,31 @@ export default function MessagesScreen() {
         styles.root,
         {
           backgroundColor: colors.bgBase,
-          paddingBottom: 102 + insets.bottom,
+          // Devices reserve the floating tab bar; the web has none.
+          paddingBottom: (isWeb ? 24 : 102) + insets.bottom,
           paddingTop: insets.top + homeBarInset,
         },
       ]}
     >
-      <Text style={[styles.title, { color: colors.textPrimary }]}>{translation.t('inbox.title')}</Text>
+      {isWeb ? (
+        <View style={styles.webHeader}>
+          <Pressable
+            testID="web-messages-back"
+            accessibilityLabel={commonTranslation.t('back')}
+            accessibilityRole="button"
+            hitSlop={8}
+            onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Tabs'))}
+            style={styles.webBack}
+          >
+            <IconArrowLeft size={24} color={colors.textPrimary} strokeWidth={2} />
+          </Pressable>
+          <Text style={[styles.title, styles.webTitle, { color: colors.textPrimary }]}>
+            {translation.t(notificationsFirst ? 'messages.notificationsTitle' : 'inbox.title')}
+          </Text>
+        </View>
+      ) : (
+        <Text style={[styles.title, { color: colors.textPrimary }]}>{translation.t('inbox.title')}</Text>
+      )}
 
       <View
         style={[
@@ -154,7 +180,7 @@ export default function MessagesScreen() {
           {
             backgroundColor: colors.bgSurface,
             borderColor: colors.borderSubtle,
-            height: height * 0.45,
+            height: height * (notificationsFirst ? 0.2 : 0.45),
           },
         ]}
       >
@@ -225,6 +251,9 @@ export default function MessagesScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, paddingHorizontal: 16 },
   title: { fontSize: 28, fontWeight: '800', paddingBottom: 14, paddingTop: 12 },
+  webHeader: { alignItems: 'center', flexDirection: 'row', gap: 4 },
+  webBack: { alignItems: 'center', height: 44, justifyContent: 'center', marginLeft: -10, width: 44 },
+  webTitle: { flex: 1 },
   privateCard: { borderRadius: 18, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
   sectionHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 },
   sectionTitle: { fontSize: 17, fontWeight: '700' },

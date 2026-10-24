@@ -130,7 +130,10 @@
     "reenterVenue": "Go back into {{business}}",
     "reenterThisVenue": "Go back into this venue",
     "viewMenu": "View the menu",
-    "thisVenue": "this venue"
+    "thisVenue": "this venue",
+    "messages": "Messages",
+    "notifications": "Notifications",
+    "nearbyOffers": "Offers nearby"
   },
   "a11y": {
     "back": "Back",

@@ -15,6 +15,11 @@ import type { ComponentType } from 'react';
 
 import MapScreenComponent from '../screens/map/MapScreen';
 import PosNavigatorComponent from './PosNavigator';
+import MessagesScreenComponent from '../screens/dms/MessagesScreen';
+import OffersScreenComponent from '../screens/offers/OffersScreen';
 
 export const MapScreen: ComponentType = MapScreenComponent;
 export const PosNavigator: ComponentType = PosNavigatorComponent;
+/** Web only registers them in the MainStack (WebMessages / WebOffers); on devices they are the tabs. */
+export const MessagesScreen: ComponentType = MessagesScreenComponent;
+export const OffersScreen: ComponentType = OffersScreenComponent;
