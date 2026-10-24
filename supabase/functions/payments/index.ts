@@ -32,7 +32,7 @@ import Stripe from "npm:stripe@16.2.0";
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.44.4";
 import { createAdminClient, getPublishableKey } from "../_shared/supabaseAdmin.ts";
 import { businessChargeGate, buildConnectPiParams } from "../_shared/connect.ts";
-import { finiteCoord, venueOrderGate } from "../_shared/venue.ts";
+import { finiteCoord, venueOrderCheck, venueOrderGate } from "../_shared/venue.ts";
 import {
   priceLinesFromDb,
   computeTaxCents,
@@ -296,7 +296,7 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
   // Golden rule (account flow: the account's venue presence counts, coordinates are the fallback).
   const venueLat = finiteCoord(payload.lat);
   const venueLng = finiteCoord(payload.lng);
-  const gate = await venueOrderGate(userClient, payload.business_id, payload.order_type, venueLat, venueLng);
+  const { gate, inside: insideVenue } = await venueOrderCheck(userClient, payload.business_id, payload.order_type, venueLat, venueLng);
   if (gate) return jsonResponse({ error: gate.message, code: gate.code }, 403);
 
   const { business_id, room_id, order_type, gift_recipient_id, promo_code, special_instructions, table_label } = payload;
@@ -422,8 +422,9 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
   if (special_instructions) metadata.special_instructions = special_instructions.slice(0, 490);
   if (tableLabel)           metadata.table_label = tableLabel;
   if (resolvedTableId)      metadata.table_id = resolvedTableId;
-  // Coordinates travel to the webhook as traceability only (the rule is applied here, before charging).
-  if (venueLat != null && venueLng != null) { metadata.lat = String(venueLat); metadata.lng = String(venueLng); }
+  // The customer's coordinates are NOT copied to Stripe (a third party). Only the database's verdict travels, as a
+  // boolean string, for traceability (the rule itself was applied here, before charging).
+  metadata.inside_venue = insideVenue ? "true" : "false";
   if (contactEmail)         metadata.contact_email = contactEmail;
   if (contactPhone)         metadata.contact_phone = contactPhone;
   if (contactName)          metadata.contact_name = contactName;

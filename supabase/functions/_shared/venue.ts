@@ -36,6 +36,21 @@ export async function venueOrderGate(
   lat: number | null,
   lng: number | null,
 ): Promise<VenueGateError | null> {
+  return (await venueOrderCheck(client, businessId, orderType, lat, lng)).gate;
+}
+
+/**
+ * Same verdict as venueOrderGate, plus whether the caller is INSIDE the venue (the database's answer, `inside`).
+ * The payment functions keep only that boolean in the Stripe metadata (`inside_venue`): the customer's coordinates
+ * are never copied to a third party. Fails closed like venueOrderGate (inside = false when the check errors).
+ */
+export async function venueOrderCheck(
+  client: RpcClient,
+  businessId: string,
+  orderType: string,
+  lat: number | null,
+  lng: number | null,
+): Promise<{ gate: VenueGateError | null; inside: boolean }> {
   const { data, error } = await client.rpc("venue_order_access", {
     p_business_id: businessId,
     p_lat: lat,
@@ -43,11 +58,15 @@ export async function venueOrderGate(
   });
   if (error || !data) {
     console.error("[venue] venue_order_access failed:", error?.message ?? "no data");
-    return { code: "outside_venue", message: "outside_venue" };
+    return { gate: { code: "outside_venue", message: "outside_venue" }, inside: false };
   }
+  const inside = data.inside === true;
   const allowed: string[] = Array.isArray(data.allowed_types) ? data.allowed_types : [];
-  if (allowed.includes(orderType)) return null;
-  return orderType === "counter"
-    ? { code: "pickup_disabled", message: "pickup_disabled" }
-    : { code: "outside_venue", message: "outside_venue" };
+  if (allowed.includes(orderType)) return { gate: null, inside };
+  return {
+    gate: orderType === "counter"
+      ? { code: "pickup_disabled", message: "pickup_disabled" }
+      : { code: "outside_venue", message: "outside_venue" },
+    inside,
+  };
 }

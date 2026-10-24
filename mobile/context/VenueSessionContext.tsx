@@ -42,6 +42,8 @@ import { matchLeaveVenue } from '../services/match';
 import { showAlert } from '../utils/dialog';
 import { shouldCountUnread } from '../utils/venueUnread';
 import { clearEntryTableToken } from '../services/venueTable';
+import { endVenueSessionOnServer, resumeVenueSessionOnServer } from '../services/venuePresence';
+import { invalidateDmUnread } from '../services/dms';
 
 const HEARTBEAT_MS = 5 * 60 * 1000;
 
@@ -54,7 +56,12 @@ export interface VenueSession {
   since: number;
 }
 
-export type VenueEndReason = 'user' | 'outside' | 'switch';
+/**
+ * Why a session ended. 'outside' (the provider's own heartbeat) and 'expelled' (the chat's gate, which already told
+ * the user) are CONFIRMED exits: the server hides the venue's ephemeral content and purges it later (venue_session_end).
+ * 'user' (leaving on purpose, signing out) and 'switch' do not call it.
+ */
+export type VenueEndReason = 'user' | 'outside' | 'expelled' | 'switch';
 
 interface VenueSessionContextValue {
   session: VenueSession | null;
@@ -72,6 +79,11 @@ interface VenueSessionContextValue {
   leaveVenue: () => Promise<void>;
   /** The provider ended the session itself (outside the area…): used by the chat's own expulsion. */
   endSession: (reason: VenueEndReason) => void;
+  /**
+   * Goes up by one each time coming back to a venue gave back an exit that was still pending (venue_session_resume
+   * answered true): the screens that show the venue's history read it again.
+   */
+  historyEpoch: number;
   /** The chat screen reports it is mounted (it owns the heartbeat then) and tells Match availability. */
   setChatMounted: (mounted: boolean) => void;
   /** The chat is mounted but something covers it (the profile sheet): new messages count as unread meanwhile. */
@@ -91,6 +103,7 @@ const VenueSessionContext = createContext<VenueSessionContextValue>({
   startSession: () => Promise.resolve(true),
   leaveVenue: () => Promise.resolve(),
   endSession: noop,
+  historyEpoch: 0,
   setChatMounted: noop,
   setChatCovered: noop,
   setMatchActive: noop,
@@ -111,6 +124,7 @@ export function VenueSessionProvider({ children }: { children: React.ReactNode }
   const [geometry, setGeometry] = useState<VenueGeometry | null>(null);
   const [geometryRetry, setGeometryRetry] = useState(0);
   const [reconnecting, setReconnecting] = useState(false);
+  const [historyEpoch, setHistoryEpoch] = useState(0);
 
   const sessionRef = useRef<VenueSession | null>(null);
   sessionRef.current = session;
@@ -136,6 +150,15 @@ export function VenueSessionProvider({ children }: { children: React.ReactNode }
     resetExitState(current.roomId);
     resetMatchPresence();
     setMatchReading(null);
+    // A CONFIRMED exit: the server takes the person's presence out, hides the venue's ephemeral DMs for an hour and
+    // purges them later (venue_session_end). If the function does not exist yet the call just logs once and fails
+    // quietly. The chat's own messages live in the screen's state (it is gone when the chat closes), so what is left
+    // to refresh locally is the DM badge, which reads the hidden conversations again.
+    if (reason === 'outside' || reason === 'expelled') {
+      void endVenueSessionOnServer(current.businessId).then((done) => {
+        if (done) invalidateDmUnread();
+      });
+    }
     // Only a CONFIRMED exit tells the user: "You're outside the area… scan the QR to come back".
     if (reason === 'outside') {
       showAlert(
@@ -192,6 +215,14 @@ export function VenueSessionProvider({ children }: { children: React.ReactNode }
         setLikeCount(0);
         setReconnecting(false);
         resetExitState(info.roomId); // a fresh session starts with no readings from an earlier visit
+        // Coming back within the hour after a confirmed exit gives the hidden history back (venue_session_resume
+        // answers true): the screens that show it read it again. Without the database function this is a no-op.
+        void resumeVenueSessionOnServer(info.businessId).then((resumed) => {
+          if (resumed && sessionRef.current?.businessId === info.businessId) {
+            setHistoryEpoch((n) => n + 1);
+            invalidateDmUnread();
+          }
+        });
       }
       matchActiveRef.current = info.matchActive === true;
       return true;
@@ -389,8 +420,8 @@ export function VenueSessionProvider({ children }: { children: React.ReactNode }
   }, [userId, endSession]);
 
   const value = useMemo<VenueSessionContextValue>(
-    () => ({ session, geometry, reconnecting, unreadMessages, likeCount, startSession, leaveVenue, endSession, setChatMounted, setChatCovered, setMatchActive, setTableLabel }),
-    [session, geometry, reconnecting, unreadMessages, likeCount, startSession, leaveVenue, endSession, setChatMounted, setChatCovered, setMatchActive, setTableLabel],
+    () => ({ session, geometry, reconnecting, unreadMessages, likeCount, startSession, leaveVenue, endSession, historyEpoch, setChatMounted, setChatCovered, setMatchActive, setTableLabel }),
+    [session, geometry, reconnecting, unreadMessages, likeCount, startSession, leaveVenue, endSession, historyEpoch, setChatMounted, setChatCovered, setMatchActive, setTableLabel],
   );
 
   return <VenueSessionContext.Provider value={value}>{children}</VenueSessionContext.Provider>;

@@ -213,12 +213,14 @@ const UNCERTAIN: SilentCheckResult = { status: 'uncertain', pendingExit: false }
 /**
  * The automatic check of an ongoing venue session. Never rejects, never asks for permission, never shows anything.
  *   1. read the position and add it to the room's buffer;
- *   2. asymmetric rule (utils/exitCheck.ts silentAction): a reading with accuracy > 100 m, or outside the radius with
- *      accuracy 50–100 m, is ignored: not counted, nothing is sent to the server;
- *   3. three good readings (accuracy ≤ 50 m) in a row clearly outside over ≥ 3 min → 'outside_confirmed' (the last
+ *   2. asymmetric rule, limits tied to the venue's radius (utils/exitCheck.ts silentAction): a reading worse than
+ *      renewAccuracyMax = max(100, radius), or outside the radius and worse than exitAccuracyMax = max(50, radius / 2),
+ *      is ignored: not counted, nothing is sent to the server;
+ *   3. three good readings (accuracy ≤ exitAccuracyMax) in a row beyond exitMargin = radius + 30 over ≥ 3 min →
+ *      'outside_confirmed' (the last
  *      reading is sent so the server revokes the presence, the same effect the old immediate expulsion had);
- *   4. a reading INSIDE the radius with accuracy ≤ 100 m is sent to the server (renews the presence) → 'inside';
- *   5. any other reading (outside with accuracy ≤ 50 m, or in the 30 m margin) is only kept: the server would revoke
+ *   4. a reading INSIDE the radius with accuracy ≤ renewAccuracyMax is sent to the server (renews the presence) → 'inside';
+ *   5. any other reading (outside with accuracy ≤ exitAccuracyMax, or in the 30 m margin) is only kept: the server would revoke
  *      the presence on it.
  */
 export async function runSilentGeoCheck(
@@ -244,8 +246,8 @@ export async function runSilentGeoCheck(
     onReading?.(coords);
     const reading = recordReading(roomId, coords);
 
-    // Asymmetric rule (utils/exitCheck.ts): an inside reading up to 100 m accuracy renews; only readings up to 50 m
-    // accuracy can count towards an exit; an outside reading with accuracy 50–100 m is neither sent nor counted.
+    // Asymmetric rule, limits tied to the radius (utils/exitCheck.ts): an inside reading up to renewAccuracyMax renews;
+    // only readings up to exitAccuracyMax can count towards an exit; an outside reading in between is neither sent nor counted.
     const action = silentAction(reading, geometry, geometry.radiusM);
     if (action === 'ignore') return UNCERTAIN;
 

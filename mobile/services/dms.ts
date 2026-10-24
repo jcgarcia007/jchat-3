@@ -13,6 +13,7 @@
 
 import { uriToUploadBody } from './uploadBody';
 import { dmPreviewKind, type DmPreviewKind } from '../utils/dmPreview';
+import { isConversationVisible, isExitHidden } from '../utils/dmHidden';
 import { supabase, isSupabaseConfigured } from './supabase';
 import i18n from '../i18n';
 
@@ -46,6 +47,9 @@ export interface DmConversationRow {
   created_at: string;
   hidden_at_a: string | null;
   hidden_at_b: string | null;
+  /** Hidden by a confirmed venue exit (migration 237). Absent until 237 is applied. */
+  exit_hidden_at_a?: string | null;
+  exit_hidden_at_b?: string | null;
   /** Non-null while this is an ephemeral Match chat (the venue it lives in). */
   ephemeral_business_id?: string | null;
 }
@@ -109,10 +113,21 @@ function emitDmUnreadInvalidation(): void {
   dmUnreadInvalidationListeners.forEach((listener) => listener());
 }
 
+/**
+ * Tells the DM badge that conversations were hidden or shown again behind its back (a confirmed venue exit hides the
+ * venue's ephemeral DMs; coming back restores them): it reads the server again. The inbox reads on entry.
+ */
+export function invalidateDmUnread(): void {
+  emitDmUnreadInvalidation();
+}
+
 function hiddenAtForUser(conversation: DmConversationRow, userId: string): string | null {
-  return conversation.user_a === userId
-    ? conversation.hidden_at_a
-    : conversation.hidden_at_b;
+  return conversation.user_a === userId ? conversation.hidden_at_a : conversation.hidden_at_b;
+}
+
+/** Hidden completely by a confirmed venue exit (sticky, migration 237). */
+function exitHiddenForUser(conversation: DmConversationRow, userId: string): boolean {
+  return isExitHidden(conversation.user_a === userId ? conversation.exit_hidden_at_a : conversation.exit_hidden_at_b);
 }
 
 // ─── listConversations ────────────────────────────────────────────────────────
@@ -130,7 +145,7 @@ export async function listConversations(
   // 1 — fetch conversations where userId is user_a or user_b
   const { data: convos, error: convErr } = await supabase
     .from('dm_conversations')
-    .select('id, user_a, user_b, last_message_at, created_at, hidden_at_a, hidden_at_b, ephemeral_business_id')
+    .select('*') // '*' so it also works before migration 237 adds exit_hidden_at_a/b
     .or(`user_a.eq.${userId},user_b.eq.${userId}`)
     .order('last_message_at', { ascending: false, nullsFirst: false });
 
@@ -138,9 +153,11 @@ export async function listConversations(
   if (!convos || convos.length === 0) return [];
 
   const rows = (convos as DmConversationRow[]).filter((conversation) => {
-    const hiddenAt = hiddenAtForUser(conversation, userId);
-    return hiddenAt === null
-      || (conversation.last_message_at !== null && conversation.last_message_at > hiddenAt);
+    return isConversationVisible(
+      hiddenAtForUser(conversation, userId),
+      conversation.user_a === userId ? conversation.exit_hidden_at_a : conversation.exit_hidden_at_b,
+      conversation.last_message_at,
+    );
   });
   if (rows.length === 0) return [];
 
@@ -284,12 +301,13 @@ export async function listMessages(
 
   const { data: conversationData, error: conversationError } = await supabase
     .from('dm_conversations')
-    .select('id, user_a, user_b, last_message_at, created_at, hidden_at_a, hidden_at_b')
+    .select('*') // '*' so it also works before migration 237 adds exit_hidden_at_a/b
     .eq('id', conversationId)
     .single();
 
   if (conversationError) throw conversationError;
   const conversation = conversationData as DmConversationRow;
+  if (exitHiddenForUser(conversation, userId)) return [];
   const hiddenAt = hiddenAtForUser(conversation, userId);
 
   let messagesQuery = supabase
@@ -464,13 +482,14 @@ export async function getTotalUnread(userId: string): Promise<number> {
   // Get conversations the user is part of
   const { data: convos, error: convErr } = await supabase
     .from('dm_conversations')
-    .select('id, user_a, user_b, last_message_at, created_at, hidden_at_a, hidden_at_b')
+    .select('*') // '*' so it also works before migration 237 adds exit_hidden_at_a/b
     .or(`user_a.eq.${userId},user_b.eq.${userId}`);
 
   if (convErr) throw convErr;
   if (!convos || convos.length === 0) return 0;
 
   const counts = await Promise.all((convos as DmConversationRow[]).map(async (conversation) => {
+    if (exitHiddenForUser(conversation, userId)) return 0;
     const hiddenAt = hiddenAtForUser(conversation, userId);
     if (hiddenAt && (
       conversation.last_message_at === null

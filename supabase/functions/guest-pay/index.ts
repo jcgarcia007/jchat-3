@@ -32,7 +32,7 @@ import Stripe from "npm:stripe@16.2.0";
 import { createAdminClient } from "../_shared/supabaseAdmin.ts";
 import { businessChargeGate, buildConnectPiParams } from "../_shared/connect.ts";
 import { priceLinesFromDb, computeTaxCents, TAX_FALLBACK } from "../_shared/pricing.ts";
-import { finiteCoord, venueOrderGate } from "../_shared/venue.ts";
+import { finiteCoord, venueOrderCheck } from "../_shared/venue.ts";
 
 function getAdminClient() {
   return createAdminClient();
@@ -164,7 +164,7 @@ async function handleCreateGuestPayment(body: Record<string, unknown>, req: Requ
   // and only if the owner enabled it; reject BEFORE any PaymentIntent exists.
   const venueLat = finiteCoord(order.lat);
   const venueLng = finiteCoord(order.lng);
-  const venueGate = await venueOrderGate(db, businessId, orderType, venueLat, venueLng);
+  const { gate: venueGate, inside: insideVenue } = await venueOrderCheck(db, businessId, orderType, venueLat, venueLng);
   if (venueGate) return jsonResponse({ error: venueGate.message, code: venueGate.code }, 403);
   const stripe = getStripe();
 
@@ -223,7 +223,8 @@ async function handleCreateGuestPayment(body: Record<string, unknown>, req: Requ
   if (contactName) metadata.contact_name = contactName;
   if (contactEmail) metadata.contact_email = contactEmail;
   if (tableLabel) metadata.table_label = tableLabel;
-  if (venueLat != null && venueLng != null) { metadata.lat = String(venueLat); metadata.lng = String(venueLng); }
+  // The guest's coordinates are NOT copied to Stripe (a third party); only the database's verdict travels.
+  metadata.inside_venue = insideVenue ? "true" : "false";
   if (resolvedTableId) metadata.table_id = resolvedTableId;
   // Minted BEFORE the PaymentIntent so the webhook can store it with the order (see header).
   const trackingCode = newTrackingCode();

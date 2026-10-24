@@ -30,16 +30,33 @@ export type ExitVerdict = 'inside' | 'outside_confirmed' | 'uncertain';
 /** How one reading relates to the venue. 'buffer' = outside the radius but within the extra margin. */
 export type ReadingClass = 'invalid' | 'inside' | 'buffer' | 'outside';
 
+/** A radius that is not a positive finite number counts as 0 (the floors below then apply). */
+function safeRadius(radiusM: number): number {
+  return Number.isFinite(radiusM) && radiusM > 0 ? radiusM : 0;
+}
+
 /**
- * Readings less accurate than this are never used to END a session (not counted towards an exit). Asymmetric rule:
- * to EXIT the accuracy must be ≤ 50 m; to RENEW the presence an INSIDE reading with accuracy up to
- * RENEW_MAX_ACCURACY_M is enough (a worse fix that still falls inside the radius is good evidence the person is there).
+ * Accuracy limits are tied to the venue's radius (decision D): a small venue needs a precise reading, a large one
+ * tolerates a coarser one. Asymmetric rule: to RENEW the presence an INSIDE reading up to renewAccuracyMax is enough
+ * (a coarse fix that still falls inside the radius is good evidence the person is there); to count towards an EXIT the
+ * reading must be at least as good as exitAccuracyMax.
+ *
+ *   radius    renewAccuracyMax   exitAccuracyMax   exitMargin
+ *     50 m         100 m              50 m            80 m
+ *    100 m         100 m              50 m           130 m
+ *    200 m         200 m             100 m           230 m
  */
-export const MAX_ACCURACY_M = 50;
-/** A reading INSIDE the radius with accuracy up to this renews the presence (is sent to the server). */
-export const RENEW_MAX_ACCURACY_M = 100;
-/** A reading counts as clearly outside only beyond radius + this margin. */
+export function renewAccuracyMax(radiusM: number): number {
+  return Math.max(100, safeRadius(radiusM));
+}
+export function exitAccuracyMax(radiusM: number): number {
+  return Math.max(50, safeRadius(radiusM) / 2);
+}
+/** A reading counts as clearly outside only beyond this distance from the centre: radius + 30 m. */
 export const OUTSIDE_MARGIN_M = 30;
+export function exitMargin(radiusM: number): number {
+  return safeRadius(radiusM) + OUTSIDE_MARGIN_M;
+}
 /** Consecutive good outside readings needed to confirm an exit. */
 export const CONFIRM_READINGS = 3;
 /** The first and the last of those readings must be at least this far apart in time. */
@@ -59,69 +76,72 @@ export function distanceMeters(aLat: number, aLng: number, bLat: number, bLng: n
   return EARTH_RADIUS_M * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
-/** A reading is usable when it is finite and its accuracy is known and at most MAX_ACCURACY_M. */
-export function isValidReading(reading: ExitReading): boolean {
+/**
+ * A reading can count towards an EXIT when it is finite and its accuracy is known and at most exitAccuracyMax(radius).
+ * (An inside reading with a coarser accuracy can still RENEW: see isRenewableReading.)
+ */
+export function isValidReading(reading: ExitReading, radiusM: number): boolean {
   return (
     Number.isFinite(reading.lat) &&
     Number.isFinite(reading.lng) &&
     typeof reading.accuracy === 'number' &&
     Number.isFinite(reading.accuracy) &&
-    reading.accuracy <= MAX_ACCURACY_M
+    reading.accuracy <= exitAccuracyMax(radiusM)
   );
 }
 
 /**
  * inside  : distance <= radius (the server's own rule)
- * buffer  : radius < distance <= radius + 30 (neither inside nor clearly outside)
- * outside : distance > radius + 30
- * invalid : bad accuracy / not finite
+ * buffer  : radius < distance <= exitMargin(radius) = radius + 30 (neither inside nor clearly outside)
+ * outside : distance > exitMargin(radius)
+ * invalid : accuracy worse than exitAccuracyMax(radius) / not finite
  */
 export function classifyReading(reading: ExitReading, center: VenueCenter, radiusM: number): ReadingClass {
-  if (!isValidReading(reading)) return 'invalid';
+  if (!isValidReading(reading, radiusM)) return 'invalid';
   const distance = distanceMeters(reading.lat, reading.lng, center.lat, center.lng);
   if (distance <= radiusM) return 'inside';
-  if (distance <= radiusM + OUTSIDE_MARGIN_M) return 'buffer';
+  if (distance <= exitMargin(radiusM)) return 'buffer';
   return 'outside';
 }
 
 /**
- * True when the reading can RENEW the presence: finite, accuracy known and at most RENEW_MAX_ACCURACY_M, and the
- * point inside the radius. (The accuracy that can END a session is the stricter MAX_ACCURACY_M.)
+ * True when the reading can RENEW the presence: finite, accuracy known and at most renewAccuracyMax(radius), and the
+ * point inside the radius. (The accuracy that can END a session is the stricter exitAccuracyMax.)
  */
 export function isRenewableReading(reading: ExitReading, center: VenueCenter, radiusM: number): boolean {
   if (!Number.isFinite(reading.lat) || !Number.isFinite(reading.lng)) return false;
-  if (typeof reading.accuracy !== 'number' || !Number.isFinite(reading.accuracy) || reading.accuracy > RENEW_MAX_ACCURACY_M) return false;
+  if (typeof reading.accuracy !== 'number' || !Number.isFinite(reading.accuracy) || reading.accuracy > renewAccuracyMax(radiusM)) return false;
   return distanceMeters(reading.lat, reading.lng, center.lat, center.lng) <= radiusM;
 }
 
 /**
- * What the automatic check does with one reading (the asymmetric rule):
- *  - 'renew'  : inside the radius with accuracy ≤ 100 m → sent to the server (renews the presence);
- *  - 'track'  : accuracy ≤ 50 m, outside the radius → kept in the buffer (may count towards an exit), NEVER sent
- *               unless the exit is confirmed;
- *  - 'ignore' : everything else (accuracy unknown or > 100 m; outside the radius with accuracy 50–100 m): not
- *               counted, not sent.
+ * What the automatic check does with one reading (the asymmetric rule, limits tied to the radius):
+ *  - 'renew'  : inside the radius with accuracy ≤ renewAccuracyMax → sent to the server (renews the presence);
+ *  - 'track'  : accuracy ≤ exitAccuracyMax, not renewable (outside the radius) → kept in the buffer (may count towards
+ *               an exit), NEVER sent unless the exit is confirmed;
+ *  - 'ignore' : everything else (accuracy unknown or worse than renewAccuracyMax; outside the radius with accuracy
+ *               between exitAccuracyMax and renewAccuracyMax): not counted, not sent.
  */
 export type SilentAction = 'renew' | 'track' | 'ignore';
 
 export function silentAction(reading: ExitReading, center: VenueCenter, radiusM: number): SilentAction {
   if (isRenewableReading(reading, center, radiusM)) return 'renew';
-  return isValidReading(reading) ? 'track' : 'ignore';
+  return isValidReading(reading, radiusM) ? 'track' : 'ignore';
 }
 
 /**
- * Looks at the readings that matter, in time order — accuracy ≤ 50 m, or inside the radius with accuracy ≤ 100 m:
+ * Looks at the readings that matter, in time order — accuracy ≤ exitAccuracyMax(radius), or inside the radius with
+ * accuracy ≤ renewAccuracyMax(radius):
  *  - none → 'uncertain'; the latest one inside the radius → 'inside';
- *  - otherwise the trailing run of clearly-outside readings (accuracy ≤ 50 m; a reading inside the radius, or in the
- *    margin, ends it) must have at least CONFIRM_READINGS readings spanning at least CONFIRM_SPAN_MS →
- *    'outside_confirmed';
+ *  - otherwise the trailing run of clearly-outside readings (accuracy ≤ exitAccuracyMax, beyond exitMargin; a reading
+ *    inside the radius, or in the margin, ends it) must have at least CONFIRM_READINGS readings spanning at least
+ *    CONFIRM_SPAN_MS → 'outside_confirmed';
  *  - anything else → 'uncertain'.
- * Readings that do not matter (accuracy > 100 m, or outside with accuracy 50–100 m) are skipped: they neither
- * count nor break a run.
+ * Readings that do not matter are skipped: they neither count nor break a run.
  */
 export function evaluateExit(readings: readonly ExitReading[], center: VenueCenter, radiusM: number): ExitVerdict {
   const relevant = readings
-    .filter((r) => isValidReading(r) || isRenewableReading(r, center, radiusM))
+    .filter((r) => isValidReading(r, radiusM) || isRenewableReading(r, center, radiusM))
     .sort((a, b) => a.timestamp - b.timestamp);
   if (relevant.length === 0) return 'uncertain';
 

@@ -7,7 +7,7 @@
  *  - Optional special requests (multiline TextInput).
  *  - Submit inserts a `reservations` row with status='pending'.
  *  - Waitlist offer: if the slot appears full (heuristic — daily count vs
- *    dailySlots capacity), customer is offered to join the waitlist.
+ *    businesses.reservation_capacity, counted by the server), customer is offered to join the waitlist.
  *    is_waitlist=true is set in that case.
  *
  * TODO(server): Push notification sent to business owner on new request
@@ -48,6 +48,7 @@ import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { supabase, isSupabaseConfigured, channelTopic } from '../../services/supabase';
 import { toUserMessage } from '../../utils/errors';
+import { isSlotFull, slotRequestInstant } from '../../utils/reservationSlot';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -80,28 +81,28 @@ function combineDateTime(date: string, time: string): string {
 }
 
 /**
- * Heuristic slot-full check.
- * Counts confirmed+pending reservations for the same business on the same date
- * and compares against the DAILY_SLOTS_DEFAULT constant.
- * TODO(schema): replace constant with businesses.daily_slots column once added.
+ * Is the day full? The SERVER counts (reservation_slot_load, migration 237): the customer's own client only sees their
+ * own reservations (RLS), so counting here never reached the limit. The venue's capacity is
+ * businesses.reservation_capacity; null = no limit = never full. If the function does not exist yet, or the call
+ * fails, the day is NOT shown as full (the customer can still ask; the venue decides) and the failure is logged once.
  */
-const DAILY_SLOTS_DEFAULT = 20;
+let slotLoadWarned = false;
 
 async function isFull(businessId: string, date: string): Promise<boolean> {
   if (!isSupabaseConfigured) return false;
+  const instant = slotRequestInstant(date);
+  if (!instant) return false;
   try {
-    const startOfDay = `${date}T00:00:00`;
-    const endOfDay = `${date}T23:59:59`;
-    const { count, error } = await supabase
-      .from('reservations')
-      .select('id', { count: 'exact', head: true })
-      .eq('business_id', businessId)
-      .in('status', ['pending', 'confirmed'])
-      .eq('is_waitlist', false)
-      .gte('reserved_at', startOfDay)
-      .lte('reserved_at', endOfDay);
-    if (error) return false;
-    return (count ?? 0) >= DAILY_SLOTS_DEFAULT;
+    const { data, error } = await supabase.rpc('reservation_slot_load', { p_business_id: businessId, p_reserved_at: instant });
+    if (error || !Array.isArray(data) || data.length === 0) {
+      if (!slotLoadWarned) {
+        slotLoadWarned = true;
+        console.warn('[reservations] reservation_slot_load is not available yet (logged once):', error?.message ?? 'no data');
+      }
+      return false;
+    }
+    const row = data[0] as { reserved?: unknown; capacity?: unknown };
+    return isSlotFull(row.reserved, row.capacity);
   } catch {
     return false;
   }

@@ -41,6 +41,7 @@ import { getOpenStatus, isOpenNow, type HoursMap } from '../../utils/hours';
 import { haversineMeters } from '../../services/geofence';
 import { formatMeters } from '../../utils/businessCard';
 import { resolvePinModes, type CollisionPin } from '../../utils/pinCollision';
+import { fetchPeopleCounts } from '../../services/venuePresence';
 import { PIN_SHOWS_LOGO } from '../../components/map/pinLogoSupport';
 import { usesKilometers } from '../../utils/distanceUnits';
 import ReservationScreen from '../reservations/ReservationScreen';
@@ -102,6 +103,9 @@ const DEFAULT_DELTA = { latitudeDelta: 0.02, longitudeDelta: 0.02 };
 
 // GPS timeout — if no fix in 8s, fall back to FALLBACK_REGION (common in emulators).
 const LOCATION_TIMEOUT_MS = 8_000;
+
+/** How often the people counts of the visible venues are refreshed while the map is open (foreground only). */
+const PEOPLE_REFRESH_MS = 60_000;
 
 /** Device position known to the screen. 'unavailable' = permission granted but no fix in time. */
 type LocationState = 'checking' | 'granted' | 'denied' | 'unavailable';
@@ -167,6 +171,8 @@ export default function MapScreen() {
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const [businesses, setBusinesses] = useState<MapBusiness[]>([]);
+  /** People in each venue now (venue_people_counts): only numbers, never who. A venue that is not here has 0. */
+  const [peopleCounts, setPeopleCounts] = useState<Record<string, number>>({});
   const [businessesError, setBusinessesError] = useState(false);
   const [filters, setFilters] = useState<MapFilters>(defaultFilters);
   const [selected, setSelected] = useState<MapBusiness | null>(null);
@@ -254,7 +260,7 @@ export default function MapScreen() {
           .map((r) => ({
             id: r.id!, name: r.name ?? '', category: r.category ?? '',
             icon_emoji: r.icon_emoji ?? '📍', icon_url: r.icon_url ?? null, logo_url: r.logo_url ?? null, lat: r.lat!, lng: r.lng!,
-            status: r.status ?? 'verified', activeCount: 0, // TODO(presence): live count
+            status: r.status ?? 'verified', activeCount: 0, // the live count comes from venue_people_counts (peopleCounts)
             address: r.address ?? '', cover_url: r.cover_url ?? null, hours: r.hours ?? null,
             slug: r.slug ?? null,
             description: r.description ?? null,
@@ -269,12 +275,43 @@ export default function MapScreen() {
 
   useEffect(() => { void loadBusinesses(); }, [loadBusinesses]);
 
+  // People per venue: asked once the venues are loaded and again every minute while the map is open. If the database
+  // function does not exist yet (or the call fails) fetchPeopleCounts answers null: the counts stay 0, the failure is
+  // logged once, and the map stops asking.
+  useEffect(() => {
+    if (businesses.length === 0) return undefined;
+    let cancelled = false;
+    let timer: ReturnType<typeof setInterval> | null = null;
+    const ids = businesses.map((b) => b.id);
+    const refresh = async () => {
+      const counts = await fetchPeopleCounts(ids);
+      if (cancelled) return;
+      if (counts === null) {
+        if (timer) { clearInterval(timer); timer = null; }
+        return;
+      }
+      setPeopleCounts(counts);
+    };
+    void refresh();
+    timer = setInterval(() => { if (AppState.currentState === 'active') void refresh(); }, PEOPLE_REFRESH_MS);
+    return () => {
+      cancelled = true;
+      if (timer) clearInterval(timer);
+    };
+  }, [businesses]);
+
+  // The venues with their live count (the demo venues keep the number they carry).
+  const businessesNow = useMemo(
+    () => businesses.map((b) => ({ ...b, activeCount: peopleCounts[b.id] ?? b.activeCount })),
+    [businesses, peopleCounts],
+  );
+
   // Chips come from the categories that really exist on the loaded businesses.
   const categoryOptions = useMemo(() => buildCategoryOptions(businesses.map((b) => b.category)), [businesses]);
 
   const filtered = useMemo(
     () =>
-      businesses.filter((b) => {
+      businessesNow.filter((b) => {
         if (!categoryMatches(b.category, filters.category)) return false;
         if (filters.openNow && !isOpenNow(b.hours)) return false;
         // Radius: real distance from the user; without a position it is not applied.
@@ -287,7 +324,7 @@ export default function MapScreen() {
         if (filters.searchQuery && !b.name.toLowerCase().includes(filters.searchQuery.toLowerCase())) return false;
         return true;
       }),
-    [businesses, filters, userCoords],
+    [businessesNow, filters, userCoords],
   );
 
   // Pill or dot for each pin (utils/pinCollision.ts). Recomputed when the map stops moving (onRegionChangeComplete),

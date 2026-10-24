@@ -413,7 +413,7 @@ export default function ChatRoomScreen() {
 
   const handleExpelled = useCallback(() => {
     showAlert(t('chatRoom.errorTitle'), t('chatRoom.geoRemoved', { business: business?.name ?? '' }));
-    venue.endSession('user'); // already told the user above
+    venue.endSession('expelled'); // a CONFIRMED exit (the user was told above): the server hides / purges the venue's ephemeral content
     navigation.goBack();
   }, [t, business, navigation, venue]);
 
@@ -845,6 +845,16 @@ export default function ChatRoomScreen() {
     if (initialLoading || entryVisible) return;
     void loadMessages(activeRoomId);
   }, [activeRoomId, initialLoading, entryVisible, loadMessages]);
+
+  // Coming back to the venue within the hour gave back a pending exit (venue_session_resume): read the history again.
+  // Skipped on mount (the effect above already loads it) and while the chat is not showing yet.
+  const historyEpochRef = useRef(venue.historyEpoch);
+  useEffect(() => {
+    if (historyEpochRef.current === venue.historyEpoch) return;
+    historyEpochRef.current = venue.historyEpoch;
+    if (initialLoading || entryVisible) return;
+    void loadMessages(activeRoomId);
+  }, [venue.historyEpoch, initialLoading, entryVisible, activeRoomId, loadMessages]);
 
   // Sembrar el nombre propio en la caché (para envío optimista y para resolver
   // el bubble propio). public_profiles es legible por authenticated.
