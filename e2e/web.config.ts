@@ -56,10 +56,10 @@ export default defineConfig({
       name: 'desktop-1280x800',
       use: { viewport: { width: 1280, height: 800 } },
     },
-    // Safari on iPhone: WebKit with the iPhone 15 profile (npx playwright install webkit). Only the iOS viewport spec.
+    // Safari on iPhone: WebKit with the iPhone 15 profile (npx playwright install webkit). Only the iOS viewport and composer-height specs.
     {
       name: 'iphone-webkit',
-      testMatch: /ios-viewport\.spec\.ts/,
+      testMatch: /(ios-viewport|composer-height)\.spec\.ts/,
       use: { ...devices['iPhone 15'], launchOptions: {} },
     },
     // Games on the web (Match, Truth or Dare): Safari on a 390 px phone (WebKit) with the whole games network simulated.
