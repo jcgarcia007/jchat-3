@@ -13,7 +13,9 @@
  *   add_order_no_code  { table_qr_token, device_id, fingerprint, captcha_token,
  *                        idempotency_key, items[], contact_name?, notes? }   — F4
  *   order_status       { session_token } | { table_qr_token, device_id }    — F4
- *   request_service    { table_qr_token, device_id, captcha_token, lat, lng, notes? } — golden rule
+ *   request_service    { table_qr_token | (business_id, table_label), device_id, captcha_token, lat, lng, notes? } — golden rule
+ *                      table_qr_token = QR de MESA (/t). business_id + table_label = QR GENERAL: el invitado teclea el número de
+ *                      mesa y la base de datos lo busca (guest_request_service_by_label, migración 240): el token no sale del servidor.
  *
  * Errores: { error: { code, message, retry_after_s?, blocked_until? } } con HTTP 4xx.
  * El campo `code` es estable en mayúsculas — el cliente traduce por code.
@@ -1510,11 +1512,16 @@ const GUEST_SERVICE_ERRORS: Record<string, { code: string; status: number; messa
   blocked_24h:       { code: "BLOCKED_24H",       status: 429, message: "Dispositivo bloqueado por 24 h" },
   outside_venue:     { code: "OUTSIDE_VENUE",     status: 403, message: "Fuera del área del local" },
   call_already_open: { code: "CALL_ALREADY_OPEN", status: 409, message: "Ya hay una llamada abierta en esta mesa" },
+  invalid_table:     { code: "INVALID_TABLE",     status: 404, message: "No encontramos esa mesa" },   // migración 240 (por número de mesa)
 };
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 async function handleRequestService(body: Record<string, unknown>, req: Request): Promise<Response> {
-  const { table_qr_token, device_id, captcha_token, lat, lng, notes } = body as {
+  const { table_qr_token, business_id, table_label, device_id, captcha_token, lat, lng, notes } = body as {
     table_qr_token?: string;
+    business_id?:    string;
+    table_label?:    unknown;
     device_id?:      string;
     captcha_token?:  string;
     lat?:            unknown;
@@ -1522,8 +1529,13 @@ async function handleRequestService(body: Record<string, unknown>, req: Request)
     notes?:          unknown;
   };
 
-  if (!table_qr_token || typeof table_qr_token !== "string")
-    return errResponse("VALIDATION", "table_qr_token requerido", 400);
+  // Two ways to name the table: its QR token (a /t scan) or, with the general QR, the venue + the number the guest typed.
+  const byToken = typeof table_qr_token === "string" && table_qr_token.length > 0;
+  const label = typeof table_label === "string" ? table_label.trim() : "";
+  if (!byToken) {
+    if (typeof business_id !== "string" || !UUID_RE.test(business_id) || label.length < 1 || label.length > 20)
+      return errResponse("VALIDATION", "table_qr_token, o business_id y table_label, requerido", 400);
+  }
   if (!device_id || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(device_id))
     return errResponse("VALIDATION", "device_id debe ser UUID v4", 400);
   if (!captcha_token || typeof captcha_token !== "string")
@@ -1535,13 +1547,23 @@ async function handleRequestService(body: Record<string, unknown>, req: Request)
   if (!(await verifyCaptcha(captcha_token, getClientIp(req))))
     return errResponse("CAPTCHA_FAILED", "Verificación de seguridad fallida", 403);
 
-  const { data, error } = await getAdminClient().rpc("guest_request_service", {
-    p_table_token: table_qr_token,
-    p_lat: lat,
-    p_lng: lng,
-    p_device_id: device_id,
-    p_notes: typeof notes === "string" && notes.trim() ? notes.trim().slice(0, 200) : null,
-  });
+  const cleanNotes = typeof notes === "string" && notes.trim() ? notes.trim().slice(0, 200) : null;
+  const { data, error } = byToken
+    ? await getAdminClient().rpc("guest_request_service", {
+        p_table_token: table_qr_token,
+        p_lat: lat,
+        p_lng: lng,
+        p_device_id: device_id,
+        p_notes: cleanNotes,
+      })
+    : await getAdminClient().rpc("guest_request_service_by_label", {
+        p_business_id: business_id,
+        p_label: label,
+        p_lat: lat,
+        p_lng: lng,
+        p_device_id: device_id,
+        p_notes: cleanNotes,
+      });
   if (error || !data) {
     console.error("[guest-tab] guest_request_service failed:", error?.message ?? "no data");
     return errResponse("INTERNAL", "No se pudo avisar al personal", 500);
