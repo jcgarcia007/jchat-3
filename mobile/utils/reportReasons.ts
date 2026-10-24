@@ -3,6 +3,7 @@
  *
  * The codes are the ones report_content (migration 212) accepts; anything else raises `invalid_reason`.
  * KEEP IDENTICAL to web/lib/reportReasons.ts (scripts/check-report-reasons-sync.mjs compares them).
+ * La copia web (web/lib/reportReasons.ts): sin uso en la web de Next desde W1 (el chat vive en la Expo web); se conserva como espejo de mobile/utils/reportReasons.ts.
  */
 
 /** Order of the reasons in the server contract. The sheets show `child_safety` first and highlighted. */

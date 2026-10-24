@@ -60,7 +60,7 @@ Opciones: `--minutes` (5), `--users` (8, mínimo 2), `--actions` (`chat,dm,post,
 ### Barra de perfiles del chat del local
 La barra horizontal de perfiles **sale del canal Realtime de *presence* `presence:<id de la sala principal>`**, con la clave de
 presencia igual al id del usuario y este payload: `{ user_id, display_name, avatar_url, is_incognito, nickname }`
-(`mobile/screens/chat/usePresenceChannels.ts`, y lo mismo en `web/app/c/[token]/room/ChatRoom.tsx`). **No** sale de `room_members` ni de
+(`mobile/screens/chat/usePresenceChannels.ts`; el chat web es la Expo web, que usa ese mismo código: la web de Next ya no tiene chat desde W1 y `/c/<token>/room` solo redirige a `{local}.jchat.cloud`). **No** sale de `room_members` ni de
 `room_geo_presence`: esas tablas solo son la barrera del servidor para poder entrar. Por eso, antes, los usuarios simulados escribían pero
 no aparecían: nadie hacía `track()` en ese canal.
 

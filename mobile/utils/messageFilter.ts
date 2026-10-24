@@ -7,6 +7,7 @@
  * supabase/migrations/pending/211_message_filter.sql so the filter cannot be skipped from a modified client.
  *
  * KEEP IDENTICAL to web/lib/messageFilter.ts (scripts/check-message-filter-sync.mjs compares them).
+ * La copia web (web/lib/messageFilter.ts): sin uso en la web de Next desde W1 (el chat vive en la Expo web); se conserva como espejo del filtro del móvil.
  * All terms are written already normalized: lower case, no accents, letters only.
  */
 
