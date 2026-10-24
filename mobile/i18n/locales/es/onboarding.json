@@ -15,6 +15,18 @@
     "step4": {
       "title": "Ya estás listo",
       "description": "Encuentra un lugar cerca de ti, entra y empieza a conectar. Tu próxima gran noche empieza aquí."
+    },
+    "webStep1": {
+      "title": "Chatea con la gente del local",
+      "description": "Escanea el QR del local y entra al chat con quienes están ahí ahora mismo. Pide del menú y llama al personal desde el teléfono."
+    },
+    "webStep2": {
+      "title": "Tu perfil y tus mensajes",
+      "description": "Fuera del local puedes editar tu perfil, seguir a gente, escribir por privado y ver ofertas cerca de ti."
+    },
+    "webStep3": {
+      "title": "Con la app tienes más",
+      "description": "Te avisamos cuando te responden aunque bloquees el teléfono, ves qué locales están activos en el mapa y puedes regalar desde donde estés."
     }
   },
   "skip": "Omitir",
@@ -22,5 +34,9 @@
   "next": "Siguiente",
   "nextAccessibilityLabel": "Siguiente",
   "exploreMap": "Explorar el mapa",
-  "exploreMapAccessibilityLabel": "Explorar el mapa"
+  "exploreMapAccessibilityLabel": "Explorar el mapa",
+  "skipWeb": "Saltar",
+  "start": "Empezar",
+  "startAccessibilityLabel": "Empezar",
+  "downloadApp": "Descargar la app"
 }

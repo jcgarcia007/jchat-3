@@ -15,6 +15,18 @@
     "step4": {
       "title": "You’re all set",
       "description": "Find a place near you, walk in, and start connecting. Your next great night out starts here."
+    },
+    "webStep1": {
+      "title": "Chat with the people at the venue",
+      "description": "Scan the venue's QR and join the chat with whoever is there right now. Order from the menu and call the staff from your phone."
+    },
+    "webStep2": {
+      "title": "Your profile and your messages",
+      "description": "Away from the venue you can edit your profile, follow people, message privately and see offers near you."
+    },
+    "webStep3": {
+      "title": "You get more with the app",
+      "description": "We notify you when someone replies even with your phone locked, you see which venues are active on the map, and you can send gifts from anywhere."
     }
   },
   "skip": "Skip",
@@ -22,5 +34,9 @@
   "next": "Next",
   "nextAccessibilityLabel": "Next",
   "exploreMap": "Explore the map",
-  "exploreMapAccessibilityLabel": "Explore the map"
+  "exploreMapAccessibilityLabel": "Explore the map",
+  "skipWeb": "Skip",
+  "start": "Get started",
+  "startAccessibilityLabel": "Get started",
+  "downloadApp": "Download the app"
 }

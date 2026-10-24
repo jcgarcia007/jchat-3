@@ -12,6 +12,7 @@
 import React, { useRef, useState } from 'react';
 import {
   Animated,
+  Linking,
   Platform,
   Pressable,
   StyleSheet,
@@ -24,13 +25,17 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import {
+  IconDeviceMobile,
   IconMessages,
   IconMap,
+  IconQrcode,
   IconRocket,
+  IconUser,
   IconUsers,
 } from '@tabler/icons-react-native';
 
 import { palette } from '../../theme/tokens';
+import { detectStorePlatform, storeLinkFor } from '../../utils/storeLink';
 import { useAuth } from '../../context/AuthContext';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 import {
@@ -70,12 +75,19 @@ type StepConfig = {
   icon: React.ElementType;
   iconColor: string;
   /** Key into the onboarding.json `steps` object (title/description looked up via t()). */
-  key: 'step1' | 'step2' | 'step3' | 'step4';
+  key: 'step1' | 'step2' | 'step3' | 'step4' | 'webStep1' | 'webStep2' | 'webStep3';
   glow?: boolean;
 };
 
+// Web: 3 steps of its own (no map there; the web is for being inside a venue's chat). Devices keep the 4 below.
+const WEB_STEPS: StepConfig[] = [
+  { icon: IconQrcode, iconColor: palette.brand, key: 'webStep1' },
+  { icon: IconUser, iconColor: palette.success, key: 'webStep2' },
+  { icon: IconDeviceMobile, iconColor: ONBOARDING_COLORS.accent3, key: 'webStep3', glow: true },
+];
+
 // Copy sourced from MASTER_SPEC Section 4.3 (verbatim) — see i18n/locales/{en,es}/onboarding.json.
-const STEPS: StepConfig[] = [
+const NATIVE_STEPS: StepConfig[] = [
   {
     icon: IconUsers,
     iconColor: palette.brand,
@@ -99,7 +111,9 @@ const STEPS: StepConfig[] = [
   },
 ];
 
-const TOTAL_STEPS = STEPS.length; // 4
+const IS_WEB = Platform.OS === 'web';
+const STEPS: StepConfig[] = IS_WEB ? WEB_STEPS : NATIVE_STEPS;
+const TOTAL_STEPS = STEPS.length; // 3 on the web, 4 on devices
 
 // ---------------------------------------------------------------------------
 // Navigation type
@@ -201,6 +215,12 @@ export default function OnboardingScreen() {
     void handleFinish();
   };
 
+  // Web, last step: the store of the browser's platform (same helpers as WebNoVenueScreen's "Descargar la app").
+  const handleDownload = () => {
+    const nav = typeof navigator !== 'undefined' ? navigator : undefined;
+    void Linking.openURL(storeLinkFor(detectStorePlatform(nav?.userAgent ?? '', nav?.maxTouchPoints ?? 0)));
+  };
+
   const handleFinish = async () => {
     if (finishingRef.current) return;
     finishingRef.current = true;
@@ -228,23 +248,24 @@ export default function OnboardingScreen() {
         pointerEvents="none"
       />
 
-      {/* Skip button — top-right, hidden on last step */}
+      {/* Skip button — top-right; hidden on the last step on devices, visible on all 3 steps on the web */}
       <View
         style={[
           styles.skipContainer,
           { top: insets.top + 16 },
         ]}
-        pointerEvents={isLastStep ? 'none' : 'auto'}
+        pointerEvents={isLastStep && !IS_WEB ? 'none' : 'auto'}
       >
-        {!isLastStep && (
+        {(!isLastStep || IS_WEB) && (
           <Pressable
+            testID="onboarding-skip"
             onPress={handleSkip}
             hitSlop={12}
             style={({ pressed }) => [styles.skipButton, pressed && { opacity: 0.6 }]}
             accessibilityRole="button"
             accessibilityLabel={t('skipAccessibilityLabel')}
           >
-            <Text style={styles.skipText}>{t('skip')}</Text>
+            <Text style={styles.skipText}>{t(IS_WEB ? 'skipWeb' : 'skip')}</Text>
           </Pressable>
         )}
       </View>
@@ -270,10 +291,11 @@ export default function OnboardingScreen() {
         {isLastStep ? (
           // Step 4 — indigo → purple gradient CTA
           <Pressable
+            testID="onboarding-finish"
             onPress={handleNext}
             style={({ pressed }) => [pressed && { opacity: 0.88 }]}
             accessibilityRole="button"
-            accessibilityLabel={t('exploreMapAccessibilityLabel')}
+            accessibilityLabel={t(IS_WEB ? 'startAccessibilityLabel' : 'exploreMapAccessibilityLabel')}
           >
             <LinearGradient
               colors={[palette.brand, palette.brandPurple]}
@@ -281,7 +303,7 @@ export default function OnboardingScreen() {
               end={{ x: 1, y: 0 }}
               style={styles.ctaButton}
             >
-              <Text style={styles.ctaText}>{t('exploreMap')}</Text>
+              <Text style={styles.ctaText}>{t(IS_WEB ? 'start' : 'exploreMap')}</Text>
             </LinearGradient>
           </Pressable>
         ) : (
@@ -299,6 +321,19 @@ export default function OnboardingScreen() {
             <Text style={styles.ctaText}>{t('next')}</Text>
           </Pressable>
         )}
+
+        {/* Web, last step: the secondary "Download the app" (the primary stays "Empezar") */}
+        {IS_WEB && isLastStep ? (
+          <Pressable
+            testID="onboarding-download"
+            onPress={handleDownload}
+            style={({ pressed }) => [styles.ctaButton, styles.ctaButtonOutline, pressed && { opacity: 0.85 }]}
+            accessibilityRole="button"
+            accessibilityLabel={t('downloadApp')}
+          >
+            <Text style={[styles.ctaText, { color: ONBOARDING_COLORS.textOnDark }]}>{t('downloadApp')}</Text>
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );
@@ -401,6 +436,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.35,
     shadowRadius: 12,
     elevation: 6,
+  },
+
+  ctaButtonOutline: {
+    borderWidth: 1,
+    borderColor: `${palette.brand}66`,
   },
 
   ctaText: {

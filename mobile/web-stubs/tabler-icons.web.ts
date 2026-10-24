@@ -46,6 +46,7 @@ export { default as IconCreditCard } from '@tabler/icons-react-native/IconCredit
 export { default as IconCrown } from '@tabler/icons-react-native/IconCrown';
 export { default as IconCurrentLocation } from '@tabler/icons-react-native/IconCurrentLocation';
 export { default as IconDeviceGamepad2 } from '@tabler/icons-react-native/IconDeviceGamepad2';
+export { default as IconDeviceMobile } from '@tabler/icons-react-native/IconDeviceMobile';
 export { default as IconDice5 } from '@tabler/icons-react-native/IconDice5';
 export { default as IconDoor } from '@tabler/icons-react-native/IconDoor';
 export { default as IconDoorExit } from '@tabler/icons-react-native/IconDoorExit';
