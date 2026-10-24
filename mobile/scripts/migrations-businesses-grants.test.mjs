@@ -32,6 +32,7 @@ export const NOT_OWNER_EDITABLE = {
   verified_by: 'verification: written by the server',
   tax_rate: 'financial: protected by the financial-columns trigger (034); clients only read it',
   subdomain: 'assigned by the server; clients only read it (QR / entry links)',
+  timezone: 'IANA zone of the venue (migration 239): filled by the server (by lat/lng in a later phase); clients only read it',
   sales_location_id: 'POS: set by server functions; no client writes it',
   menu_language_mode: 'no client writes it today; add it to the grant the day the dashboard edits it',
   menu_primary_language: 'no client writes it today; add it to the grant the day the dashboard edits it',
