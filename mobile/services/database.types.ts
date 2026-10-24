@@ -598,6 +598,7 @@ export type Database = {
           receipt_brand_color: string | null
           receipt_template_id: string
           referred_by_affiliate_id: string | null
+          reservation_capacity: number | null
           sales_location_id: string | null
           slug: string
           state: string | null
@@ -610,6 +611,7 @@ export type Database = {
           table_subchat_base_name: string | null
           table_subchats_enabled: boolean
           tax_rate: number | null
+          timezone: string
           tip_percentages: number[]
           tips_enabled: boolean
           updated_at: string
@@ -667,6 +669,7 @@ export type Database = {
           receipt_brand_color?: string | null
           receipt_template_id?: string
           referred_by_affiliate_id?: string | null
+          reservation_capacity?: number | null
           sales_location_id?: string | null
           slug: string
           state?: string | null
@@ -679,6 +682,7 @@ export type Database = {
           table_subchat_base_name?: string | null
           table_subchats_enabled?: boolean
           tax_rate?: number | null
+          timezone?: string
           tip_percentages?: number[]
           tips_enabled?: boolean
           updated_at?: string
@@ -736,6 +740,7 @@ export type Database = {
           receipt_brand_color?: string | null
           receipt_template_id?: string
           referred_by_affiliate_id?: string | null
+          reservation_capacity?: number | null
           sales_location_id?: string | null
           slug?: string
           state?: string | null
@@ -748,6 +753,7 @@ export type Database = {
           table_subchat_base_name?: string | null
           table_subchats_enabled?: boolean
           tax_rate?: number | null
+          timezone?: string
           tip_percentages?: number[]
           tips_enabled?: boolean
           updated_at?: string
@@ -988,6 +994,8 @@ export type Database = {
           awaiting_reply: boolean
           created_at: string
           ephemeral_business_id: string | null
+          exit_hidden_at_a: string | null
+          exit_hidden_at_b: string | null
           first_sender_id: string | null
           hidden_at_a: string | null
           hidden_at_b: string | null
@@ -1000,6 +1008,8 @@ export type Database = {
           awaiting_reply?: boolean
           created_at?: string
           ephemeral_business_id?: string | null
+          exit_hidden_at_a?: string | null
+          exit_hidden_at_b?: string | null
           first_sender_id?: string | null
           hidden_at_a?: string | null
           hidden_at_b?: string | null
@@ -1012,6 +1022,8 @@ export type Database = {
           awaiting_reply?: boolean
           created_at?: string
           ephemeral_business_id?: string | null
+          exit_hidden_at_a?: string | null
+          exit_hidden_at_b?: string | null
           first_sender_id?: string | null
           hidden_at_a?: string | null
           hidden_at_b?: string | null
@@ -6089,6 +6101,38 @@ export type Database = {
           },
         ]
       }
+      venue_exits: {
+        Row: {
+          business_id: string
+          exited_at: string
+          purge_at: string
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          business_id: string
+          exited_at?: string
+          purge_at?: string
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          business_id?: string
+          exited_at?: string
+          purge_at?: string
+          reason?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_exits_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       public_profiles: {
@@ -6650,6 +6694,10 @@ export type Database = {
         Args: { p_business_id: string; p_user_id: string }
         Returns: undefined
       }
+      match_wipe_user_venue_keep_dms: {
+        Args: { p_business_id: string; p_user_id: string }
+        Returns: undefined
+      }
       megaphone_feed: {
         Args: {
           p_before?: string
@@ -7091,6 +7139,13 @@ export type Database = {
         Returns: string
       }
       request_or_follow: { Args: { p_target: string }; Returns: string }
+      reservation_slot_load: {
+        Args: { p_business_id: string; p_reserved_at: string }
+        Returns: {
+          capacity: number
+          reserved: number
+        }[]
+      }
       resolve_room_qr: {
         Args: { token: string }
         Returns: {
@@ -7203,6 +7258,8 @@ export type Database = {
           awaiting_reply: boolean
           created_at: string
           ephemeral_business_id: string | null
+          exit_hidden_at_a: string | null
+          exit_hidden_at_b: string | null
           first_sender_id: string | null
           hidden_at_a: string | null
           hidden_at_b: string | null
@@ -7301,6 +7358,7 @@ export type Database = {
         Args: { p_business_id: string; p_lat: number; p_lng: number }
         Returns: number
       }
+      venue_exits_purge: { Args: never; Returns: number }
       venue_inside: {
         Args: { p_business_id: string; p_lat: number; p_lng: number }
         Returns: boolean
@@ -7309,8 +7367,27 @@ export type Database = {
         Args: { p_business_id: string; p_lat?: number; p_lng?: number }
         Returns: Json
       }
+      venue_people_counts: {
+        Args: { p_business_ids: string[] }
+        Returns: {
+          business_id: string
+          people: number
+        }[]
+      }
       venue_presence_ok: {
         Args: { p_business_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      venue_session_end: {
+        Args: { p_business_id: string; p_reason?: string }
+        Returns: undefined
+      }
+      venue_session_expires_at: {
+        Args: { p_business_id: string }
+        Returns: string
+      }
+      venue_session_resume: {
+        Args: { p_business_id: string }
         Returns: boolean
       }
       verify_room_password: {
