@@ -75,7 +75,6 @@ import CreatePostScreen from '../screens/feed/CreatePostScreen';
 import PostDetailScreen from '../screens/posts/PostDetailScreen';
 import DMStack, { type DMStackParamList } from './DMStack';
 import FriendsScreen from '../screens/friends/FriendsScreen';
-import OffersScreen from '../screens/offers/OffersScreen';
 import SettingsStack from './SettingsStack';
 import MenuScreen from '../screens/menu/MenuScreen';
 import MenuWebPreviewScreen from '../screens/menu/MenuWebPreviewScreen';
@@ -113,6 +112,7 @@ export type MainStackParamList = {
   Tabs: NavigatorScreenParams<BottomTabParamList> | { leftBusinessName?: string } | undefined;
   DMs: NavigatorScreenParams<DMStackParamList>;
   Friends: { userId?: string; initialTab?: 'followers' | 'following' | 'requests' } | undefined;
+  /** Lives in the bottom tabs (hidden route, see BottomTabs); typed here so navigate('Offers') compiles everywhere. */
   Offers: undefined;
   /** `tableLabel`: table context from a table QR (shown in the venue session / pre-filled in the waiter call). */
   ChatRoom: { id: string; tableLabel?: string };
@@ -401,7 +401,6 @@ export default function AppNavigator() {
           <MainStack.Screen name="Tabs" component={RootTabs} />
           <MainStack.Screen name="DMs" component={DMStack} />
           <MainStack.Screen name="Friends" component={FriendsScreen} />
-          <MainStack.Screen name="Offers" component={OffersScreen} />
           <MainStack.Screen name="ChatRoom" component={ChatRoomScreen} />
           <MainStack.Screen name="Onboarding" component={OnboardingScreen} />
           <MainStack.Screen name="EditProfile" component={EditProfileScreen} />

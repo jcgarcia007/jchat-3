@@ -15,6 +15,7 @@ import { MapScreen } from '../lazyScreens';
 import ProfileScreen from '../../screens/profile/ProfileScreen';
 import NearbyScreen from '../../screens/nearby/NearbyScreen';
 import MessagesScreen from '../../screens/dms/MessagesScreen';
+import OffersScreen from '../../screens/offers/OffersScreen';
 import NotchTabBar from '../../components/navigation/NotchTabBar';
 
 // ---------------------------------------------------------------------------
@@ -26,6 +27,8 @@ export type BottomTabParamList = {
   Nearby: undefined;
   Messages: undefined;
   Profile: undefined;
+  /** Hidden route: NotchTabBar draws only the first four; the centre button navigates here. */
+  Offers: undefined;
 };
 
 const Tab = createBottomTabNavigator<BottomTabParamList>();
@@ -44,6 +47,7 @@ export default function BottomTabs() {
       <Tab.Screen name="Nearby" component={NearbyScreen} />
       <Tab.Screen name="Messages" component={MessagesScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen name="Offers" component={OffersScreen} />
     </Tab.Navigator>
   );
 }

@@ -56,6 +56,10 @@ export const darkColors = {
   textPrimary: palette.textPrimary,
   textSecondary: palette.textSecondary,
   textTertiary: palette.textTertiary,
+  /** Tab bar fill over the iOS blur (72 %). */
+  tabBarGlass: palette.tabBarGlassDark,
+  /** Tab bar fill on Android, where there is no blur (94 %). */
+  tabBarGlassAndroid: palette.tabBarGlassDarkAndroid,
 };
 
 /** All color values widen to `string` so light/dark share one shape. */
@@ -76,6 +80,8 @@ export const lightColors: ThemeColors = {
   textPrimary: palette.textPrimaryLight,
   textSecondary: palette.textSecondaryLight,
   textTertiary: palette.textTertiaryLight,
+  tabBarGlass: palette.tabBarGlassLight,
+  tabBarGlassAndroid: palette.tabBarGlassLightAndroid,
 };
 
 export type ColorScheme = 'light' | 'dark';

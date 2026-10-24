@@ -46,6 +46,13 @@ export const palette = {
   textSecondaryLight: '#55555a',
   textTertiaryLight: '#6d6d72',
 
+  // 1.3b Tab bar "glass" fill (NotchTabBar). iOS paints it over a BlurView (72 %); Android has no blur, so it is
+  // nearly opaque (94 %). Light = white, dark = bgSurface (#18181b).
+  tabBarGlassLight: 'rgba(255,255,255,0.72)',
+  tabBarGlassDark: 'rgba(24,24,27,0.72)',
+  tabBarGlassLightAndroid: 'rgba(255,255,255,0.94)',
+  tabBarGlassDarkAndroid: 'rgba(24,24,27,0.94)',
+
   // 1.4 Map Colors — light
   mapLightBase: '#eef1f8',
   mapLightRoads: '#ffffff',

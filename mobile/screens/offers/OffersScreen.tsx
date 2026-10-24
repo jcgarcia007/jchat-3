@@ -12,6 +12,7 @@ import { Spinner } from '../../components/common/Spinner';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BAR_HEIGHT } from '../../components/navigation/NotchTabBar';
 import { IconArrowLeft, IconMapPin, IconSpeakerphone } from '@tabler/icons-react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -268,7 +269,7 @@ export default function OffersScreen() {
         </View>
       ) : (
         <FlatList
-          contentContainerStyle={[styles.list, items.length === 0 && styles.emptyList]}
+          contentContainerStyle={[styles.list, items.length === 0 && styles.emptyList, { paddingBottom: 26 + insets.bottom + BAR_HEIGHT + 16 }]}
           data={items}
           keyExtractor={itemKey}
           ListFooterComponent={loadingMore ? <Spinner color={colors.brandText} style={styles.footer} /> : null}

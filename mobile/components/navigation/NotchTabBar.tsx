@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import {
+  Platform,
   Pressable,
   StyleSheet,
   Text,
   View,
+  useColorScheme,
   type LayoutChangeEvent,
 } from 'react-native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
+import { BlurView } from 'expo-blur';
+import Svg, { Defs, FeGaussianBlur, Filter, Path } from 'react-native-svg';
 import {
   IconMap,
   IconMessageCircle,
@@ -22,10 +25,15 @@ import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import ProfileTabAvatar from './ProfileTabAvatar';
 
-const BAR_HEIGHT = 68;
+export const BAR_HEIGHT = 68;
 const BAR_RADIUS = 34;
 const NOTCH_WIDTH = 104;
 const NOTCH_DEPTH = 34;
+/** Android has no drop shadow on a view without a background, so the shadow is a second, blurred copy of the path. */
+const SHADOW_OFFSET_Y = 4;
+const SHADOW_BLUR = 6;
+const SHADOW_PAD = 24;
+const IS_IOS = Platform.OS === 'ios';
 
 function notchPath(width: number): string {
   const center = width / 2;
@@ -50,9 +58,12 @@ function notchPath(width: number): string {
 
 export default function NotchTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const colors = useThemeColors();
+  const scheme = useColorScheme() === 'light' ? 'light' : 'dark';
   const insets = useSafeAreaInsets();
   const commonTranslation = useTranslation('common');
   const hasUnread = useUnreadBadge();
+  // 'Offers' is a hidden route of the tabs (index 4): the centre button is the active one while it is focused.
+  const offersFocused = state.routes[state.index]?.name === 'Offers';
   const [width, setWidth] = useState(0);
   const sideWidth = Math.max(0, (width - NOTCH_WIDTH) / 2);
 
@@ -130,11 +141,47 @@ export default function NotchTabBar({ state, descriptors, navigation }: BottomTa
           bottom: 26 + insets.bottom,
           shadowColor: colors.textPrimary,
         },
+        IS_IOS ? styles.iosShadow : null,
       ]}
     >
+      {width > 0 && !IS_IOS ? (
+        // Android: shadow drawn in SVG (elevation needs a background), under the bar.
+        <Svg
+          height={BAR_HEIGHT + SHADOW_PAD * 2}
+          pointerEvents="none"
+          style={[styles.androidShadow, { left: -SHADOW_PAD, top: -SHADOW_PAD }]}
+          width={width + SHADOW_PAD * 2}
+        >
+          <Defs>
+            <Filter height="200%" id="barShadowBlur" width="200%" x="-50%" y="-50%">
+              <FeGaussianBlur stdDeviation={SHADOW_BLUR} />
+            </Filter>
+          </Defs>
+          <Path
+            d={notchPath(width)}
+            fill={colors.textPrimary}
+            filter="url(#barShadowBlur)"
+            opacity={0.12}
+            transform={`translate(${SHADOW_PAD} ${SHADOW_PAD + SHADOW_OFFSET_Y})`}
+          />
+        </Svg>
+      ) : null}
+
+      {IS_IOS ? (
+        // iOS: the blur fills the rounded bar (the notch is not cut out of it: see the note in the PR).
+        <View pointerEvents="none" style={styles.blurClip}>
+          <BlurView intensity={60} style={StyleSheet.absoluteFill} tint={scheme} />
+        </View>
+      ) : null}
+
       {width > 0 ? (
-        <Svg height={BAR_HEIGHT} pointerEvents="none" style={StyleSheet.absoluteFill} width={width}>
-          <Path d={notchPath(width)} fill={colors.bgSurface} />
+        <Svg height={BAR_HEIGHT} pointerEvents="none" style={[StyleSheet.absoluteFill, styles.visible]} width={width}>
+          <Path
+            d={notchPath(width)}
+            fill={IS_IOS ? colors.tabBarGlass : colors.tabBarGlassAndroid}
+            stroke={colors.borderSubtle}
+            strokeWidth={1}
+          />
         </Svg>
       ) : null}
 
@@ -150,6 +197,7 @@ export default function NotchTabBar({ state, descriptors, navigation }: BottomTa
       <Pressable
         accessibilityLabel={commonTranslation.t('tabs.offers')}
         accessibilityRole="button"
+        accessibilityState={{ selected: offersFocused }}
         onPress={() => navigation.navigate('Offers')}
         testID="tab-offers"
         style={[
@@ -158,6 +206,7 @@ export default function NotchTabBar({ state, descriptors, navigation }: BottomTa
             backgroundColor: colors.brandFill,
             shadowColor: colors.brand,
           },
+          offersFocused && { borderColor: colors.bgSurface, borderWidth: 3, transform: [{ scale: 1.08 }] },
         ]}
       >
         <IconSpeakerphone size={26} color={palette.bgSurfaceLight} strokeWidth={2.2} />
@@ -168,15 +217,19 @@ export default function NotchTabBar({ state, descriptors, navigation }: BottomTa
 
 const styles = StyleSheet.create({
   container: {
-    elevation: 10,
     height: BAR_HEIGHT,
     left: 16,
     position: 'absolute',
     right: 16,
+  },
+  iosShadow: {
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.14,
     shadowRadius: 12,
   },
+  androidShadow: { position: 'absolute' },
+  blurClip: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, borderRadius: BAR_RADIUS, overflow: 'hidden' },
+  visible: { overflow: 'visible' },
   side: {
     flexDirection: 'row',
     height: BAR_HEIGHT,
@@ -194,7 +247,10 @@ const styles = StyleSheet.create({
   },
   pill: {
     alignItems: 'center',
-    borderRadius: 16,
+    borderRadius: 18,
+    // Android drew the active tab's background as a square on the Profile tab (its icon is a clipped, bordered
+    // avatar); clipping the pill to its own rounded shape makes both platforms identical.
+    overflow: 'hidden',
     gap: 2,
     maxWidth: '100%',
     paddingHorizontal: 6,
