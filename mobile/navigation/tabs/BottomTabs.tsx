@@ -40,6 +40,8 @@ const Tab = createBottomTabNavigator<BottomTabParamList>();
 export default function BottomTabs() {
   return (
     <Tab.Navigator
+      // 'history': back (the Offers arrow, Android's back button) returns to the tab you came from, not always the Map.
+      backBehavior="history"
       screenOptions={{ headerShown: false }}
       tabBar={(props) => <NotchTabBar {...props} />}
     >
