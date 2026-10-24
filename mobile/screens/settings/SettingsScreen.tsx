@@ -49,6 +49,7 @@ import {
   IconLock,
   IconMoon,
   IconReceipt,
+  IconCalendarEvent,
   IconSpeakerphone,
   IconShield,
   IconMail,
@@ -548,6 +549,15 @@ export default function SettingsScreen() {
           label={t('main.myOrders')}
           sublabel={t('main.myOrdersSub')}
           onPress={() => navigation.navigate('MyOrders')}
+          right={<ChevronRight />}
+        />
+
+        {/* My reservations */}
+        <SettingsRow
+          icon={<IconCalendarEvent size={20} color={c.brandText} strokeWidth={2} />}
+          label={t('main.myReservations')}
+          sublabel={t('main.myReservationsSub')}
+          onPress={() => navigation.navigate('MyReservations')}
           right={<ChevronRight />}
         />
 

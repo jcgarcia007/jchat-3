@@ -618,6 +618,7 @@ export default function MapScreen() {
               businessId={reserveFor}
               onSuccess={() => { /* the form shows its own confirmation; Done calls onCancel */ }}
               onCancel={() => setReserveFor(null)}
+              onViewMine={() => { setReserveFor(null); navigation.navigate('MyReservations'); }}
             />
           )}
         </View>

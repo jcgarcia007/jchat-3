@@ -62,6 +62,8 @@ interface Props {
   onSuccess?: (reservationId: string, isWaitlist: boolean) => void;
   /** Called when the user wants to dismiss / go back. */
   onCancel?: () => void;
+  /** Called from the confirmation's "View my reservations" link (the host closes the form and opens the list). */
+  onViewMine?: () => void;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -200,6 +202,7 @@ export default function ReservationScreen({
   businessId,
   onSuccess,
   onCancel,
+  onViewMine,
 }: Props) {
   const { t } = useTranslation('reservations');
   const { user } = useAuth();
@@ -419,6 +422,17 @@ export default function ReservationScreen({
             ]}
           >
             <Text style={styles.doneBtnText}>{t('doneButton')}</Text>
+          </Pressable>
+        )}
+        {onViewMine && (
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel={t('viewMine')}
+            hitSlop={8}
+            onPress={onViewMine}
+            style={styles.viewMineLink}
+          >
+            <Text style={[styles.viewMineText, { color: c.brandText }]}>{t('viewMine')}</Text>
           </Pressable>
         )}
       </View>
@@ -920,6 +934,8 @@ const styles = StyleSheet.create({
   },
 
   // Success
+  viewMineLink: { alignItems: 'center', justifyContent: 'center', marginTop: 8, minHeight: 44, paddingHorizontal: 16 },
+  viewMineText: { fontSize: 15, fontWeight: '700', textDecorationLine: 'underline' },
   successContainer: {
     flex: 1,
     alignItems: 'center',

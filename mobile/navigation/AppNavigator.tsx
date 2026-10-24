@@ -84,6 +84,7 @@ import CheckoutScreen from '../screens/checkout/CheckoutScreen';
 import PaymentSuccessScreen from '../screens/checkout/PaymentSuccessScreen';
 import OrderTrackingScreen from '../screens/orders/OrderTrackingScreen';
 import MyOrdersScreen from '../screens/orders/MyOrdersScreen';
+import MyReservationsScreen from '../screens/reservations/MyReservationsScreen';
 import MatchHomeScreen from '../screens/match/MatchHomeScreen';
 import MatchMyProfileScreen from '../screens/match/MatchMyProfileScreen';
 import MatchInterestsScreen from '../screens/match/MatchInterestsScreen';
@@ -159,6 +160,7 @@ export type MainStackParamList = {
   OrderTracking: { orderId: string; roomId?: string };
   /** The signed-in user's own orders. */
   MyOrders: undefined;
+  MyReservations: undefined;
   /** Match (JChat's venue game): entry/home screen. Presence state comes from the shared store. */
   MatchHome: { businessId: string; businessName?: string };
   /** Truth or Dare: publish a card (pick a category) in the room the player was in. */
@@ -440,6 +442,7 @@ export default function AppNavigator() {
           <MainStack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} />
           <MainStack.Screen name="OrderTracking" component={OrderTrackingScreen} />
           <MainStack.Screen name="MyOrders" component={MyOrdersScreen} />
+          <MainStack.Screen name="MyReservations" component={MyReservationsScreen} />
           <MainStack.Screen name="MatchHome" component={MatchHomeScreen} />
           <MainStack.Screen name="TodHome" component={TodHomeScreen} />
           <MainStack.Screen name="MatchMyProfile" component={MatchMyProfileScreen} />

@@ -51,7 +51,9 @@
     },
     "previewBrandNote": "El nombre \"JChat\" siempre se ve en la notificación.",
     "safetyCommunity": "Seguridad y comunidad",
-    "contactUs": "Contacto"
+    "contactUs": "Contacto",
+    "myReservations": "Mis reservas",
+    "myReservationsSub": "Tus reservas, y cancela las próximas"
   },
   "changePassword": {
     "currentPassword": "Contraseña actual",
