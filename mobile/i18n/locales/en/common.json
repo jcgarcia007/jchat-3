@@ -40,7 +40,10 @@
     "permissionTitle": "Microphone access needed",
     "permissionMessage": "Allow microphone access in Settings to record voice messages.",
     "openSettings": "Open Settings",
-    "webUnsupported": "Record voice notes from the app"
+    "webUnsupported": "Record voice notes from the app",
+    "permissionMessageWeb": "Allow microphone access in your browser settings (the lock next to the address) and tap the microphone again.",
+    "errorTitle": "We couldn't record",
+    "errorMessage": "We couldn't start recording. Check that your device has a microphone and try again."
   },
   "picker": {
     "photosErrorTitle": "We couldn't open your photos",

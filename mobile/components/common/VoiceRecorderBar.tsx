@@ -31,21 +31,9 @@ import {
 } from '../../services/voiceNotes';
 import { confirm, showAlert } from '../../utils/dialog';
 
-export interface VoiceRecording {
-  uri: string;
-  durationSec: number;
-}
+import type { VoiceRecorderBarProps, VoiceRecording } from './VoiceRecorderBar.types';
 
-export interface VoiceRecorderBarProps {
-  /** Called with the finished recording when the user taps Send (or at 60 s). */
-  onSend: (recording: VoiceRecording) => void;
-  /** Called when the recording is cancelled, too short, denied or failed. The bar should unmount. */
-  onCancel: () => void;
-  textColor: string;
-  accentColor: string;
-  backgroundColor: string;
-  borderColor: string;
-}
+export type { VoiceRecorderBarProps, VoiceRecording };
 
 function formatClock(totalSeconds: number): string {
   const m = Math.floor(totalSeconds / 60);
