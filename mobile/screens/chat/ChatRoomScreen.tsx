@@ -12,7 +12,7 @@
  * 6. Sub-room tabs — selecting a protected one shows PasswordEntrySheet.
  * 7. ChatInput sends text or photo; expands AttachmentPanel.
  * 8. Long-press a user avatar → UserActionSheet.
- * 9. MapReactionButton + CheckInButton in the input area.
+ * 9. MapReactionButton in the input area (the check-in button is not shown in this version).
  *
  * ── Slot markers ──────────────────────────────────────────────────────────────
  * // TODO(Task 2.5): PinnedBanner — sticky between sub-room tabs and message list.
@@ -124,7 +124,6 @@ import { PinnedBanner } from '../../components/chat/PinnedBanner';
 import { PinMessageSheet } from '../../components/chat/PinMessageSheet';
 import { CreateOfferSheet } from '../../components/chat/CreateOfferSheet';
 import { ServiceCallSheet } from '../../components/chat/ServiceCallSheet';
-import { CheckInButton } from '../../components/chat/CheckInButton';
 import { UserActionSheet } from '../../components/chat/UserActionSheet';
 import type { ViewerRole } from '../../components/chat/UserActionSheet';
 import { usePresenceChannels, type SelfProfile } from './usePresenceChannels';
@@ -1817,9 +1816,6 @@ export default function ChatRoomScreen() {
 
   // ── Main chat UI ───────────────────────────────────────────────────────────
 
-  // activeSubRoomData is derived near the top (drives the theme). Reuse it here.
-  const isMainRoom = activeSubRoomData?.is_main ?? room?.is_main ?? true;
-
   return (
     <TodChatProvider
       businessId={matchBusinessId}
@@ -1946,22 +1942,6 @@ export default function ChatRoomScreen() {
             ) : null
           }
         />
-
-        {/* ── Check-in bar — always available in the main room ─────────────
-            Decision: always visible. The server decides (check_in, migration 235): it verifies the person's presence at
-            the venue, excludes the owner and limits it to one check-in per venue per day; the button shows the reason
-            when it refuses. There is no per-room switch. ─────────────────────────────────────────────── */}
-        {isMainRoom && (
-          <View style={[chatStyles.checkInBar, { backgroundColor: chatTheme.topBg }]}>
-            <CheckInButton
-              enabled
-              businessId={room?.business_id ?? DEMO_BUSINESS.id}
-              roomId={activeRoomId}
-              username={selfProfile?.name ?? undefined}
-              businessName={business?.name}
-            />
-          </View>
-        )}
 
         {/* ── Chat input ───────────────────────────────────────────────── */}
         <ChatInput
@@ -2301,9 +2281,5 @@ const chatStyles = StyleSheet.create({
   emptyText: {
     fontSize: 15,
     textAlign: 'center',
-  },
-  checkInBar: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
   },
 });

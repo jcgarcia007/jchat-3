@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { ReportReasonSheet } from '../../components/report/ReportReasonSheet';
 import {
-  IconBan, IconFlag, IconLock, IconMapPin, IconPhoto, IconShare3, IconStack2, IconUsers, IconWorld, IconX,
+  IconBan, IconFlag, IconLock, IconPhoto, IconShare3, IconStack2, IconX,
 } from '@tabler/icons-react-native';
 
 import type { MainStackParamList } from '../../navigation/AppNavigator';
@@ -28,7 +28,6 @@ import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { getProfileTheme, readableOn } from '../../theme/profileThemes';
 import { canViewProfile, getOwnProfilePrivacy, getPublicProfile, getProfileCounts, type ProfileCounts } from '../../services/users';
-import { getCheckInHistory, type CheckInPlace } from '../../services/checkIn';
 import type { PublicProfileRow } from '../../services/users';
 import { getUserPosts } from '../../services/posts';
 import type { PostRow } from '../../services/posts';
@@ -41,14 +40,7 @@ import { useHomeBarInset } from '../../components/venue/HomeBarInset';
 import { confirm, showAlert } from '../../utils/dialog';
 import { shareContent } from '../../utils/shareContent';
 import { useAppWindow } from '../../utils/appWindow';
-import { colorIndex, initials } from '../../utils/mapPin';
-import {
-  parseProfilePrivacy,
-  placesVisibilityLabelKey,
-  totalVisits,
-  type PlacesVisibility,
-  type ProfilePrivacyView,
-} from '../../utils/profilePlaces';
+import { parseProfilePrivacy, type ProfilePrivacyView } from '../../utils/profilePlaces';
 
 // The same screen backs the Profile tab, the stacked UserProfile and the ProfileSheet over the chat.
 type ProfileParams = { userId?: string } | undefined;
@@ -57,8 +49,6 @@ type ProfileRoute = RouteProp<{ UserProfile: ProfileParams; ProfileSheet: Profil
 const GRID_COLUMNS = 3;
 const GRID_GAP = 2;
 const PROFILE_COMPLETION_DISMISSED_KEY = 'profile.completionDismissed';
-/** Theme colours of the initials circle of a place without a logo (a venue always gets the same one). */
-const PLACE_AVATAR_COLORS = [palette.brand, palette.brandPurple, palette.success, palette.gold];
 type ProfileTab = 'posts' | 'tagged';
 
 function ProfileSkeleton({ topInset }: { topInset: number }) {
@@ -145,65 +135,6 @@ function EmptyState({
   );
 }
 
-/**
- * "My places" (own profile only in this version): the venues the person checked in at, with the number of visits.
- * NEVER dates, never a live location. The chip says who can see the section and opens Settings → Privacy.
- */
-function PlacesSection({ places, visibility, onOpenPrivacy }: { places: CheckInPlace[]; visibility: PlacesVisibility; onOpenPrivacy: () => void }) {
-  const { t } = useTranslation('profile');
-  const c = useThemeColors();
-  const who = t(placesVisibilityLabelKey(visibility));
-  const VisibilityIcon = visibility === 'everyone' ? IconWorld : visibility === 'followers' ? IconUsers : IconLock;
-  return (
-    <View style={styles.placesSection}>
-      <View style={styles.placesHeader}>
-        <Text accessibilityRole="header" style={[styles.placesTitle, { color: c.textPrimary }]}>{t('places.title')}</Text>
-        <TouchableOpacity
-          testID="profile-places-visibility"
-          style={[styles.visibilityChip, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}
-          onPress={onOpenPrivacy}
-          accessibilityRole="button"
-          accessibilityLabel={t('places.visibilityA11y', { who })}
-          hitSlop={6}
-        >
-          <VisibilityIcon size={14} color={c.textSecondary} />
-          <Text style={[styles.visibilityText, { color: c.textSecondary }]}>{who}</Text>
-        </TouchableOpacity>
-      </View>
-      {places.length === 0 ? (
-        <View style={[styles.placesEmpty, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
-          <IconMapPin size={20} color={c.textTertiary} />
-          <Text style={[styles.placesEmptyText, { color: c.textSecondary }]}>{t('places.empty')}</Text>
-        </View>
-      ) : (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.placesRow}>
-          {places.map((place) => {
-            const visits = t('places.visits', { count: place.visitCount });
-            return (
-              <View
-                key={place.businessId}
-                accessible
-                accessibilityLabel={t('places.placeA11y', { name: place.businessName, visits })}
-                style={[styles.placeCard, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}
-              >
-                {place.businessLogoUrl ? (
-                  <Image source={{ uri: place.businessLogoUrl }} style={styles.placeLogo} resizeMode="cover" accessibilityElementsHidden />
-                ) : (
-                  <View style={[styles.placeLogo, styles.placeLogoFallback, { backgroundColor: PLACE_AVATAR_COLORS[colorIndex(place.businessId, PLACE_AVATAR_COLORS.length)] }]}>
-                    <Text style={styles.placeInitials}>{initials(place.businessName)}</Text>
-                  </View>
-                )}
-                <Text style={[styles.placeName, { color: c.textPrimary }]} numberOfLines={2}>{place.businessName}</Text>
-                <Text style={[styles.placeVisits, { color: c.textSecondary }]}>{visits}</Text>
-              </View>
-            );
-          })}
-        </ScrollView>
-      )}
-    </View>
-  );
-}
-
 /** The two tabs of the posts area as a segmented pill: Posts · Tagged. The active one is painted with the accent. */
 function SegmentedTabs({ value, onChange, accent }: { value: ProfileTab; onChange: (tab: ProfileTab) => void; accent: string }) {
   const { t } = useTranslation('profile');
@@ -258,8 +189,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
   const [profile, setProfile] = useState<PublicProfileRow | null>(null);
   const [posts, setPosts] = useState<PostRow[]>([]);
   const [counts, setCounts] = useState<ProfileCounts>({ followers: 0, following: 0, posts: 0 });
-  // Own profile only: the venues I checked in at (visits, never dates) and my privacy choices for this page.
-  const [places, setPlaces] = useState<CheckInPlace[]>([]);
+  // Own profile only: my privacy choices for this page (the city).
   const [privacy, setPrivacy] = useState<ProfilePrivacyView>(() => parseProfilePrivacy(null));
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
   // False for a private account I don't follow (the grid is replaced by a notice). Default true:
@@ -292,13 +222,12 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
     if (mode === 'pull') setRefreshing(true); else if (mode === 'initial') setInitialLoading(true);
     setError(null);
     try {
-      const [canView, profileRow, profileCounts, ownPlaces, ownPrivacy] = await Promise.all([
+      const [canView, profileRow, profileCounts, ownPrivacy] = await Promise.all([
         isOwnProfile || !authUser?.id ? Promise.resolve(true) : canViewProfile(authUser.id, targetId).catch(() => true),
         getPublicProfile(targetId),
         // A counters failure must not take the whole profile down: keep what we had.
         getProfileCounts(targetId).catch(() => null),
-        // "My places" and my privacy choices exist only on my own profile; a failure leaves the section empty / safe.
-        isOwnProfile ? getCheckInHistory(targetId).catch(() => [] as CheckInPlace[]) : Promise.resolve([] as CheckInPlace[]),
+        // My privacy choices (the city) exist only on my own profile; a failure falls back to the safe defaults.
         isOwnProfile ? getOwnProfilePrivacy(targetId).catch(() => parseProfilePrivacy(null)) : Promise.resolve(parseProfilePrivacy(null)),
       ]);
       if (!profileRow) throw new Error(t('view.profileNotFound'));
@@ -308,7 +237,6 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
       setProfile(profileRow);
       setPosts(postRows);
       if (profileCounts) setCounts(profileCounts);
-      setPlaces(ownPlaces);
       setPrivacy(ownPrivacy);
     } catch (loadError) {
       setError(toUserMessage(loadError, 'profile:view.loadProfileError'));
@@ -448,7 +376,6 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
 
   // The city shows only when the owner allows it (the choice is read for my own profile).
   const shownCity = isOwnProfile && !privacy.showCity ? null : profile.city;
-  const showPlacesSection = isOwnProfile && privacy.tabPlaces;
   const hideTabs = !isOwnProfile && (relation === 'blockedByMe' || relation === 'blockedMe');
 
   return (
@@ -466,7 +393,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
         <ProfileHeader
           isOwnProfile={isOwnProfile} displayName={profile.display_name} username={profile.username} avatarUrl={profile.avatar_url}
           bio={profile.bio} city={shownCity} isVerified={profile.is_verified} postCount={counts.posts} followerCount={counts.followers}
-          followingCount={counts.following} placesCount={isOwnProfile ? totalVisits(places) : null} relation={relation} followBusy={relationLoading || relationBusy}
+          followingCount={counts.following} placesCount={null} relation={relation} followBusy={relationLoading || relationBusy}
           completion={{ hasPhoto: Boolean(profile.avatar_url), hasBio: Boolean(profile.bio?.trim()), hasPost: posts.length > 0 }}
           completionVisible={completionDismissed === false} onDismissCompletion={dismissCompletion}
           onEditProfile={() => navigation.navigate('EditProfile')} onCreatePost={() => navigation.navigate('CreatePost')}
@@ -474,13 +401,6 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
           onFollow={() => void handleFollow()} onUnfollow={handleUnfollow} onCancelRequest={handleCancelRequest} onUnblock={handleUnblock}
           onMessage={() => void openMessage()} theme={theme}
         />
-        {showPlacesSection ? (
-          <PlacesSection
-            places={places}
-            visibility={privacy.placesVisibility}
-            onOpenPrivacy={() => navigation.navigate('Settings', { screen: 'Privacy', initial: false })}
-          />
-        ) : null}
         {hideTabs ? null : <SegmentedTabs value={activeTab} onChange={setActiveTab} accent={theme.accent} />}
         {renderPosts()}
       </ScrollView>
@@ -514,20 +434,6 @@ const styles = StyleSheet.create({
   skeletonAvatar: { width: 112, height: 112, borderRadius: 56, borderWidth: 4, alignSelf: 'center', marginTop: 40 }, skeletonName: { width: 180, height: 22, borderRadius: 8, alignSelf: 'center', marginTop: 14 },
   skeletonHandle: { width: 110, height: 14, borderRadius: 7, alignSelf: 'center', marginTop: 8 }, skeletonStats: { height: 70, borderRadius: 16, marginHorizontal: 16, marginTop: 28 },
   skeletonGrid: { marginTop: 24, flexDirection: 'row', flexWrap: 'wrap', gap: 2 }, skeletonCell: { width: '32.9%', aspectRatio: 1 },
-  placesSection: { marginTop: 10, paddingBottom: 6 },
-  placesHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 16, marginBottom: 10 },
-  placesTitle: { fontSize: 17, fontWeight: '800' },
-  visibilityChip: { flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 32, borderRadius: 999, borderWidth: 1, paddingHorizontal: 12 },
-  visibilityText: { fontSize: 13, fontWeight: '700' },
-  placesRow: { gap: 10, paddingHorizontal: 16 },
-  placeCard: { width: 110, alignItems: 'center', gap: 6, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, paddingVertical: 12, paddingHorizontal: 8 },
-  placeLogo: { width: 44, height: 44, borderRadius: 22 },
-  placeLogoFallback: { alignItems: 'center', justifyContent: 'center' },
-  placeInitials: { color: palette.bgSurfaceLight, fontSize: 15, fontWeight: '800' },
-  placeName: { fontSize: 13, lineHeight: 17, fontWeight: '700', textAlign: 'center', minHeight: 34 },
-  placeVisits: { fontSize: 12, fontWeight: '600' },
-  placesEmpty: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 16, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, paddingVertical: 16, paddingHorizontal: 14 },
-  placesEmptyText: { flex: 1, fontSize: 14, lineHeight: 20 },
   segmented: { flexDirection: 'row', marginHorizontal: 16, marginTop: 14, marginBottom: 12, borderRadius: 999, borderWidth: 1, padding: 3 },
   segment: { flex: 1, minHeight: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 999 },
   segmentText: { fontSize: 14, fontWeight: '700' },
