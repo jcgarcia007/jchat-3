@@ -12,9 +12,6 @@
   },
   "edit": {
     "title": "Editar perfil",
-    "changeCoverPhotoA11y": "Cambiar foto de portada",
-    "coverPreviewA11y": "Vista previa de portada",
-    "changeCover": "Cambiar portada",
     "changeAvatarPhotoA11y": "Cambiar foto de perfil",
     "avatarPreviewA11y": "Vista previa del avatar",
     "displayNameLabel": "Nombre visible",

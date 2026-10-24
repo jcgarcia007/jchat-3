@@ -12,9 +12,6 @@
   },
   "edit": {
     "title": "Edit Profile",
-    "changeCoverPhotoA11y": "Change cover photo",
-    "coverPreviewA11y": "Cover photo preview",
-    "changeCover": "Change Cover",
     "changeAvatarPhotoA11y": "Change avatar photo",
     "avatarPreviewA11y": "Avatar preview",
     "displayNameLabel": "Display Name",

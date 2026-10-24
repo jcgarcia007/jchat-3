@@ -3,12 +3,12 @@
  *
  * Fields: display name, @username (debounced availability check), bio,
  * city of residence (manual text — NEVER GPS), language (EN/ES),
- * avatar photo, cover photo, profile theme.
+ * avatar photo, profile theme (the cover photo is not edited any more: the profile header is the theme's gradient).
  *
  * Flow:
  *   1. Load current values on mount via getUserById(user.id).
- *   2. Avatar / cover: expo-image-picker → upload to Supabase Storage
- *      (buckets: `avatars`, `covers`) guarded by isSupabaseConfigured;
+ *   2. Avatar: expo-image-picker → upload to Supabase Storage
+ *      (bucket: `avatars`) guarded by isSupabaseConfigured;
  *      when not configured the local uri is used as a preview.
  *   3. Username field: debounced 500 ms query on `users.username`,
  *      skipped when the value hasn't changed from the original.
@@ -86,7 +86,6 @@ type LanguageCode = (typeof LANGUAGES)[number]['code'];
 
 const USERNAME_DEBOUNCE_MS = 500;
 const AVATAR_BUCKET = 'avatars';
-const COVER_BUCKET = 'covers';
 
 // ── Main Screen ──────────────────────────────────────────────────────────────
 
@@ -111,7 +110,6 @@ export default function EditProfileScreen(): React.JSX.Element {
   const [language, setLanguage] = useState<LanguageCode>('en');
   const [profileThemeId, setProfileThemeId] = useState(1);
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
-  const [coverUri, setCoverUri] = useState<string | null>(null);
 
   // ── Username availability state ───────────────────────────────────────────
 
@@ -156,7 +154,6 @@ export default function EditProfileScreen(): React.JSX.Element {
         setLanguage((row.language as LanguageCode) ?? 'en');
         setProfileThemeId(row.profile_theme_id ?? 1);
         setAvatarUri(row.avatar_url ?? null);
-        setCoverUri(row.cover_url ?? null);
         setCity(row.city ?? '');
       } catch {
         // Silently fall through; fields stay blank
@@ -237,19 +234,6 @@ export default function EditProfileScreen(): React.JSX.Element {
     }
   }, []);
 
-  const pickCover = useCallback(async () => {
-    const result = await pickPhotoFromLibrary({
-      allowsEditing: true,
-      aspect: [16, 9],
-      quality: 0.85,
-      preferredAssetRepresentationMode: ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
-    });
-
-    if (result && !result.canceled && result.assets.length > 0) {
-      setCoverUri(result.assets[0].uri);
-    }
-  }, []);
-
   // ── Change detection ──────────────────────────────────────────────────────
 
   function hasUnsavedChanges(): boolean {
@@ -261,8 +245,7 @@ export default function EditProfileScreen(): React.JSX.Element {
       city !== (o.city ?? '') ||
       language !== (o.language ?? 'en') ||
       profileThemeId !== (o.profile_theme_id ?? 1) ||
-      avatarUri !== (o.avatar_url ?? null) ||
-      coverUri !== (o.cover_url ?? null)
+      avatarUri !== (o.avatar_url ?? null)
     );
   }
 
@@ -277,7 +260,7 @@ export default function EditProfileScreen(): React.JSX.Element {
       if (!accepted) return;
       navigation.goBack();
     });
-  }, [navigation, displayName, username, bio, city, language, profileThemeId, avatarUri, coverUri, t]);
+  }, [navigation, displayName, username, bio, city, language, profileThemeId, avatarUri, t]);
 
   // ── Save handler ──────────────────────────────────────────────────────────
 
@@ -305,13 +288,6 @@ export default function EditProfileScreen(): React.JSX.Element {
         finalAvatarUrl = await uploadImage(authUser.id, avatarUri, AVATAR_BUCKET);
       }
 
-      // Upload the cover only when the user selected a different local image.
-      let finalCoverUrl = coverUri;
-      const originalCover = originalRef.current.cover_url ?? null;
-      if (coverUri && coverUri !== originalCover) {
-        finalCoverUrl = await uploadImage(authUser.id, coverUri, COVER_BUCKET);
-      }
-
       if (!isSupabaseConfigured) {
         // Demo mode: skip the actual update, just go back
         navigation.goBack();
@@ -325,7 +301,6 @@ export default function EditProfileScreen(): React.JSX.Element {
         language,
         profile_theme_id: profileThemeId,
         avatar_url: finalAvatarUrl,
-        cover_url: finalCoverUrl,
         city: city.trim() || null,
         updated_at: new Date().toISOString(),
       };
@@ -356,7 +331,6 @@ export default function EditProfileScreen(): React.JSX.Element {
     language,
     profileThemeId,
     avatarUri,
-    coverUri,
     usernameStatus,
     navigation,
     t,
@@ -421,33 +395,6 @@ export default function EditProfileScreen(): React.JSX.Element {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-
-          {/* ── Cover photo ──────────────────────────────────────────────── */}
-          <TouchableOpacity
-            onPress={() => { void pickCover(); }}
-            accessibilityRole="button"
-            accessibilityLabel={t('edit.changeCoverPhotoA11y')}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.coverContainer, { backgroundColor: selectedTheme.coverBg }]}>
-              {coverUri ? (
-                <Image
-                  source={{ uri: coverUri }}
-                  style={StyleSheet.absoluteFill}
-                  resizeMode="cover"
-                  accessibilityLabel={t('edit.coverPreviewA11y')}
-                />
-              ) : null}
-              <View style={[styles.coverOverlay, { backgroundColor: c.scrim }]}>
-                <View style={[styles.cameraChip, { backgroundColor: c.bgOverlay }]}>
-                  <IconCamera size={16} color={c.textPrimary} />
-                  <Text style={[styles.cameraLabel, { color: c.textPrimary }]}>
-                    {t('edit.changeCover')}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </TouchableOpacity>
 
           {/* ── Avatar photo ─────────────────────────────────────────────── */}
           <View style={styles.avatarRow}>
@@ -764,7 +711,6 @@ function UsernameHint({ status, c }: HintProps): React.JSX.Element | null {
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const AVATAR_SIZE = 80;
-const COVER_HEIGHT = 120;
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -809,40 +755,10 @@ const styles = StyleSheet.create({
     paddingBottom: 60,
   },
 
-  // ── Cover photo ───────────────────────────────────────────────────────────
-  coverContainer: {
-    width: '100%',
-    height: COVER_HEIGHT,
-    overflow: 'hidden',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  coverOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cameraChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  cameraLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-
   // ── Avatar ────────────────────────────────────────────────────────────────
   avatarRow: {
     paddingHorizontal: 20,
-    marginTop: -AVATAR_SIZE / 2,
+    marginTop: 16, // no cover banner above any more: the avatar starts the form
     marginBottom: 8,
   },
   avatarWrap: {
