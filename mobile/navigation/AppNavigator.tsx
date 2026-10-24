@@ -35,7 +35,8 @@ import {
 // iOS / Android: the bottom tabs. Web: WebNoVenueScreen (no tabs, no map) — navigation/rootTabs.web.tsx.
 import RootTabs from './rootTabs';
 import { navigationRef } from './navigationRef';
-import { HomeStatusBar, type HomeStatusBarPlacement } from '../components/venue/HomeStatusBar';
+import { HomeStatusBar } from '../components/venue/HomeStatusBar';
+import { venueBarPlacement } from './venueBarPlacement';
 import { HomeBarInsetProvider } from '../components/venue/HomeBarInset';
 import { OrdersBarProvider } from '../context/OrdersBarContext';
 import {
@@ -207,22 +208,6 @@ const linking: LinkingOptions<MainStackParamList> = {
   },
 };
 
-
-/** Leaf route names of the bottom tabs (the venue bar sits above the tab bar). */
-const TAB_ROUTE_NAMES = new Set(['Map', 'Nearby', 'Messages', 'Profile']);
-
-/**
- * Leaf routes without a tab bar where the venue bar ("Estás en {negocio} · Volver al chat") also shows
- * while a venue session is active: the DM inbox, a DM conversation opened from the venue chat, and Business offers.
- * navigationRef.getCurrentRoute() already returns the focused leaf of nested stacks (DMs → DMInbox).
- */
-const VENUE_BAR_ROUTE_NAMES = new Set(['DMInbox', 'DMChat', 'Offers']);
-
-function venueBarPlacement(routeName: string | null): HomeStatusBarPlacement {
-  if (routeName === null) return 'hidden';
-  if (TAB_ROUTE_NAMES.has(routeName)) return 'tabs';
-  return VENUE_BAR_ROUTE_NAMES.has(routeName) ? 'detached' : 'hidden';
-}
 
 /**
  * Opens a venue's chat ("Volver al chat" and QR / link entries). In React Navigation 7 navigate() pushes a second

@@ -5,12 +5,14 @@
  * segments:
  *   • venue session  — "Estás en {negocio} · N mensajes · N likes"  [Volver] (reopens the chat instantly)
  *   • order in progress — "Pedido #N · {estado}" [Ver]  /  "N pedidos en curso" [Ver] (→ My orders)
- * With neither, nothing is drawn. Always mounted (the hooks keep running); `placement` says when the bar shows:
- *   'tabs'     — a tab screen: venue session and/or orders.
- *   'detached' — the DM inbox / a DM conversation reached from the venue chat: only while there is a venue session.
- *   'hidden'   — everywhere else.
+ * With neither, nothing is drawn. Always mounted (the hooks keep running); `placement` says when the bar shows
+ * (navigation/venueBarPlacement.ts decides):
+ *   'tabs'     — the Map tab: venue session and/or orders.
+ *   'detached' — an open DM conversation: only while there is a venue session.
+ *   'hidden'   — everywhere else (Profile, Messages list, Nearby, Offers, DM inbox…): nothing is drawn and the inset is 0.
  * (the bar sits in the same place for 'tabs' and 'detached'; the segment text and actions are the same everywhere)
- * Its height is published through HomeBarInset as a TOP inset: the screens under it start below the bar.
+ * Its height is published through HomeBarInset as a TOP inset: the screens under it start below the bar. While the
+ * bar is hidden it reports 0, so no screen reserves room for it.
  *
  * ONLY the orders segment can be swiped left away ("Moved to notifications · Undo", 4 s). The orders it hides
  * live on as pinned "In progress" rows in Notifications (context/OrdersBarContext). Screen readers get the same
@@ -30,7 +32,9 @@ import { useOrdersBar } from '../../context/OrdersBarContext';
 import { useReportHomeBarInset } from './HomeBarInset';
 import { useAppWindow } from '../../utils/appWindow';
 
-export type HomeStatusBarPlacement = 'tabs' | 'detached' | 'hidden';
+import type { VenueBarPlacement } from '../../navigation/venueBarPlacement';
+
+export type HomeStatusBarPlacement = VenueBarPlacement;
 
 /** Distance below the safe area, and the gap between the bar and the content under it. */
 const TOP_OFFSET = 8;
