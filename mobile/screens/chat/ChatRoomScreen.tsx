@@ -156,7 +156,6 @@ interface RoomData {
   is_password_protected: boolean;
   sort: number;
   description: string | null;
-  check_in_enabled?: boolean;
 }
 
 // ── Demo data (rendered when Supabase is not configured) ───────────────────────
@@ -651,7 +650,6 @@ export default function ChatRoomScreen() {
         is_password_protected: false,
         sort: 0,
         description: null,
-        check_in_enabled: true,
       });
       setBusiness(DEMO_BUSINESS);
       setSubRooms(DEMO_ROOMS);
@@ -1949,12 +1947,11 @@ export default function ChatRoomScreen() {
           }
         />
 
-        {/* ── Check-in bar — only when enabled for the main room ─────────
-            NOTE: `check_in_enabled` is NOT a column of `rooms` yet (migration 235 made check-in server-side but did not add
-            it; whether and how the owner turns check-ins on is still to be decided). The select below does not ask for it
-            either, so `room?.check_in_enabled` is undefined and this bar stays HIDDEN in production. Do not add the column
-            or enable the bar until that decision is made. ─────────────────────────────────────────────── */}
-        {isMainRoom && (room?.check_in_enabled ?? false) && (
+        {/* ── Check-in bar — always available in the main room ─────────────
+            Decision: always visible. The server decides (check_in, migration 235): it verifies the person's presence at
+            the venue, excludes the owner and limits it to one check-in per venue per day; the button shows the reason
+            when it refuses. There is no per-room switch. ─────────────────────────────────────────────── */}
+        {isMainRoom && (
           <View style={[chatStyles.checkInBar, { backgroundColor: chatTheme.topBg }]}>
             <CheckInButton
               enabled
