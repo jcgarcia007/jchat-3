@@ -73,6 +73,7 @@
     "verifiedA11y": "Verificado",
     "editProfileA11y": "Editar perfil",
     "editProfile": "Editar perfil",
+    "edit": "Editar",
     "messageA11y": "Enviar mensaje a {{name}}",
     "message": "Mensaje",
     "signOutA11y": "Cerrar sesión",
@@ -172,11 +173,5 @@
     "visits_other": "{{count}} visitas",
     "empty": "Haz check-in en un local para verlo aquí",
     "placeA11y": "{{name}}, {{visits}}"
-  },
-  "tabs": {
-    "posts": "Publicaciones",
-    "tagged": "Etiquetado",
-    "taggedEmptyTitle": "Nada etiquetado todavía",
-    "taggedEmptySubtitle": "Las publicaciones donde te etiqueten aparecerán aquí."
   }
 }

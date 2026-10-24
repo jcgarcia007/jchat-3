@@ -73,6 +73,7 @@
     "verifiedA11y": "Verified",
     "editProfileA11y": "Edit profile",
     "editProfile": "Edit Profile",
+    "edit": "Edit",
     "messageA11y": "Message {{name}}",
     "message": "Message",
     "signOutA11y": "Sign out",
@@ -172,11 +173,5 @@
     "visits_other": "{{count}} visits",
     "empty": "Check in at a venue to see it here",
     "placeA11y": "{{name}}, {{visits}}"
-  },
-  "tabs": {
-    "posts": "Posts",
-    "tagged": "Tagged",
-    "taggedEmptyTitle": "Nothing tagged yet",
-    "taggedEmptySubtitle": "Posts where you are tagged will show up here."
   }
 }

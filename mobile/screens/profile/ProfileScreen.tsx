@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { ReportReasonSheet } from '../../components/report/ReportReasonSheet';
 import {
-  IconBan, IconFlag, IconLock, IconPhoto, IconShare3, IconStack2, IconX,
+  IconBan, IconFlag, IconLock, IconPhoto, IconPlus, IconShare3, IconStack2, IconX,
 } from '@tabler/icons-react-native';
 
 import type { MainStackParamList } from '../../navigation/AppNavigator';
@@ -35,6 +35,7 @@ import { getOrCreateConversation, DmGateError } from '../../services/dms';
 import { blockUser } from '../../services/blocks';
 import { useFollowSystem } from '../../hooks/useFollowSystem';
 import ProfileHeader, { ProfileTopBar } from '../../components/profile/ProfileHeader';
+import { BAR_HEIGHT } from '../../components/navigation/NotchTabBar';
 import { toUserMessage } from '../../utils/errors';
 import { useHomeBarInset } from '../../components/venue/HomeBarInset';
 import { confirm, showAlert } from '../../utils/dialog';
@@ -49,7 +50,12 @@ type ProfileRoute = RouteProp<{ UserProfile: ProfileParams; ProfileSheet: Profil
 const GRID_COLUMNS = 3;
 const GRID_GAP = 2;
 const PROFILE_COMPLETION_DISMISSED_KEY = 'profile.completionDismissed';
-type ProfileTab = 'posts' | 'tagged';
+/** Floating "+" button: its size and the gap to the tab bar / the screen edge. */
+const FAB_SIZE = 56;
+const FAB_RIGHT = 20;
+const FAB_BAR_GAP = 16;
+/** The tab bar floats this far above the bottom inset (see NotchTabBar). */
+const TAB_BAR_LIFT = 26;
 
 function ProfileSkeleton({ topInset }: { topInset: number }) {
   const c = useThemeColors();
@@ -135,33 +141,6 @@ function EmptyState({
   );
 }
 
-/** The two tabs of the posts area as a segmented pill: Posts · Tagged. The active one is painted with the accent. */
-function SegmentedTabs({ value, onChange, accent }: { value: ProfileTab; onChange: (tab: ProfileTab) => void; accent: string }) {
-  const { t } = useTranslation('profile');
-  const c = useThemeColors();
-  const onAccent = readableOn(accent);
-  const tabs: ProfileTab[] = ['posts', 'tagged'];
-  return (
-    <View accessibilityRole="tablist" style={[styles.segmented, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
-      {tabs.map((tab) => {
-        const active = tab === value;
-        return (
-          <TouchableOpacity
-            key={tab}
-            testID={`profile-tab-${tab}`}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: active }}
-            style={[styles.segment, active && { backgroundColor: accent }]}
-            onPress={() => onChange(tab)}
-          >
-            <Text style={[styles.segmentText, { color: active ? onAccent : c.textSecondary }]}>{t(`tabs.${tab}`)}</Text>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
-}
-
 function SheetRow({ icon, label, color, borderColor, onPress }: { icon?: React.ReactNode; label: string; color: string; borderColor: string; onPress: () => void }) {
   return (
     <TouchableOpacity style={[styles.sheetRow, { borderBottomColor: borderColor }]} onPress={onPress} accessibilityRole="button">
@@ -191,7 +170,6 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
   const [counts, setCounts] = useState<ProfileCounts>({ followers: 0, following: 0, posts: 0 });
   // Own profile only: my privacy choices for this page (the city).
   const [privacy, setPrivacy] = useState<ProfilePrivacyView>(() => parseProfilePrivacy(null));
-  const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
   // False for a private account I don't follow (the grid is replaced by a notice). Default true:
   // if the check itself fails, RLS still decides what the posts query returns.
   const [canViewPosts, setCanViewPosts] = useState(true);
@@ -366,8 +344,6 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
 
   const renderPosts = () => !isOwnProfile && (relation === 'blockedByMe' || relation === 'blockedMe') ? null : !canViewPosts ? (
     <EmptyState icon={<IconLock size={42} color={c.textTertiary} />} title={t('private.title')} subtitle={t('private.subtitle')} accent={theme.accent} />
-  ) : activeTab === 'tagged' ? (
-    <EmptyState icon={<IconPhoto size={42} color={c.textTertiary} />} title={t('tabs.taggedEmptyTitle')} subtitle={t('tabs.taggedEmptySubtitle')} accent={theme.accent} />
   ) : posts.length ? (
     <View style={styles.postsGrid}>{posts.map((post) => <PostCell key={post.id} post={post} size={cellSize} onPress={() => navigation.navigate('PostDetail', { postId: post.id })} />)}</View>
   ) : (
@@ -376,7 +352,10 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
 
   // The city shows only when the owner allows it (the choice is read for my own profile).
   const shownCity = isOwnProfile && !privacy.showCity ? null : profile.city;
-  const hideTabs = !isOwnProfile && (relation === 'blockedByMe' || relation === 'blockedMe');
+  // The floating "+" belongs to the own profile in the Profile tab (the stacked own profile has no tab bar to sit above).
+  const showFab = isOwnProfile && route.name === 'Profile';
+  const fabBottom = TAB_BAR_LIFT + insets.bottom + BAR_HEIGHT + FAB_BAR_GAP;
+  const onAccent = readableOn(theme.accent);
 
   return (
     <View style={[styles.root, { backgroundColor: c.bgBase }]}>
@@ -387,23 +366,34 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
       />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 102 + insets.bottom }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: showFab ? fabBottom + FAB_SIZE + FAB_BAR_GAP : 102 + insets.bottom }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadProfile('pull')} tintColor={c.brand} colors={[c.brand]} progressBackgroundColor={c.bgSurface} />}
       >
         <ProfileHeader
           isOwnProfile={isOwnProfile} displayName={profile.display_name} username={profile.username} avatarUrl={profile.avatar_url}
           bio={profile.bio} city={shownCity} isVerified={profile.is_verified} postCount={counts.posts} followerCount={counts.followers}
-          followingCount={counts.following} placesCount={null} relation={relation} followBusy={relationLoading || relationBusy}
+          followingCount={counts.following} relation={relation} followBusy={relationLoading || relationBusy}
           completion={{ hasPhoto: Boolean(profile.avatar_url), hasBio: Boolean(profile.bio?.trim()), hasPost: posts.length > 0 }}
           completionVisible={completionDismissed === false} onDismissCompletion={dismissCompletion}
-          onEditProfile={() => navigation.navigate('EditProfile')} onCreatePost={() => navigation.navigate('CreatePost')}
+          onEditProfile={() => navigation.navigate('EditProfile')}
           onOpenFollowers={() => openFriends('followers')} onOpenFollowing={() => openFriends('following')}
           onFollow={() => void handleFollow()} onUnfollow={handleUnfollow} onCancelRequest={handleCancelRequest} onUnblock={handleUnblock}
           onMessage={() => void openMessage()} theme={theme}
         />
-        {hideTabs ? null : <SegmentedTabs value={activeTab} onChange={setActiveTab} accent={theme.accent} />}
-        {renderPosts()}
+        <View style={styles.gridTop}>{renderPosts()}</View>
       </ScrollView>
+
+      {showFab ? (
+        <Pressable
+          testID="profile-publish-fab"
+          style={[styles.fab, { bottom: fabBottom, backgroundColor: theme.accent, shadowColor: theme.accent }]}
+          onPress={() => navigation.navigate('CreatePost')}
+          accessibilityRole="button"
+          accessibilityLabel={t('header.publish')}
+        >
+          <IconPlus size={26} color={onAccent} strokeWidth={2.4} />
+        </Pressable>
+      ) : null}
 
       <AppModal visible={menuVisible} transparent animationType="slide" onRequestClose={() => setMenuVisible(false)}>
         <Pressable accessible={false} style={[styles.backdrop, { backgroundColor: c.scrim }]} onPress={() => setMenuVisible(false)} />
@@ -431,12 +421,15 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
 const styles = StyleSheet.create({
   root: { flex: 1 }, scrollContent: {}, errorRoot: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }, errorText: { textAlign: 'center', fontSize: 14 },
   skeletonRoot: { flex: 1 }, skeletonTop: { width: 150, height: 18, borderRadius: 9, marginLeft: 16 }, skeletonCover: { height: 120, marginHorizontal: 16, marginTop: 18, borderRadius: 20 },
-  skeletonAvatar: { width: 112, height: 112, borderRadius: 56, borderWidth: 4, alignSelf: 'center', marginTop: 40 }, skeletonName: { width: 180, height: 22, borderRadius: 8, alignSelf: 'center', marginTop: 14 },
-  skeletonHandle: { width: 110, height: 14, borderRadius: 7, alignSelf: 'center', marginTop: 8 }, skeletonStats: { height: 70, borderRadius: 16, marginHorizontal: 16, marginTop: 28 },
+  skeletonAvatar: { width: 88, height: 88, borderRadius: 44, borderWidth: 4, alignSelf: 'flex-start', marginLeft: 16, marginTop: 40 }, skeletonName: { width: 180, height: 22, borderRadius: 8, alignSelf: 'flex-start', marginLeft: 16, marginTop: 14 },
+  skeletonHandle: { width: 110, height: 14, borderRadius: 7, alignSelf: 'flex-start', marginLeft: 16, marginTop: 8 }, skeletonStats: { height: 70, borderRadius: 16, marginHorizontal: 16, marginTop: 28 },
   skeletonGrid: { marginTop: 24, flexDirection: 'row', flexWrap: 'wrap', gap: 2 }, skeletonCell: { width: '32.9%', aspectRatio: 1 },
-  segmented: { flexDirection: 'row', marginHorizontal: 16, marginTop: 14, marginBottom: 12, borderRadius: 999, borderWidth: 1, padding: 3 },
-  segment: { flex: 1, minHeight: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 999 },
-  segmentText: { fontSize: 14, fontWeight: '700' },
+  gridTop: { marginTop: 12 },
+  fab: {
+    position: 'absolute', right: FAB_RIGHT, width: FAB_SIZE, height: FAB_SIZE, borderRadius: FAB_SIZE / 2,
+    alignItems: 'center', justifyContent: 'center',
+    shadowOpacity: 0.35, shadowRadius: 10, shadowOffset: { width: 0, height: 6 }, elevation: 8,
+  },
   postsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP }, postCell: { overflow: 'hidden' }, postTextWrap: { alignItems: 'center', justifyContent: 'center', padding: 8 }, postText: { fontSize: 10, lineHeight: 14 },
   multiPhotoBadge: { position: 'absolute', top: 6, right: 6, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: palette.scrim },
   emptyState: { minHeight: 270, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 34, paddingVertical: 34 }, emptyTitle: { marginTop: 14, textAlign: 'center', fontSize: 18, fontWeight: '800' },
