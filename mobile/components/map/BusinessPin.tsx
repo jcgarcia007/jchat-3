@@ -16,13 +16,13 @@
  *     (utils/pinCollision.ts decides; MapScreen recomputes it when the map stops moving).
  * What it shows is decided in utils/mapPin.ts and utils/pinCollision.ts, which have their own tests.
  *
- * Android performance: a Marker freezes its view after the first frame (tracksViewChanges={false}). The pin tracks
- * changes only until its logo has loaded (or failed, or a ceiling passes) and again, briefly, when what it draws
- * changes; then it goes back to false so the map does not keep re-rendering every marker.
+ * Android performance: a Marker freezes its view (tracksViewChanges={false}). The pin tracks changes until it has been
+ * laid out (and, on iOS, its logo loaded) plus one frame, and again whenever what it draws or its size changes; then it
+ * goes back to false so the map does not keep re-rendering every marker.
  */
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, type LayoutChangeEvent } from 'react-native';
 import { Marker } from 'react-native-maps';
 import { Image } from 'expo-image';
 import { useTranslation } from 'react-i18next';
@@ -102,10 +102,11 @@ const MUTED_COLOR = palette.textTertiary;
 /** Room at the sides for the soft shadow and the halo. */
 const SIDE_PAD = 6;
 const HALO_EXTRA = 4;
-/** Tracking ceiling while a logo loads, and the short window after a change in what the pin draws. */
-const TRACKING_IMAGE_MS = 4000;
-const TRACKING_CHANGE_MS = 400;
+/** Longest the marker keeps tracking if onLayout (or a logo image) never reports. */
+const TRACKING_CEILING_MS = 4000;
 const LOGO_BORDER = 3;
+/** Dots draw above pills (Marker zIndex). */
+const DOT_Z_INDEX = 2;
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -128,15 +129,41 @@ export default function BusinessPin({ business, mode = 'pill', onPress }: Busine
   const name = pillName(business.name);
   const countText = !closed && count > 0 ? ` · ${counterLabel(count)}` : '';
 
-  // tracksViewChanges: true until the logo has loaded (or failed / the ceiling), and briefly when the pin changes.
+  // tracksViewChanges: Android turns the marker view into a bitmap and, once it is false, never redraws it. It stays true
+  // until the pin has really been laid out (onLayout with a width > 0 FOR THIS signature) plus one more frame, and goes
+  // true again whenever what it draws changes (signature includes the mode) or its size changes. The old fixed 400 ms
+  // window could freeze the bitmap before the text had its final width (a cut-off pill). A logo (iOS) also waits for
+  // its image (or the ceiling). If onLayout never arrives, the ceiling frees the marker anyway.
   const signature = `${mode}|${closed}|${level}|${showLogo}|${countText}|${name}`;
+  const [laidOut, setLaidOut] = useState<{ signature: string; width: number; height: number } | null>(null);
+  const [imageDone, setImageDone] = useState(false);
+  useEffect(() => setImageDone(false), [imageUrl]);
   const [tracking, setTracking] = useState(true);
+  const ready = laidOut !== null && laidOut.signature === signature && laidOut.width > 0 && (!showLogo || imageDone);
+  const layoutW = laidOut?.width ?? 0;
+  const layoutH = laidOut?.height ?? 0;
   useEffect(() => {
     setTracking(true);
-    const timer = setTimeout(() => setTracking(false), showLogo ? TRACKING_IMAGE_MS : TRACKING_CHANGE_MS);
-    return () => clearTimeout(timer);
-  }, [signature, showLogo]);
-  const settle = () => setTracking(false);
+    let raf1 = 0;
+    let raf2 = 0;
+    if (ready) {
+      // one more frame after the layout so the bitmap is taken with the final size
+      raf1 = requestAnimationFrame(() => {
+        raf2 = requestAnimationFrame(() => setTracking(false));
+      });
+    }
+    const ceiling = setTimeout(() => setTracking(false), TRACKING_CEILING_MS);
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+      clearTimeout(ceiling);
+    };
+  }, [signature, ready, layoutW, layoutH]);
+  const onPinLayout = (e: LayoutChangeEvent) => {
+    const { width, height } = e.nativeEvent.layout;
+    setLaidOut({ signature, width, height });
+  };
+  const settle = () => setImageDone(true);
 
   // A pending venue is not drawn (after the hooks, so their order never changes).
   if (business.status === 'pending') return null;
@@ -152,6 +179,8 @@ export default function BusinessPin({ business, mode = 'pill', onPress }: Busine
       <Marker
         coordinate={{ latitude: business.lat, longitude: business.lng }}
         anchor={{ x: 0.5, y: 0.5 }}
+        // A dot sits on the venue's coordinate, which can fall under another pill's body: keep it above the pills.
+        zIndex={DOT_Z_INDEX}
         onPress={() => onPress(business)}
         tracksViewChanges={tracking}
         accessible
@@ -159,7 +188,11 @@ export default function BusinessPin({ business, mode = 'pill', onPress }: Busine
         accessibilityLabel={accessibilityLabel}
         testID={`map-pin-${business.id}`}
       >
-        <View style={styles.dotWrap}>
+        <View
+          style={styles.dotWrap}
+          collapsable={false}
+          onLayout={onPinLayout}
+        >
           <View style={[styles.dot, { backgroundColor: accent }]} />
         </View>
       </Marker>
@@ -190,7 +223,11 @@ export default function BusinessPin({ business, mode = 'pill', onPress }: Busine
       accessibilityLabel={accessibilityLabel}
       testID={`map-pin-${business.id}`}
     >
-      <View style={[styles.root, { height, paddingHorizontal: SIDE_PAD }]}>
+      <View
+        style={[styles.root, { height, paddingHorizontal: SIDE_PAD }]}
+        collapsable={false}
+        onLayout={onPinLayout}
+      >
         {/* iOS: the logo in its ring, joined to the pill by a stem */}
         {showLogo ? (
           <>
