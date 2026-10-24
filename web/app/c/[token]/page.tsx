@@ -1,32 +1,33 @@
 /**
- * /c/[token] — Public QR entry page (mobile-first)
- * Server Component: resolves the QR token, checks session, renders welcome
- * screen or invalid-QR screen. No dashboard chrome — this is customer-facing.
- *
- * Pieza 1: resolve + login-with-return + join
- * TODO(Pieza 3): after join success, navigate to the live chat room
+ * /c/[token] — the DOOR of a venue (room QR). Server Component: resolves the QR token and the venue's public data and
+ * renders the venue's ticket (TicketDoor): View menu · Request assistance · Enter the chat. Or the invalid-QR screen.
+ * No dashboard chrome — this is customer-facing. The CHAT is the Expo web app ({venue}.jchat.cloud, the same code as
+ * the app): "Enter the chat" goes to https://{venue}.jchat.cloud/c/{token}. This page asks for no location and no account.
  */
 
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import {
-  IconMessageCircle2,
-  IconQrcode,
-  IconBuilding,
-  IconDoor,
-} from "@tabler/icons-react";
+import { IconQrcode } from "@tabler/icons-react";
 import {
   createSupabaseServerClient,
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
-import { RoomHub } from "./RoomHub";
+import { TicketDoor } from "@/components/c/TicketDoor";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { getTranslations } from "next-intl/server";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("meta");
   return { title: t("qrEntry.title") };
+}
+
+interface VenueRow {
+  id: string;
+  name: string;
+  slug: string;
+  subdomain: string | null;
+  logo_url: string | null;
+  menu_mode: string | null;
+  external_menu_url: string | null;
 }
 
 interface ResolvedRoom {
@@ -47,34 +48,21 @@ export default async function QREntryPage({
   const t = await getTranslations("qrEntry");
 
   let room: ResolvedRoom | null = null;
-  let hasSession = false;
-  let userId = "";
+  let venue: VenueRow | null = null;
 
   if (isSupabaseConfigured) {
     const supabase = await createSupabaseServerClient();
-    const [{ data: rpcData }, { data: authData }] = await Promise.all([
-      supabase.rpc("resolve_room_qr", { token }),
-      supabase.auth.getUser(),
-    ]);
+    const { data: rpcData } = await supabase.rpc("resolve_room_qr", { token });
     room = (rpcData as ResolvedRoom[] | null)?.[0] ?? null;
-    hasSession = !!authData.user;
-    userId = authData.user?.id ?? "";
-  }
-
-  // Optional: send printed QR codes to the client web app (Expo Web, `<venue>.jchat.cloud`). OFF unless
-  // NEXT_PUBLIC_SPA_ENTRY_ENABLED === 'true' — without it this page behaves exactly as before. The venue name
-  // in the host is businesses.subdomain, or businesses.slug when it has none (public read). The redirect
-  // happens OUTSIDE any try/catch (redirect() works by throwing).
-  if (room && process.env.NEXT_PUBLIC_SPA_ENTRY_ENABLED === "true") {
-    const supabase = await createSupabaseServerClient();
-    // `subdomain` is not in the generated types yet → untyped client for this one read.
-    const { data: venue } = await (supabase as unknown as SupabaseClient)
-      .from("businesses")
-      .select("subdomain, slug")
-      .eq("id", room.business_id)
-      .maybeSingle();
-    const host = (venue?.subdomain as string | null | undefined) || (venue?.slug as string | null | undefined);
-    if (host) redirect(`https://${host}.jchat.cloud/c/${encodeURIComponent(token)}`);
+    if (room) {
+      // Public columns of the venue: name, logo, the host of its chat ({subdomain || slug}.jchat.cloud) and its menu.
+      const { data } = await supabase
+        .from("businesses")
+        .select("id, name, slug, subdomain, logo_url, menu_mode, external_menu_url")
+        .eq("id", room.business_id)
+        .maybeSingle();
+      venue = (data as VenueRow | null) ?? null;
+    }
   }
 
   const shell: React.CSSProperties = {
@@ -102,7 +90,7 @@ export default async function QREntryPage({
   };
 
   // ── Invalid QR ──────────────────────────────────────────────────────────────
-  if (!room) {
+  if (!room || !venue) {
     return (
       <div style={shell}>
         <div style={card}>
@@ -154,91 +142,23 @@ export default async function QREntryPage({
     );
   }
 
-  // ── Valid QR — Welcome screen ────────────────────────────────────────────────
+  // ── Valid QR — the venue's ticket ────────────────────────────────────────────
+  const host = venue.subdomain || venue.slug;
+  const menuExternal = venue.menu_mode === "external" && !!venue.external_menu_url;
+  const menuHref = menuExternal ? venue.external_menu_url : venue.menu_mode === "web" ? `/m/${venue.slug}` : null;
+
   return (
-    <div style={shell}>
-      <div style={card}>
-        {/* Brand row */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 40,
-              height: 40,
-              borderRadius: 12,
-              background: "var(--color-brand)",
-              color: "var(--on-brand)",
-              flexShrink: 0,
-            }}
-          >
-            <IconMessageCircle2 size={22} />
-          </span>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 16 }}>JChat</div>
-            <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-              {t("scanTitle")}
-            </div>
-          </div>
-        </div>
-
-        {/* Venue info */}
-        <div
-          style={{
-            background: "var(--bg-elevated)",
-            borderRadius: 12,
-            padding: "14px 16px",
-            display: "flex",
-            flexDirection: "column",
-            gap: 6,
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              color: "var(--text-secondary)",
-              fontSize: 12,
-            }}
-          >
-            <IconBuilding size={14} />
-            {t("business")}
-          </div>
-          <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.2 }}>
-            {room.business_name}
-          </div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              fontSize: 13,
-              color: "var(--text-secondary)",
-              marginTop: 4,
-            }}
-          >
-            <IconDoor size={14} />
-            {room.room_name}
-          </div>
-        </div>
-
-        {/* Hub: location first (golden rule); works with and without an account */}
-        <RoomHub
-          token={token}
-          roomId={room.room_id}
-          businessId={room.business_id}
-          businessName={room.business_name}
-          isSubRoom={room.is_sub_room}
-          userId={userId}
-          hasSession={hasSession}
-        />
-
-        <div style={{ textAlign: "center" }}>
-          <LanguageSwitcher />
-        </div>
-      </div>
-    </div>
+    <TicketDoor
+      businessId={venue.id}
+      businessName={venue.name}
+      businessSlug={venue.slug}
+      logoUrl={venue.logo_url}
+      roomLabel={room.is_sub_room ? room.room_name : null}
+      menuHref={menuHref}
+      menuExternal={menuExternal}
+      enterUrl={`https://${host}.jchat.cloud/c/${encodeURIComponent(token)}`}
+    >
+      <LanguageSwitcher />
+    </TicketDoor>
   );
 }

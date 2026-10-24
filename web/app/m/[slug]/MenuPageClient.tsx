@@ -15,7 +15,7 @@ import { buildOrderPlacedMessage, type OrderPlacedInfo } from "@/lib/embedOrderM
 import { parseTableContextMessage, readyMessage } from "@/lib/embedTableContext";
 import { CheckoutStep } from "./CheckoutStep";
 import { supabase } from "@/lib/supabase";
-import { TABLE_CONTEXT_KEY } from "../../t/[token]/TableEntry";
+import { TABLE_CONTEXT_KEY } from "@/components/c/TicketDoor";
 import {
   fetchVenueOrderAccess,
   requestPosition,

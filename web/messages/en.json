@@ -3773,7 +3773,10 @@
     "invalidBodyShort": "This QR code isn't linked to any active room.",
     "verifyingAccess": "Checking access…",
     "menu": "Menu",
-    "soon": "soon"
+    "soon": "soon",
+    "requestAssistance": "Request assistance",
+    "haveApp": "Already have JChat?",
+    "openInApp": "Open in the app"
   },
   "tableEntry": {
     "unavailableTitle": "This table isn't available",
@@ -3793,7 +3796,11 @@
     "noteLabel": "Note (optional)",
     "notePlaceholder": "E.g. Bring the check, more water…",
     "sending": "Notifying…",
-    "sendError": "We couldn't send it. Try again."
+    "sendError": "We couldn't send it. Try again.",
+    "requestTitle": "Request assistance",
+    "tableNumberLabel": "Table number",
+    "tableNumberPlaceholder": "Table number (e.g. 5)",
+    "tableNumberRequired": "Enter your table number."
   },
   "chatRoom": {
     "anonymous": "Anonymous",
@@ -3872,7 +3879,8 @@
     "notAtBody": "Get closer to join the chat.",
     "viewMenuAndPickup": "View menu and order for pick-up",
     "notNow": "Not now",
-    "outsideVenueGeneric": "To do this you need to be at the venue"
+    "outsideVenueGeneric": "To do this you need to be at the venue",
+    "invalidTable": "We couldn't find that table. Check the number on your table."
   },
   "orderTracking": {
     "loading": "Loading your order…",

@@ -125,6 +125,8 @@ export function venueErrorKey(code: string | null | undefined): string | null {
       return "callAlreadyOpen";
     case "blocked_24h":
       return "blocked24h";
+    case "invalid_table":
+      return "invalidTable";
     default:
       return null;
   }

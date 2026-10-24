@@ -1,11 +1,14 @@
 "use client";
 
 /**
- * GuestWaiterSheet — "Call the waiter" WITHOUT an account (golden rule, migration 198).
+ * GuestWaiterSheet — "Request assistance" WITHOUT an account (golden rule, migrations 198 and 240).
  *
- * Needs the table QR (the table is known from /t or the saved table context), the browser location
- * and hCaptcha, like guest-tab. The server decides everything (location inside the venue, device
- * blocks, ONE open call per table, abuse alert to the owner); this sheet only forwards and translates:
+ * Names the table in one of two ways: its QR token (a /t scan, or the table saved by one) or, with the general QR
+ * (/c), the NUMBER the guest types (+ the venue): guest-tab looks the table up on the server, the token never
+ * reaches the browser. Needs the browser location and hCaptcha, like guest-tab. The server decides everything
+ * (location inside the venue, device blocks, ONE open call per table, abuse alert to the owner); this sheet only
+ * forwards and translates:
+ *   invalid_table      → "We couldn't find that table. Check the number on your table."
  *   outside_venue      → "To do this you need to be at {business}" + Allow location / Retry
  *   call_already_open  → "We already told the staff. Wait for them to attend you."
  *   blocked_24h        → "You can't call the service right now."
@@ -22,17 +25,20 @@ import { readFunctionErrorCode, requestPosition, venueErrorKey } from "@/lib/ven
 type State = "idle" | "locating" | "sending" | "success" | "error";
 
 interface Props {
-  tableToken: string;
-  tableLabel: string;
+  businessId: string;
   businessName: string;
+  /** The table's QR token, when it is known (a /t scan). Without it the guest types the table number. */
+  tableToken?: string;
+  tableLabel?: string;
   onClose: () => void;
 }
 
-export function GuestWaiterSheet({ tableToken, tableLabel, businessName, onClose }: Props) {
+export function GuestWaiterSheet({ businessId, businessName, tableToken, tableLabel, onClose }: Props) {
   const t = useTranslations("waiterSheet");
   const tv = useTranslations("venue");
   const captchaRef = useRef<InvisibleCaptchaHandle>(null);
   const [notes, setNotes] = useState("");
+  const [tableNumber, setTableNumber] = useState("");
   const [state, setState] = useState<State>("idle");
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [needsLocation, setNeedsLocation] = useState(false);
@@ -41,6 +47,14 @@ export function GuestWaiterSheet({ tableToken, tableLabel, businessName, onClose
     if (state === "locating" || state === "sending") return;
     setErrorKey(null);
     setNeedsLocation(false);
+
+    // The table: its QR token, or the number typed by the guest (checked here only for "empty"; the server finds the table).
+    const typedTable = tableNumber.trim();
+    if (!tableToken && !typedTable) {
+      setState("error");
+      setErrorKey("tableRequired");
+      return;
+    }
 
     // 1) Location: without it the server cannot place the person in the venue.
     setState("locating");
@@ -64,7 +78,7 @@ export function GuestWaiterSheet({ tableToken, tableLabel, businessName, onClose
     const { data, error } = await supabase.functions.invoke("guest-tab", {
       body: {
         action: "request_service",
-        table_qr_token: tableToken,
+        ...(tableToken ? { table_qr_token: tableToken } : { business_id: businessId, table_label: typedTable }),
         device_id: getDeviceId(),
         captcha_token: captcha.status === "ok" ? captcha.token : undefined,
         lat: position.pos.lat,
@@ -86,13 +100,14 @@ export function GuestWaiterSheet({ tableToken, tableLabel, businessName, onClose
     setNeedsLocation(key === "outsideVenue");
   }
 
-  const message = errorKey === "sendError" ? t("sendError") : errorKey ? tv(errorKey, { business: businessName }) : null;
+  const message =
+    errorKey === "sendError" ? t("sendError") : errorKey === "tableRequired" ? t("tableNumberRequired") : errorKey ? tv(errorKey, { business: businessName }) : null;
 
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={t("title")}
+      aria-label={t("requestTitle")}
       style={{ position: "fixed", inset: 0, background: "rgb(var(--ink-rgb) / 0.55)", display: "flex", flexDirection: "column", justifyContent: "flex-end", zIndex: 50 }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
@@ -100,7 +115,7 @@ export function GuestWaiterSheet({ tableToken, tableLabel, businessName, onClose
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <IconBell size={20} style={{ color: "var(--color-brand)" }} />
-            <span style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>{t("title")}</span>
+            <span style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>{t("requestTitle")}</span>
           </div>
           <button
             onClick={onClose}
@@ -111,7 +126,7 @@ export function GuestWaiterSheet({ tableToken, tableLabel, businessName, onClose
           </button>
         </div>
 
-        <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{tableLabel}</div>
+        {tableToken && tableLabel ? <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{tableLabel}</div> : null}
 
         {state === "success" && (
           <div style={{ padding: "12px 14px", borderRadius: 12, background: "rgb(var(--color-success-rgb) / 0.12)", color: "var(--color-success)", fontSize: 14, fontWeight: 600 }}>
@@ -127,6 +142,21 @@ export function GuestWaiterSheet({ tableToken, tableLabel, businessName, onClose
 
         {state !== "success" && errorKey !== "blocked24h" && (
           <>
+            {!tableToken && (
+              <input
+                type="text"
+                inputMode="text"
+                autoComplete="off"
+                autoCapitalize="characters"
+                placeholder={t("tableNumberPlaceholder")}
+                aria-label={t("tableNumberLabel")}
+                aria-required="true"
+                value={tableNumber}
+                onChange={(e) => setTableNumber(e.target.value)}
+                maxLength={20}
+                style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid var(--border-subtle)", background: "var(--bg-elevated)", color: "var(--text-primary)", fontSize: 16, outline: "none", fontFamily: "inherit" }}
+              />
+            )}
             <textarea
               placeholder={t("notePlaceholder")}
               aria-label={t("noteLabel")}
@@ -142,7 +172,7 @@ export function GuestWaiterSheet({ tableToken, tableLabel, businessName, onClose
               style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px 16px", borderRadius: 12, border: "none", background: "var(--color-brand)", color: "var(--on-brand)", fontSize: 15, fontWeight: 600, cursor: "pointer", opacity: state === "locating" || state === "sending" || errorKey === "callAlreadyOpen" ? 0.6 : 1 }}
             >
               {(state === "locating" || state === "sending") && <IconLoader2 size={18} className="spin" />}
-              {state === "locating" ? tv("locating") : state === "sending" ? t("sending") : needsLocation ? tv("allowLocation") : t("title")}
+              {state === "locating" ? tv("locating") : state === "sending" ? t("sending") : needsLocation ? tv("allowLocation") : t("requestTitle")}
             </button>
           </>
         )}

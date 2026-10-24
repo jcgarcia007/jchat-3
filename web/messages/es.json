@@ -3773,7 +3773,10 @@
     "invalidBodyShort": "Este código QR no está asociado a ninguna sala activa.",
     "verifyingAccess": "Verificando acceso…",
     "menu": "Menú",
-    "soon": "pronto"
+    "soon": "pronto",
+    "requestAssistance": "Pedir asistencia",
+    "haveApp": "¿Ya tienes JChat?",
+    "openInApp": "Abrir en la app"
   },
   "tableEntry": {
     "unavailableTitle": "Esta mesa no está disponible",
@@ -3793,7 +3796,11 @@
     "noteLabel": "Nota (opcional)",
     "notePlaceholder": "Ej. Traer la cuenta, más agua…",
     "sending": "Notificando…",
-    "sendError": "No se pudo enviar. Intenta de nuevo."
+    "sendError": "No se pudo enviar. Intenta de nuevo.",
+    "requestTitle": "Pedir asistencia",
+    "tableNumberLabel": "Número de mesa",
+    "tableNumberPlaceholder": "Número de mesa (ej. 5)",
+    "tableNumberRequired": "Escribe el número de tu mesa."
   },
   "chatRoom": {
     "anonymous": "Anónimo",
@@ -3872,7 +3879,8 @@
     "notAtBody": "Acércate para entrar al chat.",
     "viewMenuAndPickup": "Ver menú y pedir para recoger",
     "notNow": "Ahora no",
-    "outsideVenueGeneric": "Para esto necesitas estar en el local"
+    "outsideVenueGeneric": "Para esto necesitas estar en el local",
+    "invalidTable": "No encontramos esa mesa. Revisa el número que está en tu mesa."
   },
   "orderTracking": {
     "loading": "Cargando tu pedido…",

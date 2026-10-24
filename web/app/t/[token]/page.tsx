@@ -1,11 +1,11 @@
 /**
- * /t/[token] — Public per-table QR entry (Mesas/Taps B5).
+ * /t/[token] — the DOOR of a table (table QR). Server Component: resolves the table token via resolve_table_qr
+ * (anon-callable, since anon has zero grants on tables) and the venue's public data, and renders the same ticket as
+ * /c (TicketDoor) with "Table {label}": View menu · Request assistance · Enter the chat. A friendly "unavailable"
+ * screen for an unknown / inactive table.
  *
- * Server Component: resolves the table token via resolve_table_qr (anon-callable,
- * since anon has zero grants on tables). Renders a friendly "unavailable" screen
- * for an unknown/inactive table, otherwise hands off to a small client piece that
- * stores the table context, optionally joins the table subchat (reusing
- * join_room_via_qr, the /c mechanism), and redirects to /m/{slug} to order.
+ * The CHAT is the Expo web app: "Enter the chat" goes to https://{venue}.jchat.cloud/t/{token}. This page asks for no
+ * location and no account; TicketDoor keeps the table in this tab so the menu orders to it.
  *
  * PUBLIC route — no dashboard chrome, no session required.
  */
@@ -14,7 +14,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { IconQrcode } from "@tabler/icons-react";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import { TableEntry } from "./TableEntry";
+import { TicketDoor } from "@/components/c/TicketDoor";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { getTranslations } from "next-intl/server";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -28,6 +29,16 @@ interface ResolvedTable {
   room_qr_token: string | null;
 }
 
+interface VenueRow {
+  id: string;
+  name: string;
+  slug: string;
+  subdomain: string | null;
+  logo_url: string | null;
+  menu_mode: string | null;
+  external_menu_url: string | null;
+}
+
 export default async function TableQrPage({
   params,
 }: {
@@ -37,24 +48,20 @@ export default async function TableQrPage({
   const t = await getTranslations("tableEntry");
 
   let resolved: ResolvedTable | null = null;
-  let hasSession = false;
-  let business: { id: string; name: string } | null = null;
+  let business: VenueRow | null = null;
 
   if (isSupabaseConfigured) {
     const supabase = await createSupabaseServerClient();
-    const [{ data }, { data: auth }] = await Promise.all([
-      supabase.rpc("resolve_table_qr", { p_token: token }),
-      supabase.auth.getUser(),
-    ]);
+    const { data } = await supabase.rpc("resolve_table_qr", { p_token: token });
     resolved = (data as ResolvedTable[] | null)?.[0] ?? null;
-    hasSession = !!auth.user;
     if (resolved) {
+      // Public columns of the venue: name, logo, the host of its chat ({subdomain || slug}.jchat.cloud) and its menu.
       const { data: biz } = await supabase
         .from("businesses")
-        .select("id, name")
+        .select("id, name, slug, subdomain, logo_url, menu_mode, external_menu_url")
         .eq("slug", resolved.business_slug)
         .maybeSingle();
-      business = (biz as { id: string; name: string } | null) ?? null;
+      business = (biz as VenueRow | null) ?? null;
     }
   }
 
@@ -79,16 +86,23 @@ export default async function TableQrPage({
     );
   }
 
+  const host = business.subdomain || business.slug;
+  const menuExternal = business.menu_mode === "external" && !!business.external_menu_url;
+  const menuHref = menuExternal ? business.external_menu_url : business.menu_mode === "web" ? `/m/${business.slug}` : null;
+
   return (
-    <TableEntry
-      token={token}
-      tableLabel={resolved.table_label}
-      businessSlug={resolved.business_slug}
+    <TicketDoor
       businessId={business.id}
       businessName={business.name}
-      roomQrToken={resolved.room_qr_token}
-      hasSession={hasSession}
-    />
+      businessSlug={business.slug}
+      logoUrl={business.logo_url}
+      table={{ token, label: resolved.table_label }}
+      menuHref={menuHref}
+      menuExternal={menuExternal}
+      enterUrl={`https://${host}.jchat.cloud/t/${encodeURIComponent(token)}`}
+    >
+      <LanguageSwitcher />
+    </TicketDoor>
   );
 }
 
