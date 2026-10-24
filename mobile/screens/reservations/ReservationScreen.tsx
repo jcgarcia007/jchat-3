@@ -49,6 +49,7 @@ import { palette } from '../../theme/tokens';
 import { supabase, isSupabaseConfigured, channelTopic } from '../../services/supabase';
 import { toUserMessage } from '../../utils/errors';
 import { isSlotFull, slotRequestInstant } from '../../utils/reservationSlot';
+import { isFutureReservation, reservedAtIso } from '../../utils/reservationTime';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -77,10 +78,6 @@ function todayString(): string {
   return `${y}-${m}-${day}`;
 }
 
-/** Builds a datetime string from separate date (YYYY-MM-DD) + time (HH:MM). */
-function combineDateTime(date: string, time: string): string {
-  return `${date}T${time}:00`;
-}
 
 /**
  * Is the day full? The SERVER counts (reservation_slot_load, migration 237): the customer's own client only sees their
@@ -289,11 +286,11 @@ export default function ReservationScreen({
     if (!time.match(/^\d{2}:\d{2}$/)) {
       return t('invalidTimeError');
     }
-    const dt = new Date(combineDateTime(date, time));
-    if (isNaN(dt.getTime())) {
+    // The date and time are the PHONE's local ones: the instant keeps that zone (utils/reservationTime.ts).
+    if (reservedAtIso(date, time) === null) {
       return t('invalidDateTimeError');
     }
-    if (dt < new Date()) {
+    if (!isFutureReservation(date, time, new Date())) {
       return t('reservationMustBeFutureError');
     }
     if (partySize < 1 || partySize > 20) {
@@ -331,7 +328,11 @@ export default function ReservationScreen({
 
     setSubmitting(true);
     try {
-      const reserved_at = combineDateTime(date, time);
+      const reserved_at = reservedAtIso(date, time);
+      if (reserved_at === null) {
+        setError(t('invalidDateTimeError'));
+        return;
+      }
       const is_waitlist = slotFull ? wantsWaitlist : false;
 
       const { data, error: insertErr } = await supabase

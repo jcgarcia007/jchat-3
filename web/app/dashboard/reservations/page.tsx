@@ -225,8 +225,13 @@ function formatDateShort(iso: string): string {
   });
 }
 
+/**
+ * The LOCAL calendar day (YYYY-MM-DD) of an instant: the calendar groups reservations by the day the owner sees on
+ * the clock. Slicing the ISO string gave the UTC day, which moved a 9:00 pm reservation to the next day.
+ */
 function isoDateOnly(iso: string): string {
-  return iso.slice(0, 10);
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function customerLabel(r: Reservation): string {
@@ -593,7 +598,8 @@ function ReservationForm({
     letterSpacing: "0.04em",
   };
 
-  const minDateTime = mode === "create" ? new Date().toISOString().slice(0, 16) : undefined;
+  // datetime-local reads LOCAL time: its minimum must be the local "now" too (toISOString() is UTC).
+  const minDateTime = mode === "create" ? toDateTimeLocal(new Date().toISOString()) : undefined;
 
   const formTitle =
     mode === "edit" ? t("resEditTitle") :
