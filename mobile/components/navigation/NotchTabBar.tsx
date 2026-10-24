@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import MaskedView from '@react-native-masked-view/masked-view';
 import { BlurView } from 'expo-blur';
 import Svg, { Defs, FeGaussianBlur, Filter, Path } from 'react-native-svg';
 import {
@@ -167,11 +168,19 @@ export default function NotchTabBar({ state, descriptors, navigation }: BottomTa
         </Svg>
       ) : null}
 
-      {IS_IOS ? (
-        // iOS: the blur fills the rounded bar (the notch is not cut out of it: see the note in the PR).
-        <View pointerEvents="none" style={styles.blurClip}>
+      {IS_IOS && width > 0 ? (
+        // iOS: the blur is masked with the exact bar shape, so the notch stays transparent.
+        <MaskedView
+          maskElement={
+            <Svg height={BAR_HEIGHT} width={width}>
+              <Path d={notchPath(width)} fill="black" />
+            </Svg>
+          }
+          pointerEvents="none"
+          style={StyleSheet.absoluteFill}
+        >
           <BlurView intensity={60} style={StyleSheet.absoluteFill} tint={scheme} />
-        </View>
+        </MaskedView>
       ) : null}
 
       {width > 0 ? (
@@ -228,7 +237,6 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
   },
   androidShadow: { position: 'absolute' },
-  blurClip: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, borderRadius: BAR_RADIUS, overflow: 'hidden' },
   visible: { overflow: 'visible' },
   side: {
     flexDirection: 'row',
