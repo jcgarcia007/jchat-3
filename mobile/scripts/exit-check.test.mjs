@@ -19,6 +19,7 @@ const { outputText } = ts.transpileModule(source, { compilerOptions: { module: t
 writeFileSync(join(dir, 'exitCheck.mjs'), outputText);
 const {
   evaluateExit,
+  outsideRunLength,
   classifyReading,
   distanceMeters,
   isValidReading,
@@ -256,4 +257,20 @@ test('pushReading keeps the newest readings and drops the old ones', () => {
   const old = at(10, 0);
   const fresh = at(10, BUFFER_MAX_AGE_MS / MIN + 1);
   assert.deepEqual(pushReading([old], fresh), [fresh]);
+});
+
+test('outsideRunLength: how many clearly-outside readings end the buffer (an exit is pending when > 0)', () => {
+  assert.equal(outsideRunLength([], CENTER, RADIUS), 0);
+  assert.equal(outsideRunLength([at(50, 0)], CENTER, RADIUS), 0); // inside
+  assert.equal(outsideRunLength([at(260, 0)], CENTER, RADIUS), 1); // one outside reading is already a pending exit
+  assert.equal(outsideRunLength([at(260, 0), at(300, 1), at(280, 2)], CENTER, RADIUS), 3);
+  assert.equal(outsideRunLength([at(260, 0), at(50, 1)], CENTER, RADIUS), 0); // a later reading inside cancels it
+  assert.equal(outsideRunLength([at(50, 0), at(260, 1), at(300, 2)], CENTER, RADIUS), 2);
+  assert.equal(outsideRunLength([at(215, 0)], CENTER, RADIUS), 0); // in the margin: not clearly outside
+});
+
+test('outsideRunLength ignores readings that do not matter (poor accuracy) without breaking the run', () => {
+  const poor = at(300, 1, 500); // accuracy 500 m: not counted, not breaking
+  assert.equal(outsideRunLength([at(260, 0), poor], CENTER, RADIUS), 1);
+  assert.equal(outsideRunLength([poor], CENTER, RADIUS), 0);
 });

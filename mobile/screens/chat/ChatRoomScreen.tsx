@@ -137,6 +137,7 @@ import { TodRoundsBar } from '../../components/games/TodRoundsBar';
 import { isTodEnabledForBusiness, isTodMessageType } from '../../services/tod';
 
 import type { MainStackParamList } from '../../navigation/AppNavigator';
+import { resetToMapTab } from '../../navigation/navigationRef';
 import { palette } from '../../theme/tokens';
 import { confirm, showAlert } from '../../utils/dialog';
 
@@ -414,8 +415,8 @@ export default function ChatRoomScreen() {
   const handleExpelled = useCallback(() => {
     showAlert(t('chatRoom.errorTitle'), t('chatRoom.geoRemoved', { business: business?.name ?? '' }));
     venue.endSession('expelled'); // a CONFIRMED exit (the user was told above): the server hides / purges the venue's ephemeral content
-    navigation.goBack();
-  }, [t, business, navigation, venue]);
+    resetToMapTab(business?.name); // always the Map, whatever is open over the room (a DM, a profile, the menu, the games…)
+  }, [t, business, venue]);
 
   const geoGate = useGeofenceGate({
     roomId: rootRoomId,
@@ -569,11 +570,8 @@ export default function ChatRoomScreen() {
   const handleLeaveVenue = useCallback(() => {
     void confirm(t('venueSession.leaveConfirmTitle'), t('venueSession.leaveConfirmBody', { business: business?.name ?? '' }), { confirmText: t('venueSession.leave'), cancelText: i18n.t('menu.cancel', { ns: 'match' }), destructive: true }).then((accepted) => {
       if (!accepted) return;
-      void venue.leaveVenue().then(() => {
-        // Web: there is no map to go back to — the root says "Saliste de {local}". Native: back, as always.
-        if (Platform.OS === 'web') navigation.reset({ index: 0, routes: [{ name: 'Tabs', params: { leftBusinessName: business?.name } }] });
-        else navigation.goBack();
-      });
+      // Ends the session and lands on the Map whatever is open over the chat (web: the root says "Saliste de {local}").
+      void venue.leaveVenue().then(() => resetToMapTab(business?.name));
     });
   }, [business?.name, navigation, i18n, t, venue]);
 

@@ -15,7 +15,6 @@ import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import {
   CommonActions,
-  createNavigationContainerRef,
   NavigationContainer,
   StackActions,
   LinkingOptions,
@@ -35,6 +34,7 @@ import {
 } from '../services/onboarding';
 // iOS / Android: the bottom tabs. Web: WebNoVenueScreen (no tabs, no map) — navigation/rootTabs.web.tsx.
 import RootTabs from './rootTabs';
+import { navigationRef } from './navigationRef';
 import { HomeStatusBar, type HomeStatusBarPlacement } from '../components/venue/HomeStatusBar';
 import { HomeBarInsetProvider } from '../components/venue/HomeBarInset';
 import { OrdersBarProvider } from '../context/OrdersBarContext';
@@ -205,7 +205,6 @@ const linking: LinkingOptions<MainStackParamList> = {
   },
 };
 
-const navigationRef = createNavigationContainerRef<MainStackParamList>();
 
 /** Leaf route names of the bottom tabs (the venue bar sits above the tab bar). */
 const TAB_ROUTE_NAMES = new Set(['Map', 'Nearby', 'Messages', 'Profile']);

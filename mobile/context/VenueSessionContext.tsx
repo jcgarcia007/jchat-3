@@ -44,6 +44,8 @@ import { shouldCountUnread } from '../utils/venueUnread';
 import { clearEntryTableToken } from '../services/venueTable';
 import { endVenueSessionOnServer, resumeVenueSessionOnServer } from '../services/venuePresence';
 import { invalidateDmUnread } from '../services/dms';
+import { resetToMapTab } from '../navigation/navigationRef';
+import { nextVerifyDelayMs } from '../utils/exitSchedule';
 
 const HEARTBEAT_MS = 5 * 60 * 1000;
 
@@ -134,6 +136,8 @@ export function VenueSessionProvider({ children }: { children: React.ReactNode }
   const chatCoveredRef = useRef(false);
   const matchActiveRef = useRef(false);
   const verifyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // True while an exit is pending (utils/exitSchedule.ts): the looks every minute go on until it is confirmed or cancelled.
+  const pendingChainRef = useRef(false);
 
   // ── Ending ───────────────────────────────────────────────────────────────────
 
@@ -159,6 +163,9 @@ export function VenueSessionProvider({ children }: { children: React.ReactNode }
         if (done) invalidateDmUnread();
       });
     }
+    // A confirmed exit always lands on the Map, whatever is open over the venue chat (a DM, a profile, the menu…).
+    // 'expelled' comes from the chat's own gate, which also resets (it may run with no session here).
+    if (reason === 'outside' || reason === 'expelled') resetToMapTab();
     // Only a CONFIRMED exit tells the user: "You're outside the area… scan the QR to come back".
     if (reason === 'outside') {
       showAlert(
@@ -173,6 +180,7 @@ export function VenueSessionProvider({ children }: { children: React.ReactNode }
     if (!current) return;
     if (matchActiveRef.current) await matchLeaveVenue(current.businessId).catch(() => undefined);
     endSession('user');
+    resetToMapTab(current.businessName); // leaving on purpose also ends on the Map, never on the venue chat
   }, [endSession]);
 
   // ── Starting (one venue at a time) ───────────────────────────────────────────
@@ -304,9 +312,19 @@ export function VenueSessionProvider({ children }: { children: React.ReactNode }
       (coords) => setMatchReading({ lat: coords.lat, lng: coords.lng, mocked: coords.mocked === true }),
       minGapMs,
     );
-    if (!result) return; // another check is running, or too soon after the last one
+    if (!result) {
+      // Another check was running, or too soon after the last one: a chain that is already going keeps going.
+      if (verifyTimerRef.current === null && pendingChainRef.current) {
+        verifyTimerRef.current = setTimeout(() => {
+          verifyTimerRef.current = null;
+          if (!chatMountedRef.current) void heartbeat();
+        }, SILENT_VERIFY_INTERVAL_MS);
+      }
+      return;
+    }
     if (sessionRef.current?.businessId !== current.businessId) return; // changed meanwhile
     clearVerifyTimer();
+    pendingChainRef.current = result.pendingExit;
     if (result.status === 'inside') {
       setReconnecting(false);
       if (matchActiveRef.current) void runMatchCheckIn(current.businessId, current.roomId);
@@ -316,11 +334,12 @@ export function VenueSessionProvider({ children }: { children: React.ReactNode }
       endSession('outside');
       return;
     }
-    if (result.pendingExit) {
+    const delay = nextVerifyDelayMs({ status: result.status, pendingExit: result.pendingExit });
+    if (delay !== null) {
       verifyTimerRef.current = setTimeout(() => {
         verifyTimerRef.current = null;
         if (!chatMountedRef.current) void heartbeat();
-      }, SILENT_VERIFY_INTERVAL_MS);
+      }, delay);
     }
   }, [endSession, clearVerifyTimer]);
 

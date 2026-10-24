@@ -40,15 +40,16 @@ import {
 } from '../../services/geofence';
 import {
   evaluateExit,
+  outsideRunLength,
   pushReading,
   silentAction,
   type ExitReading,
   type ExitVerdict,
 } from '../../utils/exitCheck';
+import { SILENT_VERIFY_INTERVAL_MS, nextVerifyDelayMs } from '../../utils/exitSchedule';
 
 const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000; // renew geo-presence every 5 min while open+foreground
-/** While an outside reading is not confirmed yet, look again this often (foreground only, nothing is shown). */
-export const SILENT_VERIFY_INTERVAL_MS = 60 * 1000;
+export { SILENT_VERIFY_INTERVAL_MS };
 /** No GPS fix after this long → 'position_error' ("couldn't read your location · Retry") instead of an endless spinner. */
 const POSITION_TIMEOUT_MS = 20 * 1000;
 /** A resume from the background re-checks only if the last automatic check is at least this old. */
@@ -208,7 +209,11 @@ export interface SilentCheckResult {
   pendingExit: boolean;
 }
 
-const UNCERTAIN: SilentCheckResult = { status: 'uncertain', pendingExit: false };
+/** 'uncertain' with the exit still pending when the room's buffer ends in an outside reading (the chain of looks goes on). */
+function uncertain(roomId: string, geometry: VenueGeometry): SilentCheckResult {
+  const pending = outsideRunLength(readingBuffers.get(roomId) ?? [], geometry, geometry.radiusM) > 0;
+  return { status: 'uncertain', pendingExit: pending };
+}
 
 /**
  * The automatic check of an ongoing venue session. Never rejects, never asks for permission, never shows anything.
@@ -235,13 +240,13 @@ export async function runSilentGeoCheck(
     } catch {
       permitted = false;
     }
-    if (!permitted) return UNCERTAIN;
+    if (!permitted) return uncertain(roomId, geometry);
 
     let coords: Coords;
     try {
       coords = await readPosition();
     } catch {
-      return UNCERTAIN;
+      return uncertain(roomId, geometry); // a position error keeps a pending exit pending
     }
     onReading?.(coords);
     const reading = recordReading(roomId, coords);
@@ -249,7 +254,7 @@ export async function runSilentGeoCheck(
     // Asymmetric rule, limits tied to the radius (utils/exitCheck.ts): an inside reading up to renewAccuracyMax renews;
     // only readings up to exitAccuracyMax can count towards an exit; an outside reading in between is neither sent nor counted.
     const action = silentAction(reading, geometry, geometry.radiusM);
-    if (action === 'ignore') return UNCERTAIN;
+    if (action === 'ignore') return uncertain(roomId, geometry);
 
     const verdict = evaluateExit(readingBuffers.get(roomId) ?? [], geometry, geometry.radiusM);
     if (verdict === 'outside_confirmed') {
@@ -260,12 +265,12 @@ export async function runSilentGeoCheck(
     if (action === 'renew') {
       const result = await callGeofenceRpc(roomId, coords);
       // Even if the server disagrees (different centre, network error) one answer never ends a session.
-      return result.granted ? { status: 'inside', pendingExit: false } : UNCERTAIN;
+      return result.granted ? { status: 'inside', pendingExit: false } : uncertain(roomId, geometry);
     }
 
     return { status: 'uncertain', pendingExit: true };
   } catch {
-    return UNCERTAIN;
+    return uncertain(roomId, geometry);
   }
 }
 
@@ -366,6 +371,16 @@ export function useGeofenceGate({
     }
   }, []);
 
+  // True while an exit is pending (utils/exitSchedule.ts): the looks every minute go on until it is confirmed or cancelled.
+  const pendingChainRef = useRef(false);
+  const checkRef = useRef<(minGapMs?: number) => Promise<void>>(async () => undefined);
+  const scheduleNextLook = useCallback((delay: number = SILENT_VERIFY_INTERVAL_MS) => {
+    verifyTimerRef.current = setTimeout(() => {
+      verifyTimerRef.current = null;
+      void checkRef.current();
+    }, delay);
+  }, []);
+
   const clearHeartbeat = useCallback(() => {
     if (heartbeatIntervalRef.current) {
       clearInterval(heartbeatIntervalRef.current);
@@ -386,8 +401,13 @@ export function useGeofenceGate({
     if (presenceLooksExpired(room)) setReconnecting(true); // a discreet "Reconnecting…", never an expulsion
 
     const result = await runAutoSilentCheck(room, venueGeometry, handleReading, minGapMs);
-    if (!result) return; // another check is running, or this one is too soon after the last
+    if (!result) {
+      // Another check was running, or this one was too soon after the last: a chain that is already going keeps going.
+      if (verifyTimerRef.current === null && pendingChainRef.current) scheduleNextLook();
+      return;
+    }
     clearVerifyTimer();
+    pendingChainRef.current = result.pendingExit;
 
     if (result.status === 'inside') {
       setReconnecting(false);
@@ -399,13 +419,10 @@ export function useGeofenceGate({
       onExpelledRef.current();
       return;
     }
-    if (result.pendingExit) {
-      verifyTimerRef.current = setTimeout(() => {
-        verifyTimerRef.current = null;
-        void performBackgroundCheck();
-      }, SILENT_VERIFY_INTERVAL_MS);
-    }
-  }, [clearHeartbeat, clearVerifyTimer, handleReading]);
+    const delay = nextVerifyDelayMs({ status: result.status, pendingExit: result.pendingExit });
+    if (delay !== null) scheduleNextLook(delay);
+  }, [clearHeartbeat, clearVerifyTimer, handleReading, scheduleNextLook]);
+  checkRef.current = performBackgroundCheck;
 
   const checkAndEnter = useCallback(async (): Promise<boolean> => {
     if (!isSupabaseConfigured || isOwner) {

@@ -163,6 +163,26 @@ export function evaluateExit(readings: readonly ExitReading[], center: VenueCent
   return 'uncertain';
 }
 
+/**
+ * How many clearly-outside readings end the buffer (the trailing run evaluateExit looks at): 0 when the latest relevant
+ * reading is inside the radius or in the margin, or when there is none. A positive number means an exit is PENDING:
+ * the silent check keeps looking every minute until it is confirmed or a reading inside cancels it.
+ */
+export function outsideRunLength(readings: readonly ExitReading[], center: VenueCenter, radiusM: number): number {
+  const relevant = readings
+    .filter((r) => isValidReading(r, radiusM) || isRenewableReading(r, center, radiusM))
+    .sort((a, b) => a.timestamp - b.timestamp);
+  let start = relevant.length;
+  while (
+    start > 0 &&
+    !isRenewableReading(relevant[start - 1], center, radiusM) &&
+    classifyReading(relevant[start - 1], center, radiusM) === 'outside'
+  ) {
+    start -= 1;
+  }
+  return relevant.length - start;
+}
+
 /** Appends a reading and drops the old ones: newest `BUFFER_MAX_LENGTH`, none older than `BUFFER_MAX_AGE_MS`. */
 export function pushReading(buffer: readonly ExitReading[], reading: ExitReading): ExitReading[] {
   return [...buffer, reading]
