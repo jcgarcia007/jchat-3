@@ -50,6 +50,7 @@ import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import type { SettingsStackParamList } from '../../navigation/SettingsStack';
 import { showAlert } from '../../utils/dialog';
 import { ThemedSwitch } from '../../components/common/ThemedSwitch';
+import { DEFAULT_PLACES_VISIBILITY } from '../../utils/profilePlaces';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -101,7 +102,8 @@ const DEFAULT_SETTINGS: PrivacySettings = {
   // Content
   whoSeesMyPosts: 'everyone',
   whoSeesMyStories: 'everyone',
-  whoSeesPlacesTab: 'everyone',
+  // Safe default: only the owner sees their places until they choose otherwise (anyone who already chose keeps it).
+  whoSeesPlacesTab: DEFAULT_PLACES_VISIBILITY,
   whoSeesGiftsTab: 'everyone',
   geotagEnabled: false, // OFF by default per spec
   tabPosts: true,
@@ -515,6 +517,12 @@ export default function PrivacyScreen() {
     followers: t('privacy.visFollowers'),
     nobody: t('privacy.visNobody'),
   };
+  // The places row reads "Only me" (the other visibility rows keep "Nobody": for messages it means no one can write).
+  const PLACES_LABELS: Record<string, string> = {
+    everyone: t('privacy.visEveryone'),
+    followers: t('privacy.visFollowers'),
+    nobody: t('privacy.visOnlyMe'),
+  };
   const ACC_LABELS: Record<string, string> = {
     public: t('privacy.accPublic'),
     private: t('privacy.accPrivate'),
@@ -689,7 +697,7 @@ export default function PrivacyScreen() {
           options={VISIBILITY_OPTIONS}
           value={settings.whoSeesPlacesTab}
           onSelect={(v) => updateSettings({ whoSeesPlacesTab: v as VisibilityOption })}
-          displayMap={VIS_LABELS}
+          displayMap={PLACES_LABELS}
           bgColor={rowBg}
           borderColor={rowBorder}
           labelColor={labelColor}

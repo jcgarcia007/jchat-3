@@ -1,200 +1,70 @@
 /**
- * JChat 3.0 — ProfileThemeSelector (Task 0.5)
+ * JChat 3.0 — ProfileThemeSelector
  *
- * Renders a 3-column grid of 15 miniature profile-card previews, one per
- * theme.  Each card shows the cover color/gradient (solid fallback), an
- * avatar circle with the theme's avatarBorder, a name strip in nameColor,
- * and a compact stats row in statsBg.  The currently selected card gains an
- * accent-colored outer border.
+ * Six circles, one per profile theme: the circle is the theme's accent colour (the avatar ring / active tab / primary
+ * button colour) and the theme's name is under it. The selected one carries a check mark and a ring. A theme saved
+ * under an id that no longer exists (see theme/profileThemes.ts LEGACY_THEME_MAP) highlights the theme it maps to.
  *
  * Props:
- *   selectedId — the currently active theme id (1–15)
+ *   selectedId — the stored theme id (any number; legacy ids are resolved)
  *   onSelect   — called with the tapped theme id
- *
- * TODO(Stage 1): persist profile_theme_id to users table via Supabase.
- *
- * Design rules:
- *   - Colors come exclusively from ProfileTheme objects — no hardcoded hex
- *     outside this file's layout constants (padding/radius/size numbers only).
- *   - No network calls, no Supabase client.
- *   - Uses only react-native core primitives (no third-party deps).
  */
 
 import React from 'react';
-import {
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { IconCheck } from '@tabler/icons-react-native';
 import { useTranslation } from 'react-i18next';
-import { PROFILE_THEMES, ProfileTheme } from '../../theme/profileThemes';
-import { palette } from '../../theme/tokens';
 
-// ─── Layout constants (numbers only — no colors here) ────────────────────────
-const COLUMNS = 3;
-const CARD_BORDER_RADIUS = 10;
-const CARD_COVER_HEIGHT = 44;
-const AVATAR_SIZE = 20;
-const SELECTED_RING_WIDTH = 2.5;
-const CELL_SIZE = 10;
-const CELL_GAP = 3;
+import { PROFILE_THEMES, readableOn, resolveProfileThemeId, type ProfileTheme } from '../../theme/profileThemes';
+import { useThemeColors } from '../../theme/colors';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+const SWATCH_SIZE = 56;
+const SELECTED_RING_WIDTH = 3;
+
 interface ProfileThemeSelectorProps {
   selectedId: number;
   onSelect: (id: number) => void;
 }
 
-// ─── Sub-components ──────────────────────────────────────────────────────────
-
-interface ThemeCardProps {
-  theme: ProfileTheme;
-  isSelected: boolean;
-  onPress: () => void;
-}
-
-function ThemeCard({ theme, isSelected, onPress }: ThemeCardProps): React.JSX.Element {
+function ThemeOption({ theme, selected, onPress }: { theme: ProfileTheme; selected: boolean; onPress: () => void }): React.JSX.Element {
   const { t } = useTranslation('profile');
-  const ringColor = isSelected ? theme.avatarBorder : 'transparent';
-
+  const c = useThemeColors();
   return (
     <Pressable
-      onPress={onPress}
-      style={[
-        styles.card,
-        {
-          borderColor: ringColor,
-          borderWidth: SELECTED_RING_WIDTH,
-        },
-      ]}
       accessibilityRole="radio"
-      accessibilityState={{ checked: isSelected }}
-      aria-checked={isSelected}
-      accessibilityLabel={
-        isSelected
-          ? t('themeSelector.themeOptionSelectedA11y', { name: theme.name })
-          : t('themeSelector.themeOptionA11y', { name: theme.name })
-      }
+      accessibilityState={{ checked: selected }}
+      accessibilityLabel={selected ? t('themeSelector.themeOptionSelectedA11y', { name: theme.name }) : t('themeSelector.themeOptionA11y', { name: theme.name })}
+      onPress={onPress}
+      style={styles.option}
+      testID={`profile-theme-${theme.id}`}
     >
-      {/* Cover */}
-      <View
-        style={[
-          styles.cover,
-          { backgroundColor: theme.coverBg },
-        ]}
-      >
-        {/* Avatar circle */}
-        <View
-          style={[
-            styles.avatar,
-            {
-              borderColor: theme.avatarBorder,
-              backgroundColor: theme.statsBg,
-            },
-          ]}
-        />
-      </View>
-
-      {/* Stats strip */}
-      <View style={[styles.statsStrip, { backgroundColor: theme.statsBg, borderTopColor: theme.statsBorder }]}>
-        {/* Name line */}
-        <Text
-          style={[styles.nameText, { color: theme.nameColor.toLowerCase() === palette.onBrand.toLowerCase() ? theme.statsValColor : theme.nameColor }]}
-          numberOfLines={1}
-        >
-          {theme.name}
-        </Text>
-
-        {/* Post grid placeholder cells */}
-        <View style={styles.cellRow}>
-          {theme.cellColors.slice(0, 3).map((color, idx) => (
-            <View
-              key={idx}
-              style={[styles.cell, { backgroundColor: color }]}
-            />
-          ))}
+      <View style={[styles.ring, { borderColor: selected ? c.textPrimary : 'transparent' }]}>
+        <View style={[styles.swatch, { backgroundColor: theme.accent }]}>
+          {selected ? <IconCheck size={26} color={readableOn(theme.accent)} strokeWidth={3} /> : null}
         </View>
       </View>
+      <Text style={[styles.name, { color: selected ? c.textPrimary : c.textSecondary, fontWeight: selected ? '800' : '600' }]} numberOfLines={1}>
+        {theme.name}
+      </Text>
     </Pressable>
   );
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
-
-export default function ProfileThemeSelector({
-  selectedId,
-  onSelect,
-}: ProfileThemeSelectorProps): React.JSX.Element {
-  const renderItem = ({ item }: { item: ProfileTheme }) => (
-    <ThemeCard
-      theme={item}
-      isSelected={item.id === selectedId}
-      onPress={() => onSelect(item.id)}
-    />
-  );
-
+export default function ProfileThemeSelector({ selectedId, onSelect }: ProfileThemeSelectorProps): React.JSX.Element {
+  const shownId = resolveProfileThemeId(selectedId);
   return (
-    <FlatList<ProfileTheme>
-      data={PROFILE_THEMES}
-      renderItem={renderItem}
-      keyExtractor={(item) => String(item.id)}
-      numColumns={COLUMNS}
-      columnWrapperStyle={styles.row}
-      contentContainerStyle={styles.container}
-      scrollEnabled={false}
-      showsVerticalScrollIndicator={false}
-    />
+    <View accessibilityRole="radiogroup" style={styles.grid}>
+      {PROFILE_THEMES.map((theme) => (
+        <ThemeOption key={theme.id} theme={theme} selected={theme.id === shownId} onPress={() => onSelect(theme.id)} />
+      ))}
+    </View>
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
-  container: {
-    paddingVertical: 8,
-  },
-  row: {
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  card: {
-    flex: 1,
-    marginHorizontal: 4,
-    borderRadius: CARD_BORDER_RADIUS,
-    overflow: 'hidden',
-  },
-  cover: {
-    height: CARD_COVER_HEIGHT,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    paddingBottom: 4,
-  },
-  avatar: {
-    width: AVATAR_SIZE,
-    height: AVATAR_SIZE,
-    borderRadius: AVATAR_SIZE / 2,
-    borderWidth: 2,
-  },
-  statsStrip: {
-    paddingHorizontal: 6,
-    paddingTop: 5,
-    paddingBottom: 6,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  nameText: {
-    fontSize: 8,
-    fontWeight: '600',
-    marginBottom: 5,
-  },
-  cellRow: {
-    flexDirection: 'row',
-    gap: CELL_GAP,
-  },
-  cell: {
-    width: CELL_SIZE,
-    height: CELL_SIZE,
-    borderRadius: 2,
-  },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingVertical: 12 },
+  option: { alignItems: 'center', gap: 8, paddingVertical: 10, width: '33.333%' },
+  ring: { alignItems: 'center', borderRadius: (SWATCH_SIZE + SELECTED_RING_WIDTH * 4) / 2, borderWidth: SELECTED_RING_WIDTH, justifyContent: 'center', padding: SELECTED_RING_WIDTH },
+  swatch: { alignItems: 'center', borderRadius: SWATCH_SIZE / 2, height: SWATCH_SIZE, justifyContent: 'center', width: SWATCH_SIZE },
+  name: { fontSize: 13, textAlign: 'center' },
 });

@@ -655,7 +655,7 @@ export default function EditProfileScreen(): React.JSX.Element {
                 <View
                   style={[
                     styles.themeSwatch,
-                    { backgroundColor: selectedTheme.coverBg },
+                    { backgroundColor: selectedTheme.accent },
                   ]}
                 />
                 <Text style={[styles.themeLabel, { color: c.textPrimary }]}>

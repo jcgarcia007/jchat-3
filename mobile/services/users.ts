@@ -14,6 +14,7 @@
 import { supabase } from './supabase';
 import { reportContent } from './reports';
 import type { ReportReason } from '../utils/reportReasons';
+import { parseProfilePrivacy, type ProfilePrivacyView } from '../utils/profilePlaces';
 
 // ── Co-located types ────────────────────────────────────────────────────────
 
@@ -121,6 +122,21 @@ export async function getPublicProfile(
     throw error;
   }
   return data as PublicProfileRow;
+}
+
+/**
+ * The signed-in user's OWN privacy choices that shape their profile (places visibility, places section, city).
+ * Reads users.privacy_settings through the own-row policy. When the column is missing or the read fails the safe
+ * defaults apply (places visible to nobody, section on, city on): a failed read never exposes more.
+ */
+export async function getOwnProfilePrivacy(userId: string): Promise<ProfilePrivacyView> {
+  const { data, error } = await supabase
+    .from('users')
+    .select('privacy_settings')
+    .eq('id', userId)
+    .maybeSingle();
+  if (error) return parseProfilePrivacy(null);
+  return parseProfilePrivacy((data as { privacy_settings?: unknown } | null)?.privacy_settings);
 }
 
 // ── Follow / Unfollow ───────────────────────────────────────────────────────

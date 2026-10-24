@@ -139,4 +139,5 @@ export { default as IconUserPlus } from '@tabler/icons-react-native/IconUserPlus
 export { default as IconUsers } from '@tabler/icons-react-native/IconUsers';
 export { default as IconWifi } from '@tabler/icons-react-native/IconWifi';
 export { default as IconWifiOff } from '@tabler/icons-react-native/IconWifiOff';
+export { default as IconWorld } from '@tabler/icons-react-native/IconWorld';
 export { default as IconX } from '@tabler/icons-react-native/IconX';

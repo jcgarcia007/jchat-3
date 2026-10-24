@@ -89,7 +89,11 @@
     "shareProfile": "Compartir perfil",
     "unblock": "Desbloquear",
     "blockedMe": "No puedes interactuar con esta cuenta.",
-    "publish": "Publicar"
+    "publish": "Publicar",
+    "places": "Lugares",
+    "bioMore": "más",
+    "bioLess": "menos",
+    "statsA11y": "{{label}}: {{value}}"
   },
   "empty": {
     "ownPostsTitle": "Comparte tu primera foto",
@@ -160,5 +164,22 @@
     "newMessages_one": "💬 {{count}} mensaje nuevo en {{business}} ↓",
     "newMessages_other": "💬 {{count}} mensajes nuevos en {{business}} ↓",
     "dmNoticeA11y": "Mensaje nuevo de {{name}}: {{text}}"
+  },
+  "places": {
+    "title": "Mis lugares",
+    "visEveryone": "Todos",
+    "visFollowers": "Seguidores",
+    "visOnlyMe": "Solo yo",
+    "visibilityA11y": "Quién ve tus lugares: {{who}}. Cámbialo en Privacidad.",
+    "visits_one": "{{count}} visita",
+    "visits_other": "{{count}} visitas",
+    "empty": "Haz check-in en un local para verlo aquí",
+    "placeA11y": "{{name}}, {{visits}}"
+  },
+  "tabs": {
+    "posts": "Publicaciones",
+    "tagged": "Etiquetado",
+    "taggedEmptyTitle": "Nada etiquetado todavía",
+    "taggedEmptySubtitle": "Las publicaciones donde te etiqueten aparecerán aquí."
   }
 }

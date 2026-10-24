@@ -89,7 +89,11 @@
     "shareProfile": "Share Profile",
     "unblock": "Unblock",
     "blockedMe": "You can't interact with this account.",
-    "publish": "Post"
+    "publish": "Post",
+    "places": "Places",
+    "bioMore": "more",
+    "bioLess": "less",
+    "statsA11y": "{{label}}: {{value}}"
   },
   "empty": {
     "ownPostsTitle": "Share your first photo",
@@ -160,5 +164,22 @@
     "newMessages_one": "💬 {{count}} new message in {{business}} ↓",
     "newMessages_other": "💬 {{count}} new messages in {{business}} ↓",
     "dmNoticeA11y": "New message from {{name}}: {{text}}"
+  },
+  "places": {
+    "title": "My places",
+    "visEveryone": "Everyone",
+    "visFollowers": "Followers",
+    "visOnlyMe": "Only me",
+    "visibilityA11y": "Who sees your places: {{who}}. Change it in Privacy.",
+    "visits_one": "{{count}} visit",
+    "visits_other": "{{count}} visits",
+    "empty": "Check in at a venue to see it here",
+    "placeA11y": "{{name}}, {{visits}}"
+  },
+  "tabs": {
+    "posts": "Posts",
+    "tagged": "Tagged",
+    "taggedEmptyTitle": "Nothing tagged yet",
+    "taggedEmptySubtitle": "Posts where you are tagged will show up here."
   }
 }

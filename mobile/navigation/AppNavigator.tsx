@@ -50,6 +50,7 @@ import { confirm, showAlert } from '../utils/dialog';
 import { planVenueChatNavigation } from '../utils/venueChatNav';
 import { shouldLinkingHandle } from '../utils/entryUrl';
 import type { BottomTabParamList } from './tabs/BottomTabs';
+import type { SettingsStackParamList } from './SettingsStack';
 
 // Auth screens
 import SplashScreen from '../screens/auth/SplashScreen';
@@ -127,7 +128,7 @@ export type MainStackParamList = {
   ProfileSheet: { userId?: string } | undefined;
   CreatePost: undefined;
   PostDetail: { postId: string };
-  Settings: undefined;
+  Settings: NavigatorScreenParams<SettingsStackParamList> | undefined;
   /**
    * Task 3.2 — Full-screen menu for a business.
    * Navigated to from ChatRoomScreen (menu button in header).

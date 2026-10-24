@@ -1,16 +1,38 @@
+/**
+ * JChat 3.0 — ProfileHeader (design "B": clean, centred avatar)
+ *
+ * A 190 px gradient at the top (the profile theme's headerGradient) that fades into the page background, the avatar
+ * (112 px, a 3 px ring in the theme's accent and a 4 px page-coloured border) centred over it, the name, the bio
+ * (centred, 3 lines and "more"), the city (only when the owner shows it), three statistic cards (Posts · Followers ·
+ * Places) and the action buttons.
+ *
+ * The profile theme only gives the accent (ring, primary button) and the gradient. Page, cards, texts and borders come
+ * from useThemeColors(), so a profile follows the system light / dark.
+ *
+ * PRIVACY (decision A.1): nothing here shows where a person is right now.
+ */
+
 import React, { useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Spinner } from '../common/Spinner';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import {
   IconArrowLeft, IconCircleCheckFilled, IconDots, IconX,
-  IconCamera, IconMapPin, IconMessage, IconPencil, IconPlus, IconSettings, IconShare3,
+  IconMapPin, IconMessage, IconPencil, IconPlus, IconSettings, IconShare3,
 } from '@tabler/icons-react-native';
 
-import type { ProfileTheme } from '../../theme/profileThemes';
+import { Spinner } from '../common/Spinner';
+import { useThemeColors } from '../../theme/colors';
+import { readableOn, type ProfileTheme } from '../../theme/profileThemes';
 import type { FollowRelation } from '../../hooks/useFollowSystem';
 import { getInitials } from '../../utils/initials';
+
+/** Height of the gradient behind the avatar. */
+export const HEADER_GRADIENT_HEIGHT = 190;
+const AVATAR_SIZE = 112;
+const AVATAR_RING = 3;
+const AVATAR_BORDER = 4;
+const BIO_MAX_LINES = 3;
 
 export interface ProfileTopBarProps {
   isOwnProfile: boolean;
@@ -24,8 +46,6 @@ export interface ProfileTopBarProps {
   onOpenMenu: () => void;
   onShare: () => void;
   onSettings: () => void;
-  onCreatePost: () => void;
-  theme: ProfileTheme;
 }
 
 export interface ProfileHeaderProps {
@@ -33,13 +53,15 @@ export interface ProfileHeaderProps {
   displayName: string | null;
   username: string;
   avatarUrl: string | null;
-  coverUrl: string | null;
   bio: string | null;
+  /** Already filtered by the owner's "show city" choice: null / empty hides the line. */
   city: string | null;
   isVerified: boolean;
   postCount: number;
   followerCount: number;
   followingCount: number;
+  /** Number of own check-ins ("Places"); null hides the card (another person's profile). */
+  placesCount: number | null;
   /** Relationship with the viewed user (ignored on the own profile). */
   relation: FollowRelation;
   /** A relationship action is in flight (or the relationship is still loading). */
@@ -47,8 +69,7 @@ export interface ProfileHeaderProps {
   completion: { hasPhoto: boolean; hasBio: boolean; hasPost: boolean };
   completionVisible: boolean;
   onEditProfile: () => void;
-  onShare: () => void;
-  /** Own profile: the primary "+ Post" button of the action row. */
+  /** Own profile: the primary "+ Post" button. */
   onCreatePost?: () => void;
   onDismissCompletion: () => void;
   onOpenFollowers: () => void;
@@ -73,60 +94,49 @@ function IconButton({ label, onPress, children, testID }: { label: string; onPre
   );
 }
 
-function StatItem({ label, value, theme, onPress }: { label: string; value: number; theme: ProfileTheme; onPress?: () => void }) {
+function StatCard({ label, value, onPress }: { label: string; value: number; onPress?: () => void }) {
+  const c = useThemeColors();
   const content = (
     <>
-      <Text style={[styles.statValue, { color: theme.bodyText }]}>{formatCount(value)}</Text>
-      <Text
-        style={[styles.statLabel, { color: theme.bodyTextSecondary }]}
-        // One line, never a broken word: native shrinks the text (down to 80 %) instead of wrapping it.
-        numberOfLines={1}
-        adjustsFontSizeToFit
-        minimumFontScale={0.8}
-      >
+      <Text style={[styles.statValue, { color: c.textPrimary }]}>{formatCount(value)}</Text>
+      <Text style={[styles.statLabel, { color: c.textSecondary }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
         {label}
       </Text>
     </>
   );
+  const cardStyle = [styles.statCard, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }];
   return onPress ? (
-    <Pressable style={styles.statItem} onPress={onPress} accessibilityRole="button">{content}</Pressable>
-  ) : <View style={styles.statItem}>{content}</View>;
+    <Pressable style={cardStyle} onPress={onPress} accessibilityRole="button" accessibilityLabel={`${label}: ${formatCount(value)}`}>{content}</Pressable>
+  ) : (
+    <View style={cardStyle} accessible accessibilityLabel={`${label}: ${formatCount(value)}`}>{content}</View>
+  );
 }
 
 /**
- * Fixed profile top bar (username / +/share/settings or back/more), rendered as
- * a sibling ABOVE the screen's ScrollView so it never scrolls — it respects
- * `topInset` itself, and everything else (cover, avatar, stats...) scrolls
- * underneath it. Previously this row lived inside the scrolling ProfileHeader,
- * so scrolling could pass the avatar/cover behind the status bar clock/battery.
+ * Fixed top bar (username on the left; share + settings on the own profile, the ⋯ menu on someone else's), rendered
+ * as a sibling ABOVE the screen's ScrollView so it never scrolls. It respects `topInset` itself.
  */
 export function ProfileTopBar({
-  isOwnProfile, showBack = false, hideBack = false, username, topInset, onBack, onOpenMenu, onShare, onSettings, onCreatePost, theme,
+  isOwnProfile, showBack = false, hideBack = false, username, topInset, onBack, onOpenMenu, onShare, onSettings,
 }: ProfileTopBarProps) {
   const { t } = useTranslation('profile');
+  const c = useThemeColors();
+  const back = (
+    <IconButton label={t('header.backA11y')} onPress={onBack}><IconArrowLeft size={24} color={c.textPrimary} /></IconButton>
+  );
   return (
-    <View style={[styles.topBarRoot, { backgroundColor: theme.statsBg, paddingTop: topInset }]}>
+    <View style={[styles.topBarRoot, { backgroundColor: c.bgBase, paddingTop: topInset }]}>
       <View style={styles.topBar}>
-        {isOwnProfile ? (
-          <>
-            {showBack && !hideBack ? (
-              <IconButton label={t('header.backA11y')} onPress={onBack}><IconArrowLeft size={24} color={theme.bodyText} /></IconButton>
-            ) : null}
-            <Text style={[styles.topUsername, { color: theme.bodyText }]} numberOfLines={1}>@{username}</Text>
-          </>
-        ) : hideBack ? null : (
-          <IconButton label={t('header.backA11y')} onPress={onBack}><IconArrowLeft size={24} color={theme.bodyText} /></IconButton>
-        )}
-        {!isOwnProfile ? <Text style={[styles.otherTopUsername, { color: theme.bodyText }]} numberOfLines={1}>@{username}</Text> : null}
+        {isOwnProfile ? (showBack && !hideBack ? back : null) : hideBack ? null : back}
+        <Text style={[styles.topUsername, { color: c.textPrimary }]} numberOfLines={1}>@{username}</Text>
         <View style={styles.topActions}>
           {isOwnProfile ? (
             <>
-              <IconButton testID="profile-create-post" label={t('header.createPostA11y')} onPress={onCreatePost}><IconPlus size={24} color={theme.bodyText} /></IconButton>
-              <IconButton label={t('header.shareA11y')} onPress={onShare}><IconShare3 size={22} color={theme.bodyText} /></IconButton>
-              <IconButton testID="profile-open-settings" label={t('header.settingsA11y')} onPress={onSettings}><IconSettings size={22} color={theme.bodyText} /></IconButton>
+              <IconButton label={t('header.shareA11y')} onPress={onShare}><IconShare3 size={22} color={c.textPrimary} /></IconButton>
+              <IconButton testID="profile-open-settings" label={t('header.settingsA11y')} onPress={onSettings}><IconSettings size={22} color={c.textPrimary} /></IconButton>
             </>
           ) : (
-            <IconButton label={t('header.moreA11y')} onPress={onOpenMenu}><IconDots size={25} color={theme.bodyText} /></IconButton>
+            <IconButton label={t('header.moreA11y')} onPress={onOpenMenu}><IconDots size={25} color={c.textPrimary} /></IconButton>
           )}
         </View>
       </View>
@@ -135,170 +145,194 @@ export function ProfileTopBar({
 }
 
 export default function ProfileHeader({
-  isOwnProfile, displayName, username, avatarUrl, coverUrl, bio, city, isVerified, postCount,
-  followerCount, followingCount, relation, followBusy, completion,
-  completionVisible, onEditProfile, onShare, onCreatePost, onDismissCompletion, onOpenFollowers, onOpenFollowing,
+  isOwnProfile, displayName, username, avatarUrl, bio, city, isVerified, postCount,
+  followerCount, followingCount, placesCount, relation, followBusy, completion,
+  completionVisible, onEditProfile, onCreatePost, onDismissCompletion, onOpenFollowers, onOpenFollowing,
   onFollow, onUnfollow, onCancelRequest, onUnblock, onMessage, theme,
 }: ProfileHeaderProps) {
   const { t } = useTranslation('profile');
-  // Own action row [Edit] [+ Post] [Share]: when the three labels do not fit the measured width, Share
-  // becomes an icon-only button (its label stays as the accessibility label).
-  const [actionRowWidth, setActionRowWidth] = useState(0);
-  const labelChars = t('header.editProfile').length + t('header.publish').length + t('header.shareProfile').length;
-  const fullRowNeeded = labelChars * 8 + 3 * (17 + 7) + 2 * 9 + 3 * 12;
-  const compactShare = actionRowWidth > 0 && actionRowWidth < fullRowNeeded;
+  const c = useThemeColors();
+  const [bioExpanded, setBioExpanded] = useState(false);
+  const [bioOverflows, setBioOverflows] = useState(false);
   const name = displayName?.trim() || username;
   const initials = getInitials(name, 2);
   const completedCount = Object.values(completion).filter(Boolean).length;
   const followLabel = relation === 'requested' ? t('header.requested') : relation === 'following' ? t('header.following') : t('header.follow');
   const followOutlined = relation === 'requested' || relation === 'following';
   const followAction = relation === 'requested' ? onCancelRequest : relation === 'following' ? onUnfollow : onFollow;
+  const onAccent = readableOn(theme.accent);
+  const bioText = bio?.trim() ?? '';
+  const outlined = [styles.button, styles.outlinedButton, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }];
+  const primary = [styles.button, { backgroundColor: theme.accent }];
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.statsBg }]}>
-      <View style={styles.coverFrame}>
-        {coverUrl ? (
-          <Image source={{ uri: coverUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" accessibilityLabel={t('header.coverPhotoA11y', { name })} />
-        ) : theme.coverGradient.length >= 2 ? (
-          <LinearGradient colors={theme.coverGradient as [string, string, ...string[]]} style={StyleSheet.absoluteFill} />
-        ) : <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.coverBg }]} />}
-        {isOwnProfile ? (
-          <TouchableOpacity style={[styles.coverCamera, { backgroundColor: theme.btn1Bg, borderColor: theme.statsBg }]} onPress={onEditProfile} accessibilityRole="button" accessibilityLabel={t('header.changeCoverA11y')}>
-            <IconCamera size={20} color={theme.btn1Color} />
-          </TouchableOpacity>
-        ) : null}
-      </View>
+    <View style={[styles.container, { backgroundColor: c.bgBase }]}>
+      {/* Gradient: the theme's two colours, fading into the page at the bottom */}
+      <LinearGradient
+        pointerEvents="none"
+        colors={[theme.headerGradient[0], theme.headerGradient[1], c.bgBase]}
+        locations={[0, 0.55, 1]}
+        style={styles.gradient}
+      />
 
-      <View style={styles.avatarStatsRow}>
-        <View style={[styles.avatarRing, { backgroundColor: theme.statsBg }]}>
-          {avatarUrl ? (
-            <Image source={{ uri: avatarUrl }} style={[styles.avatar, { backgroundColor: theme.coverBg }]} resizeMode="cover" accessibilityLabel={t('header.avatarA11y', { name })} />
-          ) : (
-            <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: theme.coverBg }]}><Text style={[styles.avatarInitials, { color: theme.nameColor }]}>{initials}</Text></View>
-          )}
-        </View>
-        <View style={styles.inlineStats}>
-          <StatItem label={t('header.posts')} value={postCount} theme={theme} />
-          <StatItem label={t('header.followers')} value={followerCount} theme={theme} onPress={onOpenFollowers} />
-          <StatItem label={t('header.following')} value={followingCount} theme={theme} onPress={onOpenFollowing} />
+      <View style={styles.avatarWrap}>
+        <View style={[styles.avatarBorder, { backgroundColor: c.bgBase }]}>
+          <View style={[styles.avatarRing, { borderColor: theme.accent }]}>
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={styles.avatar} resizeMode="cover" accessibilityLabel={t('header.avatarA11y', { name })} />
+            ) : (
+              <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: c.bgSurface }]}>
+                <Text style={[styles.avatarInitials, { color: c.textPrimary }]}>{initials}</Text>
+              </View>
+            )}
+          </View>
         </View>
       </View>
 
       <View style={styles.identity}>
         <View style={styles.nameRow}>
-          <Text style={[styles.displayName, { color: theme.bodyText }]} numberOfLines={1}>{name}</Text>
-          {isVerified ? <IconCircleCheckFilled size={19} color={theme.tabActive} /> : null}
+          <Text style={[styles.displayName, { color: c.textPrimary }]} numberOfLines={1}>{name}</Text>
+          {isVerified ? <IconCircleCheckFilled size={20} color={theme.accent} /> : null}
         </View>
-        <Text style={[styles.username, { color: theme.bodyTextSecondary }]}>@{username}</Text>
-        {bio?.trim() ? (
-          <Text style={[styles.bio, { color: theme.bodyText }]} numberOfLines={3}>{bio.trim()}</Text>
+        {bioText ? (
+          <>
+            <Text
+              style={[styles.bio, { color: c.textPrimary }]}
+              numberOfLines={bioExpanded ? undefined : BIO_MAX_LINES}
+              onTextLayout={(event) => { if (!bioExpanded) setBioOverflows(event.nativeEvent.lines.length > BIO_MAX_LINES); }}
+            >
+              {bioText}
+            </Text>
+            {bioOverflows || bioExpanded ? (
+              <TouchableOpacity onPress={() => setBioExpanded((value) => !value)} accessibilityRole="button" hitSlop={8}>
+                <Text style={[styles.bioMore, { color: c.brandText }]}>{bioExpanded ? t('header.bioLess') : t('header.bioMore')}</Text>
+              </TouchableOpacity>
+            ) : null}
+          </>
         ) : isOwnProfile ? (
-          <TouchableOpacity onPress={onEditProfile} accessibilityRole="button"><Text style={[styles.addBio, { color: theme.tabActive }]}>{t('header.addBio')}</Text></TouchableOpacity>
+          <TouchableOpacity onPress={onEditProfile} accessibilityRole="button" hitSlop={8}>
+            <Text style={[styles.addBio, { color: c.brandText }]}>{t('header.addBio')}</Text>
+          </TouchableOpacity>
         ) : null}
         {city?.trim() ? (
-          <View style={styles.cityRow}><IconMapPin size={16} color={theme.bodyTextSecondary} /><Text style={[styles.city, { color: theme.bodyTextSecondary }]}>{city.trim()}</Text></View>
+          <View style={styles.cityRow}><IconMapPin size={16} color={c.textSecondary} /><Text style={[styles.city, { color: c.textSecondary }]}>{city.trim()}</Text></View>
         ) : null}
       </View>
 
+      <View style={styles.statsRow}>
+        <StatCard label={t('header.posts')} value={postCount} />
+        <StatCard label={t('header.followers')} value={followerCount} onPress={onOpenFollowers} />
+        {placesCount !== null ? <StatCard label={t('header.places')} value={placesCount} /> : null}
+      </View>
+      <Pressable style={styles.followingLink} onPress={onOpenFollowing} accessibilityRole="button" hitSlop={8}>
+        <Text style={[styles.followingText, { color: c.textSecondary }]}>
+          <Text style={[styles.followingCount, { color: c.textPrimary }]}>{formatCount(followingCount)}</Text> {t('header.following')}
+        </Text>
+      </Pressable>
+
       {isOwnProfile && completionVisible && completedCount < 3 ? (
-        <View style={[styles.completionStrip, { borderColor: theme.statsBorder, backgroundColor: theme.btn2Bg }]}>
+        <View style={[styles.completionStrip, { borderColor: c.borderSubtle, backgroundColor: c.bgSurface }]}>
           <View style={styles.completionCopy}>
-            <Text style={[styles.completionSummary, { color: theme.bodyText }]} numberOfLines={1}>
+            <Text style={[styles.completionSummary, { color: c.textPrimary }]} numberOfLines={1}>
               {t('completion.summary', { count: completedCount })}
             </Text>
-            <View style={[styles.progressTrack, { backgroundColor: theme.statsBorder }]}>
-              <View style={[styles.progressFill, { backgroundColor: theme.tabActive, width: `${(completedCount / 3) * 100}%` }]} />
+            <View style={[styles.progressTrack, { backgroundColor: c.borderSubtle }]}>
+              <View style={[styles.progressFill, { backgroundColor: theme.accent, width: `${(completedCount / 3) * 100}%` }]} />
             </View>
           </View>
-          <Pressable
-            style={styles.completionDismiss}
-            onPress={onDismissCompletion}
-            accessibilityRole="button"
-            accessibilityLabel={t('completion.dismissA11y')}
-          >
-            <IconX size={18} color={theme.bodyTextSecondary} />
+          <Pressable style={styles.completionDismiss} onPress={onDismissCompletion} accessibilityRole="button" accessibilityLabel={t('completion.dismissA11y')}>
+            <IconX size={18} color={c.textSecondary} />
           </Pressable>
         </View>
       ) : null}
 
-      <View style={styles.actionRow} onLayout={(event) => setActionRowWidth(event.nativeEvent.layout.width)}>
+      <View style={styles.actionRow}>
         {isOwnProfile ? (
           <>
-            <TouchableOpacity style={[styles.ownActionButton, { backgroundColor: theme.btn2Bg, borderColor: theme.statsBorder }]} onPress={onEditProfile} accessibilityRole="button" testID="profile-edit"><IconPencil size={17} color={theme.btn2Color} /><Text style={[styles.buttonLabel, { color: theme.btn2Color }]} numberOfLines={1}>{t('header.editProfile')}</Text></TouchableOpacity>
             <TouchableOpacity
               testID="profile-create-post-button"
-              style={[styles.ownActionButton, { backgroundColor: theme.btn1Bg, borderColor: theme.btn1Bg }]}
+              style={primary}
               onPress={onCreatePost}
               accessibilityRole="button"
               accessibilityLabel={t('header.createPostA11y')}
             >
-              <IconPlus size={17} color={theme.btn1Color} strokeWidth={2.4} />
-              <Text style={[styles.buttonLabel, { color: theme.btn1Color }]} numberOfLines={1}>{t('header.publish')}</Text>
+              <IconPlus size={18} color={onAccent} strokeWidth={2.4} />
+              <Text style={[styles.buttonLabel, { color: onAccent }]} numberOfLines={1}>{t('header.publish')}</Text>
             </TouchableOpacity>
-            {compactShare ? (
-              <TouchableOpacity style={[styles.ownIconButton, { backgroundColor: theme.btn2Bg, borderColor: theme.statsBorder }]} onPress={onShare} accessibilityRole="button" accessibilityLabel={t('header.shareProfile')}><IconShare3 size={18} color={theme.btn2Color} /></TouchableOpacity>
-            ) : (
-              <TouchableOpacity style={[styles.ownActionButton, { backgroundColor: theme.btn2Bg, borderColor: theme.statsBorder }]} onPress={onShare} accessibilityRole="button"><IconShare3 size={17} color={theme.btn2Color} /><Text style={[styles.buttonLabel, { color: theme.btn2Color }]} numberOfLines={1}>{t('header.shareProfile')}</Text></TouchableOpacity>
-            )}
+            <TouchableOpacity style={outlined} onPress={onEditProfile} accessibilityRole="button" testID="profile-edit">
+              <IconPencil size={18} color={c.textPrimary} />
+              <Text style={[styles.buttonLabel, { color: c.textPrimary }]} numberOfLines={1}>{t('header.editProfile')}</Text>
+            </TouchableOpacity>
           </>
+        ) : relation === 'blockedMe' ? (
+          <Text style={[styles.blockedNotice, { color: c.textSecondary }]}>{t('header.blockedMe')}</Text>
+        ) : relation === 'blockedByMe' ? (
+          <TouchableOpacity style={outlined} onPress={onUnblock} disabled={followBusy} accessibilityRole="button">
+            {followBusy ? <Spinner color={c.textPrimary} /> : <Text style={[styles.buttonLabel, { color: c.textPrimary }]}>{t('header.unblock')}</Text>}
+          </TouchableOpacity>
         ) : (
-          relation === 'blockedMe' ? (
-            <Text style={[styles.blockedNotice, { color: theme.bodyTextSecondary }]}>{t('header.blockedMe')}</Text>
-          ) : relation === 'blockedByMe' ? (
-            <TouchableOpacity style={[styles.primaryButton, { backgroundColor: theme.btn2Bg, borderColor: theme.statsBorder, borderWidth: 1 }]} onPress={onUnblock} disabled={followBusy} accessibilityRole="button">
-              {followBusy ? <Spinner color={theme.btn2Color} /> : <Text style={[styles.buttonLabel, { color: theme.btn2Color }]}>{t('header.unblock')}</Text>}
+          <>
+            <TouchableOpacity testID="profile-follow" style={followOutlined ? outlined : primary} onPress={followAction} disabled={followBusy} accessibilityRole="button">
+              {followBusy ? <Spinner color={followOutlined ? c.textPrimary : onAccent} /> : <Text style={[styles.buttonLabel, { color: followOutlined ? c.textPrimary : onAccent }]}>{followLabel}</Text>}
             </TouchableOpacity>
-          ) : (
-            <>
-              <TouchableOpacity testID="profile-follow" style={[styles.primaryButton, { backgroundColor: followOutlined ? theme.btn2Bg : theme.btn1Bg }, followOutlined && { borderColor: theme.statsBorder, borderWidth: 1 }]} onPress={followAction} disabled={followBusy} accessibilityRole="button">
-                {followBusy ? <Spinner color={followOutlined ? theme.btn2Color : theme.btn1Color} /> : <Text style={[styles.buttonLabel, { color: followOutlined ? theme.btn2Color : theme.btn1Color }]}>{followLabel}</Text>}
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.secondaryButton, { backgroundColor: theme.btn2Bg, borderColor: theme.statsBorder }]} onPress={onMessage} accessibilityRole="button"><IconMessage size={18} color={theme.btn2Color} /><Text style={[styles.buttonLabel, { color: theme.btn2Color }]}>{t('header.message')}</Text></TouchableOpacity>
-            </>
-          )
+            <TouchableOpacity style={outlined} onPress={onMessage} accessibilityRole="button">
+              <IconMessage size={18} color={c.textPrimary} />
+              <Text style={[styles.buttonLabel, { color: c.textPrimary }]}>{t('header.message')}</Text>
+            </TouchableOpacity>
+          </>
         )}
       </View>
-
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { width: '100%' },
-  blockedNotice: { flex: 1, fontSize: 14, lineHeight: 20, paddingVertical: 12, textAlign: 'center' },
+  gradient: { position: 'absolute', top: 0, left: 0, right: 0, height: HEADER_GRADIENT_HEIGHT },
   topBarRoot: { width: '100%' },
   topBar: { height: 52, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10 },
   topUsername: { flex: 1, paddingLeft: 6, fontSize: 17, fontWeight: '800' },
-  otherTopUsername: { position: 'absolute', left: 64, right: 64, bottom: 16, textAlign: 'center', fontSize: 16, fontWeight: '800' },
   topActions: { marginLeft: 'auto', flexDirection: 'row' },
   iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  coverFrame: { height: 120, marginHorizontal: 16, borderRadius: 20, overflow: 'hidden' },
-  coverCamera: { position: 'absolute', right: 10, bottom: 10, width: 44, height: 44, borderRadius: 22, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  avatarStatsRow: { minHeight: 104, marginTop: -48, paddingLeft: 28, paddingRight: 8, flexDirection: 'row', alignItems: 'flex-end' },
-  avatarRing: { width: 104, height: 104, borderRadius: 52, padding: 4 },
-  avatar: { width: 96, height: 96, borderRadius: 48 },
+  // The avatar sits over the lower half of the gradient: 62 px of gradient above it.
+  avatarWrap: { alignItems: 'center', marginTop: 62 },
+  avatarBorder: {
+    width: AVATAR_SIZE + (AVATAR_RING + AVATAR_BORDER) * 2,
+    height: AVATAR_SIZE + (AVATAR_RING + AVATAR_BORDER) * 2,
+    borderRadius: (AVATAR_SIZE + (AVATAR_RING + AVATAR_BORDER) * 2) / 2,
+    padding: AVATAR_BORDER,
+  },
+  avatarRing: {
+    width: AVATAR_SIZE + AVATAR_RING * 2,
+    height: AVATAR_SIZE + AVATAR_RING * 2,
+    borderRadius: (AVATAR_SIZE + AVATAR_RING * 2) / 2,
+    borderWidth: AVATAR_RING,
+    overflow: 'hidden',
+  },
+  avatar: { width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2 },
   avatarFallback: { alignItems: 'center', justifyContent: 'center' },
-  avatarInitials: { fontSize: 30, fontWeight: '800' },
-  inlineStats: { flex: 1, height: 56, marginLeft: 4, flexDirection: 'row', alignItems: 'stretch' },
-  identity: { paddingHorizontal: 20, paddingTop: 8 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  displayName: { maxWidth: '90%', fontSize: 22, lineHeight: 28, fontWeight: '800' },
-  username: { marginTop: 1, fontSize: 15, lineHeight: 20 },
-  bio: { marginTop: 10, fontSize: 15, lineHeight: 21 },
-  addBio: { marginTop: 9, fontSize: 15, lineHeight: 21, fontWeight: '700' },
+  avatarInitials: { fontSize: 34, fontWeight: '800' },
+  identity: { alignItems: 'center', paddingHorizontal: 28, paddingTop: 12 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, maxWidth: '100%' },
+  displayName: { flexShrink: 1, fontSize: 24, lineHeight: 30, fontWeight: '800', textAlign: 'center' },
+  bio: { marginTop: 8, fontSize: 15, lineHeight: 21, textAlign: 'center' },
+  bioMore: { marginTop: 2, fontSize: 14, fontWeight: '700' },
+  addBio: { marginTop: 8, fontSize: 15, lineHeight: 21, fontWeight: '700' },
   cityRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8 },
   city: { fontSize: 14, lineHeight: 19 },
-  // Width follows the label (flexBasis auto + grow), so the longest one ("Publicaciones") gets what it needs.
-  statItem: { flexGrow: 1, flexShrink: 1, flexBasis: 'auto', minWidth: 0, alignItems: 'center', justifyContent: 'center', gap: 2, paddingHorizontal: 0 },
-  statValue: { fontSize: 18, lineHeight: 22, fontWeight: '700' },
-  statLabel: { fontSize: 11, lineHeight: 16, fontWeight: '600', textAlign: 'center', maxWidth: '100%' },
-  actionRow: { flexDirection: 'row', gap: 9, marginHorizontal: 16, marginTop: 12 },
-  ownIconButton: { width: 44, height: 36, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  ownActionButton: { flex: 1, height: 36, borderRadius: 10, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
-  primaryButton: { flex: 1, height: 44, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
-  secondaryButton: { flex: 1, height: 44, borderRadius: 12, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
-  buttonLabel: { fontSize: 14, fontWeight: '700' },
-  completionStrip: { height: 44, marginHorizontal: 16, marginTop: 12, borderWidth: 1, borderRadius: 12, flexDirection: 'row', alignItems: 'center', paddingLeft: 12 },
+  statsRow: { flexDirection: 'row', gap: 10, marginHorizontal: 16, marginTop: 18 },
+  statCard: { flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center', gap: 2, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, paddingVertical: 12, paddingHorizontal: 6 },
+  statValue: { fontSize: 20, lineHeight: 24, fontWeight: '800' },
+  statLabel: { fontSize: 12, lineHeight: 16, fontWeight: '600', textAlign: 'center', maxWidth: '100%' },
+  followingLink: { alignItems: 'center', justifyContent: 'center', minHeight: 36, marginTop: 4 },
+  followingText: { fontSize: 14 },
+  followingCount: { fontWeight: '800' },
+  actionRow: { flexDirection: 'row', gap: 10, marginHorizontal: 16, marginTop: 8 },
+  button: { flex: 1, height: 46, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
+  outlinedButton: { borderWidth: 1 },
+  buttonLabel: { fontSize: 15, fontWeight: '700' },
+  blockedNotice: { flex: 1, fontSize: 14, lineHeight: 20, paddingVertical: 12, textAlign: 'center' },
+  completionStrip: { height: 44, marginHorizontal: 16, marginTop: 8, borderWidth: 1, borderRadius: 12, flexDirection: 'row', alignItems: 'center', paddingLeft: 12 },
   completionCopy: { flex: 1, gap: 4 },
   completionSummary: { fontSize: 13, lineHeight: 16, fontWeight: '700' },
   completionDismiss: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },

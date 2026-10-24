@@ -19,16 +19,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { ReportReasonSheet } from '../../components/report/ReportReasonSheet';
 import {
-  IconBan, IconFlag, IconLock, IconPhoto, IconShare3, IconStack2, IconX,
+  IconBan, IconFlag, IconLock, IconMapPin, IconPhoto, IconShare3, IconStack2, IconUsers, IconWorld, IconX,
 } from '@tabler/icons-react-native';
 
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { useAuth } from '../../context/AuthContext';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
-import { getProfileTheme } from '../../theme/profileThemes';
-import type { ProfileTheme } from '../../theme/profileThemes';
-import { canViewProfile, getPublicProfile, getProfileCounts, type ProfileCounts } from '../../services/users';
+import { getProfileTheme, readableOn } from '../../theme/profileThemes';
+import { canViewProfile, getOwnProfilePrivacy, getPublicProfile, getProfileCounts, type ProfileCounts } from '../../services/users';
+import { getCheckInHistory, type CheckInPlace } from '../../services/checkIn';
 import type { PublicProfileRow } from '../../services/users';
 import { getUserPosts } from '../../services/posts';
 import type { PostRow } from '../../services/posts';
@@ -41,6 +41,14 @@ import { useHomeBarInset } from '../../components/venue/HomeBarInset';
 import { confirm, showAlert } from '../../utils/dialog';
 import { shareContent } from '../../utils/shareContent';
 import { useAppWindow } from '../../utils/appWindow';
+import { colorIndex, initials } from '../../utils/mapPin';
+import {
+  parseProfilePrivacy,
+  placesVisibilityLabelKey,
+  totalVisits,
+  type PlacesVisibility,
+  type ProfilePrivacyView,
+} from '../../utils/profilePlaces';
 
 // The same screen backs the Profile tab, the stacked UserProfile and the ProfileSheet over the chat.
 type ProfileParams = { userId?: string } | undefined;
@@ -49,8 +57,12 @@ type ProfileRoute = RouteProp<{ UserProfile: ProfileParams; ProfileSheet: Profil
 const GRID_COLUMNS = 3;
 const GRID_GAP = 2;
 const PROFILE_COMPLETION_DISMISSED_KEY = 'profile.completionDismissed';
+/** Theme colours of the initials circle of a place without a logo (a venue always gets the same one). */
+const PLACE_AVATAR_COLORS = [palette.brand, palette.brandPurple, palette.success, palette.gold];
+type ProfileTab = 'posts' | 'tagged';
 
-function ProfileSkeleton({ theme, topInset }: { theme: ProfileTheme; topInset: number }) {
+function ProfileSkeleton({ topInset }: { topInset: number }) {
+  const c = useThemeColors();
   const opacity = useRef(new Animated.Value(0.38)).current;
   useEffect(() => {
     const animation = Animated.loop(
@@ -62,12 +74,11 @@ function ProfileSkeleton({ theme, topInset }: { theme: ProfileTheme; topInset: n
     animation.start();
     return () => animation.stop();
   }, [opacity]);
-  const block = { backgroundColor: theme.statsBorder };
+  const block = { backgroundColor: c.borderSubtle };
   return (
-    <View style={[styles.skeletonRoot, { backgroundColor: theme.statsBg, paddingTop: topInset + 12 }]}>
+    <View style={[styles.skeletonRoot, { backgroundColor: c.bgBase, paddingTop: topInset + 12 }]}>
       <Animated.View style={[styles.skeletonTop, block, { opacity }]} />
-      <Animated.View style={[styles.skeletonCover, block, { opacity }]} />
-      <Animated.View style={[styles.skeletonAvatar, { backgroundColor: theme.coverBg, borderColor: theme.statsBg, opacity }]} />
+      <Animated.View style={[styles.skeletonAvatar, { backgroundColor: c.bgSurface, borderColor: c.bgBase, opacity }]} />
       <Animated.View style={[styles.skeletonName, block, { opacity }]} />
       <Animated.View style={[styles.skeletonHandle, block, { opacity }]} />
       <Animated.View style={[styles.skeletonStats, block, { opacity }]} />
@@ -78,15 +89,16 @@ function ProfileSkeleton({ theme, topInset }: { theme: ProfileTheme; topInset: n
   );
 }
 
-function PostCell({ post, theme, size, onPress }: { post: PostRow; theme: ProfileTheme; size: number; onPress: () => void }) {
+function PostCell({ post, size, onPress }: { post: PostRow; size: number; onPress: () => void }) {
   const { t } = useTranslation('profile');
+  const c = useThemeColors();
   const [imageFailed, setImageFailed] = useState(false);
   const media = post.media_urls?.[0];
   const hasMultiplePhotos = (post.media_urls?.length ?? 0) > 1;
   return (
     <TouchableOpacity
       testID={`post-tile-${post.id}`}
-      style={[styles.postCell, { width: size, height: size, backgroundColor: theme.cellColors[1] }]}
+      style={[styles.postCell, { width: size, height: size, backgroundColor: c.bgSurface }]}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={t('view.openPostA11y')}
@@ -100,8 +112,8 @@ function PostCell({ post, theme, size, onPress }: { post: PostRow; theme: Profil
           accessibilityLabel={t('view.postThumbnailA11y')}
         />
       ) : (
-        <View style={[StyleSheet.absoluteFill, styles.postTextWrap, { backgroundColor: theme.cellColors[1] }]}>
-          <Text style={[styles.postText, { color: theme.bodyText }]} numberOfLines={4}>{post.caption ?? ''}</Text>
+        <View style={[StyleSheet.absoluteFill, styles.postTextWrap, { backgroundColor: c.bgSurface }]}>
+          <Text style={[styles.postText, { color: c.textPrimary }]} numberOfLines={4}>{post.caption ?? ''}</Text>
         </View>
       )}
       {hasMultiplePhotos ? (
@@ -114,20 +126,107 @@ function PostCell({ post, theme, size, onPress }: { post: PostRow; theme: Profil
 }
 
 function EmptyState({
-  icon, title, subtitle, actionLabel, onAction, theme,
+  icon, title, subtitle, actionLabel, onAction, accent,
 }: {
-  icon: React.ReactNode; title: string; subtitle: string; actionLabel?: string; onAction?: () => void; theme: ProfileTheme;
+  icon: React.ReactNode; title: string; subtitle: string; actionLabel?: string; onAction?: () => void; accent: string;
 }) {
+  const c = useThemeColors();
   return (
     <View style={styles.emptyState}>
       {icon}
-      <Text style={[styles.emptyTitle, { color: theme.bodyText }]}>{title}</Text>
-      <Text style={[styles.emptySubtitle, { color: theme.bodyTextSecondary }]}>{subtitle}</Text>
+      <Text style={[styles.emptyTitle, { color: c.textPrimary }]}>{title}</Text>
+      <Text style={[styles.emptySubtitle, { color: c.textSecondary }]}>{subtitle}</Text>
       {actionLabel && onAction ? (
-        <TouchableOpacity style={[styles.emptyAction, { backgroundColor: theme.btn1Bg }]} onPress={onAction} accessibilityRole="button">
-          <Text style={[styles.emptyActionText, { color: theme.btn1Color }]}>{actionLabel}</Text>
+        <TouchableOpacity style={[styles.emptyAction, { backgroundColor: accent }]} onPress={onAction} accessibilityRole="button">
+          <Text style={[styles.emptyActionText, { color: readableOn(accent) }]}>{actionLabel}</Text>
         </TouchableOpacity>
       ) : null}
+    </View>
+  );
+}
+
+/**
+ * "My places" (own profile only in this version): the venues the person checked in at, with the number of visits.
+ * NEVER dates, never a live location. The chip says who can see the section and opens Settings → Privacy.
+ */
+function PlacesSection({ places, visibility, onOpenPrivacy }: { places: CheckInPlace[]; visibility: PlacesVisibility; onOpenPrivacy: () => void }) {
+  const { t } = useTranslation('profile');
+  const c = useThemeColors();
+  const who = t(placesVisibilityLabelKey(visibility));
+  const VisibilityIcon = visibility === 'everyone' ? IconWorld : visibility === 'followers' ? IconUsers : IconLock;
+  return (
+    <View style={styles.placesSection}>
+      <View style={styles.placesHeader}>
+        <Text accessibilityRole="header" style={[styles.placesTitle, { color: c.textPrimary }]}>{t('places.title')}</Text>
+        <TouchableOpacity
+          testID="profile-places-visibility"
+          style={[styles.visibilityChip, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}
+          onPress={onOpenPrivacy}
+          accessibilityRole="button"
+          accessibilityLabel={t('places.visibilityA11y', { who })}
+          hitSlop={6}
+        >
+          <VisibilityIcon size={14} color={c.textSecondary} />
+          <Text style={[styles.visibilityText, { color: c.textSecondary }]}>{who}</Text>
+        </TouchableOpacity>
+      </View>
+      {places.length === 0 ? (
+        <View style={[styles.placesEmpty, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
+          <IconMapPin size={20} color={c.textTertiary} />
+          <Text style={[styles.placesEmptyText, { color: c.textSecondary }]}>{t('places.empty')}</Text>
+        </View>
+      ) : (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.placesRow}>
+          {places.map((place) => {
+            const visits = t('places.visits', { count: place.visitCount });
+            return (
+              <View
+                key={place.businessId}
+                accessible
+                accessibilityLabel={t('places.placeA11y', { name: place.businessName, visits })}
+                style={[styles.placeCard, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}
+              >
+                {place.businessLogoUrl ? (
+                  <Image source={{ uri: place.businessLogoUrl }} style={styles.placeLogo} resizeMode="cover" accessibilityElementsHidden />
+                ) : (
+                  <View style={[styles.placeLogo, styles.placeLogoFallback, { backgroundColor: PLACE_AVATAR_COLORS[colorIndex(place.businessId, PLACE_AVATAR_COLORS.length)] }]}>
+                    <Text style={styles.placeInitials}>{initials(place.businessName)}</Text>
+                  </View>
+                )}
+                <Text style={[styles.placeName, { color: c.textPrimary }]} numberOfLines={2}>{place.businessName}</Text>
+                <Text style={[styles.placeVisits, { color: c.textSecondary }]}>{visits}</Text>
+              </View>
+            );
+          })}
+        </ScrollView>
+      )}
+    </View>
+  );
+}
+
+/** The two tabs of the posts area as a segmented pill: Posts · Tagged. The active one is painted with the accent. */
+function SegmentedTabs({ value, onChange, accent }: { value: ProfileTab; onChange: (tab: ProfileTab) => void; accent: string }) {
+  const { t } = useTranslation('profile');
+  const c = useThemeColors();
+  const onAccent = readableOn(accent);
+  const tabs: ProfileTab[] = ['posts', 'tagged'];
+  return (
+    <View accessibilityRole="tablist" style={[styles.segmented, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
+      {tabs.map((tab) => {
+        const active = tab === value;
+        return (
+          <TouchableOpacity
+            key={tab}
+            testID={`profile-tab-${tab}`}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: active }}
+            style={[styles.segment, active && { backgroundColor: accent }]}
+            onPress={() => onChange(tab)}
+          >
+            <Text style={[styles.segmentText, { color: active ? onAccent : c.textSecondary }]}>{t(`tabs.${tab}`)}</Text>
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 }
@@ -159,6 +258,10 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
   const [profile, setProfile] = useState<PublicProfileRow | null>(null);
   const [posts, setPosts] = useState<PostRow[]>([]);
   const [counts, setCounts] = useState<ProfileCounts>({ followers: 0, following: 0, posts: 0 });
+  // Own profile only: the venues I checked in at (visits, never dates) and my privacy choices for this page.
+  const [places, setPlaces] = useState<CheckInPlace[]>([]);
+  const [privacy, setPrivacy] = useState<ProfilePrivacyView>(() => parseProfilePrivacy(null));
+  const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
   // False for a private account I don't follow (the grid is replaced by a notice). Default true:
   // if the check itself fails, RLS still decides what the posts query returns.
   const [canViewPosts, setCanViewPosts] = useState(true);
@@ -176,7 +279,9 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
     follow, unfollow, cancelFollowRequest, unblock, refresh: refreshRelation,
   } = useFollowSystem(isOwnProfile ? null : targetId);
   const blocked = relation === 'blockedByMe';
-  const theme = getProfileTheme(profile?.profile_theme_id ?? 1);
+  // One of the six themes (a theme id that no longer exists is mapped by getProfileTheme). It only paints the avatar
+  // ring, the primary button, the active tab and the gradient at the top.
+  const theme = getProfileTheme(profile?.profile_theme_id);
 
   // 'initial' shows the skeleton; 'pull' is the user's own pull-to-refresh (the only time the RefreshControl may
   // spin); 'silent' re-reads in the background (coming back to the tab, a private account unlocking). Setting
@@ -187,11 +292,14 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
     if (mode === 'pull') setRefreshing(true); else if (mode === 'initial') setInitialLoading(true);
     setError(null);
     try {
-      const [canView, profileRow, profileCounts] = await Promise.all([
+      const [canView, profileRow, profileCounts, ownPlaces, ownPrivacy] = await Promise.all([
         isOwnProfile || !authUser?.id ? Promise.resolve(true) : canViewProfile(authUser.id, targetId).catch(() => true),
         getPublicProfile(targetId),
         // A counters failure must not take the whole profile down: keep what we had.
         getProfileCounts(targetId).catch(() => null),
+        // "My places" and my privacy choices exist only on my own profile; a failure leaves the section empty / safe.
+        isOwnProfile ? getCheckInHistory(targetId).catch(() => [] as CheckInPlace[]) : Promise.resolve([] as CheckInPlace[]),
+        isOwnProfile ? getOwnProfilePrivacy(targetId).catch(() => parseProfilePrivacy(null)) : Promise.resolve(parseProfilePrivacy(null)),
       ]);
       if (!profileRow) throw new Error(t('view.profileNotFound'));
       // Posts are only requested when the viewer may see them.
@@ -200,6 +308,8 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
       setProfile(profileRow);
       setPosts(postRows);
       if (profileCounts) setCounts(profileCounts);
+      setPlaces(ownPlaces);
+      setPrivacy(ownPrivacy);
     } catch (loadError) {
       setError(toUserMessage(loadError, 'profile:view.loadProfileError'));
     } finally {
@@ -321,54 +431,69 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
   }, [actionBusy, blocked, handleUnblock, navigation, profile, relationBusy, t, targetId]);
 
   const topInset = inSheet ? 4 : insets.top + (route.name === 'Profile' ? homeBarInset : 0);
-  if (initialLoading) return <ProfileSkeleton theme={theme} topInset={topInset} />;
+  if (initialLoading) return <ProfileSkeleton topInset={topInset} />;
   if (error || !profile) {
     return <View style={[styles.errorRoot, { backgroundColor: c.bgBase }]}><Text style={[styles.errorText, { color: c.dangerText }]}>{error ?? t('view.profileNotFound')}</Text></View>;
   }
 
   const renderPosts = () => !isOwnProfile && (relation === 'blockedByMe' || relation === 'blockedMe') ? null : !canViewPosts ? (
-    <EmptyState icon={<IconLock size={42} color={theme.tabInactiveText} />} title={t('private.title')} subtitle={t('private.subtitle')} theme={theme} />
+    <EmptyState icon={<IconLock size={42} color={c.textTertiary} />} title={t('private.title')} subtitle={t('private.subtitle')} accent={theme.accent} />
+  ) : activeTab === 'tagged' ? (
+    <EmptyState icon={<IconPhoto size={42} color={c.textTertiary} />} title={t('tabs.taggedEmptyTitle')} subtitle={t('tabs.taggedEmptySubtitle')} accent={theme.accent} />
   ) : posts.length ? (
-    <View style={styles.postsGrid}>{posts.map((post) => <PostCell key={post.id} post={post} theme={theme} size={cellSize} onPress={() => navigation.navigate('PostDetail', { postId: post.id })} />)}</View>
+    <View style={styles.postsGrid}>{posts.map((post) => <PostCell key={post.id} post={post} size={cellSize} onPress={() => navigation.navigate('PostDetail', { postId: post.id })} />)}</View>
   ) : (
-    <EmptyState icon={<IconPhoto size={42} color={theme.tabInactiveText} />} title={isOwnProfile ? t('empty.ownPostsTitle') : t('empty.otherPostsTitle')} subtitle={isOwnProfile ? t('empty.ownPostsSubtitle') : t('empty.otherPostsSubtitle')} actionLabel={isOwnProfile ? t('empty.createPost') : undefined} onAction={isOwnProfile ? () => navigation.navigate('CreatePost') : undefined} theme={theme} />
+    <EmptyState icon={<IconPhoto size={42} color={c.textTertiary} />} title={isOwnProfile ? t('empty.ownPostsTitle') : t('empty.otherPostsTitle')} subtitle={isOwnProfile ? t('empty.ownPostsSubtitle') : t('empty.otherPostsSubtitle')} actionLabel={isOwnProfile ? t('empty.createPost') : undefined} onAction={isOwnProfile ? () => navigation.navigate('CreatePost') : undefined} accent={theme.accent} />
   );
 
+  // The city shows only when the owner allows it (the choice is read for my own profile).
+  const shownCity = isOwnProfile && !privacy.showCity ? null : profile.city;
+  const showPlacesSection = isOwnProfile && privacy.tabPlaces;
+  const hideTabs = !isOwnProfile && (relation === 'blockedByMe' || relation === 'blockedMe');
+
   return (
-    <View style={[styles.root, { backgroundColor: theme.statsBg }]}>
+    <View style={[styles.root, { backgroundColor: c.bgBase }]}>
       <ProfileTopBar
         isOwnProfile={isOwnProfile} showBack={route.name === 'UserProfile'} hideBack={inSheet} username={profile.username} topInset={topInset}
         onBack={() => navigation.goBack()} onOpenMenu={() => setMenuVisible(true)} onShare={() => void shareProfile()}
-        onSettings={() => navigation.navigate('Settings')} onCreatePost={() => navigation.navigate('CreatePost')} theme={theme}
+        onSettings={() => navigation.navigate('Settings')}
       />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 102 + insets.bottom }]}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadProfile('pull')} tintColor={theme.tabActive} colors={[theme.tabActive]} progressBackgroundColor={theme.statsBg} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadProfile('pull')} tintColor={c.brand} colors={[c.brand]} progressBackgroundColor={c.bgSurface} />}
       >
         <ProfileHeader
-          isOwnProfile={isOwnProfile} displayName={profile.display_name} username={profile.username} avatarUrl={profile.avatar_url} coverUrl={profile.cover_url}
-          bio={profile.bio} city={profile.city} isVerified={profile.is_verified} postCount={counts.posts} followerCount={counts.followers}
-          followingCount={counts.following} relation={relation} followBusy={relationLoading || relationBusy}
+          isOwnProfile={isOwnProfile} displayName={profile.display_name} username={profile.username} avatarUrl={profile.avatar_url}
+          bio={profile.bio} city={shownCity} isVerified={profile.is_verified} postCount={counts.posts} followerCount={counts.followers}
+          followingCount={counts.following} placesCount={isOwnProfile ? totalVisits(places) : null} relation={relation} followBusy={relationLoading || relationBusy}
           completion={{ hasPhoto: Boolean(profile.avatar_url), hasBio: Boolean(profile.bio?.trim()), hasPost: posts.length > 0 }}
           completionVisible={completionDismissed === false} onDismissCompletion={dismissCompletion}
-          onShare={() => void shareProfile()} onEditProfile={() => navigation.navigate('EditProfile')} onCreatePost={() => navigation.navigate('CreatePost')}
+          onEditProfile={() => navigation.navigate('EditProfile')} onCreatePost={() => navigation.navigate('CreatePost')}
           onOpenFollowers={() => openFriends('followers')} onOpenFollowing={() => openFriends('following')}
           onFollow={() => void handleFollow()} onUnfollow={handleUnfollow} onCancelRequest={handleCancelRequest} onUnblock={handleUnblock}
           onMessage={() => void openMessage()} theme={theme}
         />
+        {showPlacesSection ? (
+          <PlacesSection
+            places={places}
+            visibility={privacy.placesVisibility}
+            onOpenPrivacy={() => navigation.navigate('Settings', { screen: 'Privacy', initial: false })}
+          />
+        ) : null}
+        {hideTabs ? null : <SegmentedTabs value={activeTab} onChange={setActiveTab} accent={theme.accent} />}
         {renderPosts()}
       </ScrollView>
 
       <AppModal visible={menuVisible} transparent animationType="slide" onRequestClose={() => setMenuVisible(false)}>
         <Pressable accessible={false} style={[styles.backdrop, { backgroundColor: c.scrim }]} onPress={() => setMenuVisible(false)} />
-        <View style={[styles.sheet, { backgroundColor: theme.statsBg, borderColor: theme.statsBorder }]}>
-          <View style={styles.sheetHandleWrap}><View style={[styles.sheetHandle, { backgroundColor: theme.statsBorder }]} /></View>
-          <Text style={[styles.sheetTitle, { color: theme.bodyText }]}>@{profile.username}</Text>
-          <SheetRow icon={<IconShare3 size={20} color={theme.bodyText} />} label={t('menu.share')} color={theme.bodyText} borderColor={theme.statsBorder} onPress={() => { setMenuVisible(false); void shareProfile(); }} />
-          <SheetRow icon={<IconFlag size={20} color={c.dangerText} />} label={t('menu.report')} color={c.dangerText} borderColor={theme.statsBorder} onPress={() => { setMenuVisible(false); setReportVisible(true); }} />
-          <SheetRow icon={<IconBan size={20} color={c.dangerText} />} label={blocked ? t('menu.unblock') : t('menu.block')} color={c.dangerText} borderColor={theme.statsBorder} onPress={confirmBlock} />
-          <SheetRow icon={<IconX size={20} color={theme.bodyTextSecondary} />} label={t('actions.cancel')} color={theme.bodyTextSecondary} borderColor={theme.statsBorder} onPress={() => setMenuVisible(false)} />
+        <View style={[styles.sheet, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
+          <View style={styles.sheetHandleWrap}><View style={[styles.sheetHandle, { backgroundColor: c.borderSubtle }]} /></View>
+          <Text style={[styles.sheetTitle, { color: c.textPrimary }]}>@{profile.username}</Text>
+          <SheetRow icon={<IconShare3 size={20} color={c.textPrimary} />} label={t('menu.share')} color={c.textPrimary} borderColor={c.borderSubtle} onPress={() => { setMenuVisible(false); void shareProfile(); }} />
+          <SheetRow icon={<IconFlag size={20} color={c.dangerText} />} label={t('menu.report')} color={c.dangerText} borderColor={c.borderSubtle} onPress={() => { setMenuVisible(false); setReportVisible(true); }} />
+          <SheetRow icon={<IconBan size={20} color={c.dangerText} />} label={blocked ? t('menu.unblock') : t('menu.block')} color={c.dangerText} borderColor={c.borderSubtle} onPress={confirmBlock} />
+          <SheetRow icon={<IconX size={20} color={c.textSecondary} />} label={t('actions.cancel')} color={c.textSecondary} borderColor={c.borderSubtle} onPress={() => setMenuVisible(false)} />
         </View>
       </AppModal>
 
@@ -386,9 +511,26 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
 const styles = StyleSheet.create({
   root: { flex: 1 }, scrollContent: {}, errorRoot: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }, errorText: { textAlign: 'center', fontSize: 14 },
   skeletonRoot: { flex: 1 }, skeletonTop: { width: 150, height: 18, borderRadius: 9, marginLeft: 16 }, skeletonCover: { height: 120, marginHorizontal: 16, marginTop: 18, borderRadius: 20 },
-  skeletonAvatar: { width: 104, height: 104, borderRadius: 52, borderWidth: 4, marginLeft: 28, marginTop: -48 }, skeletonName: { width: 180, height: 22, borderRadius: 8, marginLeft: 20, marginTop: 12 },
-  skeletonHandle: { width: 110, height: 14, borderRadius: 7, marginLeft: 20, marginTop: 8 }, skeletonStats: { height: 70, borderRadius: 16, marginHorizontal: 16, marginTop: 28 },
+  skeletonAvatar: { width: 112, height: 112, borderRadius: 56, borderWidth: 4, alignSelf: 'center', marginTop: 40 }, skeletonName: { width: 180, height: 22, borderRadius: 8, alignSelf: 'center', marginTop: 14 },
+  skeletonHandle: { width: 110, height: 14, borderRadius: 7, alignSelf: 'center', marginTop: 8 }, skeletonStats: { height: 70, borderRadius: 16, marginHorizontal: 16, marginTop: 28 },
   skeletonGrid: { marginTop: 24, flexDirection: 'row', flexWrap: 'wrap', gap: 2 }, skeletonCell: { width: '32.9%', aspectRatio: 1 },
+  placesSection: { marginTop: 10, paddingBottom: 6 },
+  placesHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 16, marginBottom: 10 },
+  placesTitle: { fontSize: 17, fontWeight: '800' },
+  visibilityChip: { flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 32, borderRadius: 999, borderWidth: 1, paddingHorizontal: 12 },
+  visibilityText: { fontSize: 13, fontWeight: '700' },
+  placesRow: { gap: 10, paddingHorizontal: 16 },
+  placeCard: { width: 110, alignItems: 'center', gap: 6, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, paddingVertical: 12, paddingHorizontal: 8 },
+  placeLogo: { width: 44, height: 44, borderRadius: 22 },
+  placeLogoFallback: { alignItems: 'center', justifyContent: 'center' },
+  placeInitials: { color: palette.bgSurfaceLight, fontSize: 15, fontWeight: '800' },
+  placeName: { fontSize: 13, lineHeight: 17, fontWeight: '700', textAlign: 'center', minHeight: 34 },
+  placeVisits: { fontSize: 12, fontWeight: '600' },
+  placesEmpty: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 16, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, paddingVertical: 16, paddingHorizontal: 14 },
+  placesEmptyText: { flex: 1, fontSize: 14, lineHeight: 20 },
+  segmented: { flexDirection: 'row', marginHorizontal: 16, marginTop: 14, marginBottom: 12, borderRadius: 999, borderWidth: 1, padding: 3 },
+  segment: { flex: 1, minHeight: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 999 },
+  segmentText: { fontSize: 14, fontWeight: '700' },
   postsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP }, postCell: { overflow: 'hidden' }, postTextWrap: { alignItems: 'center', justifyContent: 'center', padding: 8 }, postText: { fontSize: 10, lineHeight: 14 },
   multiPhotoBadge: { position: 'absolute', top: 6, right: 6, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: palette.scrim },
   emptyState: { minHeight: 270, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 34, paddingVertical: 34 }, emptyTitle: { marginTop: 14, textAlign: 'center', fontSize: 18, fontWeight: '800' },
