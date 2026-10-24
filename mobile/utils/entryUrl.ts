@@ -4,8 +4,10 @@
  * Accepted forms (decided in Fase 2):
  *   https://<venue>.jchat.cloud/                  → { kind: 'venue' }
  *   https://<venue>.jchat.cloud/<mesa>-<código>   → { kind: 'table' }   (e.g. /8-k3f9)
- *   https://jchat.cloud/c/<token>                 → { kind: 'token' }   (apex: only this form)
+ *   https://jchat.cloud/c/<token>                 → { kind: 'token' }   (apex: /c/<token> and /t/<token>)
  *   https://<venue>.jchat.cloud/c/<token>         → { kind: 'token', venue }
+ *   https://jchat.cloud/t/<token>                 → { kind: 'tabletoken' }  (the table's QR token, as printed from the dashboard)
+ *   https://<venue>.jchat.cloud/t/<token>         → { kind: 'tabletoken', venue }
  *   jchat://c/<token>   jchat://v/<venue>[/<mesa>-<código>]
  * `<venue>` is businesses.subdomain or, when it has none, businesses.slug. A QR only says WHICH venue to go
  * to; presence is still enforced by the server (check_geofence_and_join_room), never by this parser.
@@ -21,7 +23,9 @@ import { BARE_TOKEN_RE } from './venueQr';
 export type EntryTarget =
   | { kind: 'venue'; venue: string }
   | { kind: 'table'; venue: string; label: string; code: string }
-  | { kind: 'token'; token: string; venue?: string };
+  | { kind: 'token'; token: string; venue?: string }
+  /** The table's own QR token (tables.qr_token, the /t/<token> of the printed QR): resolve_table_qr turns it into the table. */
+  | { kind: 'tabletoken'; token: string; venue?: string };
 
 export interface ParseEntryOptions {
   /** Web only: accept `?venue=<venue>` on hosts that are not *.jchat.cloud. Never in native. */
@@ -68,7 +72,7 @@ function queryParam(query: string | undefined, name: string): string | null {
   return null;
 }
 
-/** Venue-relative path: [] → venue, [<mesa>-<código>] → table, ['c', <token>] → token. */
+/** Venue-relative path: [] → venue, [<mesa>-<código>] → table, ['c', <token>] → token, ['t', <token>] → tabletoken. */
 function fromVenuePath(venue: string, segments: string[]): EntryTarget | null {
   if (segments.length === 0) return { kind: 'venue', venue };
   if (segments.length === 1) {
@@ -77,6 +81,9 @@ function fromVenuePath(venue: string, segments: string[]): EntryTarget | null {
   }
   if (segments.length === 2 && segments[0] === 'c' && BARE_TOKEN_RE.test(segments[1])) {
     return { kind: 'token', token: segments[1], venue };
+  }
+  if (segments.length === 2 && segments[0] === 't' && BARE_TOKEN_RE.test(segments[1])) {
+    return { kind: 'tabletoken', token: segments[1], venue };
   }
   return null;
 }
@@ -115,6 +122,9 @@ export function parseEntryUrl(raw: string, opts: ParseEntryOptions = {}): EntryT
     if (segments.length === 2 && segments[0] === 'c' && BARE_TOKEN_RE.test(segments[1])) {
       return { kind: 'token', token: segments[1] };
     }
+    if (segments.length === 2 && segments[0] === 't' && BARE_TOKEN_RE.test(segments[1])) {
+      return { kind: 'tabletoken', token: segments[1] };
+    }
     return null;
   }
 
@@ -128,10 +138,12 @@ export function parseEntryUrl(raw: string, opts: ParseEntryOptions = {}): EntryT
   if (!opts.allowVenueQuery) return null;
   const rawVenue = queryParam(query, 'venue');
   if (rawVenue === null) {
-    // /c/<token> is self-contained: no venue needed.
-    return segments.length === 2 && segments[0] === 'c' && BARE_TOKEN_RE.test(segments[1])
-      ? { kind: 'token', token: segments[1] }
-      : null;
+    // /c/<token> and /t/<token> are self-contained: no venue needed.
+    if (segments.length === 2 && BARE_TOKEN_RE.test(segments[1])) {
+      if (segments[0] === 'c') return { kind: 'token', token: segments[1] };
+      if (segments[0] === 't') return { kind: 'tabletoken', token: segments[1] };
+    }
+    return null;
   }
   const venue = validVenue(rawVenue);
   return venue ? fromVenuePath(venue, segments) : null;

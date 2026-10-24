@@ -83,4 +83,7 @@ test('a corrupted or foreign stored value is ignored', () => {
   }
   assert.equal(isEntryTarget({ kind: 'token', token: 't' }), true);
   assert.equal(isEntryTarget({ kind: 'token', token: 5 }), false);
+  assert.equal(isEntryTarget({ kind: 'tabletoken', token: 't' }), true);
+  assert.equal(isEntryTarget({ kind: 'tabletoken', token: 't', venue: 'v' }), true);
+  assert.equal(isEntryTarget({ kind: 'tabletoken', token: 5 }), false);
 });

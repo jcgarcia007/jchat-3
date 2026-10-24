@@ -28,11 +28,40 @@ export interface ResolvedEntry {
 }
 
 /**
+ * The table's own QR token (/t/<token>, the QR printed from the dashboard): resolve_table_qr (public, the same RPC the
+ * Next /t page uses) gives the table label and the venue's slug; resolve_venue_entry then gives the venue and its room, and
+ * the result is what the <mesa>-<código> form gives: the venue's chat + the table context (label and the table's QR token,
+ * which the framed menu and the waiter call use). When the URL names a venue (<venue>.jchat.cloud/t/<token>) it must be
+ * the SAME venue as the table's, otherwise it is an invalid QR.
+ */
+async function resolveTableTokenEntry(target: Extract<EntryTarget, { kind: 'tabletoken' }>): Promise<ResolvedEntry | null> {
+  const { data: tables, error: tableError } = await supabase.rpc('resolve_table_qr', { p_token: target.token });
+  if (tableError) throw tableError;
+  const table = tables?.[0];
+  if (!table) return null;
+
+  const { data, error } = await supabase.rpc('resolve_venue_entry', { p_venue: target.venue ?? table.business_slug });
+  if (error) throw error;
+  const row = data?.[0];
+  if (!row || row.business_slug !== table.business_slug) return null;
+  return {
+    businessId: row.business_id,
+    businessName: row.business_name,
+    businessSlug: row.business_slug,
+    logoUrl: row.logo_url,
+    roomId: row.room_id,
+    tableLabel: table.table_label,
+    tableQrToken: target.token,
+  };
+}
+
+/**
  * Resolves an entry target. `null` = the QR is not valid (no match, wrong table code, venue off): the server
  * does not say which. A network / server failure THROWS, so callers can tell "invalid QR" from "no connection".
  */
 export async function resolveEntry(target: EntryTarget): Promise<ResolvedEntry | null> {
   if (!isSupabaseConfigured) throw new Error('entry_not_configured');
+  if (target.kind === 'tabletoken') return resolveTableTokenEntry(target);
 
   const args =
     target.kind === 'venue'

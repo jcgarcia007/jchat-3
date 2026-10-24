@@ -18,7 +18,7 @@ export function isEntryTarget(value: unknown): value is EntryTarget {
   const t = value as Record<string, unknown>;
   if (t.kind === 'venue') return typeof t.venue === 'string';
   if (t.kind === 'table') return typeof t.venue === 'string' && typeof t.label === 'string' && typeof t.code === 'string';
-  if (t.kind === 'token') return typeof t.token === 'string' && (t.venue === undefined || typeof t.venue === 'string');
+  if (t.kind === 'token' || t.kind === 'tabletoken') return typeof t.token === 'string' && (t.venue === undefined || typeof t.venue === 'string');
   return false;
 }
 

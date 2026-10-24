@@ -1670,6 +1670,10 @@ export default function ChatRoomScreen() {
                   <Text style={[gateStyles.roomSub, { color: themeColors.textSecondary }]}>
                     {t('chatRoom.gateSubtitle')}
                   </Text>
+                  {/* Why the location is asked (read BEFORE tapping Enter, which triggers the permission prompt). */}
+                  <Text testID="chat-geo-why" style={[gateStyles.geoWhy, { color: themeColors.textSecondary }]}>
+                    {t('chatRoom.geoWhy', { business: business?.name ?? t('chatRoom.chatRoomFallback') })}
+                  </Text>
 
                   {/* Match entry notice — only where the owner enabled Match (fase D1) */}
                   {matchAvailable && (
@@ -1739,7 +1743,7 @@ export default function ChatRoomScreen() {
                   </Text>
                   <Text style={[gateStyles.outsideBody, { color: themeColors.textSecondary }]}>
                     {geoGate.gateStatus === 'permission_denied'
-                      ? t('chatRoom.geoPermissionNeeded')
+                      ? t('chatRoom.geoWhy', { business: business?.name ?? t('chatRoom.chatRoomFallback') })
                       : geoGate.gateStatus === 'outside_radius'
                         ? t('chatRoom.geoOutsideRadius', { distance: formatDistanceM(geoGate.outsideDistanceM ?? 0) })
                         : noReading
@@ -2148,6 +2152,7 @@ export default function ChatRoomScreen() {
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
 const gateStyles = StyleSheet.create({
+  geoWhy: { fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: 10 },
   outsideWrap: { alignItems: 'center', gap: 12, paddingTop: 8 },
   outsideIcon: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
   outsideTitle: { fontSize: 20, fontWeight: '700', textAlign: 'center' },

@@ -302,7 +302,7 @@
     "dmTitle": "Mensaje directo",
     "dmOpenError": "No se pudo abrir el mensaje directo.",
     "geoVerifying": "Verificando tu ubicación…",
-    "geoPermissionNeeded": "Permite tu ubicación para entrar al chat.",
+    "geoWhy": "Necesitamos tu ubicación para confirmar que estás dentro de {{business}}. Así nadie de afuera entra al chat. No guardamos tu ubicación exacta; solo confirmamos que estás aquí.",
     "geoOutsideRadius": "Estás a {{distance}}. Acércate para entrar al chat.",
     "geoReconnecting": "Reconectando…",
     "geoRemoved": "Estás fuera del área de {{business}}. Para entrar de nuevo, vuelve y escanea el QR.",

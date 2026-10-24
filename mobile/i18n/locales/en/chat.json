@@ -302,7 +302,7 @@
     "dmTitle": "Direct message",
     "dmOpenError": "Could not open the direct message.",
     "geoVerifying": "Checking your location…",
-    "geoPermissionNeeded": "Allow your location to join the chat.",
+    "geoWhy": "We need your location to confirm you are inside {{business}}. That way nobody from outside joins the chat. We do not store your exact location; we only confirm you are here.",
     "geoOutsideRadius": "You're {{distance}} away. Get closer to join the chat.",
     "geoReconnecting": "Reconnecting…",
     "geoRemoved": "You're outside {{business}}'s area. To enter again, come back and scan the QR.",
