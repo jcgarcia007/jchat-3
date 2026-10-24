@@ -81,6 +81,7 @@ import { useGiftAvailable } from '../../hooks/useGiftAvailable';
 import { VoiceRecorderBar } from '../../components/common/VoiceRecorderBar';
 import { canRecordVoice } from '../../services/webVoice';
 import { useVisualViewportInset } from '../../hooks/useVisualViewportInset';
+import { useComposerFit } from '../../hooks/useComposerFit';
 import { useComposerBottomPadding } from '../../hooks/useComposerBottomPadding';
 import { retryWithTimeout } from '../../utils/retryWithTimeout';
 import type { VoiceRecording } from '../../components/common/VoiceRecorderBar';
@@ -327,6 +328,14 @@ export default function DMChatScreen() {
   const [messages, setMessages] = useState<DmMessageRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState(route.params.prefill ?? '');
+  // Web only (native: nothing): the box starts one line tall (styles.textInput: padding 9 + line 20 + borders) and grows to maxHeight.
+  const composerRef = useRef<TextInput>(null);
+  const composerFit = useComposerFit(composerRef, text, {
+    minHeight: 2 * 9 + 20 + 2 * StyleSheet.hairlineWidth,
+    maxHeight: 120,
+    lineHeight: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+  });
   const [sending, setSending] = useState(false);
   // Path of the photo currently open in the fullscreen viewer (closed if a moderator hides that message).
   const viewerPathRef = useRef<string | null>(null);
@@ -893,6 +902,7 @@ export default function DMChatScreen() {
 
         {/* Text input */}
         <TextInput
+          ref={composerRef}
           style={[
             styles.textInput,
             {
@@ -900,7 +910,9 @@ export default function DMChatScreen() {
               color: c.textPrimary,
               borderColor: c.borderSubtle,
             },
+            composerFit.style,
           ]}
+          {...composerFit.inputProps}
           placeholder={waitingForReply ? tm('chat.waitingPlaceholder') : t('dmChat.placeholder')}
           placeholderTextColor={c.textTertiary}
           editable={!waitingForReply}

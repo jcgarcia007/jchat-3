@@ -40,7 +40,10 @@
     "permissionTitle": "Se necesita acceso al micrófono",
     "permissionMessage": "Permite el acceso al micrófono en Ajustes para grabar mensajes de voz.",
     "openSettings": "Abrir Ajustes",
-    "webUnsupported": "Graba notas de voz desde la app"
+    "webUnsupported": "Graba notas de voz desde la app",
+    "permissionMessageWeb": "Permite el acceso al micrófono en los ajustes del navegador (el candado junto a la dirección) y vuelve a tocar el micrófono.",
+    "errorTitle": "No pudimos grabar",
+    "errorMessage": "No pudimos iniciar la grabación. Revisa que tu dispositivo tenga micrófono e inténtalo de nuevo."
   },
   "picker": {
     "photosErrorTitle": "No pudimos abrir tus fotos",
