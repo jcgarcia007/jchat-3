@@ -237,3 +237,16 @@ test('gift_hold is CARD ONLY on the server (payment_method_types: card) without 
   const shared = readFileSync(new URL('../../supabase/functions/_shared/connect.ts', import.meta.url), 'utf8');
   assert.match(shared, /automatic_payment_methods: \{ enabled: true \},/); // the order checkout keeps every method
 });
+
+test('the table sheet (accepting a gift) is lifted by the keyboard and capped to the visual viewport on the web only', () => {
+  const card = read('components/gift/GiftCard.tsx');
+  const sheet = card.slice(card.indexOf('function GiftAcceptSheet'));
+  assert.match(card, /import \{ useKeyboardCover \} from '\.\.\/\.\.\/hooks\/useKeyboardCover';/);
+  assert.match(sheet, /const onWeb = Platform\.OS === 'web';/);
+  assert.match(sheet, /const keyboardOpen = onWeb && keyboardInset > 100;/);
+  assert.match(sheet, /const webSheetMaxHeight = Math\.max\(240, Math\.floor\(visibleHeight - 24\)\);/); // top margin >= 24 px
+  assert.match(sheet, /style=\{onWeb \? \{ paddingBottom: keyboardInset \} : undefined\}/);
+  assert.match(sheet, /onWeb && \{ maxHeight: webSheetMaxHeight \}/);
+  assert.match(sheet, /paddingBottom: \(keyboardOpen \? 0 : insets\.bottom\) \+ 12/); // devices: insets.bottom + 12, as before
+  assert.match(sheet, /KeyboardAvoidingView behavior=\{Platform\.OS === 'ios' \? 'padding' : undefined\}/); // the native handling is untouched
+});

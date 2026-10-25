@@ -17,6 +17,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { Spinner } from '../common/Spinner';
@@ -26,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { IconGift, IconX } from '@tabler/icons-react-native';
 
 import { useThemeColors } from '../../theme/colors';
+import { useKeyboardCover } from '../../hooks/useKeyboardCover';
 import { palette } from '../../theme/tokens';
 import { supabase, isSupabaseConfigured, channelTopic } from '../../services/supabase';
 import { giftErrorCode, giftItemPhotos, respondGiftOffer, viewGiftOffer, type GiftView } from '../../services/giftOffers';
@@ -280,6 +282,16 @@ function GiftAcceptSheet({
   const [sending, setSending] = useState(false);
   const needsId = view.items.some((i) => i.id_required);
 
+  // Web only: Safari keeps this fixed modal on the layout viewport and the keyboard paints over it. Lift the sheet by the keyboard's
+  // height (useKeyboardCover, a constant 0 on devices) and cap it to what the visual viewport still shows (>= 24 px from the top),
+  // so the confirm button is never hidden. Devices keep their KeyboardAvoidingView and '85%' cap untouched.
+  const onWeb = Platform.OS === 'web';
+  const keyboardInset = useKeyboardCover();
+  const keyboardOpen = onWeb && keyboardInset > 100;
+  const { height: windowHeight } = useWindowDimensions();
+  const visibleHeight = onWeb && typeof window !== 'undefined' && window.visualViewport ? window.visualViewport.height : windowHeight;
+  const webSheetMaxHeight = Math.max(240, Math.floor(visibleHeight - 24));
+
   const confirm = useCallback(async () => {
     if (sending || !table.trim()) return;
     setSending(true);
@@ -298,9 +310,15 @@ function GiftAcceptSheet({
   return (
     <AppModal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable accessible={false} style={styles.overlay} onPress={onClose} accessibilityRole="none" />
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={[styles.sheet, { backgroundColor: c.bgSurface, paddingBottom: insets.bottom + 12 }]}>
-<ScrollView keyboardShouldPersistTaps="handled" style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 10 }}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={onWeb ? { paddingBottom: keyboardInset } : undefined}>
+        <View
+          style={[
+            styles.sheet,
+            { backgroundColor: c.bgSurface, paddingBottom: (keyboardOpen ? 0 : insets.bottom) + 12 },
+            onWeb && { maxHeight: webSheetMaxHeight },
+          ]}
+        >
+<ScrollView keyboardShouldPersistTaps="handled" style={[{ flexGrow: 0 }, onWeb && { flexShrink: 1 }]} contentContainerStyle={{ gap: 10 }}>
           <View style={styles.sheetHeader}>
             <Text style={[styles.sheetTitle, { color: c.textPrimary }]} accessibilityRole="header">
               {t('giftCard.tableTitle')}
