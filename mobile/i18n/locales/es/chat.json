@@ -414,7 +414,11 @@
     },
     "buttonA11y": "Enviar un regalo a {{name}}",
     "sentTitle": "Regalo en camino",
-    "sentBody": "Tu tarjeta está retenida. Tienen 15 minutos para aceptar; solo se te cobra si aceptan."
+    "sentBody": "Tu tarjeta está retenida. Tienen 15 minutos para aceptar; solo se te cobra si aceptan.",
+    "payTitle": "Pago con tarjeta",
+    "payButton": "Retener {{amount}}",
+    "payBack": "Volver",
+    "payProcessing": "Tu banco está procesando la retención. No cierres esta ventana."
   },
   "giftCard": {
     "nItems_one": "{{count}} artículo",

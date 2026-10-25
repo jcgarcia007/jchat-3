@@ -414,7 +414,11 @@
     },
     "buttonA11y": "Send a gift to {{name}}",
     "sentTitle": "Gift on its way",
-    "sentBody": "Your card is on hold. They have 15 minutes to accept; you are charged only if they do."
+    "sentBody": "Your card is on hold. They have 15 minutes to accept; you are charged only if they do.",
+    "payTitle": "Card payment",
+    "payButton": "Hold {{amount}}",
+    "payBack": "Back",
+    "payProcessing": "Your bank is processing the hold. Don't close this window."
   },
   "giftCard": {
     "nItems_one": "{{count}} item",

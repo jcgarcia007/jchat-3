@@ -69,6 +69,65 @@ test('devices get an inert stub and stripe.ts (the native hold) is untouched by 
   assert.doesNotMatch(stripe, /giftHold|fetchGiftHold/);
 });
 
+// ── Block 2: the card form ──────────────────────────────────────────────────────────────────────────────────────────────
+compile('utils/giftPaymentResult.ts', 'giftPaymentResult.mjs');
+const { giftPaymentOutcome, stripeLocale } = await import(pathToFileURL(join(dir, 'giftPaymentResult.mjs')).href);
+
+test('requires_capture is the success of the card step: the card is HELD, nothing charged yet', () => {
+  assert.deepEqual(giftPaymentOutcome({ paymentIntent: { status: 'requires_capture' } }), { kind: 'held' });
+  assert.deepEqual(giftPaymentOutcome({ paymentIntent: { status: 'succeeded' } }), { kind: 'held' });
+});
+
+test('a refused or invalid card lets the person try again with Stripe\'s own message', () => {
+  assert.deepEqual(giftPaymentOutcome({ error: { type: 'card_error', code: 'card_declined', message: 'Tu tarjeta fue rechazada.' } }), { kind: 'retry', message: 'Tu tarjeta fue rechazada.' });
+  assert.deepEqual(giftPaymentOutcome({ error: { type: 'validation_error', message: 'Número incompleto.' } }), { kind: 'retry', message: 'Número incompleto.' });
+  assert.deepEqual(giftPaymentOutcome({ error: { type: 'card_error' } }), { kind: 'retry', message: null });
+  assert.deepEqual(giftPaymentOutcome({ paymentIntent: { status: 'requires_payment_method' } }), { kind: 'retry', message: null });
+});
+
+test('processing never counts as paid (and blocks a second payment)', () => {
+  assert.deepEqual(giftPaymentOutcome({ paymentIntent: { status: 'processing' } }), { kind: 'processing' });
+});
+
+test('anything unexpected is a generic failure carrying a code for the logs only', () => {
+  assert.deepEqual(giftPaymentOutcome({ error: { type: 'api_error', code: 'rate_limit' } }), { kind: 'failed', code: 'rate_limit' });
+  assert.deepEqual(giftPaymentOutcome({ error: { type: 'api_connection_error' } }), { kind: 'failed', code: 'api_connection_error' });
+  assert.deepEqual(giftPaymentOutcome({ paymentIntent: { status: 'canceled' } }), { kind: 'failed', code: 'canceled' });
+  assert.deepEqual(giftPaymentOutcome({ paymentIntent: { status: 'requires_action' } }), { kind: 'failed', code: 'requires_action' });
+  assert.deepEqual(giftPaymentOutcome({}), { kind: 'failed', code: 'no_payment_intent' });
+});
+
+test('Stripe.js locale follows the app language', () => {
+  assert.equal(stripeLocale('es'), 'es');
+  assert.equal(stripeLocale('es-MX'), 'es');
+  assert.equal(stripeLocale('en'), 'en');
+  assert.equal(stripeLocale(undefined), 'en');
+});
+
+test('the web form confirms the server\'s PaymentIntent in place and never sends an amount', () => {
+  const form = read('components/gift/GiftPaymentForm.web.tsx');
+  assert.match(form, /from '@stripe\/stripe-js\/pure'/, 'Stripe.js is downloaded only when the form opens');
+  assert.match(form, /stripe\.confirmPayment\(\{\s*elements,\s*redirect: 'if_required',/);
+  assert.match(form, /giftPaymentOutcome\(result\)/);
+  assert.doesNotMatch(form, /^import (?!type)[^\n]*from '@stripe\/stripe-js';/m, 'no value import that loads Stripe.js at startup (types are erased)');
+  assert.doesNotMatch(form, /stripe-react-native/);
+  assert.doesNotMatch(form, /#[0-9a-fA-F]{3,8}\b/, 'colors come from the theme tokens, no hex');
+  assert.doesNotMatch(form, /console\.(log|error)\([^)]*(clientSecret|publishableKey)/);
+});
+
+test('devices render nothing for the form, and nothing native imports it', () => {
+  assert.match(read('components/gift/GiftPaymentForm.tsx'), /export function GiftPaymentForm\(_props: GiftPaymentFormProps\): null \{\s*return null;/);
+  assert.doesNotMatch(read('components/gift/GiftPaymentForm.tsx'), /@stripe\//);
+});
+
+test('es / en have the same gift keys, with the card-form strings', () => {
+  const j = (l) => JSON.parse(read(`i18n/locales/${l}/chat.json`)).gift;
+  assert.deepEqual(Object.keys(j('es')), Object.keys(j('en')));
+  for (const k of ['payTitle', 'payButton', 'payBack', 'payProcessing']) assert.ok(j('es')[k] && j('en')[k], k);
+  assert.match(j('es').payButton, /\{\{amount\}\}/);
+  assert.match(j('en').payButton, /\{\{amount\}\}/);
+});
+
 test('mobile has the two Stripe.js packages, at the versions the Next site already uses', () => {
   const mobile = JSON.parse(read('package.json')).dependencies;
   const web = JSON.parse(readFileSync(new URL('../../web/package.json', import.meta.url), 'utf8')).dependencies;
