@@ -130,7 +130,8 @@ test('Truth or Dare: the drawn card turns over and its text is readable (front f
   await expect(play).toBeVisible({ timeout: 10_000 });
   await play.click();
 
-  const body = page.getByText('Pregunta sintética de prueba para el giro de la carta');
+  // exact: the chat also shows "@… le tocó VERDAD: <this question>" once the card is drawn; only the card's own text equals the question.
+  const body = page.getByText('Pregunta sintética de prueba para el giro de la carta', { exact: true });
   await expect(body).toBeVisible({ timeout: 10_000 });
   await page.waitForTimeout(1500); // the flip lasts well under a second
   await page.screenshot({ path: 'artifacts/games-web/tod-card.png' });

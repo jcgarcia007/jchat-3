@@ -74,7 +74,8 @@ test('without any entry (no ?venue, no venue host) the screen is exactly as befo
   await expect(page.getByTestId('web-enter-venue')).toHaveCount(0);
   await expect(page.getByTestId('web-view-menu')).toHaveCount(0);
   await expect(page.getByTestId('web-venue-name')).toHaveCount(0);
-  await expect(page.getByTestId('web-download-app')).toBeVisible();
+  // W3: "Descargar la app" is hidden until INVITE_TO_APP_ENABLED (mobile/constants/appLinks.ts) is true, so there is no dead store link.
+  await expect(page.getByTestId('web-download-app')).toHaveCount(0);
   await expect(page.getByTestId('web-my-profile')).toBeVisible();
   await page.screenshot({ path: 'artifacts/web-reenter/5-no-entry-as-before.png' });
 });

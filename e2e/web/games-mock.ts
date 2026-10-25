@@ -62,6 +62,8 @@ const RPC_ANSWERS: Record<string, unknown> = {
   my_block_relations: [],
   is_banned_from_room: false,
   tod_decide: { status: 'ok', published: false },
+  // The venue session asks the server whether a confirmed exit was still pending when the person comes back: nothing pending.
+  venue_session_resume: false,
 };
 
 /** Read-only RPCs (declared `stable` in their migration): the entry link lookup and the order banner. They pass through. */
