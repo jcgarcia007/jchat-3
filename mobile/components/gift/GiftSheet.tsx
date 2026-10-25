@@ -17,6 +17,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { Spinner } from '../common/Spinner';
@@ -52,6 +53,10 @@ const MAX_LINES = 10;
 export function GiftSheet({ visible, onClose, businessId, recipient, conversationId, onSent }: Props): React.ReactElement {
   const c = useThemeColors();
   const insets = useSafeAreaInsets();
+  // Web card step: the sheet's own `maxHeight: '88%'` has no definite parent height there, so Stripe's tall form (card, country,
+  // postal code, Link) pushed the buttons off the screen. The card step scrolls inside a pixel cap instead (it is never shown on devices).
+  const { height: windowHeight } = useWindowDimensions();
+  const payMaxHeight = Math.max(240, Math.round(windowHeight * 0.55));
   const { t } = useTranslation('chat');
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -219,7 +224,7 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
 
           {payParams ? (
             // Web only: the card step. `payParams` is never set on devices (they use the native PaymentSheet).
-            <ScrollView style={styles.payScroll} keyboardShouldPersistTaps="handled">
+            <ScrollView style={[styles.payScroll, { maxHeight: payMaxHeight }]} keyboardShouldPersistTaps="handled">
               <GiftPaymentForm
                 clientSecret={payParams.clientSecret}
                 publishableKey={payParams.publishableKey}
@@ -320,7 +325,7 @@ const styles = StyleSheet.create({
   closeBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   hint: { fontSize: 13, lineHeight: 18 },
   list: { flexGrow: 0, maxHeight: 340 },
-  payScroll: { flexGrow: 0 },
+  payScroll: { flexGrow: 0, flexShrink: 1 },
   loader: { paddingVertical: 32 },
   empty: { textAlign: 'center', paddingVertical: 32, fontSize: 14 },
   category: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', marginTop: 10, marginBottom: 2 },

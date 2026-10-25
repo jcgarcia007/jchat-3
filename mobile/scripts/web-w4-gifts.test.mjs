@@ -156,6 +156,14 @@ test('GiftSheet: card on hold → offer is the recipient\'s (never cancelled); "
   assert.match(sheet, /onBusyChange=\{setPayBusy\}/);
 });
 
+test('the web card step scrolls inside a pixel cap so Stripe\'s tall form never pushes Retener / Volver off the screen', () => {
+  const sheet = read('components/gift/GiftSheet.tsx');
+  assert.match(sheet, /const \{ height: windowHeight \} = useWindowDimensions\(\);/);
+  assert.match(sheet, /const payMaxHeight = Math\.max\(240, Math\.round\(windowHeight \* 0\.55\)\);/);
+  assert.match(sheet, /style=\{\[styles\.payScroll, \{ maxHeight: payMaxHeight \}\]\}/);
+  assert.match(sheet, /payScroll: \{ flexGrow: 0, flexShrink: 1 \},/);
+});
+
 test('the form reports "busy" while the card is confirmed and releases it when it goes away', () => {
   const form = read('components/gift/GiftPaymentForm.web.tsx');
   assert.match(form, /const busy = paying \|\| processing;\s*useEffect\(\(\) => \{\s*onBusyChange\?\.\(busy\);/);
