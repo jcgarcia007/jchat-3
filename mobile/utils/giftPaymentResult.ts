@@ -17,16 +17,30 @@ export type GiftPaymentOutcome =
   | { kind: 'held' }
   /** Stripe is still working on it: show "processing", do not let the person pay twice. */
   | { kind: 'processing' }
-  /** The person can try again (refused card, incomplete or invalid data). `message` is Stripe's own, localized text. */
-  | { kind: 'retry'; message: string | null }
+  /**
+   * The person can try again (refused card, incomplete or invalid data). `message` is Stripe's own, localized text.
+   * `declined` = the bank / Stripe refused the card (Stripe fires payment_failed, which the server counts: 3 close the offer);
+   * incomplete or invalid data never reaches the bank and is not counted.
+   */
+  | { kind: 'retry'; message: string | null; declined: boolean }
+  /** The offer was closed on the server (3 refusals, 15 minutes, cancelled): its PaymentIntent no longer takes a card. */
+  | { kind: 'closed' }
   /** Anything else: show the generic error. `code` is for logs only. */
   | { kind: 'failed'; code: string };
+
+/** Server-side limit (migration 242, gift_offer_register_payment_failure): the 3rd refusal cancels the offer. */
+export const GIFT_MAX_PAYMENT_ATTEMPTS = 3;
 
 export function giftPaymentOutcome(result: ConfirmResultLike): GiftPaymentOutcome {
   const error = result.error;
   if (error) {
+    if (error.code === 'payment_intent_unexpected_state') return { kind: 'closed' };
     if (error.type === 'card_error' || error.type === 'validation_error') {
-      return { kind: 'retry', message: typeof error.message === 'string' && error.message.length > 0 ? error.message : null };
+      return {
+        kind: 'retry',
+        message: typeof error.message === 'string' && error.message.length > 0 ? error.message : null,
+        declined: error.type === 'card_error',
+      };
     }
     return { kind: 'failed', code: error.code ?? error.type ?? 'unknown' };
   }
@@ -37,7 +51,7 @@ export function giftPaymentOutcome(result: ConfirmResultLike): GiftPaymentOutcom
     case 'processing':
       return { kind: 'processing' };
     case 'requires_payment_method':
-      return { kind: 'retry', message: null };
+      return { kind: 'retry', message: null, declined: true };
     case undefined:
       return { kind: 'failed', code: 'no_payment_intent' };
     default:

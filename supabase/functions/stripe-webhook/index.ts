@@ -251,9 +251,34 @@ async function handleGiftHeld(paymentIntent: Stripe.PaymentIntent): Promise<void
   const db = getAdminClient();
   await findGiftOffer(db, paymentIntent.id); // throws if missing
   if (paymentIntent.status !== "requires_capture") return;
-  const { error } = await db.rpc("gift_offer_mark_held", { p_stripe_pi_id: paymentIntent.id });
+  const { data, error } = await db.rpc("gift_offer_mark_held", { p_stripe_pi_id: paymentIntent.id });
   if (error) throw error;
-  console.log(`[stripe-webhook] gift held: pi=${paymentIntent.id}`);
+  const status = (data as { status?: string } | null)?.status ?? null;
+  if (status === "held") {
+    console.log(`[stripe-webhook] gift held: pi=${paymentIntent.id}`);
+    return;
+  }
+  // The offer was closed while the card was being confirmed (retry after a decline, tab closed, 15-min cleanup): the hold has
+  // no owner. Release it. Only these closed states: 'accepted' / 'paid' are live money and are never cancelled here.
+  if (status !== null && GIFT_ORPHAN_STATUSES.includes(status)) {
+    await cancelOrphanGiftHold(paymentIntent.id, status);
+    return;
+  }
+  console.log(`[stripe-webhook] gift hold event left as is: pi=${paymentIntent.id} offer=${status ?? "unknown"}`);
+}
+
+const GIFT_ORPHAN_STATUSES = ["cancelled", "failed", "expired", "declined"];
+
+/** Cancels a manual-capture hold whose offer is already closed. Fresh retrieve first: the event payload may be stale. */
+async function cancelOrphanGiftHold(piId: string, offerStatus: string): Promise<void> {
+  const stripe = getStripe();
+  const fresh = await stripe.paymentIntents.retrieve(piId);
+  if (fresh.status !== "requires_capture") {
+    console.log(`[stripe-webhook] gift orphan hold: pi=${piId} offer=${offerStatus} stripe=${fresh.status} — nothing to cancel`);
+    return;
+  }
+  await stripe.paymentIntents.cancel(piId, { cancellation_reason: "abandoned" }, { idempotencyKey: `gift-orphan:${piId}` });
+  console.warn(`[stripe-webhook] gift orphan hold CANCELLED: pi=${piId} offer=${offerStatus}`);
 }
 
 /** payment_intent.succeeded (after the capture): create the paid order, then mark the offer paid. */
@@ -686,9 +711,16 @@ async function handlePaymentFailed(
   // Gift: the hold/confirmation failed → the offer is marked failed (no order exists).
   if (meta.payment_kind === "gift") {
     const db = getAdminClient();
-    const { error } = await db.rpc("gift_offer_mark_failed", { p_stripe_pi_id: paymentIntent.id });
+    // Migration 242: a refusal is REGISTERED (reason + counter), the offer stays open for another card; the 3rd cancels it.
+    // (An 'accepted' offer whose capture fails still goes to 'failed' inside the function.) The text carries no card data.
+    const lastError = paymentIntent.last_payment_error;
+    const reason = `${lastError?.code ?? lastError?.decline_code ?? "unknown"}: ${lastError?.message ?? "payment failed"}`;
+    const { data, error } = await db.rpc("gift_offer_register_payment_failure", { p_stripe_pi_id: paymentIntent.id, p_error: reason });
     if (error) throw error;
-    console.warn(`[stripe-webhook] gift payment failed: pi=${paymentIntent.id}`);
+    const res = data as { ok?: boolean; status?: string; failures?: number; error?: string } | null;
+    // Not found → throw so Stripe retries (same rule as findGiftOffer).
+    if (res?.ok === false) throw new Error(`gift offer not found for failed PaymentIntent ${paymentIntent.id}`);
+    console.warn(`[stripe-webhook] gift payment failed: pi=${paymentIntent.id} offer=${res?.status} failures=${res?.failures} reason=${reason}`);
     return;
   }
 

@@ -419,7 +419,11 @@
     "payTitleFor": "Pay {{items}} · {{amount}}",
     "payButton": "Pay {{amount}}",
     "payBack": "Back",
-    "payProcessing": "Your bank is processing the hold. Don't close this window."
+    "payProcessing": "Your bank is processing the hold. Don't close this window.",
+    "payClosed": "This offer is already closed. Go back and send the gift again.",
+    "payNoAttemptsLeft": "No attempts left, so the offer was closed. Go back and send the gift again.",
+    "payAttemptsLeft_one": "{{count}} attempt left.",
+    "payAttemptsLeft_other": "{{count}} attempts left."
   },
   "giftCard": {
     "nItems_one": "{{count}} item",

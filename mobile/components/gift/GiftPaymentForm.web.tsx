@@ -23,7 +23,7 @@ import { Spinner } from '../common/Spinner';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { formatCents } from '../../utils/currency';
-import { giftPaymentOutcome, stripeLocale } from '../../utils/giftPaymentResult';
+import { GIFT_MAX_PAYMENT_ATTEMPTS, giftPaymentOutcome, stripeLocale } from '../../utils/giftPaymentResult';
 import type { GiftPaymentFormProps } from './GiftPaymentForm';
 
 export type { GiftPaymentFormProps } from './GiftPaymentForm';
@@ -51,6 +51,9 @@ function CardForm({ totalCents, onHeld, onCancel, onBusyChange, title, compact, 
   const [paying, setPaying] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
+  // Refusals counted by the server (3 close the offer). `closed` = the offer no longer takes a card.
+  const [declines, setDeclines] = useState(0);
+  const [closed, setClosed] = useState(false);
 
   // Tell the sheet while the card is being confirmed (it must not close then), and release it if this form goes away.
   const busy = paying || processing;
@@ -75,8 +78,20 @@ function CardForm({ totalCents, onHeld, onCancel, onBusyChange, title, compact, 
       } else if (outcome.kind === 'processing') {
         setProcessing(true);
         setMessage(t('gift.payProcessing'));
+      } else if (outcome.kind === 'closed') {
+        setClosed(true);
+        setMessage(t('gift.payClosed'));
       } else if (outcome.kind === 'retry') {
-        setMessage(outcome.message ?? t('gift.errors.generic'));
+        const used = outcome.declined ? declines + 1 : declines;
+        const left = GIFT_MAX_PAYMENT_ATTEMPTS - used;
+        setDeclines(used);
+        if (outcome.declined && left <= 0) {
+          setClosed(true);
+          setMessage(t('gift.payNoAttemptsLeft'));
+        } else {
+          const base = outcome.message ?? t('gift.errors.generic');
+          setMessage(outcome.declined ? `${base} ${t('gift.payAttemptsLeft', { count: left })}` : base);
+        }
       } else {
         console.error('[GiftPaymentForm] confirmPayment failed:', outcome.code);
         setMessage(t('gift.errors.generic'));
@@ -89,7 +104,7 @@ function CardForm({ totalCents, onHeld, onCancel, onBusyChange, title, compact, 
     }
   };
 
-  const disabled = !stripe || !elements || paying || processing;
+  const disabled = !stripe || !elements || paying || processing || closed;
   return (
     <View ref={formRef} style={styles.form}>
       {compact ? null : <Text style={[styles.title, { color: c.textPrimary }]} numberOfLines={1} accessibilityRole="header">{title ?? t('gift.payTitle')}</Text>}

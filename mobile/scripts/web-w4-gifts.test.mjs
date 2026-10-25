@@ -79,10 +79,14 @@ test('requires_capture is the success of the card step: the card is HELD, nothin
 });
 
 test('a refused or invalid card lets the person try again with Stripe\'s own message', () => {
-  assert.deepEqual(giftPaymentOutcome({ error: { type: 'card_error', code: 'card_declined', message: 'Tu tarjeta fue rechazada.' } }), { kind: 'retry', message: 'Tu tarjeta fue rechazada.' });
-  assert.deepEqual(giftPaymentOutcome({ error: { type: 'validation_error', message: 'Número incompleto.' } }), { kind: 'retry', message: 'Número incompleto.' });
-  assert.deepEqual(giftPaymentOutcome({ error: { type: 'card_error' } }), { kind: 'retry', message: null });
-  assert.deepEqual(giftPaymentOutcome({ paymentIntent: { status: 'requires_payment_method' } }), { kind: 'retry', message: null });
+  assert.deepEqual(giftPaymentOutcome({ error: { type: 'card_error', code: 'card_declined', message: 'Tu tarjeta fue rechazada.' } }), { kind: 'retry', message: 'Tu tarjeta fue rechazada.', declined: true });
+  assert.deepEqual(giftPaymentOutcome({ error: { type: 'validation_error', message: 'Número incompleto.' } }), { kind: 'retry', message: 'Número incompleto.', declined: false });
+  assert.deepEqual(giftPaymentOutcome({ error: { type: 'card_error' } }), { kind: 'retry', message: null, declined: true });
+  assert.deepEqual(giftPaymentOutcome({ paymentIntent: { status: 'requires_payment_method' } }), { kind: 'retry', message: null, declined: true });
+});
+
+test('a PaymentIntent the server already closed is "closed", and 3 attempts is the server limit', () => {
+  assert.deepEqual(giftPaymentOutcome({ error: { type: 'invalid_request_error', code: 'payment_intent_unexpected_state' } }), { kind: 'closed' });
 });
 
 test('processing never counts as paid (and blocks a second payment)', () => {

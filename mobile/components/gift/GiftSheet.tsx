@@ -213,6 +213,11 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
           setPayParams(hold);
           return;
         }
+        if (hold.code === 'gift_not_open') {
+          // The server closed this offer (3 refusals, 15 minutes, cancelled elsewhere): drop it so "Send" starts a fresh one.
+          setOfferId(null);
+          setPayParams(null);
+        }
         const knownWeb = giftErrorCode(hold.code) ?? giftErrorCode(hold.message);
         showAlert(t('gift.errorTitle'), knownWeb ? t(`gift.errors.${knownWeb}`) : hold.message);
         return;

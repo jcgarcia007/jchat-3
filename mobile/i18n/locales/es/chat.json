@@ -419,7 +419,11 @@
     "payTitleFor": "Pagar {{items}} · {{amount}}",
     "payButton": "Pagar {{amount}}",
     "payBack": "Volver",
-    "payProcessing": "Tu banco está procesando la retención. No cierres esta ventana."
+    "payProcessing": "Tu banco está procesando la retención. No cierres esta ventana.",
+    "payClosed": "Esta oferta ya se cerró. Vuelve y envía el regalo de nuevo.",
+    "payNoAttemptsLeft": "Se agotaron los intentos y la oferta se cerró. Vuelve y envía el regalo de nuevo.",
+    "payAttemptsLeft_one": "Te queda {{count}} intento.",
+    "payAttemptsLeft_other": "Te quedan {{count}} intentos."
   },
   "giftCard": {
     "nItems_one": "{{count}} artículo",
