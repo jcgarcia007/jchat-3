@@ -7,8 +7,13 @@
  */
 
 import { useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import { giftAvailable } from '../services/giftOffers';
 import { useVenueSession } from '../context/VenueSessionContext';
+import { WEB_GIFTS_ENABLED } from '../constants/features';
+
+/** The web has no way to pay a gift until WEB_GIFTS_ENABLED (constants/features.ts): it never offers it. Devices: never off. */
+const GIFTS_OFF_ON_THIS_PLATFORM = Platform.OS === 'web' && !WEB_GIFTS_ENABLED;
 
 export function useGiftAvailable(otherUserId: string | null | undefined, refreshKey = 0): { available: boolean; businessId: string | null } {
   const { session } = useVenueSession();
@@ -16,7 +21,7 @@ export function useGiftAvailable(otherUserId: string | null | undefined, refresh
   const [available, setAvailable] = useState(false);
 
   useEffect(() => {
-    if (!businessId || !otherUserId) {
+    if (GIFTS_OFF_ON_THIS_PLATFORM || !businessId || !otherUserId) {
       setAvailable(false);
       return;
     }
