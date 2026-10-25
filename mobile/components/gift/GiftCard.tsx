@@ -30,8 +30,14 @@ import { useThemeColors } from '../../theme/colors';
 import { useKeyboardCover } from '../../hooks/useKeyboardCover';
 import { palette } from '../../theme/tokens';
 import { supabase, isSupabaseConfigured, channelTopic } from '../../services/supabase';
-import { giftErrorCode, giftItemPhotos, respondGiftOffer, viewGiftOffer, type GiftView } from '../../services/giftOffers';
+import { giftErrorCode, giftItemPhotos, listVenueTableLabels, respondGiftOffer, viewGiftOffer, type GiftView } from '../../services/giftOffers';
+import { useVenueSession } from '../../context/VenueSessionContext';
+import { defaultTableLabel } from '../../utils/tableLabels';
 import { showAlert } from '../../utils/dialog';
+
+/** The accept sheet's table buttons: 5 columns, 8 px apart. */
+const TABLE_COLUMNS = 5;
+const TABLE_GAP = 8;
 
 function mmss(totalSeconds: number): string {
   const s = Math.max(0, totalSeconds);
@@ -282,6 +288,36 @@ function GiftAcceptSheet({
   const [sending, setSending] = useState(false);
   const needsId = view.items.some((i) => i.id_required);
 
+  // The venue's tables (migration 241): tapped instead of typed, so in the normal case there is no keyboard at all. null = loading.
+  // An empty list (no tables loaded, older server, no presence) shows the number field, as it always has.
+  const { session } = useVenueSession();
+  const entryTable = session?.businessId === view.business_id ? session.tableLabel : undefined;
+  const [labels, setLabels] = useState<string[] | null>(null);
+  const [picked, setPicked] = useState<string | null>(null);
+  const [notListed, setNotListed] = useState(false);
+  const [gridWidth, setGridWidth] = useState(0);
+  useEffect(() => {
+    if (!visible) return undefined;
+    let alive = true;
+    setLabels(null);
+    setNotListed(false);
+    setTable('');
+    void listVenueTableLabels(view.business_id).then((list) => {
+      if (!alive) return;
+      setLabels(list);
+      setPicked(defaultTableLabel(list, entryTable)); // the table the person came in through, or the only table there is
+    });
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- entryTable is only the starting suggestion of each opening
+  }, [visible, view.business_id]);
+  const showManual = labels !== null && (labels.length === 0 || notListed);
+  const tableValue = showManual ? table.trim() : (picked ?? '');
+  // The optional details are typed text: on the web they only appear with the number field, so the normal case never opens the keyboard.
+  const showDetails = Platform.OS !== 'web' || showManual;
+  const cellWidth = gridWidth > 0 ? Math.floor((gridWidth - TABLE_GAP * (TABLE_COLUMNS - 1)) / TABLE_COLUMNS) : undefined;
+
   // Web only: Safari keeps this fixed modal on the layout viewport and the keyboard paints over it. Lift the sheet by the keyboard's
   // height (useKeyboardCover, a constant 0 on devices) and cap it to what the visual viewport still shows (>= 24 px from the top),
   // so the confirm button is never hidden. Devices keep their KeyboardAvoidingView and '85%' cap untouched.
@@ -293,10 +329,10 @@ function GiftAcceptSheet({
   const webSheetMaxHeight = Math.max(240, Math.floor(visibleHeight - 24));
 
   const confirm = useCallback(async () => {
-    if (sending || !table.trim()) return;
+    if (sending || !tableValue) return;
     setSending(true);
     try {
-      await respondGiftOffer(view.id, true, table, details);
+      await respondGiftOffer(view.id, true, tableValue, showDetails ? details : '');
       onDone();
     } catch (err) {
       const known = giftErrorCode(err);
@@ -305,7 +341,7 @@ function GiftAcceptSheet({
     } finally {
       setSending(false);
     }
-  }, [sending, table, details, view.id, onDone, t]);
+  }, [sending, tableValue, showDetails, details, view.id, onDone, t]);
 
   return (
     <AppModal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -327,32 +363,84 @@ function GiftAcceptSheet({
               <IconX size={22} color={c.textSecondary} />
             </Pressable>
           </View>
-          <TextInput
-            value={table}
-            onChangeText={setTable}
-            maxLength={40}
-            placeholder={t('giftCard.tablePlaceholder')}
-            placeholderTextColor={c.textTertiary}
-            style={[styles.input, { color: c.textPrimary, borderColor: c.borderSubtle }]}
-            accessibilityLabel={t('giftCard.tablePlaceholder')}
-          />
-          <TextInput
-            value={details}
-            onChangeText={setDetails}
-            maxLength={200}
-            placeholder={t('giftCard.detailsPlaceholder')}
-            placeholderTextColor={c.textTertiary}
-            style={[styles.input, { color: c.textPrimary, borderColor: c.borderSubtle }]}
-            accessibilityLabel={t('giftCard.detailsPlaceholder')}
-          />
+          {labels === null ? (
+            <Spinner color={c.brandText} style={styles.tableLoader} />
+          ) : showManual ? (
+            <TextInput
+              value={table}
+              onChangeText={setTable}
+              maxLength={40}
+              inputMode="numeric"
+              enterKeyHint="done"
+              autoComplete="off"
+              placeholder={t('giftCard.tablePlaceholder')}
+              placeholderTextColor={c.textTertiary}
+              style={[styles.input, { color: c.textPrimary, borderColor: c.borderSubtle }]}
+              accessibilityLabel={t('giftCard.tablePlaceholder')}
+            />
+          ) : (
+            <>
+              <View style={[styles.tableGrid, gridWidth === 0 && styles.tableGridMeasuring]} onLayout={(e) => setGridWidth(e.nativeEvent.layout.width)}>
+                {labels.map((label) => {
+                  const selected = label === picked;
+                  return (
+                    <Pressable
+                      key={label}
+                      testID={`gift-table-${label}`}
+                      onPress={() => setPicked(label)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
+                      accessibilityLabel={label}
+                      style={[
+                        styles.tableCell,
+                        { width: cellWidth, borderColor: c.borderSubtle, backgroundColor: selected ? c.brandFill : c.bgSurface },
+                      ]}
+                    >
+                      <Text style={[styles.tableCellLabel, { color: selected ? palette.onBrand : c.textPrimary }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+                        {label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <Pressable
+                testID="gift-table-not-listed"
+                onPress={() => {
+                  setNotListed(true);
+                  setPicked(null);
+                }}
+                accessibilityRole="button"
+                style={styles.notListedBtn}
+              >
+                <Text style={[styles.notListedLabel, { color: c.brandText }]}>{t('giftCard.tableNotListed')}</Text>
+              </Pressable>
+            </>
+          )}
+          {showDetails ? (
+            <TextInput
+              value={details}
+              onChangeText={setDetails}
+              maxLength={200}
+              placeholder={t('giftCard.detailsPlaceholder')}
+              placeholderTextColor={c.textTertiary}
+              style={[styles.input, { color: c.textPrimary, borderColor: c.borderSubtle }]}
+              accessibilityLabel={t('giftCard.detailsPlaceholder')}
+            />
+          ) : null}
           {needsId ? <Text style={[styles.idNotice, { color: c.warning }]}>{t('giftCard.idNotice')}</Text> : null}
           <Pressable
             onPress={() => void confirm()}
-            disabled={sending || !table.trim()}
+            disabled={sending || !tableValue}
             accessibilityRole="button"
-            style={({ pressed }) => [styles.confirmBtn, { backgroundColor: c.brandFill, opacity: sending || !table.trim() ? 0.5 : pressed ? 0.85 : 1 }]}
+            style={({ pressed }) => [styles.confirmBtn, { backgroundColor: c.brandFill, opacity: sending || !tableValue ? 0.5 : pressed ? 0.85 : 1 }]}
           >
-            {sending ? <Spinner color={palette.onBrand} /> : <Text style={[styles.confirmLabel, { color: palette.onBrand }]}>{t('giftCard.confirmAccept')}</Text>}
+            {sending ? (
+              <Spinner color={palette.onBrand} />
+            ) : (
+              <Text style={[styles.confirmLabel, { color: palette.onBrand }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+                {tableValue ? t('giftCard.acceptWithTable', { label: tableValue }) : t('giftCard.confirmAccept')}
+              </Text>
+            )}
           </Pressable>
         </ScrollView>
 </View>
@@ -389,6 +477,13 @@ const styles = StyleSheet.create({
   noteLabel: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
   noteText: { fontSize: 14, lineHeight: 20 },
   input: { minHeight: 48, borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, fontSize: 15 },
+  tableLoader: { paddingVertical: 20 },
+  tableGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: TABLE_GAP },
+  tableGridMeasuring: { opacity: 0 }, // hidden for the one frame before the grid knows its width (no jump of button sizes)
+  tableCell: { minHeight: 48, borderWidth: 1, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  tableCellLabel: { fontSize: 15, fontWeight: '800' },
+  notListedBtn: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  notListedLabel: { fontSize: 14, fontWeight: '700' },
   idNotice: { fontSize: 13, lineHeight: 18 },
   confirmBtn: { minHeight: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   confirmLabel: { fontSize: 16, fontWeight: '800' },

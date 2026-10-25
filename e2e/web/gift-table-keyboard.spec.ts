@@ -71,7 +71,7 @@ async function openGiftInDm(page: Page) {
 
 test('the table sheet rests ON TOP of the keyboard: both fields and the confirm button visible', async ({ page }) => {
   await page.addInitScript(FAKE_VISUAL_VIEWPORT);
-  const mock = await mockGamesNetwork(page, { gift_offer_view: OFFER_VIEW() });
+  const mock = await mockGamesNetwork(page, { gift_offer_view: OFFER_VIEW(), venue_table_labels: [] }); // no tables loaded: the number field, whose keyboard this spec is about
   await page.route(/\/rest\/v1\/dm_messages/, (route) => {
     const req = route.request();
     if (req.method() !== 'GET') return route.fallback();

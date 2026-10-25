@@ -9,6 +9,7 @@
  */
 
 import { supabase, isSupabaseConfigured } from './supabase';
+import { sortTableLabels } from '../utils/tableLabels';
 
 export type GiftStatus = 'draft' | 'awaiting_payment' | 'held' | 'accepted' | 'paid' | 'declined' | 'expired' | 'cancelled' | 'failed';
 
@@ -87,6 +88,21 @@ export async function giftAvailable(businessId: string, otherUserId: string): Pr
     p_other_user_id: otherUserId,
   } as never);
   return !error && data === true;
+}
+
+/**
+ * The labels of the venue's active tables (migration 241), natural order, for the "which table are you at?" sheet. The server only
+ * answers a signed-in person who is inside the venue, and only with the label (never a table token or code). Any failure (older
+ * server, no presence, no network) is an empty list: the sheet then shows the number field, as it always has.
+ */
+export async function listVenueTableLabels(businessId: string): Promise<string[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase.rpc('venue_table_labels' as never, { p_business_id: businessId } as never);
+  if (error || !Array.isArray(data)) return [];
+  const labels = (data as Array<{ label?: unknown }>)
+    .map((row) => (typeof row?.label === 'string' ? row.label.trim() : ''))
+    .filter((label) => label.length > 0);
+  return sortTableLabels(labels);
 }
 
 export async function createGiftOffer(args: {
