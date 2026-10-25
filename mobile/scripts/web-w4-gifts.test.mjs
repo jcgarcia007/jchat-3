@@ -20,9 +20,9 @@ const features = await import(pathToFileURL(join(dir, 'features.mjs')).href);
 
 const OK = { clientSecret: 'pi_3Abc_secret_xyz', publishableKey: 'pk_test_123', serverTotalCents: 1234, ephemeralKey: 'ek', customer: 'cus_1' };
 
-test('the web gifts switch ships OFF', () => {
-  assert.equal(features.WEB_GIFTS_ENABLED, false);
-  assert.match(read('constants/features.ts'), /export const WEB_GIFTS_ENABLED = false;/);
+test('the web gifts switch is ON (Stripe test mode, since 2026-10-25)', () => {
+  assert.equal(features.WEB_GIFTS_ENABLED, true);
+  assert.match(read('constants/features.ts'), /export const WEB_GIFTS_ENABLED = true;/);
 });
 
 test('with the switch off the web never offers the gift; devices are never affected', () => {
