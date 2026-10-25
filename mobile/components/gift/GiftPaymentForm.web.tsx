@@ -12,8 +12,8 @@
  * Colors come from the theme tokens (no new hex).
  */
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { loadStripe } from '@stripe/stripe-js/pure';
 import type { Appearance } from '@stripe/stripe-js';
@@ -30,11 +30,24 @@ export type { GiftPaymentFormProps } from './GiftPaymentForm';
 
 type Colors = ReturnType<typeof useThemeColors>;
 
-function CardForm({ totalCents, onHeld, onCancel, onBusyChange }: Pick<GiftPaymentFormProps, 'totalCents' | 'onHeld' | 'onCancel' | 'onBusyChange'>): React.ReactElement {
+function CardForm({ totalCents, onHeld, onCancel, onBusyChange, title, compact, fieldMaxHeight }: Pick<GiftPaymentFormProps, 'totalCents' | 'onHeld' | 'onCancel' | 'onBusyChange' | 'title' | 'compact' | 'fieldMaxHeight'>): React.ReactElement {
   const c = useThemeColors();
   const { t } = useTranslation('chat');
   const stripe = useStripe();
   const elements = useElements();
+  const formRef = useRef<View>(null);
+  const focusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (focusTimer.current) clearTimeout(focusTimer.current); }, []);
+
+  // The card field lives in Stripe's iframe, so the page never sees its focus: Stripe's own 'focus' event is the signal. The
+  // keyboard takes a moment to slide in, so the form is scrolled into view once the visual viewport has settled.
+  const revealForm = () => {
+    if (focusTimer.current) clearTimeout(focusTimer.current);
+    focusTimer.current = setTimeout(() => {
+      const node = formRef.current as unknown as HTMLElement | null;
+      node?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+    }, 300);
+  };
   const [paying, setPaying] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
@@ -78,9 +91,11 @@ function CardForm({ totalCents, onHeld, onCancel, onBusyChange }: Pick<GiftPayme
 
   const disabled = !stripe || !elements || paying || processing;
   return (
-    <View style={styles.form}>
-      <Text style={[styles.title, { color: c.textPrimary }]}>{t('gift.payTitle')}</Text>
-      <PaymentElement />
+    <View ref={formRef} style={styles.form}>
+      <Text style={[styles.title, { color: c.textPrimary }]} numberOfLines={1} accessibilityRole="header">{title ?? t('gift.payTitle')}</Text>
+      <ScrollView style={fieldMaxHeight ? { maxHeight: fieldMaxHeight, flexGrow: 0 } : undefined} keyboardShouldPersistTaps="handled">
+        <PaymentElement onFocus={revealForm} />
+      </ScrollView>
       {message ? (
         <Text accessibilityRole="alert" style={[styles.message, { color: processing ? c.textSecondary : c.danger }]}>
           {message}
@@ -98,7 +113,7 @@ function CardForm({ totalCents, onHeld, onCancel, onBusyChange }: Pick<GiftPayme
       <Pressable testID="gift-pay-back" onPress={onCancel} disabled={paying} accessibilityRole="button" style={styles.backBtn}>
         <Text style={[styles.backLabel, { color: c.textSecondary }]}>{t('gift.payBack')}</Text>
       </Pressable>
-      <Text style={[styles.fine, { color: c.textTertiary }]}>{t('gift.holdNote')}</Text>
+      {compact ? null : <Text style={[styles.fine, { color: c.textTertiary }]}>{t('gift.holdNote')}</Text>}
     </View>
   );
 }
@@ -117,7 +132,7 @@ function appearanceFor(c: Colors): Appearance {
   };
 }
 
-export function GiftPaymentForm({ clientSecret, publishableKey, totalCents, onHeld, onCancel, onBusyChange }: GiftPaymentFormProps): React.ReactElement {
+export function GiftPaymentForm({ clientSecret, publishableKey, totalCents, onHeld, onCancel, onBusyChange, title, compact, fieldMaxHeight }: GiftPaymentFormProps): React.ReactElement {
   const c = useThemeColors();
   const { i18n } = useTranslation('chat');
   const stripePromise = useMemo(() => loadStripe(publishableKey), [publishableKey]);
@@ -127,7 +142,7 @@ export function GiftPaymentForm({ clientSecret, publishableKey, totalCents, onHe
   );
   return (
     <Elements stripe={stripePromise} options={options}>
-      <CardForm totalCents={totalCents} onHeld={onHeld} onCancel={onCancel} onBusyChange={onBusyChange} />
+      <CardForm totalCents={totalCents} onHeld={onHeld} onCancel={onCancel} onBusyChange={onBusyChange} title={title} compact={compact} fieldMaxHeight={fieldMaxHeight} />
     </Elements>
   );
 }

@@ -160,8 +160,36 @@ test('the web card step scrolls inside a pixel cap so Stripe\'s tall form never 
   const sheet = read('components/gift/GiftSheet.tsx');
   assert.match(sheet, /const \{ height: windowHeight \} = useWindowDimensions\(\);/);
   assert.match(sheet, /const payMaxHeight = Math\.max\(240, Math\.round\(windowHeight \* 0\.55\)\);/);
-  assert.match(sheet, /style=\{\[styles\.payScroll, \{ maxHeight: payMaxHeight \}\]\}/);
+  assert.match(sheet, /style=\{\[styles\.payScroll, \{ maxHeight: cardScrollMaxHeight \}\]\}/);
+  assert.match(sheet, /const cardScrollMaxHeight = Math\.max\(120, Math\.min\(payMaxHeight, cardSheetMaxHeight - \(keyboardOpen \? 100 : 148\)\)\);/);
   assert.match(sheet, /payScroll: \{ flexGrow: 0, flexShrink: 1 \},/);
+});
+
+test('web card step + keyboard: the sheet is lifted by useKeyboardCover and capped to the visual viewport (web only)', () => {
+  const sheet = read('components/gift/GiftSheet.tsx');
+  assert.match(sheet, /import \{ useKeyboardCover \} from '\.\.\/\.\.\/hooks\/useKeyboardCover';/);
+  assert.match(sheet, /const onCardStep = Platform\.OS === 'web' && payParams !== null;/);
+  assert.match(sheet, /const keyboardOpen = onCardStep && keyboardInset > 100;/);
+  assert.match(sheet, /const cardSheetMaxHeight = Math\.max\(240, Math\.floor\(visibleHeight - 24\)\);/); // top margin >= 24 px
+  assert.match(sheet, /style=\{onCardStep \? \{ paddingBottom: keyboardInset \} : undefined\}/);
+  assert.match(sheet, /onCardStep && \{ maxHeight: cardSheetMaxHeight \}/);
+  // The long hint folds while the keyboard is open; the form gets a short title and a compact flag.
+  assert.match(sheet, /\{keyboardOpen \? null : <Text style=\{\[styles\.hint/);
+  assert.match(sheet, /title=\{cardTitle\}\s*compact=\{keyboardOpen\}/);
+  assert.match(sheet, /t\('gift\.payTitleFor', \{ items, amount: formatCents\(payParams\.totalCents\) \}\)/);
+  // Devices: the hook is a constant 0 and the new props are optional types the native stub never renders.
+  assert.match(read('hooks/useKeyboardCover.ts'), /return 0;/);
+  assert.match(read('hooks/useKeyboardCover.web.ts'), /window\.innerHeight - \(viewport\.height \+ viewport\.offsetTop\)/);
+  for (const lng of ['es', 'en']) assert.match(read(`i18n/locales/${lng}/chat.json`), /"payTitleFor": "[^"]*\{\{items\}\}[^"]*\{\{amount\}\}"/);
+});
+
+test('web card form: Stripe\'s own focus event scrolls the form into view; the fine print folds when compact', () => {
+  const form = read('components/gift/GiftPaymentForm.web.tsx');
+  assert.match(form, /<PaymentElement onFocus=\{revealForm\} \/>/);
+  assert.match(form, /scrollIntoView\?\.\(\{ block: 'center', behavior: 'smooth' \}\)/);
+  assert.match(form, /\{compact \? null : <Text style=\{\[styles\.fine/);
+  assert.match(form, /fieldMaxHeight \? \{ maxHeight: fieldMaxHeight, flexGrow: 0 \} : undefined/);
+  assert.doesNotMatch(form, /autoComplete|autocomplete/i, 'the PaymentElement keeps Stripe\'s own autofill (iOS card autofill)');
 });
 
 test('the form reports "busy" while the card is confirmed and releases it when it goes away', () => {

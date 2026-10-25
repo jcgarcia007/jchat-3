@@ -27,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { IconMinus, IconPlus, IconX } from '@tabler/icons-react-native';
 
 import { useThemeColors } from '../../theme/colors';
+import { useKeyboardCover } from '../../hooks/useKeyboardCover';
 import { palette } from '../../theme/tokens';
 import { getMenu, type MenuCategory } from '../../services/menu';
 import { cancelGiftOffer, createGiftOffer, giftErrorCode } from '../../services/giftOffers';
@@ -57,6 +58,11 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
   // postal code, Link) pushed the buttons off the screen. The card step scrolls inside a pixel cap instead (it is never shown on devices).
   const { height: windowHeight } = useWindowDimensions();
   const payMaxHeight = Math.max(240, Math.round(windowHeight * 0.55));
+  // Web card step + on-screen keyboard: Safari does not shrink the layout viewport, only the visual one, so the sheet is lifted
+  // by the keyboard's height and capped to what the visual viewport still shows. The chat composer's useVisualViewportInset is
+  // measured against <body> (already fitted to the visible area) and answers 0 for a fixed modal, hence useKeyboardCover. On devices
+  // the hook answers 0 and none of this is applied.
+  const keyboardInset = useKeyboardCover();
   const { t } = useTranslation('chat');
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,6 +77,15 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
   // confirmed right now (the sheet cannot be closed then: a hold could land on a cancelled offer).
   const [payParams, setPayParams] = useState<GiftHoldParams | null>(null);
   const [payBusy, setPayBusy] = useState(false);
+
+  // Web card step only (payParams is never set on devices). The keyboard counts as open past 100 px: below that it is just
+  // Safari's address bar moving.
+  const onCardStep = Platform.OS === 'web' && payParams !== null;
+  const keyboardOpen = onCardStep && keyboardInset > 100;
+  const visibleHeight = onCardStep && typeof window !== 'undefined' && window.visualViewport ? window.visualViewport.height : windowHeight;
+  const cardSheetMaxHeight = Math.max(240, Math.floor(visibleHeight - 24));
+  // Handle + header + paddings, plus the hint line while it is shown: what the sheet spends outside the scrolling form.
+  const cardScrollMaxHeight = Math.max(120, Math.min(payMaxHeight, cardSheetMaxHeight - (keyboardOpen ? 100 : 148)));
 
   // Every opening starts clean (the offer of a previous opening was either sent or cancelled).
   useEffect(() => {
@@ -143,6 +158,17 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
   const subtotal = lines.reduce((sum, [id, n]) => sum + (priceById.get(id) ?? 0) * n, 0);
   const locked = offerId !== null;
 
+  // Web card step heading: "Pagar Mini Corn Dogs · $X" (first two items, "+N" for the rest). The amount is the server's total.
+  const cardTitle = useMemo(() => {
+    if (!payParams) return undefined;
+    const nameById = new Map<string, string>();
+    categories.forEach((cat) => cat.items.forEach((i) => nameById.set(i.id, i.name)));
+    const names = lines.map(([id]) => nameById.get(id)).filter((n): n is string => Boolean(n));
+    if (names.length === 0) return t('gift.payTitle');
+    const items = names.length > 2 ? `${names.slice(0, 2).join(', ')} +${names.length - 2}` : names.join(', ');
+    return t('gift.payTitleFor', { items, amount: formatCents(payParams.totalCents) });
+  }, [payParams, categories, lines, t]);
+
   const change = useCallback(
     (id: string, delta: number) => {
       if (locked) return;
@@ -209,8 +235,14 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
   return (
     <AppModal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
       <Pressable accessible={false} style={styles.overlay} onPress={handleClose} accessibilityRole="none" />
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={[styles.sheet, { backgroundColor: c.bgSurface, paddingBottom: insets.bottom + 12 }]}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={onCardStep ? { paddingBottom: keyboardInset } : undefined}>
+        <View
+          style={[
+            styles.sheet,
+            { backgroundColor: c.bgSurface, paddingBottom: (keyboardOpen ? 0 : insets.bottom) + 12 },
+            onCardStep && { maxHeight: cardSheetMaxHeight },
+          ]}
+        >
           <View style={[styles.handle, { backgroundColor: c.borderSubtle }]} />
           <View style={styles.header}>
             <Text style={[styles.title, { color: c.textPrimary }]} numberOfLines={1} accessibilityRole="header">
@@ -220,12 +252,15 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
               <IconX size={22} color={c.textSecondary} />
             </Pressable>
           </View>
-          <Text style={[styles.hint, { color: c.textSecondary }]}>{t('gift.hint')}</Text>
+          {keyboardOpen ? null : <Text style={[styles.hint, { color: c.textSecondary }]}>{t('gift.hint')}</Text>}
 
           {payParams ? (
             // Web only: the card step. `payParams` is never set on devices (they use the native PaymentSheet).
-            <ScrollView style={[styles.payScroll, { maxHeight: payMaxHeight }]} keyboardShouldPersistTaps="handled">
+            <ScrollView style={[styles.payScroll, { maxHeight: cardScrollMaxHeight }]} keyboardShouldPersistTaps="handled">
               <GiftPaymentForm
+                title={cardTitle}
+                compact={keyboardOpen}
+                fieldMaxHeight={Math.max(120, cardScrollMaxHeight - (keyboardOpen ? 190 : 230))}
                 clientSecret={payParams.clientSecret}
                 publishableKey={payParams.publishableKey}
                 totalCents={payParams.totalCents}
