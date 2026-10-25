@@ -6,7 +6,8 @@
    ============================================================ */
 
 :root {
-  --land-peach:       #FF8A65;
+  /* Text-safe peach: same hue / saturation as the old #FF8A65 (2.22:1 on #FAFAFA), darker so it reaches 4.64:1 (WCAG AA 4.5:1). */
+  --land-peach:       #D63300;
   --land-peach-2:     #FFAB91;
   --land-peach-dark:  #FF7043;
   --land-peach-glow:  rgb(var(--land-peach-rgb) / .20);
