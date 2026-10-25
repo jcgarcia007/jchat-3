@@ -46,6 +46,7 @@ import { endVenueSessionOnServer, resumeVenueSessionOnServer } from '../services
 import { invalidateDmUnread } from '../services/dms';
 import { resetToMapTab } from '../navigation/navigationRef';
 import { nextVerifyDelayMs } from '../utils/exitSchedule';
+import { claimInviteMoment } from '../services/inviteState';
 
 const HEARTBEAT_MS = 5 * 60 * 1000;
 
@@ -168,9 +169,11 @@ export function VenueSessionProvider({ children }: { children: React.ReactNode }
     if (reason === 'outside' || reason === 'expelled') resetToMapTab();
     // Only a CONFIRMED exit tells the user: "You're outside the area… scan the QR to come back".
     if (reason === 'outside') {
+      // Web only: a second line about the app, once per session (false on devices / with INVITE_TO_APP_ENABLED off).
+      const inviteLine = claimInviteMoment('exitedArea') ? `\n\n${i18n.t('chatRoom.geoRemovedInvite', { ns: 'chat' }) as string}` : '';
       showAlert(
         i18n.t('chatRoom.errorTitle', { ns: 'chat' }) as string,
-        i18n.t('chatRoom.geoRemoved', { ns: 'chat', business: current.businessName }) as string,
+        `${i18n.t('chatRoom.geoRemoved', { ns: 'chat', business: current.businessName }) as string}${inviteLine}`,
       );
     }
   }, []);

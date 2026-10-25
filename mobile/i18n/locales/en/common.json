@@ -147,5 +147,13 @@
     "decreaseSplit": "Split in fewer parts",
     "increaseSplit": "Split in more parts",
     "closeViewers": "Close the viewers list"
+  },
+  "invite": {
+    "banner": "Open in JChat",
+    "open": "Open",
+    "openInApp": "Open in JChat",
+    "close": "Close",
+    "firstMessage": "With the app we let you know when someone replies, even with your phone locked",
+    "finished": "Keep going in the app: your account and chats are already there"
   }
 }

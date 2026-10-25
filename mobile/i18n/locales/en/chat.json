@@ -306,6 +306,7 @@
     "geoOutsideRadius": "You're {{distance}} away. Get closer to join the chat.",
     "geoReconnecting": "Reconnecting…",
     "geoRemoved": "You're outside {{business}}'s area. To enter again, come back and scan the QR.",
+    "geoRemovedInvite": "With the app you see which venues nearby are active right now",
     "geoUnavailable": "We couldn't read your location. Try again.",
     "geoNoReadingTitle": "We couldn't read your location",
     "geoNoReadingBody": "Check that location is on and try again.",

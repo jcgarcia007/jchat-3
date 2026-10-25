@@ -25,6 +25,7 @@ import { useFollowSystem } from '../../hooks/useFollowSystem';
 import { fetchMyMatchPhotos, signedPhotoUrls } from '../../services/matchProfile';
 import { cardName } from '../../services/matchTypes';
 import { useRequireMatchPresence } from '../../hooks/useRequireMatchPresence';
+import { useInviteMoment } from '../../hooks/useInviteMoment';
 
 type Nav = NativeStackNavigationProp<MainStackParamList, 'MatchItsAMatch'>;
 
@@ -45,6 +46,12 @@ export default function MatchItsAMatchScreen() {
   const [text, setText] = useState('');
   const businessName = params.businessName ?? '';
   const name = cardName(other) ?? t('card.unknownName');
+
+  // Web only (no-op on devices; off while INVITE_TO_APP_ENABLED is false): "Continúa en la app" on the Match result.
+  const invite = useInviteMoment();
+  useEffect(() => {
+    invite.trigger('finished');
+  }, [invite]);
 
   useEffect(() => {
     let alive = true;

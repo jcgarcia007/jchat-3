@@ -25,6 +25,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useInviteMoment } from '../../hooks/useInviteMoment';
 import {
   Animated,
   Pressable,
@@ -95,6 +96,12 @@ export default function PaymentSuccessScreen() {
   const orderTypeLabel =
     ({ table: t('cart.orderTable'), counter: t('cart.orderCounter'), gift: t('cart.orderGift') } as Record<string, string>)[orderType]
     ?? (orderType.charAt(0).toUpperCase() + orderType.slice(1));
+
+  // Web only (no-op on devices; off while INVITE_TO_APP_ENABLED is false): "Continúa en la app" once an order is placed.
+  const invite = useInviteMoment();
+  useEffect(() => {
+    invite.trigger('finished');
+  }, [invite]);
 
   // ── Animation setup ──────────────────────────────────────────────────────────
   // The checkmark circle enters with a spring: starts invisible + small,

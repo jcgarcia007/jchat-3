@@ -147,5 +147,13 @@
     "decreaseSplit": "Dividir en menos partes",
     "increaseSplit": "Dividir en más partes",
     "closeViewers": "Cerrar la lista de vistas"
+  },
+  "invite": {
+    "banner": "Abrir en JChat",
+    "open": "Abrir",
+    "openInApp": "Abrir en JChat",
+    "close": "Cerrar",
+    "firstMessage": "Con la app te avisamos cuando te respondan, aunque bloquees el teléfono",
+    "finished": "Continúa en la app: tu cuenta y tus chats ya están ahí"
   }
 }

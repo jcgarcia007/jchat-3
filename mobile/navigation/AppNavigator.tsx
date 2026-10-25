@@ -36,6 +36,7 @@ import {
 import RootTabs from './rootTabs';
 import { MessagesScreen as WebMessagesScreen, OffersScreen as WebOffersScreen } from './lazyScreens';
 import { navigationRef } from './navigationRef';
+import { InviteToastHost } from '../components/web/InviteToastHost';
 import { HomeStatusBar } from '../components/venue/HomeStatusBar';
 import { venueBarPlacement } from './venueBarPlacement';
 import { HomeBarInsetProvider } from '../components/venue/HomeBarInset';
@@ -463,6 +464,9 @@ export default function AppNavigator() {
     {/* Post-login biometric enrollment prompt — mounted only while authenticated,
         unlocked, and NOT in the password-recovery flow. */}
     {notificationsEnabled && <BiometricEnrollGate />}
+    {/* Web only (renders null on devices): the small "Abrir en JChat" notices of the invite moments; off while
+        INVITE_TO_APP_ENABLED is false. */}
+    <InviteToastHost />
     {/* Venue session + order in progress: one bar above the tab bar (tab screens only). Not on the web: it has
         no tabs, and "Volver al chat" is the QR. */}
     {notificationsEnabled && Platform.OS !== 'web' ? (

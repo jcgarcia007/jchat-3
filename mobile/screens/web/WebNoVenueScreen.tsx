@@ -23,6 +23,8 @@ import { IconBell, IconDownload, IconLogin2, IconMessage, IconQrcode, IconSpeake
 
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { useUnreadBadge } from '../../hooks/useUnreadBadge';
+import { INVITE_TO_APP_ENABLED } from '../../constants/appLinks';
+import { OpenInAppBanner } from '../../components/web/OpenInAppBanner';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { supabase } from '../../services/supabase';
@@ -167,19 +169,22 @@ export default function WebNoVenueScreen(): React.ReactElement {
           </Pressable>
         ) : null}
 
-        <Pressable
-          testID="web-download-app"
-          onPress={downloadApp}
-          accessibilityRole="button"
-          style={({ pressed }) =>
-            offer
-              ? [downloadStyle, { borderColor: c.borderSubtle, backgroundColor: c.bgSurface, opacity: pressed ? 0.85 : 1 }]
-              : [downloadStyle, { backgroundColor: palette.brandFill, opacity: pressed ? 0.85 : 1 }]
-          }
-        >
-          <IconDownload size={20} color={offer ? c.textPrimary : palette.onBrand} />
-          <Text style={[offer ? styles.secondaryLabel : styles.primaryLabel, { color: offer ? c.textPrimary : palette.onBrand }]}>{t('webShell.downloadApp')}</Text>
-        </Pressable>
+        {/* Hidden (not a dead link) until the app is public in both stores: INVITE_TO_APP_ENABLED. */}
+        {INVITE_TO_APP_ENABLED ? (
+          <Pressable
+            testID="web-download-app"
+            onPress={downloadApp}
+            accessibilityRole="button"
+            style={({ pressed }) =>
+              offer
+                ? [downloadStyle, { borderColor: c.borderSubtle, backgroundColor: c.bgSurface, opacity: pressed ? 0.85 : 1 }]
+                : [downloadStyle, { backgroundColor: palette.brandFill, opacity: pressed ? 0.85 : 1 }]
+            }
+          >
+            <IconDownload size={20} color={offer ? c.textPrimary : palette.onBrand} />
+            <Text style={[offer ? styles.secondaryLabel : styles.primaryLabel, { color: offer ? c.textPrimary : palette.onBrand }]}>{t('webShell.downloadApp')}</Text>
+          </Pressable>
+        ) : null}
 
         <Pressable
           testID="web-my-profile"
@@ -210,6 +215,10 @@ export default function WebNoVenueScreen(): React.ReactElement {
           ))}
         </View>
       </View>
+      {/* Bottom bar "Abrir en JChat" (off with INVITE_TO_APP_ENABLED=false); in the layout, so it covers nothing. */}
+      <View style={styles.bannerSlot}>
+        <OpenInAppBanner />
+      </View>
     </View>
   );
 }
@@ -225,6 +234,8 @@ const styles = StyleSheet.create({
   primaryLabel: { fontSize: 16, fontWeight: '700' },
   secondary: { minHeight: 52, alignSelf: 'center', maxWidth: 360, width: '100%', borderRadius: 14, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   secondaryLabel: { fontSize: 16, fontWeight: '600' },
+  // The root has 24 px of horizontal padding: the bar goes edge to edge.
+  bannerSlot: { marginHorizontal: -24, marginBottom: -24 },
   shortcuts: { alignSelf: 'center', flexDirection: 'row', gap: 10, maxWidth: 360, width: '100%' },
   shortcut: { flex: 1, minHeight: 72, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 6 },
   shortcutLabel: { fontSize: 12, fontWeight: '600' },

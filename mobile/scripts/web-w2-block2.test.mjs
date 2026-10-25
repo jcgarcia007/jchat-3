@@ -26,7 +26,7 @@ test('"Saltar" shows on every web step; devices still hide Skip on the last one'
 
 test('the last web step says "Empezar" and offers "Descargar la app"; finishing is the same handler as before', () => {
   assert.match(screen, /t\(IS_WEB \? 'start' : 'exploreMap'\)/);
-  assert.match(screen, /IS_WEB && isLastStep \? \(/);
+  assert.match(screen, /IS_WEB && isLastStep && INVITE_TO_APP_ENABLED \? \(/); // W3: hidden until the app is public
   assert.match(screen, /storeLinkFor\(detectStorePlatform\(/);
   // Both the primary button and Skip end in handleFinish → completeOnboarding + navigation.replace('Tabs') (unchanged).
   assert.match(screen, /const handleNext = \(\) => \{\s*if \(isLastStep\) \{\s*void handleFinish\(\);/);

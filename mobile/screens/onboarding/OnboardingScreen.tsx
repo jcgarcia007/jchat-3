@@ -36,6 +36,7 @@ import {
 
 import { palette } from '../../theme/tokens';
 import { detectStorePlatform, storeLinkFor } from '../../utils/storeLink';
+import { INVITE_TO_APP_ENABLED } from '../../constants/appLinks';
 import { useAuth } from '../../context/AuthContext';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 import {
@@ -323,7 +324,7 @@ export default function OnboardingScreen() {
         )}
 
         {/* Web, last step: the secondary "Download the app" (the primary stays "Empezar") */}
-        {IS_WEB && isLastStep ? (
+        {IS_WEB && isLastStep && INVITE_TO_APP_ENABLED ? (
           <Pressable
             testID="onboarding-download"
             onPress={handleDownload}

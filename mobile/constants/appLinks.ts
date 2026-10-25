@@ -1,10 +1,17 @@
 /**
  * JChat 3.0 — where to download the app (single place for the store URLs; used by the web shell).
- * TODO: set APP_STORE_URL once the app has an App Store id; until then iOS falls back to the download page.
  */
 
-/** https://apps.apple.com/app/id<ID> — null until the App Store listing exists. */
-export const APP_STORE_URL: string | null = null;
+/**
+ * Master switch of EVERY "invite to the app" surface on the web: the "Abrir en JChat" banner, the three invite moments
+ * and the "Descargar la app" buttons (no-venue screen, onboarding step 3). The app is not public in the stores yet, so a
+ * store link would be a dead end: leave it false. Set it to true the day the app is public in BOTH stores (and then
+ * uncomment the apple-itunes-app meta of public/index.html, which is static and cannot read this).
+ */
+export const INVITE_TO_APP_ENABLED = false;
+
+/** App Store page of the app (ascAppId of eas.json). */
+export const APP_STORE_URL: string | null = 'https://apps.apple.com/app/id6824292679';
 
 /** Android package id of the app (app.config.ts). */
 export const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.otunitylabs.jchat';

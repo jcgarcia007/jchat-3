@@ -306,6 +306,7 @@
     "geoOutsideRadius": "Estás a {{distance}}. Acércate para entrar al chat.",
     "geoReconnecting": "Reconectando…",
     "geoRemoved": "Estás fuera del área de {{business}}. Para entrar de nuevo, vuelve y escanea el QR.",
+    "geoRemovedInvite": "Con la app ves qué locales cerca están activos ahora",
     "geoUnavailable": "No pudimos leer tu ubicación. Inténtalo de nuevo.",
     "geoNoReadingTitle": "No pudimos leer tu ubicación",
     "geoNoReadingBody": "Verifica que la ubicación esté activada e inténtalo de nuevo.",

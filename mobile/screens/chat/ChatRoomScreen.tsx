@@ -110,6 +110,9 @@ import type { BusinessSummary, UserSummary } from '../../components/chat/ChatTop
 import { SubRoomTabs } from '../../components/chat/SubRoomTabs';
 import type { SubRoom } from '../../components/chat/SubRoomTabs';
 import { ChatInput } from '../../components/chat/ChatInput';
+import { OpenInAppBanner } from '../../components/web/OpenInAppBanner';
+import { useInviteMoment } from '../../hooks/useInviteMoment';
+import { claimInviteMoment } from '../../services/inviteState';
 import type { VoiceRecording } from '../../components/common/VoiceRecorderBar';
 import { discardLocalRecording, uploadRoomVoice } from '../../services/voiceNotes';
 import { toUserMessage } from '../../utils/errors';
@@ -411,7 +414,9 @@ export default function ChatRoomScreen() {
   const isOwner = !!user?.id && !!businessOwnerId && user.id === businessOwnerId;
 
   const handleExpelled = useCallback(() => {
-    showAlert(t('chatRoom.errorTitle'), t('chatRoom.geoRemoved', { business: business?.name ?? '' }));
+    // Web only: a second line about the app, once per session (claimInviteMoment is false on devices / with the switch off).
+    const inviteLine = claimInviteMoment('exitedArea') ? `\n\n${t('chatRoom.geoRemovedInvite')}` : '';
+    showAlert(t('chatRoom.errorTitle'), `${t('chatRoom.geoRemoved', { business: business?.name ?? '' })}${inviteLine}`);
     venue.endSession('expelled'); // a CONFIRMED exit (the user was told above): the server hides / purges the venue's ephemeral content
     resetToMapTab(business?.name); // always the Map, whatever is open over the room (a DM, a profile, the menu, the games…)
   }, [t, business, venue]);
@@ -1105,6 +1110,9 @@ export default function ChatRoomScreen() {
     [user?.id, activeRoomId, t],
   );
 
+  // Web only (no-op on devices, and off while INVITE_TO_APP_ENABLED is false): the notice after the first message sent.
+  const invite = useInviteMoment();
+
   const handleSendText = useCallback(
     async (text: string) => {
       if (!user) return;
@@ -1156,6 +1164,7 @@ export default function ChatRoomScreen() {
           // then replace the optimistic with the confirmed row.
           const confirmed = data as ChatMessage;
           setMessages((prev) => settleOptimistic(prev, optimisticId, confirmed));
+          invite.trigger('firstMessage');
         } else {
           await handleSendFailure(error, optimisticId);
         }
@@ -1163,7 +1172,7 @@ export default function ChatRoomScreen() {
         await handleSendFailure(sendError, optimisticId);
       }
     },
-    [user, activeRoomId, enteredIncognito, handleSendFailure],
+    [user, activeRoomId, enteredIncognito, handleSendFailure, invite],
   );
 
   const sendPhotoRef = useRef<((uri: string) => void) | null>(null);
@@ -1946,6 +1955,9 @@ export default function ChatRoomScreen() {
             ) : null
           }
         />
+
+        {/* Web only (null on devices, off with INVITE_TO_APP_ENABLED=false): in the layout, so it never covers the composer. */}
+        <OpenInAppBanner />
 
         {/* ── Chat input ───────────────────────────────────────────────── */}
         <ChatInput
