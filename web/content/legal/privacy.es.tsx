@@ -70,7 +70,9 @@ export function PrivacyES() {
         <li>
           <em>Ubicación precisa, solo mientras usas la app:</em> para mostrarte lugares cercanos, permitirte
           entrar al chat de un lugar o grupo cuando estás dentro de su radio, y conectar lectores de tarjeta
-          cercanos. No recopilamos ubicación en segundo plano.
+          cercanos. No recopilamos ubicación en segundo plano. Necesitamos tu ubicación para confirmar que
+          estás dentro del local. Así nadie de afuera entra al chat. No guardamos tu ubicación exacta; solo
+          confirmamos que estás aquí.
         </li>
         <li>
           <em>Contenido que creas:</em> mensajes de chat, mensajes directos, publicaciones, fotos, historias,

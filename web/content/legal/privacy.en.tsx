@@ -70,7 +70,9 @@ export function PrivacyEN() {
         <li>
           <em>Precise location, only while you use the app:</em> to show venues near you, to let you join a
           venue's or group's chat when you are within its radius, and to connect nearby card readers. We do
-          not collect location in the background.
+          not collect location in the background. We need your location to confirm that you are inside the
+          venue. That way no one from outside gets into the chat. We do not store your exact location; we only
+          confirm that you are here.
         </li>
         <li>
           <em>Content you create:</em> chat messages, direct messages, posts, photos, stories, reviews, voice
