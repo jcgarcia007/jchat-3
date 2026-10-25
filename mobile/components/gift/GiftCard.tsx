@@ -314,8 +314,9 @@ function GiftAcceptSheet({
   }, [visible, view.business_id]);
   const showManual = labels !== null && (labels.length === 0 || notListed);
   const tableValue = showManual ? table.trim() : (picked ?? '');
-  // The optional details are typed text: on the web they only appear with the number field, so the normal case never opens the keyboard.
-  const showDetails = Platform.OS !== 'web' || showManual;
+  // The optional details are typed text: on every platform they only appear with the number field ("my table isn't listed", or a venue
+  // with no tables loaded), so the normal case (tapping a table) never opens the keyboard.
+  const showDetails = showManual;
   const cellWidth = gridWidth > 0 ? Math.floor((gridWidth - TABLE_GAP * (TABLE_COLUMNS - 1)) / TABLE_COLUMNS) : undefined;
 
   // Web only: Safari keeps this fixed modal on the layout viewport and the keyboard paints over it. Lift the sheet by the keyboard's

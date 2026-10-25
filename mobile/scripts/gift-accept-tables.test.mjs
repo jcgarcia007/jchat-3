@@ -72,9 +72,11 @@ test('the accept sheet: 5-column grid of 48 px buttons, preselection, "not liste
   assert.match(card, /setPicked\(defaultTableLabel\(list, entryTable\)\);/);
   // the number field: numeric keypad, "done", no autofill (react-native-web writes autocomplete="off")
   assert.match(card, /inputMode="numeric"\s*enterKeyHint="done"\s*autoComplete="off"/);
-  // an empty list shows the field directly, as before; the web keeps the optional details for that case only
+  // an empty list shows the field directly, as before; the optional details appear with the number field only, on EVERY platform
+  // (web, iOS and Android alike): tapping a table never opens the keyboard
   assert.match(card, /const showManual = labels !== null && \(labels\.length === 0 \|\| notListed\);/);
-  assert.match(card, /const showDetails = Platform\.OS !== 'web' \|\| showManual;/);
+  assert.match(card, /const showDetails = showManual;/);
+  assert.doesNotMatch(card, /const showDetails = Platform/);
   // the main button: "Aceptar regalo · Mesa {label}", disabled with no table
   assert.match(card, /disabled=\{sending \|\| !tableValue\}/);
   assert.match(card, /tableValue \? t\('giftCard\.acceptWithTable', \{ label: tableValue \}\) : t\('giftCard\.confirmAccept'\)/);
