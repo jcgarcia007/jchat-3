@@ -30,6 +30,9 @@ import { palette } from '../../theme/tokens';
 import { getMenu, type MenuCategory } from '../../services/menu';
 import { cancelGiftOffer, createGiftOffer, giftErrorCode } from '../../services/giftOffers';
 import { holdGiftPayment } from '../../services/stripe';
+import { fetchGiftHold } from '../../services/giftHold';
+import type { GiftHoldParams } from '../../utils/giftHold';
+import { GiftPaymentForm } from './GiftPaymentForm';
 import { formatCents } from '../../utils/currency';
 import { showAlert } from '../../utils/dialog';
 
@@ -59,6 +62,10 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
   const [offerId, setOfferId] = useState<string | null>(null);
   // True once the card is on hold: from then on the offer belongs to the recipient's chat and must not be cancelled.
   const heldRef = useRef(false);
+  // Web only: the PaymentIntent to confirm with the card form (null = the picker is shown), and whether the card is being
+  // confirmed right now (the sheet cannot be closed then: a hold could land on a cancelled offer).
+  const [payParams, setPayParams] = useState<GiftHoldParams | null>(null);
+  const [payBusy, setPayBusy] = useState(false);
 
   // Every opening starts clean (the offer of a previous opening was either sent or cancelled).
   useEffect(() => {
@@ -66,6 +73,8 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
     setOfferId(null);
     setQty({});
     setNote('');
+    setPayParams(null);
+    setPayBusy(false);
     heldRef.current = false;
   }, [visible]);
 
@@ -80,9 +89,24 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
   );
 
   const handleClose = useCallback(() => {
+    if (payBusy) return; // the card is being confirmed (web): wait for the answer
     cancelUnpaidOffer(offerId);
     onClose();
-  }, [cancelUnpaidOffer, offerId, onClose]);
+  }, [cancelUnpaidOffer, offerId, onClose, payBusy]);
+
+  /** Web: the card is on hold — the offer now belongs to the recipient's chat (never cancelled from here). */
+  const handleHeld = useCallback(() => {
+    heldRef.current = true;
+    setPayParams(null);
+    setPayBusy(false);
+    onSent();
+  }, [onSent]);
+
+  /** Web: "Volver" from the card form without paying → the unpaid offer is cancelled; the picker comes back. */
+  const handlePayBack = useCallback(() => {
+    cancelUnpaidOffer(offerId);
+    setPayParams(null);
+  }, [cancelUnpaidOffer, offerId]);
 
   useEffect(() => {
     if (!visible) return;
@@ -143,6 +167,17 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
         id = created.id;
         setOfferId(id);
       }
+      if (Platform.OS === 'web') {
+        // Web: no native PaymentSheet. The server creates the SAME hold PaymentIntent and the card form (Stripe.js) confirms it.
+        const hold = await fetchGiftHold(id);
+        if (hold.ok) {
+          setPayParams(hold);
+          return;
+        }
+        const knownWeb = giftErrorCode(hold.code) ?? giftErrorCode(hold.message);
+        showAlert(t('gift.errorTitle'), knownWeb ? t(`gift.errors.${knownWeb}`) : hold.message);
+        return;
+      }
       const result = await holdGiftPayment(id);
       if (result.ok) {
         heldRef.current = true;
@@ -182,6 +217,20 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
           </View>
           <Text style={[styles.hint, { color: c.textSecondary }]}>{t('gift.hint')}</Text>
 
+          {payParams ? (
+            // Web only: the card step. `payParams` is never set on devices (they use the native PaymentSheet).
+            <ScrollView style={styles.payScroll} keyboardShouldPersistTaps="handled">
+              <GiftPaymentForm
+                clientSecret={payParams.clientSecret}
+                publishableKey={payParams.publishableKey}
+                totalCents={payParams.totalCents}
+                onHeld={handleHeld}
+                onCancel={handlePayBack}
+                onBusyChange={setPayBusy}
+              />
+            </ScrollView>
+          ) : (
+          <>
           <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
             {loading ? (
               <Spinner color={c.brandText} style={styles.loader} />
@@ -254,6 +303,8 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
             {sending ? <Spinner color={palette.onBrand} /> : <Text style={[styles.sendLabel, { color: palette.onBrand }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{sendLabel}</Text>}
           </Pressable>
           <Text style={[styles.fine, { color: c.textTertiary }]}>{t('gift.holdNote')}</Text>
+          </>
+          )}
         </View>
       </KeyboardAvoidingView>
     </AppModal>
@@ -269,6 +320,7 @@ const styles = StyleSheet.create({
   closeBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   hint: { fontSize: 13, lineHeight: 18 },
   list: { flexGrow: 0, maxHeight: 340 },
+  payScroll: { flexGrow: 0 },
   loader: { paddingVertical: 32 },
   empty: { textAlign: 'center', paddingVertical: 32, fontSize: 14 },
   category: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', marginTop: 10, marginBottom: 2 },

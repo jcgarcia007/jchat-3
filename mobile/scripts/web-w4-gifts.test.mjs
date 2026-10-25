@@ -128,6 +128,41 @@ test('es / en have the same gift keys, with the card-form strings', () => {
   assert.match(j('en').payButton, /\{\{amount\}\}/);
 });
 
+// ── Block 3: GiftSheet on the web ───────────────────────────────────────────────────────────────────────────────────────
+test('GiftSheet: the web asks for the hold and shows the card step; devices keep the native PaymentSheet call untouched', () => {
+  const sheet = read('components/gift/GiftSheet.tsx');
+  const web = sheet.indexOf("if (Platform.OS === 'web') {");
+  const native = sheet.indexOf('const result = await holdGiftPayment(id);');
+  assert.ok(web > 0 && native > web, 'the web branch comes first and returns before the native call');
+  assert.match(sheet, /const hold = await fetchGiftHold\(id\);\s*if \(hold\.ok\) \{\s*setPayParams\(hold\);\s*return;\s*\}/);
+  // The native lines are exactly as before.
+  assert.match(sheet, /const result = await holdGiftPayment\(id\);\s*if \(result\.ok\) \{\s*heldRef\.current = true;\s*onSent\(\);\s*return;\s*\}/);
+  assert.match(sheet, /if \(result\.code === 'Canceled'\) \{/);
+});
+
+test('GiftSheet: web errors reuse the translated gift errors (gift_unavailable, gift_not_open…)', () => {
+  const sheet = read('components/gift/GiftSheet.tsx');
+  assert.match(sheet, /giftErrorCode\(hold\.code\) \?\? giftErrorCode\(hold\.message\)/);
+  assert.match(sheet, /knownWeb \? t\(`gift\.errors\.\$\{knownWeb\}`\) : hold\.message/);
+});
+
+test('GiftSheet: card on hold → offer is the recipient\'s (never cancelled); "Volver" cancels the unpaid offer; no close while confirming', () => {
+  const sheet = read('components/gift/GiftSheet.tsx');
+  assert.match(sheet, /const handleHeld = useCallback\(\(\) => \{\s*heldRef\.current = true;\s*setPayParams\(null\);\s*setPayBusy\(false\);\s*onSent\(\);/);
+  assert.match(sheet, /const handlePayBack = useCallback\(\(\) => \{\s*cancelUnpaidOffer\(offerId\);\s*setPayParams\(null\);/);
+  assert.match(sheet, /const handleClose = useCallback\(\(\) => \{\s*if \(payBusy\) return;/);
+  assert.match(sheet, /setPayParams\(null\);\s*setPayBusy\(false\);\s*heldRef\.current = false;/, 'every opening starts clean');
+  assert.match(sheet, /\{payParams \? \(/);
+  assert.match(sheet, /onBusyChange=\{setPayBusy\}/);
+});
+
+test('the form reports "busy" while the card is confirmed and releases it when it goes away', () => {
+  const form = read('components/gift/GiftPaymentForm.web.tsx');
+  assert.match(form, /const busy = paying \|\| processing;\s*useEffect\(\(\) => \{\s*onBusyChange\?\.\(busy\);/);
+  assert.match(form, /useEffect\(\(\) => \(\) => onBusyChange\?\.\(false\), \[onBusyChange\]\);/);
+  assert.match(read('components/gift/GiftPaymentForm.tsx'), /onBusyChange\?: \(busy: boolean\) => void;/);
+});
+
 test('mobile has the two Stripe.js packages, at the versions the Next site already uses', () => {
   const mobile = JSON.parse(read('package.json')).dependencies;
   const web = JSON.parse(readFileSync(new URL('../../web/package.json', import.meta.url), 'utf8')).dependencies;

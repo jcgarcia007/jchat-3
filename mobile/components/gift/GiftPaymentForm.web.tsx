@@ -12,7 +12,7 @@
  * Colors come from the theme tokens (no new hex).
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { loadStripe } from '@stripe/stripe-js/pure';
@@ -30,7 +30,7 @@ export type { GiftPaymentFormProps } from './GiftPaymentForm';
 
 type Colors = ReturnType<typeof useThemeColors>;
 
-function CardForm({ totalCents, onHeld, onCancel }: Pick<GiftPaymentFormProps, 'totalCents' | 'onHeld' | 'onCancel'>): React.ReactElement {
+function CardForm({ totalCents, onHeld, onCancel, onBusyChange }: Pick<GiftPaymentFormProps, 'totalCents' | 'onHeld' | 'onCancel' | 'onBusyChange'>): React.ReactElement {
   const c = useThemeColors();
   const { t } = useTranslation('chat');
   const stripe = useStripe();
@@ -38,6 +38,13 @@ function CardForm({ totalCents, onHeld, onCancel }: Pick<GiftPaymentFormProps, '
   const [paying, setPaying] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
+
+  // Tell the sheet while the card is being confirmed (it must not close then), and release it if this form goes away.
+  const busy = paying || processing;
+  useEffect(() => {
+    onBusyChange?.(busy);
+  }, [busy, onBusyChange]);
+  useEffect(() => () => onBusyChange?.(false), [onBusyChange]);
 
   const pay = async () => {
     if (!stripe || !elements || paying || processing) return;
@@ -110,7 +117,7 @@ function appearanceFor(c: Colors): Appearance {
   };
 }
 
-export function GiftPaymentForm({ clientSecret, publishableKey, totalCents, onHeld, onCancel }: GiftPaymentFormProps): React.ReactElement {
+export function GiftPaymentForm({ clientSecret, publishableKey, totalCents, onHeld, onCancel, onBusyChange }: GiftPaymentFormProps): React.ReactElement {
   const c = useThemeColors();
   const { i18n } = useTranslation('chat');
   const stripePromise = useMemo(() => loadStripe(publishableKey), [publishableKey]);
@@ -120,7 +127,7 @@ export function GiftPaymentForm({ clientSecret, publishableKey, totalCents, onHe
   );
   return (
     <Elements stripe={stripePromise} options={options}>
-      <CardForm totalCents={totalCents} onHeld={onHeld} onCancel={onCancel} />
+      <CardForm totalCents={totalCents} onHeld={onHeld} onCancel={onCancel} onBusyChange={onBusyChange} />
     </Elements>
   );
 }

@@ -12,6 +12,8 @@ export interface GiftPaymentFormProps {
   onHeld: () => void;
   /** The person went back without paying (the caller cancels the unpaid offer). */
   onCancel: () => void;
+  /** True while the card is being confirmed (the caller must not close / cancel then). */
+  onBusyChange?: (busy: boolean) => void;
 }
 
 export function GiftPaymentForm(_props: GiftPaymentFormProps): null {
