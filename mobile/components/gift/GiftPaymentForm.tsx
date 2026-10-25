@@ -20,6 +20,8 @@ export interface GiftPaymentFormProps {
   compact?: boolean;
   /** Web: pixel cap of the card field area; past it the field scrolls on its own so the Hold / Back buttons are never pushed out of sight. */
   fieldMaxHeight?: number;
+  /** Web: the fine print under the buttons (what is authorized now, when it is charged or released). */
+  note?: string;
 }
 
 export function GiftPaymentForm(_props: GiftPaymentFormProps): null {

@@ -30,7 +30,7 @@ export type { GiftPaymentFormProps } from './GiftPaymentForm';
 
 type Colors = ReturnType<typeof useThemeColors>;
 
-function CardForm({ totalCents, onHeld, onCancel, onBusyChange, title, compact, fieldMaxHeight }: Pick<GiftPaymentFormProps, 'totalCents' | 'onHeld' | 'onCancel' | 'onBusyChange' | 'title' | 'compact' | 'fieldMaxHeight'>): React.ReactElement {
+function CardForm({ totalCents, onHeld, onCancel, onBusyChange, title, compact, fieldMaxHeight, note }: Pick<GiftPaymentFormProps, 'totalCents' | 'onHeld' | 'onCancel' | 'onBusyChange' | 'title' | 'compact' | 'fieldMaxHeight' | 'note'>): React.ReactElement {
   const c = useThemeColors();
   const { t } = useTranslation('chat');
   const stripe = useStripe();
@@ -92,7 +92,7 @@ function CardForm({ totalCents, onHeld, onCancel, onBusyChange, title, compact, 
   const disabled = !stripe || !elements || paying || processing;
   return (
     <View ref={formRef} style={styles.form}>
-      <Text style={[styles.title, { color: c.textPrimary }]} numberOfLines={1} accessibilityRole="header">{title ?? t('gift.payTitle')}</Text>
+      {compact ? null : <Text style={[styles.title, { color: c.textPrimary }]} numberOfLines={1} accessibilityRole="header">{title ?? t('gift.payTitle')}</Text>}
       <ScrollView style={fieldMaxHeight ? { maxHeight: fieldMaxHeight, flexGrow: 0 } : undefined} keyboardShouldPersistTaps="handled">
         <PaymentElement onFocus={revealForm} />
       </ScrollView>
@@ -113,7 +113,7 @@ function CardForm({ totalCents, onHeld, onCancel, onBusyChange, title, compact, 
       <Pressable testID="gift-pay-back" onPress={onCancel} disabled={paying} accessibilityRole="button" style={styles.backBtn}>
         <Text style={[styles.backLabel, { color: c.textSecondary }]}>{t('gift.payBack')}</Text>
       </Pressable>
-      {compact ? null : <Text style={[styles.fine, { color: c.textTertiary }]}>{t('gift.holdNote')}</Text>}
+      {compact || !note ? null : <Text style={[styles.fine, { color: c.textSecondary }]}>{note}</Text>}
     </View>
   );
 }
@@ -132,7 +132,7 @@ function appearanceFor(c: Colors): Appearance {
   };
 }
 
-export function GiftPaymentForm({ clientSecret, publishableKey, totalCents, onHeld, onCancel, onBusyChange, title, compact, fieldMaxHeight }: GiftPaymentFormProps): React.ReactElement {
+export function GiftPaymentForm({ clientSecret, publishableKey, totalCents, onHeld, onCancel, onBusyChange, title, compact, fieldMaxHeight, note }: GiftPaymentFormProps): React.ReactElement {
   const c = useThemeColors();
   const { i18n } = useTranslation('chat');
   const stripePromise = useMemo(() => loadStripe(publishableKey), [publishableKey]);
@@ -142,7 +142,7 @@ export function GiftPaymentForm({ clientSecret, publishableKey, totalCents, onHe
   );
   return (
     <Elements stripe={stripePromise} options={options}>
-      <CardForm totalCents={totalCents} onHeld={onHeld} onCancel={onCancel} onBusyChange={onBusyChange} title={title} compact={compact} fieldMaxHeight={fieldMaxHeight} />
+      <CardForm totalCents={totalCents} onHeld={onHeld} onCancel={onCancel} onBusyChange={onBusyChange} title={title} compact={compact} fieldMaxHeight={fieldMaxHeight} note={note} />
     </Elements>
   );
 }

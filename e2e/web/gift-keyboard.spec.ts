@@ -111,8 +111,7 @@ const geometry = (page: Page) =>
       const r = el?.getBoundingClientRect();
       return r ? { top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), right: Math.round(r.right) } : null;
     };
-    const header = Array.from(document.querySelectorAll<HTMLElement>('div, h1, h2, h3, span')).find((el) => /^Regalo para /.test(el.innerText ?? '') && el.children.length === 0);
-    let sheet: HTMLElement | null = header ?? null;
+    let sheet: HTMLElement | null = document.querySelector<HTMLElement>('[data-testid="gift-pay"]');
     while (sheet && parseFloat(getComputedStyle(sheet).borderTopLeftRadius) < 20) sheet = sheet.parentElement;
     const vv = window.visualViewport!;
     return {
@@ -160,6 +159,8 @@ test('the card step rests ON TOP of the keyboard: field and buttons visible, sho
   await page.screenshot({ path: 'artifacts/gift-keyboard/keyboard-closed.png' });
   expect(closed.texts).toMatch(/Pagar [^\n]+ · USD\s\d/); // short title: "Pagar <items> · USD X"
   expect(closed.texts).toMatch(/Elige qué enviar/); // the hint is there while the keyboard is closed
+  expect(closed.texts).toMatch(/Pagar USD\s\d/); // the main button says Pagar
+  expect(closed.texts).toMatch(/Tu tarjeta se autoriza ahora y solo se cobra si .+ acepta el regalo\. Si no lo acepta en 15 minutos, se libera sola\./);
 
   // Tap the card field (Stripe's focus event) and let Safari open the keyboard.
   await page.frameLocator('iframe[data-fake-stripe]').getByPlaceholder('Card number').click();
@@ -182,7 +183,8 @@ test('the card step rests ON TOP of the keyboard: field and buttons visible, sho
   // Order: title -> field -> buttons; the long text folds while the keyboard is open.
   expect(open.texts).toMatch(/Pagar [^\n]+ · USD\s\d/);
   expect(open.texts).not.toMatch(/Elige qué enviar/);
-  expect(open.texts).not.toMatch(/No se cobra hasta que acepten/);
+  expect(open.texts).not.toMatch(/Tu tarjeta se autoriza ahora/);
+  expect(open.texts).not.toMatch(/Regalo para /); // the gift title gives its place to the short pay title
   // The field area (an inner scroller capped in px, so the buttons never leave the screen) starts above the buttons and the card
   // number input itself is on screen above the keyboard.
   expect(open.field!.top).toBeLessThan(open.pay!.top);

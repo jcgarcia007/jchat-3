@@ -48,6 +48,10 @@ interface Props {
   onSent: () => void;
 }
 
+/** Web card step: px the sheet spends outside the Stripe field area, keyboard closed / open (see cardChrome in the component). */
+const CARD_CHROME = 334;
+const CARD_CHROME_KEYBOARD = 184;
+
 const MAX_QTY = 10;
 const MAX_LINES = 10;
 
@@ -57,7 +61,6 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
   // Web card step: the sheet's own `maxHeight: '88%'` has no definite parent height there, so Stripe's tall form (card, country,
   // postal code, Link) pushed the buttons off the screen. The card step scrolls inside a pixel cap instead (it is never shown on devices).
   const { height: windowHeight } = useWindowDimensions();
-  const payMaxHeight = Math.max(240, Math.round(windowHeight * 0.55));
   // Web card step + on-screen keyboard: Safari does not shrink the layout viewport, only the visual one, so the sheet is lifted
   // by the keyboard's height and capped to what the visual viewport still shows. The chat composer's useVisualViewportInset is
   // measured against <body> (already fitted to the visible area) and answers 0 for a fixed modal, hence useKeyboardCover. On devices
@@ -84,8 +87,13 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
   const keyboardOpen = onCardStep && keyboardInset > 100;
   const visibleHeight = onCardStep && typeof window !== 'undefined' && window.visualViewport ? window.visualViewport.height : windowHeight;
   const cardSheetMaxHeight = Math.max(240, Math.floor(visibleHeight - 24));
-  // Handle + header + paddings, plus the hint line while it is shown: what the sheet spends outside the scrolling form.
-  const cardScrollMaxHeight = Math.max(120, Math.min(payMaxHeight, cardSheetMaxHeight - (keyboardOpen ? 100 : 148)));
+  // What the sheet spends OUTSIDE Stripe's field area (paddings, header, titles, Pay + Back buttons, fine print), measured on a phone
+  // with the real PaymentElement. The field area gets the rest (never under 160 px: card number, expiry and CVC), scrolling on its own
+  // past that, so the buttons never leave the screen. With the keyboard open the header carries the short pay title and the hint,
+  // the form title and the fine print are folded.
+  const cardChrome = keyboardOpen ? CARD_CHROME_KEYBOARD : CARD_CHROME;
+  const cardFieldMaxHeight = Math.max(160, Math.min(420, cardSheetMaxHeight - cardChrome));
+  const cardScrollMaxHeight = Math.max(240, cardSheetMaxHeight - (keyboardOpen ? 60 : 118));
 
   // Every opening starts clean (the offer of a previous opening was either sent or cancelled).
   useEffect(() => {
@@ -231,6 +239,7 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
   }, [sending, count, offerId, businessId, recipient.id, lines, note, conversationId, onSent, cancelUnpaidOffer, t]);
 
   const sendLabel = t('gift.send', { count, amount: formatCents(subtotal) });
+  const holdNote = t('gift.holdNote', { name: recipient.name });
 
   return (
     <AppModal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
@@ -243,10 +252,10 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
             onCardStep && { maxHeight: cardSheetMaxHeight },
           ]}
         >
-          <View style={[styles.handle, { backgroundColor: c.borderSubtle }]} />
+          {keyboardOpen ? null : <View style={[styles.handle, { backgroundColor: c.borderSubtle }]} />}
           <View style={styles.header}>
             <Text style={[styles.title, { color: c.textPrimary }]} numberOfLines={1} accessibilityRole="header">
-              {t('gift.title', { name: recipient.name })}
+              {keyboardOpen && cardTitle ? cardTitle : t('gift.title', { name: recipient.name })}
             </Text>
             <Pressable onPress={handleClose} accessibilityRole="button" accessibilityLabel={t('gift.close')} style={styles.closeBtn}>
               <IconX size={22} color={c.textSecondary} />
@@ -260,7 +269,8 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
               <GiftPaymentForm
                 title={cardTitle}
                 compact={keyboardOpen}
-                fieldMaxHeight={Math.max(120, cardScrollMaxHeight - (keyboardOpen ? 190 : 230))}
+                fieldMaxHeight={cardFieldMaxHeight}
+                note={holdNote}
                 clientSecret={payParams.clientSecret}
                 publishableKey={payParams.publishableKey}
                 totalCents={payParams.totalCents}
@@ -342,7 +352,7 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
           >
             {sending ? <Spinner color={palette.onBrand} /> : <Text style={[styles.sendLabel, { color: palette.onBrand }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{sendLabel}</Text>}
           </Pressable>
-          <Text style={[styles.fine, { color: c.textTertiary }]}>{t('gift.holdNote')}</Text>
+          <Text style={[styles.fine, { color: c.textSecondary }]}>{holdNote}</Text>
           </>
           )}
         </View>

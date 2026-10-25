@@ -156,12 +156,14 @@ test('GiftSheet: card on hold → offer is the recipient\'s (never cancelled); "
   assert.match(sheet, /onBusyChange=\{setPayBusy\}/);
 });
 
-test('the web card step scrolls inside a pixel cap so Stripe\'s tall form never pushes Retener / Volver off the screen', () => {
+test('the web card step scrolls inside a pixel cap so Stripe\'s tall form never pushes Pagar / Volver off the screen', () => {
   const sheet = read('components/gift/GiftSheet.tsx');
   assert.match(sheet, /const \{ height: windowHeight \} = useWindowDimensions\(\);/);
-  assert.match(sheet, /const payMaxHeight = Math\.max\(240, Math\.round\(windowHeight \* 0\.55\)\);/);
+  assert.match(sheet, /const CARD_CHROME = 334;\s*const CARD_CHROME_KEYBOARD = 184;/);
+  assert.match(sheet, /const cardFieldMaxHeight = Math\.max\(160, Math\.min\(420, cardSheetMaxHeight - cardChrome\)\);/); // never under 160 px: number + expiry + CVC
+  assert.match(sheet, /const cardScrollMaxHeight = Math\.max\(240, cardSheetMaxHeight - \(keyboardOpen \? 60 : 118\)\);/);
   assert.match(sheet, /style=\{\[styles\.payScroll, \{ maxHeight: cardScrollMaxHeight \}\]\}/);
-  assert.match(sheet, /const cardScrollMaxHeight = Math\.max\(120, Math\.min\(payMaxHeight, cardSheetMaxHeight - \(keyboardOpen \? 100 : 148\)\)\);/);
+  assert.match(sheet, /fieldMaxHeight=\{cardFieldMaxHeight\}/);
   assert.match(sheet, /payScroll: \{ flexGrow: 0, flexShrink: 1 \},/);
 });
 
@@ -176,6 +178,9 @@ test('web card step + keyboard: the sheet is lifted by useKeyboardCover and capp
   // The long hint folds while the keyboard is open; the form gets a short title and a compact flag.
   assert.match(sheet, /\{keyboardOpen \? null : <Text style=\{\[styles\.hint/);
   assert.match(sheet, /title=\{cardTitle\}\s*compact=\{keyboardOpen\}/);
+  // With the keyboard open the header carries the short pay title (the gift title and the handle fold away).
+  assert.match(sheet, /\{keyboardOpen && cardTitle \? cardTitle : t\('gift\.title', \{ name: recipient\.name \}\)\}/);
+  assert.match(sheet, /\{keyboardOpen \? null : <View style=\{\[styles\.handle/);
   assert.match(sheet, /t\('gift\.payTitleFor', \{ items, amount: formatCents\(payParams\.totalCents\) \}\)/);
   // Devices: the hook is a constant 0 and the new props are optional types the native stub never renders.
   assert.match(read('hooks/useKeyboardCover.ts'), /return 0;/);
@@ -187,7 +192,8 @@ test('web card form: Stripe\'s own focus event scrolls the form into view; the f
   const form = read('components/gift/GiftPaymentForm.web.tsx');
   assert.match(form, /<PaymentElement onFocus=\{revealForm\} \/>/);
   assert.match(form, /scrollIntoView\?\.\(\{ block: 'center', behavior: 'smooth' \}\)/);
-  assert.match(form, /\{compact \? null : <Text style=\{\[styles\.fine/);
+  assert.match(form, /\{compact \|\| !note \? null : <Text style=\{\[styles\.fine, \{ color: c\.textSecondary \}\]\}>\{note\}<\/Text>\}/);
+  assert.match(form, /\{compact \? null : <Text style=\{\[styles\.title/); // the form's own title folds when the header carries it
   assert.match(form, /fieldMaxHeight \? \{ maxHeight: fieldMaxHeight, flexGrow: 0 \} : undefined/);
   assert.doesNotMatch(form, /autoComplete|autocomplete/i, 'the PaymentElement keeps Stripe\'s own autofill (iOS card autofill)');
 });
@@ -209,4 +215,25 @@ test('mobile has the two Stripe.js packages, at the versions the Next site alrea
 test('the server side keeps the manual-capture hold: a web card form only confirms the PaymentIntent gift_hold creates', () => {
   const payments = readFileSync(new URL('../../supabase/functions/payments/index.ts', import.meta.url), 'utf8');
   assert.match(payments, /capture_method: "manual" as const, \/\/ HOLD only: captured by gift-worker on accept/);
+});
+
+test('gift texts: "Pagar", and the hold note names the recipient (same key on the picker and the card step, es + en)', () => {
+  const sheet = read('components/gift/GiftSheet.tsx');
+  assert.match(sheet, /const holdNote = t\('gift\.holdNote', \{ name: recipient\.name \}\);/);
+  assert.match(sheet, /<Text style=\{\[styles\.fine, \{ color: c\.textSecondary \}\]\}>\{holdNote\}<\/Text>/);
+  assert.match(sheet, /note=\{holdNote\}/);
+  const j = (lng) => JSON.parse(read(`i18n/locales/${lng}/chat.json`)).gift;
+  assert.equal(j('es').payButton, 'Pagar {{amount}}');
+  assert.equal(j('en').payButton, 'Pay {{amount}}');
+  assert.equal(j('es').holdNote, 'Tu tarjeta se autoriza ahora y solo se cobra si {{name}} acepta el regalo. Si no lo acepta en 15 minutos, se libera sola.');
+  assert.equal(j('en').holdNote, "Your card is authorized now and charged only if {{name}} accepts the gift. If it isn't accepted within 15 minutes, the hold is released automatically.");
+});
+
+test('gift_hold is CARD ONLY on the server (payment_method_types: card) without touching the shared Connect params', () => {
+  const server = readFileSync(new URL('../../supabase/functions/payments/index.ts', import.meta.url), 'utf8');
+  const gift = server.slice(server.indexOf('// ── gift_hold'));
+  assert.match(gift, /const \{ automatic_payment_methods: _automatic, \.\.\.connectParams \} = buildConnectPiParams\(/);
+  assert.match(gift, /payment_method_types: \["card"\],\s*capture_method: "manual" as const/);
+  const shared = readFileSync(new URL('../../supabase/functions/_shared/connect.ts', import.meta.url), 'utf8');
+  assert.match(shared, /automatic_payment_methods: \{ enabled: true \},/); // the order checkout keeps every method
 });

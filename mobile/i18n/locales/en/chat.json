@@ -396,7 +396,7 @@
     "more": "Add one {{name}}",
     "notePlaceholder": "Add a note (optional)",
     "send": "Send gift · {{count}} items · {{amount}} + tax",
-    "holdNote": "Not charged until they accept. If they don't, the hold is released.",
+    "holdNote": "Your card is authorized now and charged only if {{name}} accepts the gift. If it isn't accepted within 15 minutes, the hold is released automatically.",
     "close": "Close",
     "errorTitle": "Couldn't send the gift",
     "errors": {
@@ -417,7 +417,7 @@
     "sentBody": "Your card is on hold. They have 15 minutes to accept; you are charged only if they do.",
     "payTitle": "Card payment",
     "payTitleFor": "Pay {{items}} · {{amount}}",
-    "payButton": "Hold {{amount}}",
+    "payButton": "Pay {{amount}}",
     "payBack": "Back",
     "payProcessing": "Your bank is processing the hold. Don't close this window."
   },

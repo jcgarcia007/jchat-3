@@ -396,7 +396,7 @@
     "more": "Añadir un {{name}}",
     "notePlaceholder": "Añade una nota (opcional)",
     "send": "Enviar regalo · {{count}} artículos · {{amount}} + imp.",
-    "holdNote": "No se cobra hasta que acepten. Si no aceptan, se libera la retención.",
+    "holdNote": "Tu tarjeta se autoriza ahora y solo se cobra si {{name}} acepta el regalo. Si no lo acepta en 15 minutos, se libera sola.",
     "close": "Cerrar",
     "errorTitle": "No pudimos enviar el regalo",
     "errors": {
@@ -417,7 +417,7 @@
     "sentBody": "Tu tarjeta está retenida. Tienen 15 minutos para aceptar; solo se te cobra si aceptan.",
     "payTitle": "Pago con tarjeta",
     "payTitleFor": "Pagar {{items}} · {{amount}}",
-    "payButton": "Retener {{amount}}",
+    "payButton": "Pagar {{amount}}",
     "payBack": "Volver",
     "payProcessing": "Tu banco está procesando la retención. No cierres esta ventana."
   },

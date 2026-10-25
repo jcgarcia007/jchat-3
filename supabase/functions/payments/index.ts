@@ -1092,14 +1092,20 @@ async function handleGiftHold(body: Record<string, unknown>, authUserId: string,
   };
 
   const ephemeralKey = await stripe.ephemeralKeys.create({ customer: customerId }, { apiVersion: "2024-06-20" });
+  // A gift is CARD ONLY: the hold is a manual-capture authorization the gift-worker captures or releases, which bank debits and
+  // redirect wallets (Cash App Pay, Klarna...) cannot honor in the 15-minute window. buildConnectPiParams (shared with the order
+  // checkout, where every method is welcome) asks for automatic_payment_methods; Stripe refuses that together with
+  // payment_method_types, so it is dropped HERE only. Apple Pay / Google Pay are the `card` type and keep working.
+  const { automatic_payment_methods: _automatic, ...connectParams } = buildConnectPiParams({
+    amountCents: totalCents,
+    currency: "usd",
+    metadata,
+    stripeAccountId: business.stripe_account_id as string,
+    customer: customerId,
+  });
   const piParams = {
-    ...buildConnectPiParams({
-      amountCents: totalCents,
-      currency: "usd",
-      metadata,
-      stripeAccountId: business.stripe_account_id as string,
-      customer: customerId,
-    }),
+    ...connectParams,
+    payment_method_types: ["card"],
     capture_method: "manual" as const, // HOLD only: captured by gift-worker on accept
   };
   let paymentIntent: Stripe.PaymentIntent;

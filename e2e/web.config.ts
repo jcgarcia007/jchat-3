@@ -65,7 +65,7 @@ export default defineConfig({
     // Games on the web (Match, Truth or Dare): Safari on a 390 px phone (WebKit) with the whole games network simulated.
     {
       name: 'webkit-390',
-      testMatch: /(games-web|gift-keyboard)\.spec\.ts/,
+      testMatch: /(games-web|gift-keyboard|gift-real-card)\.spec\.ts/,
       use: { ...devices['iPhone 15'], viewport: { width: 390, height: 844 }, launchOptions: {} },
     },
     // Tablet width: only the audit walks it (npm run web:audit), the smoke specs stay on phone + desktop.
