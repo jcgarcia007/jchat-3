@@ -119,6 +119,7 @@ import { toUserMessage } from '../../utils/errors';
 import { MessageBubble } from '../../components/chat/MessageBubble';
 import type { ChatMessage, UserAnchor } from '../../components/chat/MessageBubble';
 import UserQuickCard from '../../components/chat/UserQuickCard';
+import { quickCardIdentity } from '../../utils/quickCardAvatar';
 import { ImageViewerModal } from '../../components/ImageViewerModal';
 import { IncognitoToggle, INCOGNITO_ENABLED, isIncognitoValid } from '../../components/chat/IncognitoToggle';
 import type { IncognitoState } from '../../components/chat/IncognitoToggle';
@@ -374,6 +375,8 @@ export default function ChatRoomScreen() {
     visible: boolean;
     userId: string;
     userName: string;
+    /** The photo the room's avatar row shows for this person (presence payload), or undefined → the initial. */
+    avatarUrl?: string;
     anchor: UserAnchor;
   }>({ visible: false, userId: '', userName: '', anchor: { x: 0, y: 0, width: 0, height: 0 } });
 
@@ -584,6 +587,9 @@ export default function ChatRoomScreen() {
     (u) => !hiddenUserIds.has(u.id) && !blockedIds.has(u.id),
   );
   const activeCount = usersInRoom.length;
+  // The quick card reads the same presence list as the avatar row (see utils/quickCardAvatar.ts).
+  const usersInRoomRef = useRef(usersInRoom);
+  usersInRoomRef.current = usersInRoom;
 
   // ── Block relations: loaded when entering the room and every time we come back ──
   const refreshBlocks = useCallback(async () => {
@@ -1393,7 +1399,8 @@ export default function ChatRoomScreen() {
         setOwnMenuOpen(true); // Cambiar foto · Editar perfil · Ver mi perfil
         return;
       }
-      setQuickCard({ visible: true, userId, userName: displayName, anchor });
+      const identity = quickCardIdentity(usersInRoomRef.current, userId);
+      setQuickCard({ visible: true, userId, userName: identity.nickname ?? displayName, avatarUrl: identity.avatarUrl, anchor });
     },
     [user?.id],
   );
@@ -2035,6 +2042,7 @@ export default function ChatRoomScreen() {
         visible={quickCard.visible}
         targetUserId={quickCard.userId}
         targetName={quickCard.userName}
+        targetAvatar={quickCard.avatarUrl}
         anchor={quickCard.anchor}
         onViewProfile={handleViewProfile}
         onDM={handleStartDM}
