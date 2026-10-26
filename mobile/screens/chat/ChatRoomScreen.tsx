@@ -74,6 +74,7 @@ import { changeMyAvatar } from '../../services/avatar';
 import { subscribeMyProfileChanged } from '../../services/profileEvents';
 import { GiftSheet } from '../../components/gift/GiftSheet';
 import { useGiftAvailable } from '../../hooks/useGiftAvailable';
+import { usePresentUsers } from '../../hooks/usePresentUsers';
 import { useOrdersBar } from '../../context/OrdersBarContext';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useDmUnread } from '../../hooks/useDmUnread';
@@ -583,9 +584,16 @@ export default function ChatRoomScreen() {
 
   // The online row shows the room on screen; demo mode falls back to demo users.
   const liveUsers = presenceByRoom[activeRoomId] ?? [];
-  const usersInRoom = (isSupabaseConfigured ? liveUsers : DEMO_USERS).filter(
+  const visibleUsers = (isSupabaseConfigured ? liveUsers : DEMO_USERS).filter(
     (u) => !hiddenUserIds.has(u.id) && !blockedIds.has(u.id),
   );
+  // Migration 243: only the people the server still confirms in the venue (a lapsed geo-presence leaves the list, like the gift
+  // button already did). Not while the entry screen is up, and a failed call leaves the list as it was.
+  const usersInRoom = usePresentUsers(visibleUsers, {
+    businessId: room?.business_id,
+    selfId: user?.id,
+    enabled: isSupabaseConfigured && !entryVisible && !isOwner,
+  });
   const activeCount = usersInRoom.length;
   // The quick card reads the same presence list as the avatar row (see utils/quickCardAvatar.ts).
   const usersInRoomRef = useRef(usersInRoom);

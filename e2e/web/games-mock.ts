@@ -64,6 +64,8 @@ const RPC_ANSWERS: Record<string, unknown> = {
   tod_decide: { status: 'ok', published: false },
   // The venue session asks the server whether a confirmed exit was still pending when the person comes back: nothing pending.
   venue_session_resume: false,
+  // Migration 243 filters the room's presence list with the server's geo-presence: `null` = no answer, the app leaves the list as it is.
+  venue_present_users: null,
 };
 
 /** Read-only RPCs (declared `stable` in their migration): the entry link lookup and the order banner. They pass through. */

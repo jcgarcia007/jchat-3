@@ -9,6 +9,7 @@
 
 import { isSupabaseConfigured, supabase } from './supabase';
 import { limitCountIds, parsePeopleCounts } from '../utils/venuePeople';
+import { PRESENT_QUERY_LIMIT } from '../utils/presentUsers';
 
 const warned = new Set<string>();
 
@@ -74,5 +75,26 @@ export async function resumeVenueSessionOnServer(businessId: string): Promise<bo
   } catch (err) {
     warnOnce('venue_session_resume', err);
     return false;
+  }
+}
+
+/**
+ * Migration 243: of these people (the room's presence list), who is still CONFIRMED in the venue by the server's clock (the same
+ * room_geo_presence that gift_available needs). At most PRESENT_QUERY_LIMIT ids are sent. Null when the call fails or the
+ * function does not exist yet (the caller then leaves the list as it is). Never throws.
+ */
+export async function fetchPresentUsers(businessId: string, userIds: readonly string[]): Promise<string[] | null> {
+  if (!isSupabaseConfigured || !businessId || userIds.length === 0) return null;
+  try {
+    const { data, error } = await supabase.rpc('venue_present_users' as never, { p_business_id: businessId, p_user_ids: userIds.slice(0, PRESENT_QUERY_LIMIT) } as never);
+    if (error) {
+      warnOnce('venue_present_users', error);
+      return null;
+    }
+    if (!Array.isArray(data)) return null;
+    return (data as unknown[]).filter((id): id is string => typeof id === 'string');
+  } catch (err) {
+    warnOnce('venue_present_users', err);
+    return null;
   }
 }
