@@ -174,10 +174,18 @@ test('R3: on the web the card step is a full-screen page INSIDE <body>, not the 
   assert.match(sheet, /const result = await holdGiftPayment\(id\);/);
 });
 
-test('R3: leaving the web screen with an unpaid offer cancels it (browser Back); a held offer is never cancelled', () => {
+test('R3: leaving the web screen with an unpaid offer cancels it (browser Back); never a held offer, never while the card is being confirmed', () => {
   const sheet = read('components/gift/GiftSheet.tsx');
   assert.match(sheet, /offerIdRef\.current = offerId;/);
-  assert.match(sheet, /if \(Platform\.OS !== 'web'\) return;\s*const open = offerIdRef\.current;\s*if \(open && !heldRef\.current\) void cancelGiftOffer\(open\);/);
+  assert.match(sheet, /payBusyRef\.current = payBusy;/);
+  assert.match(sheet, /if \(Platform\.OS !== 'web'\) return;\s*const open = offerIdRef\.current;\s*if \(open && !heldRef\.current && !payBusyRef\.current\) void cancelGiftOffer\(open\);/);
+  // the busy flag covers confirmPayment (3-D Secure runs inside that promise) and the bank's "processing"
+  const form = read('components/gift/GiftPaymentForm.web.tsx');
+  assert.match(form, /const busy = paying \|\| processing;/);
+  assert.match(form, /setPaying\(true\);[\s\S]*await stripe\.confirmPayment\([\s\S]*setPaying\(false\);/);
+  assert.match(form, /outcome\.kind === 'processing'\) \{\s*setProcessing\(true\);/);
+  assert.match(form, /onBusyChange\?\.\(busy\);/);
+  assert.match(sheet, /onBusyChange=\{setPayBusy\}/);
 });
 
 test('R3: gift_not_open from the server drops the offer so "Send" starts a fresh one', () => {

@@ -64,21 +64,26 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
   const [offerId, setOfferId] = useState<string | null>(null);
   // True once the card is on hold: from then on the offer belongs to the recipient's chat and must not be cancelled.
   const heldRef = useRef(false);
-  // Web only: the latest offer id, so leaving the screen (browser Back, navigation) with an unpaid offer cancels it.
-  const offerIdRef = useRef<string | null>(null);
-  offerIdRef.current = offerId;
-  useEffect(
-    () => () => {
-      if (Platform.OS !== 'web') return;
-      const open = offerIdRef.current;
-      if (open && !heldRef.current) void cancelGiftOffer(open);
-    },
-    [],
-  );
   // Web only: the PaymentIntent to confirm with the card form (null = the picker is shown), and whether the card is being
   // confirmed right now (the sheet cannot be closed then: a hold could land on a cancelled offer).
   const [payParams, setPayParams] = useState<GiftHoldParams | null>(null);
   const [payBusy, setPayBusy] = useState(false);
+
+  // Web only: leaving the screen (browser Back, navigation) with an unpaid offer cancels it — but NEVER while the card is being
+  // confirmed: confirmPayment running (3-D Secure included) or the bank still "processing". Then the hold may still land; the
+  // webhook marks it held, or cancels it as an orphan if the offer was closed meanwhile (stripe-webhook, migration 242).
+  const offerIdRef = useRef<string | null>(null);
+  offerIdRef.current = offerId;
+  const payBusyRef = useRef(false);
+  payBusyRef.current = payBusy;
+  useEffect(
+    () => () => {
+      if (Platform.OS !== 'web') return;
+      const open = offerIdRef.current;
+      if (open && !heldRef.current && !payBusyRef.current) void cancelGiftOffer(open);
+    },
+    [],
+  );
 
   // Every opening starts clean (the offer of a previous opening was either sent or cancelled).
   useEffect(() => {
