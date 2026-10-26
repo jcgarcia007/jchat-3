@@ -975,6 +975,7 @@ export default function DMChatScreen() {
           visible={giftOpen}
           onClose={() => setGiftOpen(false)}
           businessId={giftBusinessId}
+          venueName={meta?.businessName ?? ''}
           recipient={{ id: meta.otherUserId, name: meta.otherName ?? '' }}
           conversationId={conversationId}
           onSent={() => {

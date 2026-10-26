@@ -73,7 +73,7 @@ test('real PaymentElement: number + expiry + CVC + Pagar visible above the keybo
     await measure();
   } finally {
     await page.screenshot({ path: 'artifacts/gift-keyboard/real-final.png' }).catch(() => undefined);
-    const back = page.getByTestId('gift-pay-back');
+    const back = page.getByTestId('gift-pay-page-back');
     if (await back.isVisible().catch(() => false)) {
       // The cancel is fire-and-forget in the app: wait for its answer so the offer is really closed before the page goes away.
       const cancelled = page.waitForResponse((r) => /rpc\/gift_offer_cancel/.test(r.url()), { timeout: 15_000 }).catch(() => null);
@@ -114,7 +114,7 @@ test('real PaymentElement: number + expiry + CVC + Pagar visible above the keybo
     expiry: (await stripeFrame.getByPlaceholder(/MM \/ AA|MM \/ YY/).boundingBox())!,
     cvc: (await stripeFrame.getByPlaceholder(/CVC|CVV/).boundingBox())!,
     pay: (await page.getByTestId('gift-pay').boundingBox())!,
-    back: (await page.getByTestId('gift-pay-back').boundingBox())!,
+    back: (await page.getByTestId('gift-pay-page-back').boundingBox())!,
   };
   for (const [name, box] of Object.entries(bottoms)) {
     expect(box.y + box.height, `${name} above the keyboard`).toBeLessThanOrEqual(visibleBottom);

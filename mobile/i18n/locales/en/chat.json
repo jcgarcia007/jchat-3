@@ -423,7 +423,10 @@
     "payClosed": "This offer is already closed. Go back and send the gift again.",
     "payNoAttemptsLeft": "No attempts left, so the offer was closed. Go back and send the gift again.",
     "payAttemptsLeft_one": "{{count}} attempt left.",
-    "payAttemptsLeft_other": "{{count}} attempts left."
+    "payAttemptsLeft_other": "{{count}} attempts left.",
+    "paySummaryCount_one": "{{count}} item",
+    "paySummaryCount_other": "{{count}} items",
+    "payTotal": "Total"
   },
   "giftCard": {
     "nItems_one": "{{count}} item",

@@ -150,56 +150,87 @@ test('GiftSheet: web errors reuse the translated gift errors (gift_unavailable, 
   assert.match(sheet, /knownWeb \? t\(`gift\.errors\.\$\{knownWeb\}`\) : hold\.message/);
 });
 
-test('GiftSheet: card on hold → offer is the recipient\'s (never cancelled); "Volver" cancels the unpaid offer; no close while confirming', () => {
+test('GiftSheet: card on hold → offer is the recipient\'s (never cancelled); the page arrow cancels the unpaid offer; no close while confirming', () => {
   const sheet = read('components/gift/GiftSheet.tsx');
   assert.match(sheet, /const handleHeld = useCallback\(\(\) => \{\s*heldRef\.current = true;\s*setPayParams\(null\);\s*setPayBusy\(false\);\s*onSent\(\);/);
-  assert.match(sheet, /const handlePayBack = useCallback\(\(\) => \{\s*cancelUnpaidOffer\(offerId\);\s*setPayParams\(null\);/);
   assert.match(sheet, /const handleClose = useCallback\(\(\) => \{\s*if \(payBusy\) return;/);
+  assert.match(sheet, /cancelUnpaidOffer\(offerId\);\s*onClose\(\);/);
   assert.match(sheet, /setPayParams\(null\);\s*setPayBusy\(false\);\s*heldRef\.current = false;/, 'every opening starts clean');
-  assert.match(sheet, /\{payParams \? \(/);
   assert.match(sheet, /onBusyChange=\{setPayBusy\}/);
+  assert.doesNotMatch(sheet, /handlePayBack/, 'the arrow of the page is handleClose: cancel + back to the chat');
 });
 
-test('the web card step scrolls inside a pixel cap so Stripe\'s tall form never pushes Pagar / Volver off the screen', () => {
+test('R3: on the web the card step is a full-screen page INSIDE <body>, not the Modal; devices never get it', () => {
   const sheet = read('components/gift/GiftSheet.tsx');
-  assert.match(sheet, /const \{ height: windowHeight \} = useWindowDimensions\(\);/);
-  assert.match(sheet, /const CARD_CHROME = 334;\s*const CARD_CHROME_KEYBOARD = 184;/);
-  assert.match(sheet, /const cardFieldMaxHeight = Math\.max\(160, Math\.min\(420, cardSheetMaxHeight - cardChrome\)\);/); // never under 160 px: number + expiry + CVC
-  assert.match(sheet, /const cardScrollMaxHeight = Math\.max\(240, cardSheetMaxHeight - \(keyboardOpen \? 60 : 118\)\);/);
-  assert.match(sheet, /style=\{\[styles\.payScroll, \{ maxHeight: cardScrollMaxHeight \}\]\}/);
-  assert.match(sheet, /fieldMaxHeight=\{cardFieldMaxHeight\}/);
-  assert.match(sheet, /payScroll: \{ flexGrow: 0, flexShrink: 1 \},/);
+  assert.match(sheet, /import \{ GiftPayPage \} from '\.\/GiftPayPage';/);
+  const page = sheet.indexOf("if (Platform.OS === 'web' && visible && payParams) {");
+  const modal = sheet.indexOf('<AppModal visible={visible}');
+  assert.ok(page > 0 && modal > page, 'the page returns before the Modal is rendered');
+  assert.match(sheet, /<GiftPayPage\s+recipientName=\{recipient\.name\}\s+venueName=\{venueName \?\? ''\}\s+itemsSummary=\{paySummary\}\s+itemCount=\{count\}\s+payParams=\{payParams\}\s+note=\{holdNote\}\s+onBack=\{handleClose\}\s+onHeld=\{handleHeld\}\s+onBusyChange=\{setPayBusy\}/);
+  // the keyboard compensation of the old sheet is gone from the payment step
+  assert.doesNotMatch(sheet, /useKeyboardCover|CARD_CHROME|cardFieldMaxHeight|cardScrollMaxHeight|keyboardOpen|payScroll/);
+  // devices: payParams is only ever set in the web branch of handleSend, and the native twin renders nothing
+  assert.match(read('components/gift/GiftPayPage.tsx'), /export function GiftPayPage\(_props: GiftPayPageProps\): null \{\s*return null;/);
+  assert.match(sheet, /const result = await holdGiftPayment\(id\);/);
 });
 
-test('web card step + keyboard: the sheet is lifted by useKeyboardCover and capped to the visual viewport (web only)', () => {
+test('R3: leaving the web screen with an unpaid offer cancels it (browser Back); a held offer is never cancelled', () => {
   const sheet = read('components/gift/GiftSheet.tsx');
-  assert.match(sheet, /import \{ useKeyboardCover \} from '\.\.\/\.\.\/hooks\/useKeyboardCover';/);
-  assert.match(sheet, /const onCardStep = Platform\.OS === 'web' && payParams !== null;/);
-  assert.match(sheet, /const keyboardOpen = onCardStep && keyboardInset > 100;/);
-  assert.match(sheet, /const cardSheetMaxHeight = Math\.max\(240, Math\.floor\(visibleHeight - 24\)\);/); // top margin >= 24 px
-  assert.match(sheet, /style=\{onCardStep \? \{ paddingBottom: keyboardInset \} : undefined\}/);
-  assert.match(sheet, /onCardStep && \{ maxHeight: cardSheetMaxHeight \}/);
-  // The long hint folds while the keyboard is open; the form gets a short title and a compact flag.
-  assert.match(sheet, /\{keyboardOpen \? null : <Text style=\{\[styles\.hint/);
-  assert.match(sheet, /title=\{cardTitle\}\s*compact=\{keyboardOpen\}/);
-  // With the keyboard open the header carries the short pay title (the gift title and the handle fold away).
-  assert.match(sheet, /\{keyboardOpen && cardTitle \? cardTitle : t\('gift\.title', \{ name: recipient\.name \}\)\}/);
-  assert.match(sheet, /\{keyboardOpen \? null : <View style=\{\[styles\.handle/);
-  assert.match(sheet, /t\('gift\.payTitleFor', \{ items, amount: formatCents\(payParams\.totalCents\) \}\)/);
-  // Devices: the hook is a constant 0 and the new props are optional types the native stub never renders.
-  assert.match(read('hooks/useKeyboardCover.ts'), /return 0;/);
-  assert.match(read('hooks/useKeyboardCover.web.ts'), /window\.innerHeight - \(viewport\.height \+ viewport\.offsetTop\)/);
-  for (const lng of ['es', 'en']) assert.match(read(`i18n/locales/${lng}/chat.json`), /"payTitleFor": "[^"]*\{\{items\}\}[^"]*\{\{amount\}\}"/);
+  assert.match(sheet, /offerIdRef\.current = offerId;/);
+  assert.match(sheet, /if \(Platform\.OS !== 'web'\) return;\s*const open = offerIdRef\.current;\s*if \(open && !heldRef\.current\) void cancelGiftOffer\(open\);/);
 });
 
-test('web card form: Stripe\'s own focus event scrolls the form into view; the fine print folds when compact', () => {
+test('R3: gift_not_open from the server drops the offer so "Send" starts a fresh one', () => {
+  const sheet = read('components/gift/GiftSheet.tsx');
+  assert.match(sheet, /if \(hold\.code === 'gift_not_open'\) \{[^}]*setOfferId\(null\);\s*setPayParams\(null\);/);
+});
+
+test('R3 page: header arrow (44 px, labelled), summary, ONE ScrollView, nothing pinned to the bottom, gap for the autofill bar, focus moved to the header', () => {
+  const page = read('components/gift/GiftPayPage.web.tsx');
+  assert.match(page, /accessibilityLabel=\{t\('gift\.payBack'\)\}/);
+  assert.match(page, /backBtn: \{ width: 44, height: 44,/);
+  assert.match(page, /\{t\('gift\.title', \{ name: recipientName \}\)\}/); // "Regalo para {{name}}"
+  assert.match(page, /t\('gift\.paySummaryCount', \{ count: itemCount \}\)/);
+  assert.match(page, /formatCents\(payParams\.totalCents\)/);
+  assert.equal((page.match(/<ScrollView/g) ?? []).length, 1, 'one scroller');
+  assert.match(page, /position: 'absolute', top: 0, left: 0, right: 0, bottom: 0/);
+  assert.doesNotMatch(page, /position: 'fixed'/, 'fixed would anchor to the layout viewport, under the keyboard');
+  assert.match(page, /paddingBottom: AUTOFILL_BAR_GAP \+ insets\.bottom/);
+  assert.match(page, /node\.focus\(\{ preventScroll: true \}\)/);
+  assert.doesNotMatch(page, /#[0-9a-fA-F]{3,8}\b/, 'theme tokens only');
+  // no Apple Pay / Google Pay in this phase (R5)
+  assert.doesNotMatch(page + read('components/gift/GiftPaymentForm.web.tsx'), /applePay|googlePay|paymentRequest/i);
+});
+
+test('R3 form: Pay sits in the flow right after Stripe\'s field with the fine print under it; Stripe\'s focus scrolls it into view above the autofill bar', () => {
   const form = read('components/gift/GiftPaymentForm.web.tsx');
   assert.match(form, /<PaymentElement onFocus=\{revealForm\} \/>/);
-  assert.match(form, /scrollIntoView\?\.\(\{ block: 'center', behavior: 'smooth' \}\)/);
-  assert.match(form, /\{compact \|\| !note \? null : <Text style=\{\[styles\.fine, \{ color: c\.textSecondary \}\]\}>\{note\}<\/Text>\}/);
-  assert.match(form, /\{compact \? null : <Text style=\{\[styles\.title/); // the form's own title folds when the header carries it
-  assert.match(form, /fieldMaxHeight \? \{ maxHeight: fieldMaxHeight, flexGrow: 0 \} : undefined/);
+  assert.equal((form.match(/<ScrollView/g) ?? []).length, 0, 'no inner scroller around Stripe\'s iframe');
+  assert.match(form, /node\.style\.scrollMarginBottom = `\$\{AUTOFILL_BAR_ROOM\}px`;/);
+  assert.match(form, /block: node\.getBoundingClientRect\(\)\.height \+ AUTOFILL_BAR_ROOM > visible - HEADER_ROOM \? 'start' : 'end'/);
+  const pay = form.indexOf('testID="gift-pay"');
+  const note = form.indexOf('{!note ? null :');
+  assert.ok(form.indexOf('<PaymentElement') < form.indexOf('{message ?') && form.indexOf('{message ?') < pay && pay < note, 'field → message → Pay → fine print');
+  assert.doesNotMatch(form, /compact|fieldMaxHeight|onCancel|gift-pay-back/);
   assert.doesNotMatch(form, /autoComplete|autocomplete/i, 'the PaymentElement keeps Stripe\'s own autofill (iOS card autofill)');
+});
+
+test('R3 texts: summary strings in es and en, and the 242 attempts / closed states are still there', () => {
+  const g = (lng) => JSON.parse(read(`i18n/locales/${lng}/chat.json`)).gift;
+  for (const lng of ['es', 'en']) {
+    for (const k of ['paySummaryCount_one', 'paySummaryCount_other', 'payTotal', 'payAttemptsLeft_one', 'payAttemptsLeft_other', 'payNoAttemptsLeft', 'payClosed', 'payProcessing', 'payBack']) assert.ok(g(lng)[k], `${lng}.${k}`);
+  }
+  assert.equal(g('es').paySummaryCount_other, '{{count}} productos');
+  assert.equal(g('en').paySummaryCount_other, '{{count}} items');
+  const form = read('components/gift/GiftPaymentForm.web.tsx');
+  for (const key of ["t('gift.payClosed')", "t('gift.payNoAttemptsLeft')", "t('gift.payAttemptsLeft', { count: left })", "t('gift.payProcessing')"]) assert.ok(form.includes(key), key);
+});
+
+test('R3: the callers pass the venue name (the only change on devices: a prop the native flow never renders)', () => {
+  assert.match(read('screens/chat/ChatRoomScreen.tsx'), /venueName=\{business\?\.name \?\? ''\}/);
+  assert.match(read('screens/dms/DMChatScreen.tsx'), /venueName=\{meta\?\.businessName \?\? ''\}/);
+  assert.match(read('hooks/useKeyboardCover.ts'), /return 0;/);
+  assert.match(read('hooks/useKeyboardCover.web.ts'), /window\.innerHeight - \(viewport\.height \+ viewport\.offsetTop\)/); // still used by the accept sheet
 });
 
 test('the form reports "busy" while the card is confirmed and releases it when it goes away', () => {

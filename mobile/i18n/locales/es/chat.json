@@ -423,7 +423,10 @@
     "payClosed": "Esta oferta ya se cerró. Vuelve y envía el regalo de nuevo.",
     "payNoAttemptsLeft": "Se agotaron los intentos y la oferta se cerró. Vuelve y envía el regalo de nuevo.",
     "payAttemptsLeft_one": "Te queda {{count}} intento.",
-    "payAttemptsLeft_other": "Te quedan {{count}} intentos."
+    "payAttemptsLeft_other": "Te quedan {{count}} intentos.",
+    "paySummaryCount_one": "{{count}} producto",
+    "paySummaryCount_other": "{{count}} productos",
+    "payTotal": "Total"
   },
   "giftCard": {
     "nItems_one": "{{count}} artículo",

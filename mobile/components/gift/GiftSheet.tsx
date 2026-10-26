@@ -17,7 +17,6 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  useWindowDimensions,
   View,
 } from 'react-native';
 import { Spinner } from '../common/Spinner';
@@ -27,14 +26,13 @@ import { useTranslation } from 'react-i18next';
 import { IconMinus, IconPlus, IconX } from '@tabler/icons-react-native';
 
 import { useThemeColors } from '../../theme/colors';
-import { useKeyboardCover } from '../../hooks/useKeyboardCover';
 import { palette } from '../../theme/tokens';
 import { getMenu, type MenuCategory } from '../../services/menu';
 import { cancelGiftOffer, createGiftOffer, giftErrorCode } from '../../services/giftOffers';
 import { holdGiftPayment } from '../../services/stripe';
 import { fetchGiftHold } from '../../services/giftHold';
 import type { GiftHoldParams } from '../../utils/giftHold';
-import { GiftPaymentForm } from './GiftPaymentForm';
+import { GiftPayPage } from './GiftPayPage';
 import { formatCents } from '../../utils/currency';
 import { showAlert } from '../../utils/dialog';
 
@@ -44,28 +42,18 @@ interface Props {
   businessId: string;
   recipient: { id: string; name: string };
   conversationId?: string | null;
+  /** Web card step: the venue's name for the summary (the card step is a full-screen page there). */
+  venueName?: string;
   /** The card is on hold (the offer is on its way to the recipient's chat). */
   onSent: () => void;
 }
 
-/** Web card step: px the sheet spends outside the Stripe field area, keyboard closed / open (see cardChrome in the component). */
-const CARD_CHROME = 334;
-const CARD_CHROME_KEYBOARD = 184;
-
 const MAX_QTY = 10;
 const MAX_LINES = 10;
 
-export function GiftSheet({ visible, onClose, businessId, recipient, conversationId, onSent }: Props): React.ReactElement {
+export function GiftSheet({ visible, onClose, businessId, recipient, conversationId, venueName, onSent }: Props): React.ReactElement {
   const c = useThemeColors();
   const insets = useSafeAreaInsets();
-  // Web card step: the sheet's own `maxHeight: '88%'` has no definite parent height there, so Stripe's tall form (card, country,
-  // postal code, Link) pushed the buttons off the screen. The card step scrolls inside a pixel cap instead (it is never shown on devices).
-  const { height: windowHeight } = useWindowDimensions();
-  // Web card step + on-screen keyboard: Safari does not shrink the layout viewport, only the visual one, so the sheet is lifted
-  // by the keyboard's height and capped to what the visual viewport still shows. The chat composer's useVisualViewportInset is
-  // measured against <body> (already fitted to the visible area) and answers 0 for a fixed modal, hence useKeyboardCover. On devices
-  // the hook answers 0 and none of this is applied.
-  const keyboardInset = useKeyboardCover();
   const { t } = useTranslation('chat');
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,24 +64,21 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
   const [offerId, setOfferId] = useState<string | null>(null);
   // True once the card is on hold: from then on the offer belongs to the recipient's chat and must not be cancelled.
   const heldRef = useRef(false);
+  // Web only: the latest offer id, so leaving the screen (browser Back, navigation) with an unpaid offer cancels it.
+  const offerIdRef = useRef<string | null>(null);
+  offerIdRef.current = offerId;
+  useEffect(
+    () => () => {
+      if (Platform.OS !== 'web') return;
+      const open = offerIdRef.current;
+      if (open && !heldRef.current) void cancelGiftOffer(open);
+    },
+    [],
+  );
   // Web only: the PaymentIntent to confirm with the card form (null = the picker is shown), and whether the card is being
   // confirmed right now (the sheet cannot be closed then: a hold could land on a cancelled offer).
   const [payParams, setPayParams] = useState<GiftHoldParams | null>(null);
   const [payBusy, setPayBusy] = useState(false);
-
-  // Web card step only (payParams is never set on devices). The keyboard counts as open past 100 px: below that it is just
-  // Safari's address bar moving.
-  const onCardStep = Platform.OS === 'web' && payParams !== null;
-  const keyboardOpen = onCardStep && keyboardInset > 100;
-  const visibleHeight = onCardStep && typeof window !== 'undefined' && window.visualViewport ? window.visualViewport.height : windowHeight;
-  const cardSheetMaxHeight = Math.max(240, Math.floor(visibleHeight - 24));
-  // What the sheet spends OUTSIDE Stripe's field area (paddings, header, titles, Pay + Back buttons, fine print), measured on a phone
-  // with the real PaymentElement. The field area gets the rest (never under 160 px: card number, expiry and CVC), scrolling on its own
-  // past that, so the buttons never leave the screen. With the keyboard open the header carries the short pay title and the hint,
-  // the form title and the fine print are folded.
-  const cardChrome = keyboardOpen ? CARD_CHROME_KEYBOARD : CARD_CHROME;
-  const cardFieldMaxHeight = Math.max(160, Math.min(420, cardSheetMaxHeight - cardChrome));
-  const cardScrollMaxHeight = Math.max(240, cardSheetMaxHeight - (keyboardOpen ? 60 : 118));
 
   // Every opening starts clean (the offer of a previous opening was either sent or cancelled).
   useEffect(() => {
@@ -130,12 +115,6 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
     onSent();
   }, [onSent]);
 
-  /** Web: "Volver" from the card form without paying → the unpaid offer is cancelled; the picker comes back. */
-  const handlePayBack = useCallback(() => {
-    cancelUnpaidOffer(offerId);
-    setPayParams(null);
-  }, [cancelUnpaidOffer, offerId]);
-
   useEffect(() => {
     if (!visible) return;
     let alive = true;
@@ -166,16 +145,13 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
   const subtotal = lines.reduce((sum, [id, n]) => sum + (priceById.get(id) ?? 0) * n, 0);
   const locked = offerId !== null;
 
-  // Web card step heading: "Pagar Mini Corn Dogs · $X" (first two items, "+N" for the rest). The amount is the server's total.
-  const cardTitle = useMemo(() => {
-    if (!payParams) return undefined;
+  // Web card step summary (full-screen page): what is being gifted. The amount shown there is the server's total.
+  const paySummary = useMemo(() => {
     const nameById = new Map<string, string>();
     categories.forEach((cat) => cat.items.forEach((i) => nameById.set(i.id, i.name)));
     const names = lines.map(([id]) => nameById.get(id)).filter((n): n is string => Boolean(n));
-    if (names.length === 0) return t('gift.payTitle');
-    const items = names.length > 2 ? `${names.slice(0, 2).join(', ')} +${names.length - 2}` : names.join(', ');
-    return t('gift.payTitleFor', { items, amount: formatCents(payParams.totalCents) });
-  }, [payParams, categories, lines, t]);
+    return names.length > 2 ? `${names.slice(0, 2).join(', ')} +${names.length - 2}` : names.join(', ');
+  }, [categories, lines]);
 
   const change = useCallback(
     (id: string, delta: number) => {
@@ -246,46 +222,40 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
   const sendLabel = t('gift.send', { count, amount: formatCents(subtotal) });
   const holdNote = t('gift.holdNote', { name: recipient.name });
 
+  // Web card step: a full-screen page INSIDE the (visual-viewport-fitted) <body>, not the Modal's fixed portal, so the keyboard
+  // shrinks it and its one ScrollView carries the focused field and the Pay button above the keyboard. Devices never get here.
+  if (Platform.OS === 'web' && visible && payParams) {
+    return (
+      <GiftPayPage
+        recipientName={recipient.name}
+        venueName={venueName ?? ''}
+        itemsSummary={paySummary}
+        itemCount={count}
+        payParams={payParams}
+        note={holdNote}
+        onBack={handleClose}
+        onHeld={handleHeld}
+        onBusyChange={setPayBusy}
+      />
+    );
+  }
+
   return (
     <AppModal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
       <Pressable accessible={false} style={styles.overlay} onPress={handleClose} accessibilityRole="none" />
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={onCardStep ? { paddingBottom: keyboardInset } : undefined}>
-        <View
-          style={[
-            styles.sheet,
-            { backgroundColor: c.bgSurface, paddingBottom: (keyboardOpen ? 0 : insets.bottom) + 12 },
-            onCardStep && { maxHeight: cardSheetMaxHeight },
-          ]}
-        >
-          {keyboardOpen ? null : <View style={[styles.handle, { backgroundColor: c.borderSubtle }]} />}
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={[styles.sheet, { backgroundColor: c.bgSurface, paddingBottom: insets.bottom + 12 }]}>
+          <View style={[styles.handle, { backgroundColor: c.borderSubtle }]} />
           <View style={styles.header}>
             <Text style={[styles.title, { color: c.textPrimary }]} numberOfLines={1} accessibilityRole="header">
-              {keyboardOpen && cardTitle ? cardTitle : t('gift.title', { name: recipient.name })}
+              {t('gift.title', { name: recipient.name })}
             </Text>
             <Pressable onPress={handleClose} accessibilityRole="button" accessibilityLabel={t('gift.close')} style={styles.closeBtn}>
               <IconX size={22} color={c.textSecondary} />
             </Pressable>
           </View>
-          {keyboardOpen ? null : <Text style={[styles.hint, { color: c.textSecondary }]}>{t('gift.hint')}</Text>}
+          <Text style={[styles.hint, { color: c.textSecondary }]}>{t('gift.hint')}</Text>
 
-          {payParams ? (
-            // Web only: the card step. `payParams` is never set on devices (they use the native PaymentSheet).
-            <ScrollView style={[styles.payScroll, { maxHeight: cardScrollMaxHeight }]} keyboardShouldPersistTaps="handled">
-              <GiftPaymentForm
-                title={cardTitle}
-                compact={keyboardOpen}
-                fieldMaxHeight={cardFieldMaxHeight}
-                note={holdNote}
-                clientSecret={payParams.clientSecret}
-                publishableKey={payParams.publishableKey}
-                totalCents={payParams.totalCents}
-                onHeld={handleHeld}
-                onCancel={handlePayBack}
-                onBusyChange={setPayBusy}
-              />
-            </ScrollView>
-          ) : (
-          <>
           <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
             {loading ? (
               <Spinner color={c.brandText} style={styles.loader} />
@@ -358,8 +328,6 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
             {sending ? <Spinner color={palette.onBrand} /> : <Text style={[styles.sendLabel, { color: palette.onBrand }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{sendLabel}</Text>}
           </Pressable>
           <Text style={[styles.fine, { color: c.textSecondary }]}>{holdNote}</Text>
-          </>
-          )}
         </View>
       </KeyboardAvoidingView>
     </AppModal>
@@ -375,7 +343,6 @@ const styles = StyleSheet.create({
   closeBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   hint: { fontSize: 13, lineHeight: 18 },
   list: { flexGrow: 0, maxHeight: 340 },
-  payScroll: { flexGrow: 0, flexShrink: 1 },
   loader: { paddingVertical: 32 },
   empty: { textAlign: 'center', paddingVertical: 32, fontSize: 14 },
   category: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', marginTop: 10, marginBottom: 2 },

@@ -1,6 +1,8 @@
 /**
- * JChat 3.0 — the gift's card step stays above the iOS keyboard (fix/web-gift-keyboard). Safari on an iPhone does not shrink the
- * layout viewport when the keyboard opens, only the VISUAL viewport, and the GiftSheet (pinned to the bottom) used to end up under it.
+ * JChat 3.0 — the gift's card step is a FULL-SCREEN page (R3, feat/web-gift-pay-page) that keeps the focused card field and the Pay
+ * button above the iOS keyboard. Safari on an iPhone does not shrink the layout viewport when the keyboard opens, only the VISUAL
+ * viewport; the page lives inside <body> (fitted to the visual viewport by public/index.html) and has ONE scroller, so nothing is
+ * pinned to the bottom and the keyboard cannot cover the Pay button.
  *
  * Playwright's WebKit has no on-screen keyboard, so it is SIMULATED: window.visualViewport is replaced by a fake whose height the
  * spec reduces by a keyboard's height (336 px, an iPhone's) and whose `resize` it fires, exactly what Safari reports. Nothing real is
@@ -11,6 +13,7 @@
  * Run: cd e2e && npx playwright test -c web.config.ts web/gift-keyboard.spec.ts --project=webkit-390
  * (needs the Expo web export in mobile/dist-web and the saved session).
  */
+import { mkdir } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
 import { assertNothingLeaked, hasSession, messageRecord, mockGamesNetwork, PERSON_ID, SESSION, VENUE, watchRealtime } from './games-mock';
 
@@ -99,36 +102,43 @@ async function openCardStep(page: Page) {
 
   await page.getByRole('button', { name: /^Añadir un / }).first().click({ timeout: 20_000 });
   await page.getByRole('button', { name: /^Enviar regalo/ }).click();
+  await expect(page.getByTestId('gift-pay-page')).toBeVisible({ timeout: 15_000 });
   await expect(page.getByTestId('gift-pay')).toBeVisible({ timeout: 15_000 });
   await expect(page.locator('iframe[data-fake-stripe]')).toBeVisible();
   await page.waitForTimeout(500);
 }
 
-/** Geometry of the sheet (the rounded panel that holds the gift header) and of the controls, in layout-viewport px. */
+const SHOTS = '../mobile/e2e/screenshots/r3';
+
+/** Geometry of the page, its scroller and the controls, in layout-viewport px. The fake visualViewport has no offsetTop. */
 const geometry = (page: Page) =>
   page.evaluate(() => {
     const rect = (el: Element | null) => {
       const r = el?.getBoundingClientRect();
       return r ? { top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), right: Math.round(r.right) } : null;
     };
-    let sheet: HTMLElement | null = document.querySelector<HTMLElement>('[data-testid="gift-pay"]');
-    while (sheet && parseFloat(getComputedStyle(sheet).borderTopLeftRadius) < 20) sheet = sheet.parentElement;
     const vv = window.visualViewport!;
+    const scroll = document.querySelector<HTMLElement>('[data-testid="gift-pay-scroll"]');
+    const bodyRect = document.body.getBoundingClientRect();
     return {
       innerHeight: window.innerHeight,
       visibleBottom: Math.round(vv.height + vv.offsetTop),
       visibleHeight: Math.round(vv.height),
-      sheet: rect(sheet),
+      bodyBottom: Math.round(bodyRect.bottom),
+      page: rect(document.querySelector('[data-testid="gift-pay-page"]')),
+      scroller: rect(scroll),
+      scrollTop: Math.round(scroll?.scrollTop ?? -1),
       pay: rect(document.querySelector('[data-testid="gift-pay"]')),
-      back: rect(document.querySelector('[data-testid="gift-pay-back"]')),
+      back: rect(document.querySelector('[data-testid="gift-pay-page-back"]')),
       field: rect(document.querySelector('iframe[data-fake-stripe]')),
+      focusedTestId: (document.activeElement as HTMLElement | null)?.getAttribute?.('data-testid') ?? null,
       texts: document.body.innerText,
     };
   });
 
-test('the card step rests ON TOP of the keyboard: field and buttons visible, short title, hint folded', async ({ page }) => {
+test('the card step is a full-screen page: field and Pay (in the flow) end up above the keyboard', async ({ page }) => {
   await page.addInitScript(FAKE_VISUAL_VIEWPORT);
-  // Stripe's 'focus' event must scroll the form into view: count the calls.
+  // Keep <body> on the visible area like public/index.html's fit() does on a real phone: the fake viewport fires `resize`.
   await page.addInitScript(() => {
     const w = window as unknown as { __scrolled: number };
     w.__scrolled = 0;
@@ -156,47 +166,62 @@ test('the card step rests ON TOP of the keyboard: field and buttons visible, sho
 
   await openCardStep(page);
   const closed = await geometry(page);
-  await page.screenshot({ path: 'artifacts/gift-keyboard/keyboard-closed.png' });
-  expect(closed.texts).toMatch(/Pagar [^\n]+ · USD\s\d/); // short title: "Pagar <items> · USD X"
-  expect(closed.texts).toMatch(/Elige qué enviar/); // the hint is there while the keyboard is closed
-  expect(closed.texts).toMatch(/Pagar USD\s\d/); // the main button says Pagar
-  expect(closed.texts).toMatch(/Tu tarjeta se autoriza ahora y solo se cobra si .+ acepta el regalo\. Si no lo acepta en 15 minutos, se libera sola\./);
+  await mkdir(SHOTS, { recursive: true });
+  await page.screenshot({ path: `${SHOTS}/pay-page-no-keyboard.png` });
 
-  // Tap the card field (Stripe's focus event) and let Safari open the keyboard.
+  // The page: header "← Regalo para …", summary (products, venue, count, total), field, Pay, fine print — all text from the spec.
+  expect(closed.texts).toMatch(/Regalo para /);
+  expect(closed.texts).toMatch(/\d+ producto/);
+  expect(closed.texts).toMatch(/Total\s+USD\s\d/);
+  expect(closed.texts).toMatch(/Pagar USD\s\d/);
+  expect(closed.texts).toMatch(/Tu tarjeta se autoriza ahora y solo se cobra si .+ acepta el regalo\. Si no lo acepta en 15 minutos, se libera sola\./);
+  expect(closed.texts).not.toMatch(/Elige qué enviar/); // the picker is gone: this is a page, not the sheet
+  // Full screen, inside <body>, nothing pinned to the bottom.
+  expect(closed.page!.top).toBeLessThanOrEqual(1);
+  expect(closed.page!.bottom).toBeGreaterThanOrEqual(closed.innerHeight - 1);
+  expect(closed.pay!.top, 'Pay comes after the field, in the flow').toBeGreaterThan(closed.field!.bottom - 1);
+  // Arrow: 44 px touch area and a label; focus moved to the page header (not lost, no keyboard).
+  const arrow = await page.getByTestId('gift-pay-page-back').boundingBox();
+  expect(arrow!.width).toBeGreaterThanOrEqual(44);
+  expect(arrow!.height).toBeGreaterThanOrEqual(44);
+  await expect(page.getByTestId('gift-pay-page').getByRole('button', { name: 'Volver' })).toBeVisible();
+  expect(await page.evaluate(() => document.activeElement !== document.body)).toBe(true);
+
+  // Tap the card field (Stripe's focus event) and let Safari open the keyboard: the visible area shrinks, <body> follows it.
   await page.frameLocator('iframe[data-fake-stripe]').getByPlaceholder('Card number').click();
   await page.evaluate((px) => (window as unknown as { __setKeyboard: (n: number) => void }).__setKeyboard(px), KEYBOARD_PX);
-  await page.waitForTimeout(900);
+  await page.evaluate(() => {
+    // index.html's fit(), which the fake viewport's `resize` would run on a real phone.
+    const vv = window.visualViewport!;
+    document.documentElement.style.setProperty('--app-h', `${Math.round(vv.height)}px`);
+  });
+  await page.waitForTimeout(1000);
   expect(await page.evaluate(() => (window as unknown as { __scrolled: number }).__scrolled), 'focus scrolls the form into view').toBeGreaterThan(0);
   const open = await geometry(page);
-  await page.screenshot({ path: 'artifacts/gift-keyboard/keyboard-open.png' });
+  await page.screenshot({ path: `${SHOTS}/pay-page-keyboard-open.png` });
 
   expect(open.visibleHeight).toBe(closed.innerHeight - KEYBOARD_PX);
-  // The sheet rests on the keyboard (its bottom is the visible bottom) and never goes above the top margin (>= 24 px).
-  expect(open.sheet).not.toBeNull();
-  expect(open.sheet!.bottom, 'sheet bottom sits on the keyboard').toBeLessThanOrEqual(open.visibleBottom);
-  expect(open.sheet!.bottom, 'sheet is lifted, not floating').toBeGreaterThan(open.visibleBottom - 4);
-  expect(open.sheet!.top, 'sheet below the top margin').toBeGreaterThanOrEqual(24);
-  // Both buttons are inside what the keyboard leaves visible.
-  expect(open.pay!.bottom, 'Retener above the keyboard').toBeLessThanOrEqual(open.visibleBottom);
-  expect(open.back!.bottom, 'Volver above the keyboard').toBeLessThanOrEqual(open.visibleBottom);
-  expect(open.pay!.top).toBeGreaterThanOrEqual(0);
-  // Order: title -> field -> buttons; the long text folds while the keyboard is open.
-  expect(open.texts).toMatch(/Pagar [^\n]+ · USD\s\d/);
-  expect(open.texts).not.toMatch(/Elige qué enviar/);
-  expect(open.texts).not.toMatch(/Tu tarjeta se autoriza ahora/);
-  expect(open.texts).not.toMatch(/Regalo para /); // the gift title gives its place to the short pay title
-  // The field area (an inner scroller capped in px, so the buttons never leave the screen) starts above the buttons and the card
-  // number input itself is on screen above the keyboard.
-  expect(open.field!.top).toBeLessThan(open.pay!.top);
+  expect(open.page!.bottom, 'the page ends where the keyboard begins').toBeLessThanOrEqual(open.visibleBottom + 1);
+  // The card field and the Pay button are both above the keyboard, with room for the autofill bar under Pay.
   const cardInput = await page.frameLocator('iframe[data-fake-stripe]').getByPlaceholder('Card number').boundingBox();
+  expect(cardInput!.y, 'card number below the header').toBeGreaterThanOrEqual(open.back!.bottom - 1);
   expect(cardInput!.y + cardInput!.height, 'card number above the keyboard').toBeLessThanOrEqual(open.visibleBottom);
+  expect(open.pay!.bottom, 'Pay above the keyboard').toBeLessThanOrEqual(open.visibleBottom);
+  expect(open.pay!.top).toBeGreaterThanOrEqual(open.back!.bottom - 1);
+  expect(open.texts).toMatch(/Regalo para /); // the header stays (nothing folds any more)
 
-  // The keyboard goes away: everything comes back.
-  await page.evaluate(() => (window as unknown as { __setKeyboard: (n: number) => void }).__setKeyboard(0));
-  await page.waitForTimeout(600);
+  // The keyboard goes away: the page is whole again.
+  await page.evaluate(() => {
+    (window as unknown as { __setKeyboard: (n: number) => void }).__setKeyboard(0);
+    document.documentElement.style.setProperty('--app-h', `${window.innerHeight}px`);
+  });
+  await page.waitForTimeout(500);
   const back = await geometry(page);
-  expect(back.texts).toMatch(/Elige qué enviar/);
-  expect(back.sheet!.bottom).toBeGreaterThanOrEqual(back.innerHeight - 4);
+  expect(back.page!.bottom).toBeGreaterThanOrEqual(back.innerHeight - 1);
+
+  // The arrow does what Volver / the X always did: the unpaid offer is cancelled and the page closes.
+  await page.getByTestId('gift-pay-page-back').click();
+  await expect(page.getByTestId('gift-pay-page')).toHaveCount(0);
 
   expect(assertNothingLeaked(mock)).toEqual([]);
   expect(mock.unknownRpcs).toEqual([]);

@@ -13,7 +13,7 @@
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { loadStripe } from '@stripe/stripe-js/pure';
 import type { Appearance } from '@stripe/stripe-js';
@@ -30,7 +30,11 @@ export type { GiftPaymentFormProps } from './GiftPaymentForm';
 
 type Colors = ReturnType<typeof useThemeColors>;
 
-function CardForm({ totalCents, onHeld, onCancel, onBusyChange, title, compact, fieldMaxHeight, note }: Pick<GiftPaymentFormProps, 'totalCents' | 'onHeld' | 'onCancel' | 'onBusyChange' | 'title' | 'compact' | 'fieldMaxHeight' | 'note'>): React.ReactElement {
+/** px kept free under the Pay button when the form is scrolled into view (the keyboard's autofill bar), and the page header's height. */
+const AUTOFILL_BAR_ROOM = 72;
+const HEADER_ROOM = 72;
+
+function CardForm({ totalCents, onHeld, onBusyChange, note }: Pick<GiftPaymentFormProps, 'totalCents' | 'onHeld' | 'onBusyChange' | 'note'>): React.ReactElement {
   const c = useThemeColors();
   const { t } = useTranslation('chat');
   const stripe = useStripe();
@@ -39,13 +43,18 @@ function CardForm({ totalCents, onHeld, onCancel, onBusyChange, title, compact, 
   const focusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (focusTimer.current) clearTimeout(focusTimer.current); }, []);
 
-  // The card field lives in Stripe's iframe, so the page never sees its focus: Stripe's own 'focus' event is the signal. The
-  // keyboard takes a moment to slide in, so the form is scrolled into view once the visual viewport has settled.
+  // The card field lives in Stripe's iframe, so the page never sees its focus: Stripe's own 'focus' event is the signal. The keyboard
+  // takes a moment to slide in; once the visual viewport has settled the form (field + Pay button) is scrolled into view inside the
+  // page's ONE ScrollView, leaving room under the Pay button for the keyboard's autofill bar. A form taller than what is visible
+  // aligns its top instead, so the card field is never the part that is cut.
   const revealForm = () => {
     if (focusTimer.current) clearTimeout(focusTimer.current);
     focusTimer.current = setTimeout(() => {
       const node = formRef.current as unknown as HTMLElement | null;
-      node?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+      if (!node?.scrollIntoView) return;
+      const visible = window.visualViewport?.height ?? window.innerHeight;
+      node.style.scrollMarginBottom = `${AUTOFILL_BAR_ROOM}px`;
+      node.scrollIntoView({ block: node.getBoundingClientRect().height + AUTOFILL_BAR_ROOM > visible - HEADER_ROOM ? 'start' : 'end', behavior: 'smooth' });
     }, 300);
   };
   const [paying, setPaying] = useState(false);
@@ -107,10 +116,7 @@ function CardForm({ totalCents, onHeld, onCancel, onBusyChange, title, compact, 
   const disabled = !stripe || !elements || paying || processing || closed;
   return (
     <View ref={formRef} style={styles.form}>
-      {compact ? null : <Text style={[styles.title, { color: c.textPrimary }]} numberOfLines={1} accessibilityRole="header">{title ?? t('gift.payTitle')}</Text>}
-      <ScrollView style={fieldMaxHeight ? { maxHeight: fieldMaxHeight, flexGrow: 0 } : undefined} keyboardShouldPersistTaps="handled">
-        <PaymentElement onFocus={revealForm} />
-      </ScrollView>
+      <PaymentElement onFocus={revealForm} />
       {message ? (
         <Text accessibilityRole="alert" style={[styles.message, { color: processing ? c.textSecondary : c.danger }]}>
           {message}
@@ -125,10 +131,7 @@ function CardForm({ totalCents, onHeld, onCancel, onBusyChange, title, compact, 
       >
         {paying ? <Spinner color={palette.onBrand} /> : <Text style={[styles.payLabel, { color: palette.onBrand }]}>{t('gift.payButton', { amount: formatCents(totalCents) })}</Text>}
       </Pressable>
-      <Pressable testID="gift-pay-back" onPress={onCancel} disabled={paying} accessibilityRole="button" style={styles.backBtn}>
-        <Text style={[styles.backLabel, { color: c.textSecondary }]}>{t('gift.payBack')}</Text>
-      </Pressable>
-      {compact || !note ? null : <Text style={[styles.fine, { color: c.textSecondary }]}>{note}</Text>}
+      {!note ? null : <Text style={[styles.fine, { color: c.textSecondary }]}>{note}</Text>}
     </View>
   );
 }
@@ -147,7 +150,7 @@ function appearanceFor(c: Colors): Appearance {
   };
 }
 
-export function GiftPaymentForm({ clientSecret, publishableKey, totalCents, onHeld, onCancel, onBusyChange, title, compact, fieldMaxHeight, note }: GiftPaymentFormProps): React.ReactElement {
+export function GiftPaymentForm({ clientSecret, publishableKey, totalCents, onHeld, onBusyChange, note }: GiftPaymentFormProps): React.ReactElement {
   const c = useThemeColors();
   const { i18n } = useTranslation('chat');
   const stripePromise = useMemo(() => loadStripe(publishableKey), [publishableKey]);
@@ -157,7 +160,7 @@ export function GiftPaymentForm({ clientSecret, publishableKey, totalCents, onHe
   );
   return (
     <Elements stripe={stripePromise} options={options}>
-      <CardForm totalCents={totalCents} onHeld={onHeld} onCancel={onCancel} onBusyChange={onBusyChange} title={title} compact={compact} fieldMaxHeight={fieldMaxHeight} note={note} />
+      <CardForm totalCents={totalCents} onHeld={onHeld} onBusyChange={onBusyChange} note={note} />
     </Elements>
   );
 }
@@ -166,11 +169,8 @@ export default GiftPaymentForm;
 
 const styles = StyleSheet.create({
   form: { gap: 12, paddingVertical: 4 },
-  title: { fontSize: 16, fontWeight: '800' },
   message: { fontSize: 13, lineHeight: 18 },
   payBtn: { minHeight: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   payLabel: { fontSize: 16, fontWeight: '800', textAlign: 'center' },
-  backBtn: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  backLabel: { fontSize: 14, fontWeight: '600' },
   fine: { fontSize: 12, textAlign: 'center' },
 });

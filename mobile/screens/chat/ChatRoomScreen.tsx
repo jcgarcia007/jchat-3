@@ -2108,6 +2108,7 @@ export default function ChatRoomScreen() {
           visible
           onClose={() => setGiftTarget(null)}
           businessId={room.business_id}
+          venueName={business?.name ?? ''}
           recipient={giftTarget}
           onSent={() => {
             setGiftTarget(null);
