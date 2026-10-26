@@ -160,7 +160,7 @@ export function GiftCard({ offerId }: Props): React.ReactElement {
         </View>
         <Text style={[styles.headline, { color: c.textPrimary }]}>{headline}</Text>
       </View>
-      <Text style={[styles.status, { color: status === 'held' || status === 'accepted' || status === 'paid' ? c.brand : c.textSecondary }]} accessibilityLiveRegion="polite">
+      <Text style={[styles.status, { color: status === 'held' || status === 'accepted' || status === 'paid' ? c.brandText : c.textSecondary }]} accessibilityLiveRegion="polite">
         {statusText}
       </Text>
 

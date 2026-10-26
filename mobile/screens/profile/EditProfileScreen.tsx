@@ -567,8 +567,10 @@ export default function EditProfileScreen(): React.JSX.Element {
                         style={[
                           styles.langLabel,
                           {
+                            // The chip is filled with brandFill whatever the profile theme: its label is the on-brand white (4.98:1),
+                            // not the theme's button colour (which is picked for the theme's accent and gave 3.84:1 on brandFill).
                             color: isSelected
-                              ? selectedTheme.btn1Color
+                              ? palette.onBrand
                               : c.textPrimary,
                           },
                         ]}
