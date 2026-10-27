@@ -1,125 +1,87 @@
-# Migraciones reproducibles — plan del baseline (rama `chore/migrations-baseline`)
+# Migraciones reproducibles — baseline (rama `chore/migrations-baseline`)
 
-Estado: **preparación**. No se tocó producción, no se aplicó nada, el volcado NO está en el repo (sigue en `~/Downloads/prod-schema.sql`).
+**Objetivo:** que el repo pueda crear una base NUEVA (local y ramas de Supabase) con el CLI real. Producción no se toca: su historial de migraciones
+va por fechas (`20261027012309_244_…`, aplicadas por MCP) y el del repo por números; nunca han coincidido y no se usa `db push`. Por eso no hay
+ningún `migration repair`: el baseline no se ejecuta nunca en producción.
 
-## (a) Revisión del volcado (`supabase db dump --linked`, 17 712 líneas, 685 KB)
-
-Veredicto: **limpio para un repo, con tres avisos** (ninguno es un secreto).
-
-| Comprobación | Resultado |
-|---|---|
-| Datos (`COPY`, `INSERT INTO`) | 0 |
-| Roles / contraseñas (`CREATE ROLE`, `ALTER ROLE`) | 0. Las 18 apariciones de "password" son `set_room_password` / `verify_room_password` / `password_hash` (código y columna, sin valores) |
-| Claves / tokens (JWT `eyJ…`, `sk_`, `pk_`, `whsec_`, `Bearer`, `api key`) | 0 |
-| Vault | 8 lecturas `vault.decrypted_secrets where name = 'push_webhook_secret'`: **solo el nombre**, ningún valor. Extensión `supabase_vault` declarada |
-| Configuración de Auth (SMTP, proveedores, JWT secret) | No hay: el volcado solo trae `public` y `otunity` |
-| Correos, UUID literales, nombres de personas | 0 |
-| `cron.schedule` | 0 (los trabajos de pg_cron son filas de `cron.job`, datos: no vienen) |
-| Contenido | 106 tablas `public` + 4 `otunity`, 278 funciones, 210 policies, 193 índices, 120 funciones-trigger, 6 extensiones, 16 `ALTER PUBLICATION`, 1045 `GRANT` (a `anon`, `authenticated`, `service_role`, `postgres`) |
-
-Avisos:
-
-1. **URL de producción dentro de 5 funciones-trigger**: `https://klfsgcfoahdtkojyqspd.supabase.co/functions/v1/{gift-worker, moderate-dm-photo, moderate-match-photo, safety-alert, send-push}`. El ref del proyecto no es secreto (ya está en `supabase/config.toml` y en migraciones como la 202), pero un entorno nuevo con el secreto `push_webhook_secret` en su vault llamaría a producción. Sin ese secreto, las funciones salen sin hacer nada (así corren los tests locales). Recomendación: documentarlo; arreglarlo (leer la URL de un ajuste) es una tarea aparte.
-2. **Esquema `otunity`** (`app_links`, `owners`, + 2 tablas): no es de JChat (es del hub de Otunity Labs en el mismo proyecto). Decisión tuya: incluirlo en el baseline (el repo reproduce el proyecto entero) o recortarlo (el baseline reproduce solo JChat).
-3. **Extensiones**: `pg_cron`, `pg_net`, `pg_stat_statements`, `pgcrypto`, `supabase_vault`, `uuid-ossp`. Las imágenes locales y las ramas de Supabase las traen.
-
-### Lo que el volcado NO trae (probado: una base reconstruida solo con él tiene 0 de cada cosa)
-
-| Falta | Hoy lo crean | Cómo se resuelve |
-|---|---|---|
-| Buckets de Storage (filas) y **policies de `storage.objects`** (estado final tras 011, 024, 041, 042, 046, 061, 063…) | migraciones viejas | `supabase/scripts/baseline_extras_probe.sql` consultas 1 y 2 (solo lectura, las ejecutas tú en producción) → yo las convierto en la sección final del baseline |
-| 11 trabajos de **pg_cron** (purga de chat, regalos, match, DM, truth-or-dare, venue exits…) | migraciones 043, 074, 085, 192, 193, 202, 205, 214, 222, 223, 237 | consulta 3 (**revisa los `command` antes de pegarlos**: si alguno lleva una clave, tápala) |
-| Trigger `on_auth_user_created` en `auth.users` (crea la fila de `public.users`) | migración 048 | consulta 4 |
-| Valor del secreto `push_webhook_secret` | a mano en cada entorno | consulta 5 (solo nombres). No se versiona nunca |
-
-## (b) Estructura propuesta
-
-**Opción recomendada (A) — squash con archivo histórico**
+## Estructura final
 
 ```
 supabase/
   migrations/
-    245_baseline.sql            ← volcado (public + otunity) + sección final: buckets/policies de storage, trigger de auth.users, cron
-  migrations_archive/           ← las 241 migraciones actuales, `git mv`, nombres INTACTOS (033×2, 034×2, 173a, 173b, 198, 198c incluidos)
+    245_baseline.sql          ← esquema de producción a 2026-10-27 (último aplicado allí: 244), sin el esquema `otunity`
+    246_baseline_extras.sql   ← lo que el volcado no trae: 9 buckets, 26 políticas de storage.objects, 11 crons, trigger on_auth_user_created
+  migrations_archive/         ← las 241 migraciones 001…244, `git mv`, nombres intactos (033×2, 034×2, 173a, 173b, 198, 198c)
+    README.md                 ← «es historial; el CLI no lo lee»
 ```
 
-- **Número**: `245`, el siguiente al último aplicado (244). Las nuevas siguen: `246_…`. Sin renombrar nada de lo que ya existe.
-- **Duplicados 033/034 y sufijos 173a/173b/198c**: viven solo en `migrations_archive/`, que el CLI no lee. Desaparece el error de `schema_migrations_pkey` sin renombrar ni una.
-- **Producción**: su historial de migraciones hay que alinearlo con la carpeta (un solo `245` aplicado); ver (d). El esquema de producción no cambia.
-- **Efecto en el repo**: varios archivos citan `supabase/migrations/NNN_*.sql` por ruta (tests estáticos como `gift-contract.test.mjs` y `gift-accept-tables.test.mjs`, comentarios de `messageFilter` y `useGeofenceGate`, `loadtest/`, `CLAUDE.md`, varios docs). Hay que apuntarlos a `migrations_archive/`; es mecánico pero toca esos archivos.
-- **`loadtest/local-up.sh`** deja de necesitar el truco archivo-por-archivo: `supabase start` basta.
+- Los números repetidos y los sufijos solo existen en `migrations_archive/`, que el CLI no lee: desaparece el error de versión duplicada sin renombrar nada.
+- Los archivos que citaban `supabase/migrations/NNN_*.sql` (tests estáticos, comentarios, docs, `loadtest/`, `CLAUDE.md`, scripts de comprobación) apuntan ahora a
+  `migrations_archive/`. `migrations-businesses-grants.test.mjs` lee el archivo y, además, las migraciones nuevas (247+) de `migrations/`.
 
-Alternativas descartadas:
+## Regla para el futuro
 
-- (B) *Dejar todo y poner el baseline en otra carpeta*: no toca el historial de producción, pero `supabase start` y las **ramas de Supabase** (que reproducen `migrations/`) siguen rotas, que es justo lo que queremos arreglar.
-- (C) *Renombrar los duplicados y arreglar las 15 que fallan*: cambia versiones que producción ya tiene y las 15 dependen de objetos que ninguna migración crea (ver abajo): habría que inventar migraciones retroactivas.
+> **Las migraciones nuevas se numeran desde la 247, en `supabase/migrations/`.** Producción las sigue aplicando Juan Carlos por MCP (historial por
+> fechas; no se usa `db push`). Nada nuevo entra en `migrations_archive/`. Si hace falta rehacer el baseline (producción cambió por SQL Editor),
+> se vuelve a volcar, se revisa como la primera vez y se sustituye el 245 (la 246 se revisa con él).
 
-### Las 15 migraciones que fallan al reproducir desde cero (y por qué)
+## Revisión del volcado (`supabase db dump --linked`, esquema sin datos)
+
+Veredicto: limpio para el repo.
+
+| Comprobación | Resultado |
+|---|---|
+| Datos (`COPY`, `INSERT INTO`) | 0 |
+| Roles / contraseñas | 0 (las apariciones de "password" son `set_room_password` / `verify_room_password` / la columna `password_hash`) |
+| Claves / tokens (JWT, `sk_`, `pk_`, `whsec_`, `Bearer`) | 0 |
+| Vault | 8 lecturas de `vault.decrypted_secrets where name = 'push_webhook_secret'`: solo el nombre, ningún valor |
+| Configuración de Auth, correos, UUID literales, nombres de personas | 0 |
+| Contenido | 106 tablas `public`, 278 funciones, 202 policies, 193 índices, 120 funciones-trigger, 6 extensiones, 16 `ALTER PUBLICATION`, 1034 `GRANT` |
+
+Avisos que siguen vigentes:
+
+- **5 funciones-trigger llevan la URL de funciones de producción** (`https://klfsgcfoahdtkojyqspd.supabase.co/functions/v1/{gift-worker, moderate-dm-photo,
+  moderate-match-photo, safety-alert, send-push}`). Son disparadores que leen `push_webhook_secret` del vault; una base nueva sin ese secreto sale sin hacer nada
+  (así corren los tests locales), pero **una rama o un entorno con el secreto cargado llamaría a producción**. Tarea aparte: leer la URL de un ajuste.
+- **Extensiones:** `pg_cron`, `pg_net`, `pg_stat_statements`, `pgcrypto`, `supabase_vault`, `uuid-ossp` (las imágenes locales y las ramas las traen).
+- **`246` usa `drop policy/trigger if exists` y `cron.unschedule … where exists`**: es la forma que dejó producción de «idempotente» para bases nuevas. No contradice la
+  regla de no destruir en migraciones: solo toca objetos que el propio archivo crea, en una base vacía.
+
+## Esquema `otunity`: fuera del baseline
+
+Comprobado: **ninguna función, vista, trigger ni política de `public` usa el esquema `otunity`**. Solo aparece la palabra `'otunity'` como texto dentro de la lista de
+subdominios reservados (un literal, no el esquema). Todo lo demás son sus propias 4 tablas (`app_links`, `owners`, `solutions`, `subscriptions`), sus 8 políticas, sus
+claves foráneas (entre tablas de `otunity`), sus permisos y los `ALTER DEFAULT PRIVILEGES`: 47 sentencias, quitadas. Diferencia con el volcado: −4 tablas, −8 políticas,
+−11 `GRANT`, −18 `ALTER TABLE`; el resto idéntico (278 funciones, 193 índices, 60 `COMMENT`, 251 `REVOKE`).
+
+## Por qué hacía falta (las 15 migraciones que fallaban al reproducir desde cero)
 
 | Migraciones | Falta | Causa |
 |---|---|---|
 | 036, 038 | `businesses.event_ends_at` | la crea la 108 (orden) |
 | 046 | `enforce_business_limit()` | la crea la 068 (orden) |
 | 066 | `users.active_business_id` | la crea la 107 (orden) |
-| 147, 154, 164, 165, 166 | tabla `pos_payments` | **ninguna migración la crea** (se hizo a mano) |
+| 147, 154, 164, 165, 166 | tabla `pos_payments` | ninguna migración la crea (a mano) |
 | 118, 183 | tabla `affiliates` | ninguna migración la crea |
 | 159 | `businesses.kds_settings` | ninguna la crea |
 | 160 | función `pos_can_access` | ninguna la crea |
 | 161 | `tables.session_opened_by` | la añade la 160, que falla |
 | 163 | `orders.canceled_at` | ninguna la añade |
 
-El baseline las supera todas porque parte del esquema real.
+## Prueba en LOCAL con el CLI real
 
-## (c) Prueba en LOCAL
+`bash loadtest/local-up.sh` (`supabase start` con `supabase/migrations`, y `supabase db reset` si ya estaba levantado). Ambos, sin errores:
 
-`supabase start` (CLI real, carpeta de prueba `/tmp/jchat-baseline-test` con `migrations/245_baseline.sql` = el volcado tal cual):
-
-- Arranca sin errores; `supabase_migrations.schema_migrations` = `245 baseline`.
-- Resultado: 106 tablas, 278 funciones, 202 policies, 67 triggers en `public`.
-- `bash loadtest/run-sql-tests.sh` contra esa base: **112 pasan, 0 fallan, 0 omitidos** (con el baseline desaparece también el skip de la 244 y `guest_device_blocks` existe).
-- Confirmado lo que falta: 0 buckets, 0 policies de storage, 0 trabajos de cron, 0 triggers en `auth.users`.
-- "Migraciones posteriores": aún no existe ninguna después de la 244; la 246 será la primera y se probará igual.
-
-Para repetirlo: copia el baseline a una carpeta con `config.toml`, `supabase start --workdir <carpeta>`, y `SQL_TEST_CONTAINER=supabase_db_<project_id> bash loadtest/run-sql-tests.sh`.
-
-## (d) Producción: alinear el historial (los ejecutas tú, después de revisar)
-
-Lo que hace `supabase migration repair`: edita **solo** `supabase_migrations.schema_migrations`, la tabla de contabilidad del CLI. `--status reverted V` borra la fila de la versión V; `--status applied V` la inserta. No ejecuta ningún archivo ni cambia esquema ni datos.
-
-No sé qué versiones tiene producción en esa tabla (según cómo se aplicaron: `001`…`244`, timestamps del MCP, o ninguna), así que los comandos se generan con la lista real:
-
-```bash
-# 1. Solo lectura:
-supabase migration list --linked > /tmp/remote-migrations.txt
-# 2. Imprime (NO ejecuta) los comandos exactos:
-bash supabase/scripts/baseline_repair_commands.sh /tmp/remote-migrations.txt
-```
-
-La salida tiene este aspecto (versiones de ejemplo):
-
-```bash
-# A) quitar del historial todas las versiones remotas salvo el baseline
-supabase migration repair --status reverted --linked 001 002 003 … 244      # (en bloques de 50)
-# B) registrar el baseline como aplicado (ya está en producción: evita que `db push` lo intente)
-supabase migration repair --status applied 245 --linked
-# C) comprobar (solo lectura): las dos columnas deben mostrar solo 245
-supabase migration list --linked
-```
-
-Orden obligatorio: (1) merge del baseline, (2) esos comandos, (3) comprobar. **No** ejecutes `supabase db push` antes del paso B.
+- migraciones aplicadas: `245`, `246`
+- 106 tablas y 278 funciones en `public` · 9 buckets · 26 políticas de storage · 11 crons · 1 trigger en `auth.users`
+- `bash loadtest/run-sql-tests.sh` (`supabase/tests/`): **112 pasan, 0 fallan, 0 omitidos**
+- `tsc` limpio · todos los `scripts/*.test.mjs` de Node pasan · specs herméticos (`e2e/local`): 39 pasan, 1 omitido (el de `payment_failures`, que vive en otra rama)
 
 ## Riesgos
 
-1. **`db push` antes del repair**: intentaría ejecutar el baseline sobre producción. Casi todo es `IF NOT EXISTS`/`OR REPLACE`, pero un `CREATE POLICY` repetido falla y aborta la transacción (sin daño). Aun así: repair primero.
-2. **Repair equivocado**: un `--status applied` de más marca como aplicado algo que no lo está. Por eso el generador solo lista versiones que el propio `migration list` muestra.
-3. **Divergencia**: el volcado es una foto; si producción cambia por SQL Editor antes de mergear, el baseline queda viejo. Hay que re-volcar y comparar justo antes del merge.
-4. **Extras a mano** (storage, cron, trigger de auth): si se omiten, un entorno nuevo sube sin buckets, sin limpieza de datos y sin `public.users` automáticos. La sección final del baseline los cubre una vez ejecutes el probe.
-5. **Rutas**: mover las 241 migraciones rompe los archivos que las citan por ruta hasta que se actualicen (hay tests que lo detectarían).
-6. **Funciones con la URL de producción** (aviso 1): un entorno nuevo con el secreto cargado dispararía llamadas a producción.
-7. **Historial de git**: `git mv` conserva el historial de cada archivo; nada se borra.
-
-## Qué hace falta de ti
-
-- Revisar (a) y decidir: ¿incluir `otunity`? ¿opción A?
-- Ejecutar en producción (solo lectura) `supabase/scripts/baseline_extras_probe.sql` y pegarme los resultados (revisando los `command` de cron).
-- Después: yo genero `245_baseline.sql` completo, muevo el archivo histórico, actualizo las rutas y vuelvo a probar en local; tú ejecutas los comandos de (d).
+1. **Divergencia:** el volcado es una foto. Si producción cambia por SQL Editor y no se refleja en una migración 247+, las bases nuevas se alejan. Vigilar al aplicar por MCP:
+   cada cambio en producción debe entrar también como archivo `247_…` en `supabase/migrations/`.
+2. **Ejecutar el baseline en producción** (p. ej. un `db push` por error): no hay historial alineado, así que el CLI intentaría los dos archivos. Casi todo es `IF NOT EXISTS` /
+   `OR REPLACE`, pero un `CREATE POLICY` repetido aborta. Por eso `db push` no se usa contra producción.
+3. **URL de producción** dentro de 5 funciones (ver arriba) si un entorno nuevo carga el secreto.
+4. **`246`** crea buckets y políticas con los mismos nombres que producción: una rama de Supabase los tendrá, con su propio vault vacío (los envíos de push no funcionarán hasta crear `push_webhook_secret`).
