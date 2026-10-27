@@ -56,17 +56,17 @@ export const SYNTHETIC_USER = {
   created_at: '2026-01-01T00:00:00Z',
 };
 
-export function syntheticSession() {
+export function syntheticSession(userMetadata: Record<string, unknown> = {}) {
   const now = Math.floor(Date.now() / 1000);
-  return { access_token: syntheticToken(), token_type: 'bearer', expires_in: 10 * 365 * 24 * 3600, expires_at: now + 10 * 365 * 24 * 3600, refresh_token: 'synthetic-refresh', user: SYNTHETIC_USER };
+  return { access_token: syntheticToken(), token_type: 'bearer', expires_in: 10 * 365 * 24 * 3600, expires_at: now + 10 * 365 * 24 * 3600, refresh_token: 'synthetic-refresh', user: { ...SYNTHETIC_USER, user_metadata: userMetadata } };
 }
 
 /** The key supabase-js uses for `http://127.0.0.1:54321`: sb-<first label of the host>-auth-token. */
 export const SESSION_KEY = 'sb-127-auth-token';
 
 /** Signs the synthetic user in before the app loads. Call it BEFORE page.goto. */
-export async function signInSynthetic(page: Page) {
-  await page.addInitScript(([key, value]) => window.localStorage.setItem(key, value), [SESSION_KEY, JSON.stringify(syntheticSession())] as const);
+export async function signInSynthetic(page: Page, userMetadata: Record<string, unknown> = {}) {
+  await page.addInitScript(([key, value]) => window.localStorage.setItem(key, value), [SESSION_KEY, JSON.stringify(syntheticSession(userMetadata))] as const);
   // First-time hints that would cover the screen ("Tu perfil está aquí") are already seen: a returning person.
   await page.addInitScript((key) => window.localStorage.setItem(key, '1'), `hints.profileMenuSeen:${USER_ID}`);
 }
@@ -87,6 +87,8 @@ export interface Hermetic {
   blocked: string[];
   rpcCalls: { name: string; body: Record<string, unknown> }[];
   unknownRpcs: string[];
+  /** Bodies of PUT /auth/v1/user (supabase.auth.updateUser), e.g. `{ data: { pending_entry: null } }`. */
+  userUpdates: Record<string, unknown>[];
   /** REST writes (POST / PATCH / PUT / DELETE under /rest/v1, other than RPC) the app attempted, e.g. "POST /rest/v1/messages". */
   writes: string[];
   /** Realtime topics joined. */
@@ -115,6 +117,7 @@ export async function hermetic(page: Page, options: HermeticOptions = {}): Promi
     rpcCalls: [],
     unknownRpcs: [],
     writes: [],
+    userUpdates: [],
     topics: [],
     subscriptions: {},
     inject: () => false,
@@ -139,7 +142,12 @@ export async function hermetic(page: Page, options: HermeticOptions = {}): Promi
   await page.route(`${API}/auth/v1/**`, async (route) => {
     const path = new URL(route.request().url()).pathname;
     if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' } });
-    if (path.endsWith('/user')) return json(route, SYNTHETIC_USER);
+    if (path.endsWith('/user')) {
+      if (route.request().method() === 'PUT') {
+        try { state.userUpdates.push(JSON.parse(route.request().postData() ?? '{}')); } catch { state.userUpdates.push({}); }
+      }
+      return json(route, SYNTHETIC_USER);
+    }
     if (path.endsWith('/token')) return json(route, syntheticSession());
     if (path.endsWith('/logout')) return route.fulfill({ status: 204 });
     return json(route, {});

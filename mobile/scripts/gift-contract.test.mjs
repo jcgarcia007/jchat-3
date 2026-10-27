@@ -26,12 +26,12 @@ test('the database knows nine gift statuses', () => {
 test('every status a PERSON can meet in a chat card has its own text in es and en; the ones that fall into the default are the known gaps', () => {
   const body = card.slice(card.indexOf('const statusText = (() => {'), card.indexOf('const canRespond'));
   const handled = [...body.matchAll(/case '([a-z_]+)':/g)].map((m) => m[1]);
-  assert.deepEqual(handled.sort(), ['accepted', 'declined', 'expired', 'held', 'paid']);
+  assert.deepEqual(handled.sort(), ['accepted', 'declined', 'expired', 'failed', 'held', 'paid']);
   // 'cancelled' is the default branch on purpose; draft / awaiting_payment never reach a chat card (no message exists before 'held');
-  // 'failed' DOES (an accepted offer whose capture failed) and also falls into "Cancelado": a documented gap (e2e/local/gift-accept.spec.ts).
+  // 'failed' (an accepted offer whose capture failed) has its own text since fix/overnight-findings (giftCard.failed / senderFailed).
   const defaults = STATUSES.filter((s) => !handled.includes(s));
-  assert.deepEqual(defaults.sort(), ['awaiting_payment', 'cancelled', 'draft', 'failed']);
-  for (const key of ['waitingSender', 'waitingRecipient', 'accepted', 'paid', 'declined', 'expired', 'cancelled', 'senderAccepted', 'senderDeclined', 'senderExpired']) {
+  assert.deepEqual(defaults.sort(), ['awaiting_payment', 'cancelled', 'draft']);
+  for (const key of ['waitingSender', 'waitingRecipient', 'accepted', 'paid', 'declined', 'expired', 'cancelled', 'senderAccepted', 'senderDeclined', 'senderExpired', 'failed', 'senderFailed']) {
     assert.ok(es.giftCard[key], `es.giftCard.${key}`);
     assert.ok(en.giftCard[key], `en.giftCard.${key}`);
   }
@@ -83,11 +83,10 @@ test('every error code the gift SQL raises is known to the client and translated
   for (const sql of [m202, repo('supabase/migrations/242_gift_server_rules.sql')]) {
     for (const m of sql.matchAll(/raise exception '([a-z_]+)'/g)) raised.add(m[1]);
   }
-  // not_authenticated is the sign-in guard of every function (the app never gets there signed in). `not_found` (an offer id that does not
-  // exist, raised by gift_offer_view / gift_offer_cancel) is NOT in the client's list: it reaches the person as the generic gift error.
-  // That is the only unmapped code today (low severity: it needs a stale or invented offer id); if one more appears, this test says so.
+  // not_authenticated is the sign-in guard of every function (the app never gets there signed in). Every other code the SQL raises is
+  // known to the client (`not_found` joined the list in fix/overnight-findings); if a new one appears without a mapping, this test says so.
   const unmapped = [...raised].filter((c) => c !== 'not_authenticated' && !known.includes(c));
-  assert.deepEqual(unmapped, ['not_found'], 'the SQL raises codes the client does not map');
+  assert.deepEqual(unmapped, [], 'the SQL raises codes the client does not map');
   for (const code of known) {
     assert.ok(es.gift.errors[code], `es.gift.errors.${code}`);
     assert.ok(en.gift.errors[code], `en.gift.errors.${code}`);

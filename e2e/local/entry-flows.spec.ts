@@ -172,31 +172,35 @@ test('a link older than 2 hours is dropped: it must not hijack a later session',
 });
 
 /**
- * KNOWN GAP, NOT FIXED (overnight rule: document it, do not fix it). The saved link lives in THIS browser's localStorage. Creating an
- * account asks the person to confirm the e-mail, and that link opens in whatever browser the mail app uses (Safari) — not in the one the
- * QR was opened in (Chrome on iPhone, an in-app browser, another profile). The second browser has no saved link, so after confirming the
- * person lands on the plain home screen: the venue is LOST. The same happens with a link opened in one tab and a sign-in finished in a
- * browser that does not share its storage (OAuth in a system sheet on some devices).
- * This test describes the behaviour we WANT (the venue opens after the confirmation, whatever browser it happens in) and is parked as
- * fixme until the entry can travel with the confirmation link (e.g. the venue in the `redirect_to` of the sign-up e-mail).
+ * The saved link lives in THIS browser's localStorage, but the e-mail confirmation (and the sign-in after it) can happen in another
+ * browser: the Mail app's, an in-app browser, another profile. Fixed (fix/overnight-findings): the sign-up stores the pending entry in the
+ * account (user_metadata.pending_entry + the scan time) and the first session, wherever it is, adopts it and clears it. A fresh browser
+ * context has no localStorage of the first one, exactly like the other browser; the synthetic session carries what the sign-up stored.
  */
-test('FIXME (gap): the e-mail confirmation opened in ANOTHER browser still lands in the venue', async ({ browser }) => {
-  test.fixme(true, 'the saved link does not cross browsers: after confirming the e-mail in a different browser the venue is lost (see the comment above)');
-  const first = await browser.newContext({ locale: 'es-MX' });
-  const a = await first.newPage();
-  await hermetic(a, baseOptions());
-  await a.goto(`/?venue=${VENUE}`, { waitUntil: 'load' });
-  await expect(a.getByTestId('entry-card')).toBeVisible({ timeout: 30_000 });
-
-  // The confirmation link opens in a different browser (a fresh context: no localStorage of the first one).
+test('the e-mail confirmed and the sign-in done in ANOTHER browser still lands in the venue (the entry travels in the account)', async ({ browser }) => {
   const second = await browser.newContext({ locale: 'es-MX' });
   const b = await second.newPage();
   const hb = await hermetic(b, baseOptions());
-  await signInSynthetic(b);
+  await signInSynthetic(b, { pending_entry: { target: { kind: 'venue', venue: VENUE }, savedAt: Date.now() - 5 * 60 * 1000 } });
   await grantPosition(b);
-  await b.goto('/#access_token=synthetic&type=signup', { waitUntil: 'load' });
+  await b.goto('/', { waitUntil: 'load' });
   await inTheRoom(b);
   expect(calls(hb, 'resolve_venue_entry').length).toBeGreaterThanOrEqual(1);
-  await first.close();
+  // the account is cleaned: the entry is not adopted twice
+  await expect.poll(() => hb.userUpdates.some((u) => JSON.stringify(u.data) === JSON.stringify({ pending_entry: null }))).toBe(true);
+  await second.close();
+});
+
+test('an entry older than 2 h in the account is NOT adopted (still cleaned): it must not hijack a later session', async ({ browser }) => {
+  const second = await browser.newContext({ locale: 'es-MX' });
+  const b = await second.newPage();
+  const hb = await hermetic(b, baseOptions());
+  await signInSynthetic(b, { pending_entry: { target: { kind: 'venue', venue: VENUE }, savedAt: Date.now() - 3 * 60 * 60 * 1000 } });
+  await grantPosition(b);
+  await b.goto('/', { waitUntil: 'load' });
+  await b.waitForTimeout(4000);
+  expect(calls(hb, 'resolve_venue_entry')).toEqual([]);
+  expect(b.url()).not.toContain('/room/');
+  await expect.poll(() => hb.userUpdates.length).toBeGreaterThanOrEqual(1);
   await second.close();
 });

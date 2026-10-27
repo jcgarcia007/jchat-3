@@ -142,14 +142,13 @@ test('the server answers "expired" to an accept: the person is told and the card
 });
 
 /**
- * KNOWN GAP, NOT FIXED: gift_offer_mark_failed / gift_offer_register_payment_failure move an ACCEPTED offer to 'failed' (the capture after the
- * recipient said yes could not be charged), but GiftCard.tsx has no case for 'failed': its `default` shows "Cancelado" to BOTH people. The
- * recipient accepted, got "Aceptado · preparando", and then sees "Cancelado" with no explanation; the sender is not told the payment failed.
+ * An ACCEPTED offer whose capture failed (gift_offer_mark_failed / gift_offer_register_payment_failure → 'failed') has its own text:
+ * "No se pudo cobrar" (the recipient) / "No se pudo cobrar tu regalo a …" (the sender), not the plain "Cancelado".
  */
-test('FIXME (real finding): an accepted offer whose capture FAILED is explained, not shown as a plain "Cancelado"', async ({ page }) => {
-  test.fixme(true, 'GiftCard.tsx statusText: status "failed" falls into the default branch ("Cancelado"). mobile/components/gift/GiftCard.tsx (switch (status)). Needs its own text in es/en.');
+test('an accepted offer whose capture FAILED is explained ("No se pudo cobrar"), not shown as a plain "Cancelado"', async ({ page }) => {
   await openGiftConversation(page, { [offerId(71)]: offerView({ id: offerId(71), status: 'failed' }) });
-  await expect(card(page, /no se pudo cobrar|falló|failed/i)).toBeVisible({ timeout: 20_000 });
+  await expect(card(page, /no se pudo cobrar/i)).toBeVisible({ timeout: 20_000 });
+  await expect(card(page, /^cancelado$/i)).toHaveCount(0);
 });
 
 /** The accept sheet's geometry: Safari (no browser bar) vs Chrome for iPhone (a bottom bar makes the visual viewport ~90 px shorter). */

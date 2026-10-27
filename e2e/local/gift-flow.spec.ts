@@ -136,8 +136,7 @@ test('the arrow before paying cancels the offer and nothing is confirmed', async
   expect(await confirmCalls(page)).toBe(0);
 });
 
-test('FIXME (real finding): the arrow cancels the offer ONCE (today gift_offer_cancel is sent twice)', async ({ page }) => {
-  test.fixme(true, 'GiftSheet.handleClose → cancelUnpaidOffer sends gift_offer_cancel and clears offerId, but the unmount cleanup reads the stale offerIdRef and sends it again. Harmless (the RPC is idempotent) but redundant. mobile/components/gift/GiftSheet.tsx: cancelUnpaidOffer + the offerIdRef cleanup effect.');
+test('the arrow cancels the offer ONCE (cancelUnpaidOffer clears the ref the unmount cleanup reads)', async ({ page }) => {
   const h = await startGift(page);
   await page.getByTestId('gift-pay-page-back').click();
   await expect(page.getByTestId('gift-pay-page')).toHaveCount(0);
