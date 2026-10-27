@@ -165,6 +165,7 @@ import { IconMapPin } from '@tabler/icons-react';        // web
   Supabase). Las 241 anteriores están en `supabase/migrations_archive/` (historial, nombres intactos, el CLI no las lee). **Las migraciones nuevas se numeran
   desde la 247 en `supabase/migrations/`**, y Juan Carlos las sigue aplicando en producción por MCP (el historial de producción va por fechas; no se usa `db push`).
   Detalle en `docs/MIGRATIONS_BASELINE_PLAN.md`.
+- **NUNCA ejecutar `supabase db push` contra producción: aplicaría el baseline. Las migraciones de producción las aplica Juan Carlos por MCP.**
 - Las migraciones NO deben usar `DROP` / `DELETE` / `TRUNCATE` salvo que la operación sea realmente destructiva.
 - Usar formas idempotentes y no destructivas: `create or replace trigger`, `create or replace function`,
   `add column if not exists`, `create index if not exists`, y constraints dentro de un bloque `DO` que
