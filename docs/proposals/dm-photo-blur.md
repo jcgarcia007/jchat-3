@@ -5,7 +5,7 @@ Fecha: 2026-10-08 · Lote D, parte 1 · Estado: para revisión de Juan/Planning.
 ## Problema
 Las fotos de DM se suben a `dm-media` (bucket privado) y nada las revisa (`mobile/services/dms.ts` `uploadDmPhoto`;
 verificado en la auditoría). La moderación con Google Vision existe solo para fotos de Match
-(`supabase/migrations/193_match_photo_moderation.sql` + `supabase/functions/moderate-match-photo`).
+(`supabase/migrations_archive/193_match_photo_moderation.sql` + `supabase/functions/moderate-match-photo`).
 
 ## Idea
 Reutilizar la misma llamada a Vision `SAFE_SEARCH_DETECTION` para cada foto de DM, **sin bloquear el envío**:

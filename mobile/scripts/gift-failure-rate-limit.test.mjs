@@ -6,8 +6,8 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const sql = (p) => readFileSync(new URL(`../../supabase/${p}`, import.meta.url), 'utf8');
-const m242 = sql('migrations/242_gift_server_rules.sql');
-const m244 = sql('migrations/244_gift_failure_rate_limit.sql');
+const m242 = sql('migrations_archive/242_gift_server_rules.sql');
+const m244 = sql('migrations_archive/244_gift_failure_rate_limit.sql');
 const rollback = sql('rollbacks/244_gift_failure_rate_limit_rollback.sql');
 const check = sql('scripts/244_check.sql');
 

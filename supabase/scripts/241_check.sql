@@ -1,4 +1,4 @@
--- 241 — comprobación DESPUÉS de aplicar supabase/migrations/241_venue_table_labels.sql.
+-- 241 — comprobación DESPUÉS de aplicar supabase/migrations_archive/241_venue_table_labels.sql.
 -- NO ESCRIBE NADA: solo select. No imprime ningún token ni código de mesa (la función solo devuelve etiquetas).
 -- Ojo: en el SQL Editor no hay sesión (auth.uid() es nulo), así que la función devuelve vacío allí A PROPÓSITO; el resultado
 -- con una persona dentro del local se comprueba desde la app (la hoja de aceptar un regalo, dentro de Bar XZX).

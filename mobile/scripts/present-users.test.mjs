@@ -168,9 +168,9 @@ test('poller: the answer of a call that finishes after stop() is ignored; a reje
 
 // ── static checks: migration, service, hook, screen ──────────────────────────────────────────────────────────
 test('migration 243: security definer, stable, caller must be present, 100 ids, both-way blocks, read-only, grants', () => {
-  const name = readdirSync(new URL('../../supabase/migrations/', import.meta.url)).find((f) => /_venue_present_users\.sql$/.test(f));
+  const name = readdirSync(new URL('../../supabase/migrations_archive/', import.meta.url)).find((f) => /_venue_present_users\.sql$/.test(f));
   assert.ok(name, 'the migration file exists');
-  const sql = readFileSync(new URL(`../../supabase/migrations/${name}`, import.meta.url), 'utf8');
+  const sql = readFileSync(new URL(`../../supabase/migrations_archive/${name}`, import.meta.url), 'utf8');
   const code = sql.split('\n').filter((l) => !l.trim().startsWith('--')).join('\n');
   assert.match(code, /create or replace function public\.venue_present_users\(p_business_id uuid, p_user_ids uuid\[\]\)\s+returns uuid\[\]/);
   assert.match(code, /language plpgsql\s+stable\s+security definer\s+set search_path = public/);

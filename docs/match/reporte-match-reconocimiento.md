@@ -12,7 +12,7 @@ Idea de origen: `docs/match/idea-2026-10-03-match-vision.md`. Las 15 decisiones 
 3. **No existen intereses.** Ninguna columna, tabla ni pantalla de intereses (grep en migraciones, `mobile/screens`, `services` e i18n: cero coincidencias). Hay que crear el catálogo y los intereses por usuario.
 4. **No existe galería de fotos de perfil.** El perfil tiene `avatar_url` y `cover_url` (`mobile/services/database.types.ts`, tabla `users`) y las fotos de sus publicaciones. "Mini galería" = tabla nueva de fotos de Match.
 5. **No hay moderación de fotos.** La idea supone "moderación existente"; confirmado que no existe (decisión 8 de Juan).
-6. **La presencia es por SALA, no por negocio.** `room_geo_presence` tiene PK `(room_id, user_id)` (`supabase/migrations/112_geofence_barrier.sql:34-40`). "Estar en el local" (decisión 3) requiere unir presencia de todas las salas con `rooms.business_id`.
+6. **La presencia es por SALA, no por negocio.** `room_geo_presence` tiene PK `(room_id, user_id)` (`supabase/migrations_archive/112_geofence_barrier.sql:34-40`). "Estar en el local" (decisión 3) requiere unir presencia de todas las salas con `rooms.business_id`.
 7. **Un par de usuarios solo puede tener UNA conversación DM** (`dm_conversations` con `unique (user_a, user_b)`, `002_social_schema.sql:62-70`). Si dos personas ya tienen un DM y hacen match, hay colisión (ver §3.5).
 8. **El push de DM muestra nombre y texto del mensaje** (`supabase/functions/send-push/index.ts:138-140`), así que no sirve tal cual para Match. Los tipos de push son una lista cerrada (`PUSH_TYPES`, `:35`).
 9. **La edad solo existe como `users.birth_year`** (migración 185). El filtro de ±1 año es viable; la tarjeta no debe mostrar la edad.

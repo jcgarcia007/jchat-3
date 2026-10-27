@@ -3,7 +3,7 @@
  *
  * Client-side UX for the golden-rule geofence barrier (épica geocerca, Fase
  * 3.2). The real barrier is server-side (`check_geofence_and_join_room` +
- * `can_access_room`, Fase 3.1, supabase/migrations/112_geofence_barrier.sql)
+ * `can_access_room`, Fase 3.1, supabase/migrations_archive/112_geofence_barrier.sql)
  * — this hook is UX only: it asks for GPS once, gates entry for non-owners,
  * and re-checks every 5 min while the chat is open in the foreground so the
  * server's geo-presence (10 min TTL) stays fresh. If the client failed to

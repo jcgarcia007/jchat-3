@@ -6,7 +6,7 @@
 // denied for table businesses" (migration 236: Configuración → Portada e ícono). The rule: a new column the owner edits from the
 // app joins `grant update (…) on public.businesses to authenticated` in the SAME migration that creates it.
 //
-// How: reads supabase/migrations/*.sql in order, strips `--` comments, collects the columns that `create table businesses` and
+// How: reads supabase/migrations_archive/*.sql and then the new supabase/migrations/24[7+]_*.sql in order, strips `--` comments, collects the columns that `create table businesses` and
 // `alter table businesses add column` introduce, and the columns of every `grant update (…) on businesses to authenticated`.
 // A column that is neither granted nor listed fails. LIMITS: it reads the migrations, not the live database (check that with the
 // query in migration 236's header); it does not see grants written through dynamic SQL (`execute`), nor columns renamed later.
@@ -17,7 +17,10 @@ import { dirname, join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-const MIGRATIONS = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'supabase', 'migrations');
+const SUPABASE = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'supabase');
+// The history (001-244) lives in migrations_archive/; the baseline (245, 246) restates it and is skipped; new migrations (247+) are read from migrations/.
+const MIGRATIONS = join(SUPABASE, 'migrations_archive');
+const NEW_MIGRATIONS = join(SUPABASE, 'migrations');
 
 /** Columns of public.businesses the owner does NOT edit from the app (or that nothing in the clients writes), each with the reason. */
 export const NOT_OWNER_EDITABLE = {
@@ -62,7 +65,8 @@ export function scanMigrations(files) {
   return { added, granted };
 }
 
-const real = () => scanMigrations(readdirSync(MIGRATIONS).filter((f) => f.endsWith('.sql')).sort().map((f) => [f, readFileSync(join(MIGRATIONS, f), 'utf8')]));
+const sqlFiles = (dir, keep = () => true) => readdirSync(dir).filter((f) => f.endsWith('.sql') && keep(f)).sort().map((f) => [f, readFileSync(join(dir, f), 'utf8')]);
+const real = () => scanMigrations([...sqlFiles(MIGRATIONS), ...sqlFiles(NEW_MIGRATIONS, (f) => parseInt(f, 10) >= 247)]);
 
 test('the scanner reads creates, add columns and column grants', () => {
   const { added, granted } = scanMigrations([

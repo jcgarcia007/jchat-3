@@ -83,7 +83,8 @@ web/
 ### Supabase
 ```
 supabase/
-├── migrations/   001_initial_schema.sql  (Task 0.6)
+├── migrations/          245_baseline.sql + 246_baseline_extras.sql (estado de producción 2026-10-27); nuevas desde la 247
+├── migrations_archive/  001…244 (historial; el CLI no lo lee; 001_initial_schema.sql = Task 0.6)
 └── functions/    stripe-connect/ (3.6) · subscriptions/ (3.15)
 ```
 
@@ -160,6 +161,10 @@ import { IconMapPin } from '@tabler/icons-react';        // web
 - Nunca modificar la tabla `pinned_messages` directamente desde el cliente.
 
 ### Migraciones (`supabase/migrations/`)
+- **Baseline + numeración:** `supabase/migrations/` tiene `245_baseline.sql` y `246_baseline_extras.sql` (sirven SOLO para crear bases nuevas: local y ramas de
+  Supabase). Las 241 anteriores están en `supabase/migrations_archive/` (historial, nombres intactos, el CLI no las lee). **Las migraciones nuevas se numeran
+  desde la 247 en `supabase/migrations/`**, y Juan Carlos las sigue aplicando en producción por MCP (el historial de producción va por fechas; no se usa `db push`).
+  Detalle en `docs/MIGRATIONS_BASELINE_PLAN.md`.
 - Las migraciones NO deben usar `DROP` / `DELETE` / `TRUNCATE` salvo que la operación sea realmente destructiva.
 - Usar formas idempotentes y no destructivas: `create or replace trigger`, `create or replace function`,
   `add column if not exists`, `create index if not exists`, y constraints dentro de un bloque `DO` que
@@ -272,7 +277,7 @@ Task 0.2 ✅ si: mobile/theme/tokens.ts + mobile/theme/colors.ts + web/styles/to
 Task 0.3 ✅ si: web/styles/themes/dashboard.css con 10 sets de tema
 Task 0.4 ✅ si: mobile/theme/chatThemes.ts con 15 objetos de tema
 Task 0.5 ✅ si: mobile/theme/profileThemes.ts con 15 objetos de tema
-Task 0.6 ✅ si: supabase/migrations/001_initial_schema.sql existe
+Task 0.6 ✅ si: supabase/migrations_archive/001_initial_schema.sql existe
 Task 0.7 ✅ si: mobile/navigation/AppNavigator.tsx + mobile/navigation/tabs/BottomTabs.tsx existen
 Task 0.8 ✅ si: web/app/dashboard/layout.tsx + Sidebar existen
 

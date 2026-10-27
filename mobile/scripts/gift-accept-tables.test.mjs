@@ -94,7 +94,7 @@ test('texts: the same keys in es and en', () => {
 });
 
 test('migration 241 returns only labels, only for a signed-in person inside the venue, and is not public', () => {
-  const sql = readFileSync(new URL('../../supabase/migrations/241_venue_table_labels.sql', import.meta.url), 'utf8');
+  const sql = readFileSync(new URL('../../supabase/migrations_archive/241_venue_table_labels.sql', import.meta.url), 'utf8');
   assert.match(sql, /returns table \(label text\)/);
   assert.match(sql, /auth\.uid\(\) is not null/);
   assert.match(sql, /public\.venue_presence_ok\(p_business_id, auth\.uid\(\)\)/);

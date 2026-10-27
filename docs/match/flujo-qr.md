@@ -1,6 +1,6 @@
 # Flujo QR de JChat — recorrido actual y propuesta de puerta de entrada única
 
-Estado: **solo lectura + propuesta** (no se cambió código). Fuentes revisadas: `web/app/c/[token]/{page,RoomHub,JoinRoomButton}.tsx`, `web/app/c/[token]/room/{page,ChatRoom}.tsx`, `web/components/c/WaiterSheet.tsx`, `web/app/t/[token]`, `web/app/m/[slug]`, `supabase/migrations/026_room_qr_tokens.sql`, `supabase/functions/{guest-pay,guest-tab}`, `mobile/app.config.ts`, `mobile/navigation/AppNavigator.tsx`, `mobile/utils/venueQr.ts`.
+Estado: **solo lectura + propuesta** (no se cambió código). Fuentes revisadas: `web/app/c/[token]/{page,RoomHub,JoinRoomButton}.tsx`, `web/app/c/[token]/room/{page,ChatRoom}.tsx`, `web/components/c/WaiterSheet.tsx`, `web/app/t/[token]`, `web/app/m/[slug]`, `supabase/migrations_archive/026_room_qr_tokens.sql`, `supabase/functions/{guest-pay,guest-tab}`, `mobile/app.config.ts`, `mobile/navigation/AppNavigator.tsx`, `mobile/utils/venueQr.ts`.
 
 ---
 

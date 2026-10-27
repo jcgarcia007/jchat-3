@@ -1,4 +1,4 @@
--- 240 — comprobación DESPUÉS de aplicar supabase/migrations/240_guest_service_by_label.sql.
+-- 240 — comprobación DESPUÉS de aplicar supabase/migrations_archive/240_guest_service_by_label.sql.
 -- NO ESCRIBE NADA: las llamadas a la función de abajo están elegidas para salir antes de cualquier insert (dispositivo
 -- inválido, número vacío, y número inexistente con ubicación fuera del local). El camino de éxito (que crea una llamada
 -- real al personal) NO se prueba aquí: se prueba a mano desde la web, dentro del local, con una mesa real.

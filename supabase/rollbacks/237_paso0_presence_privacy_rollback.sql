@@ -1,4 +1,4 @@
--- 237 ROLLBACK — deshace supabase/migrations/237_paso0_presence_privacy.sql.
+-- 237 ROLLBACK — deshace supabase/migrations_archive/237_paso0_presence_privacy.sql.
 -- BORRADOR: NO se ha ejecutado. Lo ejecuta Juan en el SQL Editor solo si hay que volver atrás. NO está en migrations/ a
 -- propósito (el CLI aplicaría cualquier archivo de esa carpeta, incluso uno de reversión).
 -- Es destructivo por naturaleza (borra funciones, una tabla y una columna): leer cada paso antes de ejecutarlo.

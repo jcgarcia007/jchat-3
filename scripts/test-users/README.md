@@ -27,7 +27,7 @@ node scripts/test-users/seed.mjs --count 20 --venue bar-xzx-omd2 # crea 20 (por 
   guarda solo el año) con el `TERMS_VERSION` actual de `web/lib/terms.ts`.
 - `--venue <slug>` (por defecto `bar-xzx-omd2`): comprueba que el local existe y lo guarda en `credentials.json` para que `simulate` lo use.
 - Es **idempotente**: si el correo ya existe no lo duplica (si falta en `credentials.json`, le pone una contraseña nueva).
-- **Marca de prueba:** el dominio del correo siempre; y, como la `supabase/migrations/215_test_users_flag.sql` ya está aplicada, además
+- **Marca de prueba:** el dominio del correo siempre; y, como la `supabase/migrations_archive/215_test_users_flag.sql` ya está aplicada, además
   `users.is_test = true` (el script lo detecta solo; sin la columna funcionaría igual solo con el dominio).
 
 ## 2. `simulate.mjs`
@@ -169,7 +169,7 @@ Reglas de seguridad:
 3. Cuidado con el chat y los DM: el filtro de insultos y la moderación aplican también a estas cuentas; los textos son neutros.
 4. `simulate` envía la posición del local a la geocerca. Es el mismo mecanismo de las pruebas con simuladores, pero hazlo solo en
    entornos de prueba.
-5. **SQL ya aplicado:** `supabase/migrations/215_test_users_flag.sql` añadió `users.is_test` (solo `service_role` puede
+5. **SQL ya aplicado:** `supabase/migrations_archive/215_test_users_flag.sql` añadió `users.is_test` (solo `service_role` puede
    cambiarlo), así que `seed` marca las cuentas con la doble marca (dominio + `is_test`).
 6. Los scripts usan solo `@supabase/supabase-js` ya instalado en `web/node_modules` (y el `WebSocket` y `fetch` de Node 22+); no hay
    dependencias nuevas.

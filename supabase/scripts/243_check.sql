@@ -1,4 +1,4 @@
--- 243 — comprobación DESPUÉS de aplicar supabase/migrations/243_venue_present_users.sql.
+-- 243 — comprobación DESPUÉS de aplicar supabase/migrations_archive/243_venue_present_users.sql.
 -- NO ESCRIBE NADA: la función es de solo lectura y todo lo de abajo es select. Cada sección dice qué resultado se espera.
 
 -- ─────────────────────────────────────────────────────────────────────────────────────────────────────────────

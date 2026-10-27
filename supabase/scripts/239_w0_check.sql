@@ -1,4 +1,4 @@
--- 239 — comprobación DESPUÉS de aplicar supabase/migrations/239_w0_web_base.sql.
+-- 239 — comprobación DESPUÉS de aplicar supabase/migrations_archive/239_w0_web_base.sql.
 -- SOLO LECTURA: no modifica ninguna tabla ni función del esquema public. Se corre en el SQL Editor (todo el script junto:
 -- la sección (d) crea una función TEMPORAL en pg_temp que desaparece al cerrar la sesión).
 -- Cada sección dice qué resultado se espera.

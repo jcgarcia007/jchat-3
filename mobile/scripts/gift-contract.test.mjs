@@ -9,7 +9,7 @@ import test from 'node:test';
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const repo = (p) => readFileSync(new URL(`../../${p}`, import.meta.url), 'utf8');
 
-const m202 = repo('supabase/migrations/202_gift_offers.sql');
+const m202 = repo('supabase/migrations_archive/202_gift_offers.sql');
 const worker = repo('supabase/functions/gift-worker/index.ts');
 const webhook = repo('supabase/functions/stripe-webhook/index.ts');
 const payments = repo('supabase/functions/payments/index.ts');
@@ -80,7 +80,7 @@ test('every error code the gift SQL raises is known to the client and translated
   const known = [...svc.slice(svc.indexOf('const KNOWN'), svc.indexOf('export function giftErrorCode')).matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
   assert.ok(known.length >= 8, 'the client lists its known codes');
   const raised = new Set();
-  for (const sql of [m202, repo('supabase/migrations/242_gift_server_rules.sql')]) {
+  for (const sql of [m202, repo('supabase/migrations_archive/242_gift_server_rules.sql')]) {
     for (const m of sql.matchAll(/raise exception '([a-z_]+)'/g)) raised.add(m[1]);
   }
   // not_authenticated is the sign-in guard of every function (the app never gets there signed in). Every other code the SQL raises is

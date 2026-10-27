@@ -1,4 +1,4 @@
--- 244 — comprobación DESPUÉS de aplicar supabase/migrations/244_gift_failure_rate_limit.sql.
+-- 244 — comprobación DESPUÉS de aplicar supabase/migrations_archive/244_gift_failure_rate_limit.sql.
 -- Las secciones (a) a (d) NO ESCRIBEN NADA: solo select. La (e) es OPCIONAL y escribe SOLO dentro de una transacción que se DESHACE.
 
 -- ─────────────────────────────────────────────────────────────────────────────────────────────────────────────

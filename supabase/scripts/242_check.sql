@@ -1,4 +1,4 @@
--- 242 — comprobación DESPUÉS de aplicar supabase/migrations/242_gift_server_rules.sql.
+-- 242 — comprobación DESPUÉS de aplicar supabase/migrations_archive/242_gift_server_rules.sql.
 -- Las secciones (a) a (d) NO ESCRIBEN NADA: solo select. La (e) es OPCIONAL y SÍ escribe, pero dentro de una transacción que se
 -- DESHACE (rollback) al final: prueba el contador de rechazos con una oferta inventada. Cada sección dice qué resultado se espera.
 
