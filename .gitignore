@@ -79,3 +79,7 @@ release-evidence/*/raw/
 
 # gstack QA reports (local evidence, not for the repo)
 .gstack/
+
+# overnight suite: web export pointed at the LOCAL Supabase, and k6 / migration results (never committed)
+dist-web-local/
+loadtest/results/
