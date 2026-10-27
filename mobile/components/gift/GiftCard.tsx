@@ -146,6 +146,8 @@ export function GiftCard({ offerId }: Props): React.ReactElement {
         return view.is_sender ? t('giftCard.senderDeclined', { name: view.to.name }) : t('giftCard.declined');
       case 'expired':
         return view.is_sender ? t('giftCard.senderExpired', { name: view.to.name }) : t('giftCard.expired');
+      case 'failed':
+        return view.is_sender ? t('giftCard.senderFailed', { name: view.to.name }) : t('giftCard.failed');
       default:
         return t('giftCard.cancelled');
     }

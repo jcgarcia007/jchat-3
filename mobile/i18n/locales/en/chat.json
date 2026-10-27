@@ -441,6 +441,7 @@
     "declined": "Not accepted",
     "expired": "Expired",
     "cancelled": "Cancelled",
+    "failed": "Payment failed",
     "details": "View details",
     "detailsTitle": "Gift details",
     "note": "Note",
@@ -455,7 +456,8 @@
     "tableNotListed": "My table isn't in the list",
     "senderAccepted": "{{name}} accepted your gift",
     "senderDeclined": "{{name}} didn't accept your gift. You weren't charged.",
-    "senderExpired": "{{name}} didn't answer in time. You weren't charged."
+    "senderExpired": "{{name}} didn't answer in time. You weren't charged.",
+    "senderFailed": "Payment failed: your gift to {{name}} could not be charged."
   },
   "entry": {
     "invalidTitle": "Invalid QR",

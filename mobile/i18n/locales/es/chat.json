@@ -441,6 +441,7 @@
     "declined": "No aceptado",
     "expired": "Venció",
     "cancelled": "Cancelado",
+    "failed": "No se pudo cobrar",
     "details": "Ver detalles",
     "detailsTitle": "Detalles del regalo",
     "note": "Nota",
@@ -455,7 +456,8 @@
     "tableNotListed": "Mi mesa no está en la lista",
     "senderAccepted": "{{name}} aceptó tu regalo",
     "senderDeclined": "{{name}} no aceptó tu regalo. No se te cobró nada.",
-    "senderExpired": "{{name}} no respondió a tiempo. No se te cobró nada."
+    "senderExpired": "{{name}} no respondió a tiempo. No se te cobró nada.",
+    "senderFailed": "No se pudo cobrar tu regalo a {{name}}."
   },
   "entry": {
     "invalidTitle": "QR no válido",
