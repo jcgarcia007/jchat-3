@@ -59,7 +59,8 @@ export type GiftErrorCode =
   | 'gift_expired'
   | 'not_in_venue'
   | 'table_required'
-  | 'gift_retry_later';
+  | 'gift_retry_later'
+  | 'not_found';
 
 const KNOWN: readonly GiftErrorCode[] = [
   'gift_unavailable',
@@ -72,6 +73,7 @@ const KNOWN: readonly GiftErrorCode[] = [
   'not_in_venue',
   'table_required',
   'gift_retry_later',
+  'not_found',
 ];
 
 /** The known gift error code carried by a thrown Supabase error (or a plain code string), or null. */

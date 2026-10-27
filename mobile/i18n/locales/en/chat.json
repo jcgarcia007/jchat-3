@@ -410,7 +410,8 @@
       "gift_expired": "This gift expired.",
       "not_your_gift": "This gift isn't yours.",
       "not_in_venue": "You need to be at the venue to accept.",
-      "table_required": "Enter your table number."
+      "table_required": "Enter your table number.",
+      "not_found": "We couldn't find this gift."
     },
     "buttonA11y": "Send a gift to {{name}}",
     "sentTitle": "Gift on its way",

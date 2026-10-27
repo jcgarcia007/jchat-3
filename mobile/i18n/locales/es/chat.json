@@ -410,7 +410,8 @@
       "gift_expired": "Este regalo venció.",
       "not_your_gift": "Este regalo no es tuyo.",
       "not_in_venue": "Necesitas estar en el local para aceptar.",
-      "table_required": "Escribe tu número de mesa."
+      "table_required": "Escribe tu número de mesa.",
+      "not_found": "No encontramos este regalo."
     },
     "buttonA11y": "Enviar un regalo a {{name}}",
     "sentTitle": "Regalo en camino",
