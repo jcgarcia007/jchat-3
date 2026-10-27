@@ -67,6 +67,8 @@ export const SESSION_KEY = 'sb-127-auth-token';
 /** Signs the synthetic user in before the app loads. Call it BEFORE page.goto. */
 export async function signInSynthetic(page: Page) {
   await page.addInitScript(([key, value]) => window.localStorage.setItem(key, value), [SESSION_KEY, JSON.stringify(syntheticSession())] as const);
+  // First-time hints that would cover the screen ("Tu perfil está aquí") are already seen: a returning person.
+  await page.addInitScript((key) => window.localStorage.setItem(key, '1'), `hints.profileMenuSeen:${USER_ID}`);
 }
 
 type Json = unknown;
@@ -89,13 +91,19 @@ export interface Hermetic {
   writes: string[];
   /** Realtime topics joined. */
   topics: string[];
+  /** The postgres_changes subscriptions each joined topic asked for (for debugging a spec that injects an event). */
+  subscriptions: Record<string, { event: string; table: string; filter?: string }[]>;
   /** Sends a Realtime `postgres_changes` event to the channel joined for `table` (or any channel when omitted). */
   inject: (table: string, event: 'INSERT' | 'UPDATE' | 'DELETE', record: Record<string, unknown>) => boolean;
+  /** Like `inject`, but waits (up to `timeoutMs`) until a channel for `table` is actually joined: the app re-joins its channels while it connects. */
+  injectWhenReady: (table: string, event: 'INSERT' | 'UPDATE' | 'DELETE', record: Record<string, unknown>, timeoutMs?: number) => Promise<boolean>;
   /** Replaces the people the room's presence channel reports (and tells the page). */
   setPresence: (people: { id: string; name: string; avatar?: string | null; incognito?: boolean }[]) => void;
   /** The blocked requests that went to a host that must never be reached (production, Stripe, Vercel, Sentry). */
   forbidden: () => string[];
   options: HermeticOptions;
+  /** What the Realtime stand-in currently holds (socket connected? channels joined with which subscriptions?). */
+  debug: () => { socket: boolean; joined: { topic: string; ids: { id: number; event: string; table: string }[] }[] };
 }
 
 const json = (route: Route, body: unknown, status = 200, headers: Record<string, string> = {}) =>
@@ -108,10 +116,13 @@ export async function hermetic(page: Page, options: HermeticOptions = {}): Promi
     unknownRpcs: [],
     writes: [],
     topics: [],
+    subscriptions: {},
     inject: () => false,
+    injectWhenReady: async () => false,
     setPresence: () => undefined,
     forbidden: () => state.blocked.filter((u) => FORBIDDEN_HOST.test(u)),
     options,
+    debug: () => ({ socket: false, joined: [] }),
   };
 
   // 1) Lowest priority (registered first): anything that is not local is aborted.
@@ -207,9 +218,10 @@ export async function hermetic(page: Page, options: HermeticOptions = {}): Promi
       if (event === 'heartbeat') return ws.send(JSON.stringify([null, ref, 'phoenix', 'phx_reply', { status: 'ok', response: {} }]));
       if (event === 'phx_join') {
         const config = (payload?.config as { postgres_changes?: { event: string; table: string }[] } | undefined) ?? {};
-        const ids = (config.postgres_changes ?? []).map((c) => ({ id: nextId++, event: c.event, table: c.table, schema: 'public' }));
+        const ids = ((config.postgres_changes ?? []) as { event: string; table: string; filter?: string }[]).map((c) => ({ id: nextId++, event: c.event, table: c.table, schema: 'public', ...(c.filter ? { filter: c.filter } : {}) }));
         joins.set(topic, { joinRef: joinRef ?? '1', ids });
         state.topics.push(topic);
+        state.subscriptions[topic] = ((config.postgres_changes ?? []) as { event: string; table: string; filter?: string }[]).map((c) => ({ event: c.event, table: c.table, filter: c.filter }));
         ws.send(JSON.stringify([joinRef, ref, topic, 'phx_reply', { status: 'ok', response: { postgres_changes: ids } }]));
         if (/presence:/.test(topic)) setTimeout(sendPresence, 20);
         return;
@@ -233,6 +245,16 @@ export async function hermetic(page: Page, options: HermeticOptions = {}): Promi
       if (!hit) continue;
       toPage(JSON.stringify([join.joinRef, null, topic, 'postgres_changes', { ids: [hit.id], data: { schema: 'public', table, commit_timestamp: new Date().toISOString(), type: event, record, old_record: {}, columns: [], errors: null } }]));
       return true;
+    }
+    return false;
+  };
+
+  state.debug = () => ({ socket: !!toPage, joined: [...joins.entries()].map(([topic, j]) => ({ topic, ids: j.ids })) });
+  state.injectWhenReady = async (table, event, record, timeoutMs = 15_000) => {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      if (state.inject(table, event, record)) return true;
+      await new Promise((resolve) => setTimeout(resolve, 200));
     }
     return false;
   };
