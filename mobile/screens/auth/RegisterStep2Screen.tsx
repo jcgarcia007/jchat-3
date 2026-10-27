@@ -45,6 +45,7 @@ import { TicketHeader } from '../../components/auth/TicketHeader';
 import { TicketTitle } from '../../components/auth/TicketReveal';
 import { TicketStep } from '../../components/auth/TicketStep';
 import { TicketBirthDate } from '../../components/auth/TicketBirthDate';
+import { peekPendingEntry } from '../../services/venueEntry';
 
 // ---------------------------------------------------------------------------
 // Types / navigation
@@ -325,13 +326,16 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
       };
       // Keep the 18+ gate from flashing while we confirm the age we already asked for.
       holdAgeGate(true);
+      const pendingEntry = (await peekPendingEntry()) ?? undefined;
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password,
         options: {
           captchaToken: captchaToken ?? undefined,
           emailRedirectTo: 'jchat://confirm',
-          data: { full_name: name.trim() || undefined, pending_profile: pendingProfile },
+          // pending_entry: the venue the user was entering (QR / link) travels in the account too, so confirming the e-mail and
+          // signing in in ANOTHER browser still lands in the venue (applied on the first session, then cleared).
+          data: { full_name: name.trim() || undefined, pending_profile: pendingProfile, pending_entry: pendingEntry },
         },
       });
 

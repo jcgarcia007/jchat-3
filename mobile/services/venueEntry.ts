@@ -13,6 +13,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { EntryTarget } from '../utils/entryUrl';
+import { entryFromMetadata, validDatedEntry, type DatedEntry } from '../utils/pendingEntryMeta';
 import { isEntryTarget, rememberEntry } from '../utils/reenterEntry';
 import { isSupabaseConfigured, supabase } from './supabase';
 
@@ -149,6 +150,29 @@ export async function loadPendingEntry(now: number = Date.now()): Promise<EntryT
     return null;
   }
   return stored!.target as EntryTarget;
+}
+
+/** The pending entry WITH the moment it was saved (for the sign-up, which carries it in the account), or null. Never removes anything. */
+export async function peekPendingEntry(now: number = Date.now()): Promise<DatedEntry | null> {
+  try {
+    const raw = await AsyncStorage.getItem(PENDING_KEY);
+    return raw ? validDatedEntry(JSON.parse(raw), now, PENDING_ENTRY_TTL_MS) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The first authenticated session adopts the entry the sign-up left in user_metadata.pending_entry (a different browser from the
+ * one where the QR was opened has nothing in its own storage). An entry already pending HERE wins (it is the more recent scan).
+ * The 2 h expiry keeps counting from the original scan. Returns true when an entry was saved.
+ */
+export async function adoptMetadataEntry(meta: unknown, now: number = Date.now()): Promise<boolean> {
+  const entry = entryFromMetadata(meta, now, PENDING_ENTRY_TTL_MS);
+  if (!entry) return false;
+  if (await peekPendingEntry(now)) return false;
+  await savePendingEntry(entry.target, entry.savedAt);
+  return true;
 }
 
 export async function clearPendingEntry(): Promise<void> {

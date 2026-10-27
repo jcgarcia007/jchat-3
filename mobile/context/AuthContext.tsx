@@ -28,6 +28,7 @@ import i18n, { changeAppLanguage } from '../i18n';
 import type { SupportedLanguage } from '../i18n';
 import { showAlert } from '../utils/dialog';
 import { setMonitoringUser } from '../services/monitoring';
+import { adoptMetadataEntry } from '../services/venueEntry';
 
 /** Server-side 18+ confirmation state of the signed-in user. */
 export type AgeStatus = 'loading' | 'confirmed' | 'required' | 'error';
@@ -190,6 +191,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const userId = session?.user?.id;
     if (!userId) return;
+
+    // The venue the user was entering when they registered (user_metadata.pending_entry, written by the sign-up): adopted on the
+    // first session in WHATEVER browser they confirm and sign in, then cleared. A different browser has no local pending entry.
+    const metaEntry = session?.user?.user_metadata?.pending_entry;
+    if (metaEntry) {
+      void (async () => {
+        await adoptMetadataEntry(metaEntry);
+        await supabase.auth.updateUser({ data: { pending_entry: null } });
+      })();
+    }
 
     // Registration with email confirmation ON: the profile the user chose in
     // RegisterStep2 couldn't be saved without a session, so it travels in
