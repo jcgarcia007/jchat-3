@@ -11,7 +11,7 @@
 set -u
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-DB_CONTAINER="supabase_db_jchat-local"
+DB_CONTAINER="${SQL_TEST_CONTAINER:-supabase_db_jchat-local}"
 TESTS="$ROOT/supabase/tests"
 
 export PATH="/Applications/Docker.app/Contents/Resources/bin:$PATH"
