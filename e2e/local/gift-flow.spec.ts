@@ -119,7 +119,6 @@ test('3 refusals close the offer: no more attempts, then the arrow cancels it', 
 });
 
 test('the server already counted 2 refusals (a reopened offer): the counter starts from it, one more closes', async ({ page }) => {
-  test.fixme(true, 'gift_hold returning payment_failures lives in feat/web-express-pay (commit 52055ba9), not in main: on main the counter always starts at 3');
   await startGift(page, { bodies: [], failures: 2 });
   await setResults(page, ['declined']);
   await page.getByTestId('gift-pay').click();
