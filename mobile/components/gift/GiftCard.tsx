@@ -323,8 +323,9 @@ function GiftAcceptSheet({
   // height (useKeyboardCover, a constant 0 on devices) and cap it to what the visual viewport still shows (>= 24 px from the top),
   // so the confirm button is never hidden. Devices keep their KeyboardAvoidingView and '85%' cap untouched.
   const onWeb = Platform.OS === 'web';
+  // useKeyboardCover is already 0 for anything that is not a keyboard (Chrome for iPhone's bottom toolbar included), so any cover is a keyboard.
   const keyboardInset = useKeyboardCover();
-  const keyboardOpen = onWeb && keyboardInset > 100;
+  const keyboardOpen = onWeb && keyboardInset > 0;
   const { height: windowHeight } = useWindowDimensions();
   const visibleHeight = onWeb && typeof window !== 'undefined' && window.visualViewport ? window.visualViewport.height : windowHeight;
   const webSheetMaxHeight = Math.max(240, Math.floor(visibleHeight - 24));
@@ -343,6 +344,23 @@ function GiftAcceptSheet({
       setSending(false);
     }
   }, [sending, tableValue, showDetails, details, view.id, onDone, t]);
+
+  const confirmButton = (
+    <Pressable
+            onPress={() => void confirm()}
+            disabled={sending || !tableValue}
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.confirmBtn, { backgroundColor: c.brandFill, opacity: sending || !tableValue ? 0.5 : pressed ? 0.85 : 1 }]}
+          >
+            {sending ? (
+              <Spinner color={palette.onBrand} />
+            ) : (
+              <Text style={[styles.confirmLabel, { color: palette.onBrand }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+                {tableValue ? t('giftCard.acceptWithTable', { label: tableValue }) : t('giftCard.confirmAccept')}
+              </Text>
+            )}
+          </Pressable>
+  );
 
   return (
     <AppModal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -429,21 +447,10 @@ function GiftAcceptSheet({
             />
           ) : null}
           {needsId ? <Text style={[styles.idNotice, { color: c.warning }]}>{t('giftCard.idNotice')}</Text> : null}
-          <Pressable
-            onPress={() => void confirm()}
-            disabled={sending || !tableValue}
-            accessibilityRole="button"
-            style={({ pressed }) => [styles.confirmBtn, { backgroundColor: c.brandFill, opacity: sending || !tableValue ? 0.5 : pressed ? 0.85 : 1 }]}
-          >
-            {sending ? (
-              <Spinner color={palette.onBrand} />
-            ) : (
-              <Text style={[styles.confirmLabel, { color: palette.onBrand }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-                {tableValue ? t('giftCard.acceptWithTable', { label: tableValue }) : t('giftCard.confirmAccept')}
-              </Text>
-            )}
-          </Pressable>
+          {onWeb ? null : confirmButton}
         </ScrollView>
+        {/* Web: the confirm button is OUTSIDE the scroll, so it is always on screen whatever the list's length; devices keep it inside, as before. */}
+        {onWeb ? <View style={styles.confirmFooter}>{confirmButton}</View> : null}
 </View>
       </KeyboardAvoidingView>
     </AppModal>
@@ -486,6 +493,7 @@ const styles = StyleSheet.create({
   notListedBtn: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   notListedLabel: { fontSize: 14, fontWeight: '700' },
   idNotice: { fontSize: 13, lineHeight: 18 },
+  confirmFooter: { paddingTop: 0 },
   confirmBtn: { minHeight: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   confirmLabel: { fontSize: 16, fontWeight: '800' },
 });

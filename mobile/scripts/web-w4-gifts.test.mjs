@@ -238,7 +238,7 @@ test('R3: the callers pass the venue name (the only change on devices: a prop th
   assert.match(read('screens/chat/ChatRoomScreen.tsx'), /venueName=\{business\?\.name \?\? ''\}/);
   assert.match(read('screens/dms/DMChatScreen.tsx'), /venueName=\{meta\?\.businessName \?\? ''\}/);
   assert.match(read('hooks/useKeyboardCover.ts'), /return 0;/);
-  assert.match(read('hooks/useKeyboardCover.web.ts'), /window\.innerHeight - \(viewport\.height \+ viewport\.offsetTop\)/); // still used by the accept sheet
+  assert.match(read('hooks/useKeyboardCover.web.ts'), /keyboardCover\(window\.innerHeight, viewport\.height, viewport\.offsetTop\)/); // still used by the accept sheet (150 px threshold: utils/keyboardCover.ts)
 });
 
 test('the form reports "busy" while the card is confirmed and releases it when it goes away', () => {
@@ -286,7 +286,7 @@ test('the table sheet (accepting a gift) is lifted by the keyboard and capped to
   const sheet = card.slice(card.indexOf('function GiftAcceptSheet'));
   assert.match(card, /import \{ useKeyboardCover \} from '\.\.\/\.\.\/hooks\/useKeyboardCover';/);
   assert.match(sheet, /const onWeb = Platform\.OS === 'web';/);
-  assert.match(sheet, /const keyboardOpen = onWeb && keyboardInset > 100;/);
+  assert.match(sheet, /const keyboardOpen = onWeb && keyboardInset > 0;/); // the hook is already 0 under 150 px (Chrome iOS toolbar)
   assert.match(sheet, /const webSheetMaxHeight = Math\.max\(240, Math\.floor\(visibleHeight - 24\)\);/); // top margin >= 24 px
   assert.match(sheet, /style=\{onWeb \? \{ paddingBottom: keyboardInset \} : undefined\}/);
   assert.match(sheet, /onWeb && \{ maxHeight: webSheetMaxHeight \}/);
