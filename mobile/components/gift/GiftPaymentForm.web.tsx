@@ -118,7 +118,7 @@ function CardForm({ totalCents, onHeld, onBusyChange, note }: Pick<GiftPaymentFo
     <View ref={formRef} style={styles.form}>
       <PaymentElement options={CARD_ONLY_OPTIONS} onFocus={revealForm} />
       {message ? (
-        <Text accessibilityRole="alert" style={[styles.message, { color: processing ? c.textSecondary : c.danger }]}>
+        <Text accessibilityRole="alert" style={[styles.message, { color: processing ? c.textSecondary : c.dangerText }]}>
           {message}
         </Text>
       ) : null}
@@ -152,7 +152,7 @@ function appearanceFor(c: Colors): Appearance {
       colorPrimary: palette.brand,
       colorBackground: c.bgSurface,
       colorText: c.textPrimary,
-      colorDanger: c.danger,
+      colorDanger: c.dangerText,
       borderRadius: '12px',
     },
   };
