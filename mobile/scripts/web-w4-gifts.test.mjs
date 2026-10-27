@@ -183,7 +183,7 @@ test('R3: leaving the web screen with an unpaid offer cancels it (browser Back);
   const form = read('components/gift/GiftPaymentForm.web.tsx');
   assert.match(form, /const busy = paying \|\| processing;/);
   assert.match(form, /setPaying\(true\);[\s\S]*await stripe\.confirmPayment\([\s\S]*setPaying\(false\);/);
-  assert.match(form, /outcome\.kind === 'processing'\) \{\s*setProcessing\(true\);/);
+  assert.match(form, /case 'processing':\s*setProcessing\(true\);/);
   assert.match(form, /onBusyChange\?\.\(busy\);/);
   assert.match(sheet, /onBusyChange=\{setPayBusy\}/);
 });
@@ -206,8 +206,8 @@ test('R3 page: header arrow (44 px, labelled), summary, ONE ScrollView, nothing 
   assert.match(page, /paddingBottom: AUTOFILL_BAR_GAP \+ insets\.bottom/);
   assert.match(page, /node\.focus\(\{ preventScroll: true \}\)/);
   assert.doesNotMatch(page, /#[0-9a-fA-F]{3,8}\b/, 'theme tokens only');
-  // no Apple Pay / Google Pay in this phase (R5)
-  assert.doesNotMatch(page + read('components/gift/GiftPaymentForm.web.tsx'), /applePay|googlePay|paymentRequest/i);
+  // Apple Pay / Google Pay live in the form (R5, scripts/web-express-pay.test.mjs); the page itself only hosts it
+  assert.doesNotMatch(page, /applePay|googlePay|paymentRequest/i);
 });
 
 test('R3 form: Pay sits in the flow right after Stripe\'s field with the fine print under it; Stripe\'s focus scrolls it into view above the autofill bar', () => {
@@ -219,7 +219,8 @@ test('R3 form: Pay sits in the flow right after Stripe\'s field with the fine pr
   const pay = form.indexOf('testID="gift-pay"');
   const note = form.indexOf('{!note ? null :');
   assert.ok(form.indexOf('<PaymentElement') < form.indexOf('{message ?') && form.indexOf('{message ?') < pay && pay < note, 'field → message → Pay → fine print');
-  assert.doesNotMatch(form, /compact|fieldMaxHeight|onCancel|gift-pay-back/);
+  assert.doesNotMatch(form, /compact|fieldMaxHeight|gift-pay-back/);
+  assert.equal((form.match(/\bonCancel=/g) ?? []).length, 1, 'the only onCancel is the wallet\'s (the page arrow is the way back)');
   assert.doesNotMatch(form, /autoComplete|autocomplete/i, 'the PaymentElement keeps Stripe\'s own autofill (iOS card autofill)');
 });
 
@@ -231,7 +232,7 @@ test('R3 texts: summary strings in es and en, and the 242 attempts / closed stat
   assert.equal(g('es').paySummaryCount_other, '{{count}} productos');
   assert.equal(g('en').paySummaryCount_other, '{{count}} items');
   const form = read('components/gift/GiftPaymentForm.web.tsx');
-  for (const key of ["t('gift.payClosed')", "t('gift.payNoAttemptsLeft')", "t('gift.payAttemptsLeft', { count: left })", "t('gift.payProcessing')"]) assert.ok(form.includes(key), key);
+  for (const key of ["t('gift.payClosed')", "t('gift.payNoAttemptsLeft')", "t('gift.payAttemptsLeft', { count: step.left })", "t('gift.payProcessing')"]) assert.ok(form.includes(key), key);
 });
 
 test('R3: the callers pass the venue name (the only change on devices: a prop the native flow never renders)', () => {

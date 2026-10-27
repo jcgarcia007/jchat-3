@@ -427,7 +427,8 @@
     "payAttemptsLeft_other": "{{count}} attempts left.",
     "paySummaryCount_one": "{{count}} item",
     "paySummaryCount_other": "{{count}} items",
-    "payTotal": "Total"
+    "payTotal": "Total",
+    "payOrCard": "or pay with card"
   },
   "giftCard": {
     "nItems_one": "{{count}} item",

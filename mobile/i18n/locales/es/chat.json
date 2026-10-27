@@ -427,7 +427,8 @@
     "payAttemptsLeft_other": "Te quedan {{count}} intentos.",
     "paySummaryCount_one": "{{count}} producto",
     "paySummaryCount_other": "{{count}} productos",
-    "payTotal": "Total"
+    "payTotal": "Total",
+    "payOrCard": "o con tarjeta"
   },
   "giftCard": {
     "nItems_one": "{{count}} artículo",

@@ -12,6 +12,8 @@ export interface GiftPaymentFormProps {
   onHeld: () => void;
   /** True while the card is being confirmed (the caller must not close / cancel then). */
   onBusyChange?: (busy: boolean) => void;
+  /** Web: refusals the server has already counted for this offer (0 for a new one): the "N attempts left" counter starts from it. */
+  initialFailures?: number;
   /** Web: the fine print under the Pay button (what is authorized now, when it is charged or released). */
   note?: string;
 }

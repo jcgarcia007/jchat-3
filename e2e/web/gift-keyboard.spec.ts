@@ -15,6 +15,7 @@
  */
 import { mkdir } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
+import { FAKE_STRIPE } from './fake-stripe';
 import { assertNothingLeaked, hasSession, messageRecord, mockGamesNetwork, PERSON_ID, SESSION, VENUE, watchRealtime } from './games-mock';
 
 test.skip(!hasSession, 'no saved web session (run: npm run web:session)');
@@ -26,39 +27,6 @@ test.use({
 });
 
 const KEYBOARD_PX = 336;
-
-const FAKE_STRIPE = `
-window.Stripe = function () {
-  var handlers = {};
-  var emit = function (name) { (handlers[name] || []).forEach(function (h) { h({}); }); };
-  var element = {
-    mount: function (node) {
-      var frame = document.createElement('iframe');
-      frame.setAttribute('data-fake-stripe', '1');
-      frame.style.cssText = 'width:100%;height:340px;border:0;display:block';
-      frame.srcdoc = '<body style="margin:0;font:16px sans-serif">' +
-        ['Card number', 'MM / YY', 'CVC', 'Country', 'ZIP'].map(function (p) {
-          return '<input placeholder="' + p + '" style="font-size:16px;box-sizing:border-box;width:100%;height:44px;margin:0 0 12px;padding:0 12px;border:1px solid #888;border-radius:12px">';
-        }).join('') + '</body>';
-      frame.onload = function () {
-        frame.contentDocument.querySelectorAll('input').forEach(function (input) {
-          input.addEventListener('focus', function () { emit('focus'); });
-        });
-        emit('ready');
-      };
-      node.appendChild(frame);
-    },
-    on: function (name, handler) { (handlers[name] = handlers[name] || []).push(handler); },
-    off: function () {}, update: function () {}, unmount: function () {}, destroy: function () {},
-  };
-  return {
-    elements: function () {
-      return { create: function () { return element; }, getElement: function () { return null; }, update: function () {}, fetchUpdates: function () { return Promise.resolve(); }, submit: function () { return Promise.resolve({}); } };
-    },
-    createToken: function () {}, createPaymentMethod: function () {}, confirmCardPayment: function () {},
-    confirmPayment: function () { return Promise.resolve({ paymentIntent: { status: 'requires_capture' } }); },
-  };
-};`;
 
 /** A visualViewport the spec can shrink: Safari's behaviour when the keyboard opens (layout viewport unchanged). */
 const FAKE_VISUAL_VIEWPORT = `
