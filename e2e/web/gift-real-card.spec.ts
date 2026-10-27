@@ -122,3 +122,57 @@ test('real PaymentElement: number + expiry + CVC + Pagar visible above the keybo
   }
   }
 });
+
+/**
+ * The gift is CARD ONLY (fix/gift-card-only): the REAL PaymentElement must not offer Link's Instant Bank Payments ("Banco" tab with a
+ * cash-back badge such as "5 US$"). Same opt-in, same single test offer as above (cancelled with the page arrow at the end).
+ * Saves a full-page capture to GIFT_CARD_ONLY_SHOT (default: Downloads/gift-card-only-real.png) and prints what the Element shows.
+ *
+ *   cd e2e && GIFT_REAL=1 npx playwright test -c web.config.ts web/gift-real-card.spec.ts --project=webkit-390 -g "CARD ONLY"
+ */
+test('real PaymentElement is CARD ONLY: no "Banco" tab, no cash-back badge, the card fields stay', async ({ page }) => {
+  test.setTimeout(120_000);
+  const holdKeys: string[] = [];
+  page.on('response', async (res) => {
+    if (/\/functions\/v1\/payments/.test(res.url()) && res.request().method() === 'POST') {
+      try {
+        const body = await res.json();
+        if (typeof body?.publishableKey === 'string') holdKeys.push(body.publishableKey.slice(0, 8));
+      } catch { /* not JSON */ }
+    }
+  });
+
+  await enterChat(page);
+  await page.getByRole('button', { name: /acciones de test1/ }).last().click({ timeout: 20_000 });
+  await page.getByTestId('quick-card-gift').click({ timeout: 15_000 });
+  await page.getByRole('button', { name: /^Añadir un / }).first().click({ timeout: 20_000 });
+  await page.getByRole('button', { name: /^Enviar regalo/ }).click();
+  await expect(page.getByTestId('gift-pay-page')).toBeVisible({ timeout: 30_000 });
+  try {
+    expect(holdKeys.length, 'gift_hold answered').toBeGreaterThan(0);
+    expect(holdKeys[0], 'publishable key is a test key').toBe('pk_test_');
+
+    const stripeSelector = 'iframe[name^="__privateStripeFrame"]:visible';
+    const stripeFrame = page.frameLocator(stripeSelector).first();
+    const cardNumber = stripeFrame.getByPlaceholder(/1234 1234 1234 1234/);
+    await expect(cardNumber).toBeVisible({ timeout: 30_000 });
+    await page.waitForTimeout(2500); // Link's tab / badge, when present, arrive a moment after the card fields
+    const shown = (await stripeFrame.locator('body').innerText()).replace(/\s+/g, ' ').trim();
+    console.log('PAYMENT_ELEMENT_TEXT', JSON.stringify(shown));
+    await page.screenshot({ path: process.env.GIFT_CARD_ONLY_SHOT ?? '/Users/jcgarcia/Downloads/gift-card-only-real.png', fullPage: false });
+
+    expect(shown, 'no Bank / Banco tab (Link Instant Bank Payments)').not.toMatch(/\bBanco\b|\bBank\b/i);
+    expect(shown, 'no cash-back badge').not.toMatch(/\b5\s?US\$|US\$\s?5\b|\$5\b/);
+    expect(shown, 'no Link prompt').not.toMatch(/\bLink\b/i);
+    await expect(cardNumber, 'the card fields stay').toBeVisible();
+    await expect(stripeFrame.getByPlaceholder(/CVC|CVV/)).toBeVisible();
+  } finally {
+    const back = page.getByTestId('gift-pay-page-back');
+    if (await back.isVisible().catch(() => false)) {
+      // The cancel is fire-and-forget in the app: wait for its answer so the offer is really closed before the page goes away.
+      const cancelled = page.waitForResponse((r) => /rpc\/gift_offer_cancel/.test(r.url()), { timeout: 15_000 }).catch(() => null);
+      await back.click();
+      await cancelled;
+    }
+  }
+});

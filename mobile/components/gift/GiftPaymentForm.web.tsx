@@ -116,7 +116,7 @@ function CardForm({ totalCents, onHeld, onBusyChange, note }: Pick<GiftPaymentFo
   const disabled = !stripe || !elements || paying || processing || closed;
   return (
     <View ref={formRef} style={styles.form}>
-      <PaymentElement onFocus={revealForm} />
+      <PaymentElement options={CARD_ONLY_OPTIONS} onFocus={revealForm} />
       {message ? (
         <Text accessibilityRole="alert" style={[styles.message, { color: processing ? c.textSecondary : c.danger }]}>
           {message}
@@ -135,6 +135,14 @@ function CardForm({ totalCents, onHeld, onBusyChange, note }: Pick<GiftPaymentFo
     </View>
   );
 }
+
+/**
+ * The gift is CARD ONLY. The PaymentIntent is `payment_method_types: ['card']`, but Stripe includes Link in card integrations
+ * (https://docs.stripe.com/payments/link/link-payment-integrations), and with Link come its Instant Bank Payments: a "Bank" tab with
+ * a cash-back badge. `wallets.link: 'never'` keeps Link out of THIS form. Only the gift's PaymentElement gets it: the order checkouts
+ * are other code and are not touched. (`as const`: no extra type import.)
+ */
+const CARD_ONLY_OPTIONS = { wallets: { link: 'never' } } as const;
 
 /** Stripe's Elements appearance from the app's theme tokens. */
 function appearanceFor(c: Colors): Appearance {

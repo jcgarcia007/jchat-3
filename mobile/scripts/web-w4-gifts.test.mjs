@@ -212,7 +212,7 @@ test('R3 page: header arrow (44 px, labelled), summary, ONE ScrollView, nothing 
 
 test('R3 form: Pay sits in the flow right after Stripe\'s field with the fine print under it; Stripe\'s focus scrolls it into view above the autofill bar', () => {
   const form = read('components/gift/GiftPaymentForm.web.tsx');
-  assert.match(form, /<PaymentElement onFocus=\{revealForm\} \/>/);
+  assert.match(form, /<PaymentElement options=\{CARD_ONLY_OPTIONS\} onFocus=\{revealForm\} \/>/); // card only: scripts/gift-card-only.test.mjs
   assert.equal((form.match(/<ScrollView/g) ?? []).length, 0, 'no inner scroller around Stripe\'s iframe');
   assert.match(form, /node\.style\.scrollMarginBottom = `\$\{AUTOFILL_BAR_ROOM\}px`;/);
   assert.match(form, /block: node\.getBoundingClientRect\(\)\.height \+ AUTOFILL_BAR_ROOM > visible - HEADER_ROOM \? 'start' : 'end'/);
