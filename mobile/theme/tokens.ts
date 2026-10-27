@@ -19,6 +19,10 @@ export const palette = {
   brandPurple: '#7C3AED',
   success: '#1D9E75',
   warning: '#f59e0b',
+  /** Warning as TEXT / ICON on light surfaces: 5.4:1+ on white, the base and the elevated surface (#f59e0b is 1.9-2.2:1). */
+  warningTextLight: '#A04A06',
+  /** Warning as TEXT / ICON on dark surfaces: #f59e0b already passes there (8:1+), so dark keeps it. */
+  warningTextDark: '#f59e0b',
   danger: '#ef4444',
   /** Danger as TEXT / ICON on light surfaces: 5.6:1 on white (#ef4444 is 3.76:1). Dark mode keeps #ef4444. */
   dangerTextLight: '#C62828',

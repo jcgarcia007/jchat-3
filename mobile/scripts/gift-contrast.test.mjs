@@ -33,11 +33,11 @@ const contrast = (fg, bg) => {
 const SCHEMES = {
   dark: {
     surfaces: { bgBase: palette.bgBase, bgSurface: palette.bgSurface, bgElevated: palette.bgElevated },
-    text: { textPrimary: palette.textPrimary, textSecondary: palette.textSecondary, textTertiary: palette.textTertiary, brandText: palette.brandTextDark, dangerText: palette.dangerTextDark, warning: palette.warning },
+    text: { textPrimary: palette.textPrimary, textSecondary: palette.textSecondary, textTertiary: palette.textTertiary, brandText: palette.brandTextDark, dangerText: palette.dangerTextDark, warningText: palette.warningTextDark },
   },
   light: {
     surfaces: { bgBase: palette.bgBaseLight, bgSurface: palette.bgSurfaceLight, bgElevated: palette.bgElevatedLight },
-    text: { textPrimary: palette.textPrimaryLight, textSecondary: palette.textSecondaryLight, textTertiary: palette.textTertiaryLight, brandText: palette.brandTextLight, dangerText: palette.dangerTextLight, warning: palette.warning },
+    text: { textPrimary: palette.textPrimaryLight, textSecondary: palette.textSecondaryLight, textTertiary: palette.textTertiaryLight, brandText: palette.brandTextLight, dangerText: palette.dangerTextLight, warningText: palette.warningTextLight },
   },
 };
 
@@ -47,15 +47,12 @@ const USED = [
   ['textSecondary', 'components/gift/GiftCard.tsx · GiftSheet.tsx · GiftPayPage.web.tsx · GiftPaymentForm.web.tsx'],
   ['textTertiary', 'components/gift/GiftCard.tsx · GiftSheet.tsx'],
   ['brandText', 'components/gift/GiftCard.tsx · GiftSheet.tsx'],
-  ['warning', 'components/gift/GiftCard.tsx:254 (id_required badge) and :449 (21+ notice)'],
+  ['warningText', 'components/gift/GiftCard.tsx (id_required badge and 21+ notice)'],
   ['dangerText', 'components/gift/GiftPaymentForm.web.tsx:121 and the Stripe appearance (colorDanger)'],
 ];
 
 // Real findings, kept as documented exceptions (see header).
 const FINDINGS = new Map([
-  ['light · warning on bgBase', 'GiftCard.tsx:254/:449 use the #f59e0b fill colour as text'],
-  ['light · warning on bgSurface', 'GiftCard.tsx:254/:449 use the #f59e0b fill colour as text'],
-  ['light · warning on bgElevated', 'GiftCard.tsx:254/:449 use the #f59e0b fill colour as text'],
 ]);
 
 const failures = [];
@@ -63,6 +60,9 @@ const failures = [];
 // The payment form's error message and Stripe's colorDanger are TEXT: they must use dangerText (4.5:1 in both schemes), never the fill red.
 const form = readFileSync(new URL('../components/gift/GiftPaymentForm.web.tsx', import.meta.url), 'utf8');
 if (/\bc\.danger\b(?!Text)/.test(form)) failures.push('GiftPaymentForm.web.tsx uses c.danger (fill red) as text: use c.dangerText');
+const card = readFileSync(new URL('../components/gift/GiftCard.tsx', import.meta.url), 'utf8');
+if (/color: c\.warning\b(?!Text)/.test(card)) failures.push('GiftCard.tsx uses c.warning (fill amber) as text: use c.warningText');
+if ((card.match(/color: c\.warningText/g) ?? []).length !== 2) failures.push('GiftCard.tsx: expected 2 uses of c.warningText (id badge, 21+ notice)');
 if (!/colorDanger: c\.dangerText/.test(form) || !/c\.dangerText \}/.test(form)) failures.push('GiftPaymentForm.web.tsx must use c.dangerText for the error message and Stripe colorDanger');
 const below = new Map();
 for (const [scheme, { surfaces, text }] of Object.entries(SCHEMES)) {

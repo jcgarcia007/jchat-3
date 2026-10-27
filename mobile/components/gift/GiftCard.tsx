@@ -253,7 +253,7 @@ function GiftDetailsSheet({ visible, onClose, view }: { visible: boolean; onClos
                 {item.description ? (
                   <Text style={[styles.itemDesc, { color: c.textSecondary }]}>{item.description}</Text>
                 ) : null}
-                {item.id_required ? <Text style={[styles.idBadge, { color: c.warning }]}>{t('gift.idRequired')}</Text> : null}
+                {item.id_required ? <Text style={[styles.idBadge, { color: c.warningText }]}>{t('gift.idRequired')}</Text> : null}
               </View>
             </View>
           ))}
@@ -448,7 +448,7 @@ function GiftAcceptSheet({
               accessibilityLabel={t('giftCard.detailsPlaceholder')}
             />
           ) : null}
-          {needsId ? <Text style={[styles.idNotice, { color: c.warning }]}>{t('giftCard.idNotice')}</Text> : null}
+          {needsId ? <Text style={[styles.idNotice, { color: c.warningText }]}>{t('giftCard.idNotice')}</Text> : null}
           {onWeb ? null : confirmButton}
         </ScrollView>
         {/* Web: the confirm button is OUTSIDE the scroll, so it is always on screen whatever the list's length; devices keep it inside, as before. */}

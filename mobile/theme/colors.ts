@@ -48,6 +48,8 @@ export const darkColors = {
   brandText: palette.brandTextDark,
   /** Danger as text / icon: the lighter #F87171 on dark surfaces. */
   dangerText: palette.dangerTextDark,
+  /** Warning as text / icon: the amber fill reads fine on dark surfaces. */
+  warningText: palette.warningTextDark,
   bgBase: palette.bgBase,
   bgSurface: palette.bgSurface,
   bgElevated: palette.bgElevated,
@@ -71,6 +73,8 @@ export const lightColors: ThemeColors = {
   brandText: palette.brandTextLight,
   /** Danger as text / icon: the darker #C62828 on light surfaces. */
   dangerText: palette.dangerTextLight,
+  /** Warning as text / icon: the darker #A04A06 on light surfaces (the amber fill is ~2:1 there). */
+  warningText: palette.warningTextLight,
   bgBase: palette.bgBaseLight,
   bgSurface: palette.bgSurfaceLight,
   bgElevated: palette.bgElevatedLight,
