@@ -990,7 +990,7 @@ async function handleGiftHold(body: Record<string, unknown>, authUserId: string,
   const db = getAdminClient();
   const { data: offer, error: offerErr } = await db
     .from("gift_offers")
-    .select("id, business_id, from_user_id, to_user_id, items, status, stripe_pi_id")
+    .select("id, business_id, from_user_id, to_user_id, items, status, stripe_pi_id, payment_failures")
     .eq("id", offerId)
     .maybeSingle();
   if (offerErr) return errorResponse(`DB error: ${offerErr.message}`, 500);
@@ -1034,6 +1034,8 @@ async function handleGiftHold(body: Record<string, unknown>, authUserId: string,
       customer: customerId,
       publishableKey,
       serverTotalCents: existing.amount,
+      // Refusals the server already counted for this offer (migration 242): the page starts its "N attempts left" from it.
+      paymentFailures: Number(offer.payment_failures ?? 0),
     });
   }
   if (offer.status !== "draft") return jsonResponse({ error: "gift_not_open", code: "gift_not_open" }, 409);
@@ -1168,6 +1170,7 @@ async function handleGiftHold(body: Record<string, unknown>, authUserId: string,
     customer: customerId,
     publishableKey,
     serverTotalCents: totalCents,
+    paymentFailures: 0, // a new PaymentIntent: nothing refused yet
     serverBreakdown: { subtotalCents, taxCents, taxRate: tax.rate, taxSource: tax.source, tipCents: 0, discountCents: 0, totalCents },
   });
 }

@@ -80,6 +80,7 @@ export function GiftPayPage({ recipientName, venueName, itemsSummary, itemCount,
           clientSecret={payParams.clientSecret}
           publishableKey={payParams.publishableKey}
           totalCents={payParams.totalCents}
+          initialFailures={payParams.paymentFailures}
           note={note}
           onHeld={onHeld}
           onBusyChange={onBusyChange}

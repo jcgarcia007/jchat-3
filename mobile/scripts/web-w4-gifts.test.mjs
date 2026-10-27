@@ -32,7 +32,7 @@ test('with the switch off the web never offers the gift; devices are never affec
 });
 
 test('parseGiftHoldData keeps only what Stripe.js needs', () => {
-  assert.deepEqual(parseGiftHoldData(OK), { clientSecret: 'pi_3Abc_secret_xyz', publishableKey: 'pk_test_123', totalCents: 1234 });
+  assert.deepEqual(parseGiftHoldData(OK), { clientSecret: 'pi_3Abc_secret_xyz', publishableKey: 'pk_test_123', totalCents: 1234, paymentFailures: 0 });
   assert.equal('ephemeralKey' in parseGiftHoldData(OK), false, 'the ephemeral key (native only) is dropped');
 });
 

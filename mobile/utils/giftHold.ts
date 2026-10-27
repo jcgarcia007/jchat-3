@@ -11,6 +11,8 @@ export interface GiftHoldParams {
   publishableKey: string;
   /** The total the server priced, in cents (for display only). */
   totalCents: number;
+  /** Refusals the server has already counted for this offer (payment_failures, migration 242); 0 for a new offer or an older server. */
+  paymentFailures: number;
 }
 
 export type GiftHoldResult = ({ ok: true } & GiftHoldParams) | { ok: false; code: string; message: string };
@@ -22,7 +24,8 @@ export function parseGiftHoldData(data: unknown): GiftHoldParams | null {
   if (typeof d.clientSecret !== 'string' || !d.clientSecret.includes('_secret')) return null;
   if (typeof d.publishableKey !== 'string' || !d.publishableKey.startsWith('pk_')) return null;
   const total = typeof d.serverTotalCents === 'number' && Number.isFinite(d.serverTotalCents) ? d.serverTotalCents : 0;
-  return { clientSecret: d.clientSecret, publishableKey: d.publishableKey, totalCents: total };
+  const failures = typeof d.paymentFailures === 'number' && Number.isFinite(d.paymentFailures) ? Math.max(0, Math.floor(d.paymentFailures)) : 0;
+  return { clientSecret: d.clientSecret, publishableKey: d.publishableKey, totalCents: total, paymentFailures: failures };
 }
 
 /**
