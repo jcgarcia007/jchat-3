@@ -1,25 +1,22 @@
 #!/usr/bin/env bash
-# JChat 3.0 — starts a LOCAL Supabase (Docker) and applies every migration of supabase/migrations to it. LOCAL ONLY.
+# JChat 3.0 — starts a LOCAL Supabase (Docker) built from supabase/migrations (245_baseline.sql + 246_baseline_extras.sql + anything newer). LOCAL ONLY.
 #
-#   bash loadtest/local-up.sh            # start + apply all migrations (failures are logged, the rest keeps going)
+#   bash loadtest/local-up.sh            # start (or, if it is already running, `supabase db reset`) and report what the database holds
 #   bash loadtest/local-up.sh --down     # supabase stop
 #
-# Why not `supabase start` / `supabase db reset` on the repo's own supabase/ folder: the CLI uses the numeric prefix of each file as its
-# version, and the repo has two files with the prefix 033, two with 034 and three with a letter suffix (173a, 173b, 198c), so the CLI
-# aborts at 033 ("duplicate key ... schema_migrations_pkey") or skips them. The migrations already applied in production are NOT
-# renamed. Instead this script starts Supabase from a SCRATCH workdir with no migrations and feeds every file to the local Postgres one
-# by one, in file-name order, each in its own transaction; a failing file is logged and the loop goes on.
+# The history 001-244 lives in supabase/migrations_archive/ and is not read by the CLI, so the real `supabase start` / `db reset` work
+# (the old duplicate versions 033/034 and the 173a/173b/198c suffixes are only in the archive). The scratch workdir below has its own project
+# id and is never linked to a remote project; its migrations folder is a symlink to the repo's.
 #
-# SAFETY: nothing here can reach the cloud. The scratch workdir has its own project id and is never linked to a remote project; the only
-# Postgres touched is the one in the local Docker container. The script refuses to run if DOCKER_HOST is not a local socket.
+# SAFETY: nothing here can reach the cloud. The only Postgres touched is the one in the local Docker container. The script refuses to run if
+# DOCKER_HOST is not a local socket.
 set -u
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WORK="${LOADTEST_WORKDIR:-/tmp/jchat-local-supabase}"
 PROJECT_ID="jchat-local"
 DB_CONTAINER="supabase_db_${PROJECT_ID}"
-RESULTS="$ROOT/loadtest/results"
-LOG="$RESULTS/migrations-local.log"
+EXCLUDE="studio,imgproxy,vector,analytics,edge-runtime,functions,inbucket"
 
 export PATH="/Applications/Docker.app/Contents/Resources/bin:$PATH"
 [ -S "$HOME/.docker/run/docker.sock" ] && export DOCKER_HOST="${DOCKER_HOST:-unix://$HOME/.docker/run/docker.sock}"
@@ -37,7 +34,7 @@ command -v docker >/dev/null || { echo "docker not found"; exit 1; }
 docker info >/dev/null 2>&1 || { echo "Docker is not running (open Docker Desktop)"; exit 1; }
 command -v supabase >/dev/null || { echo "supabase CLI not found"; exit 1; }
 
-mkdir -p "$WORK/supabase/migrations" "$RESULTS"
+mkdir -p "$WORK/supabase"
 cat > "$WORK/supabase/config.toml" <<EOF
 project_id = "$PROJECT_ID"
 [api]
@@ -45,31 +42,19 @@ port = 54321
 [db]
 port = 54322
 EOF
+rm -rf "$WORK/supabase/migrations"
+ln -s "$ROOT/supabase/migrations" "$WORK/supabase/migrations"
 
-if ! docker ps --format '{{.Names}}' | grep -qx "$DB_CONTAINER"; then
-  supabase start --workdir "$WORK" -x studio,imgproxy,vector,analytics,edge-runtime,functions,inbucket || { echo "supabase start failed"; exit 1; }
+if docker ps --format '{{.Names}}' | grep -qx "$DB_CONTAINER"; then
+  supabase db reset --workdir "$WORK" --local 2>&1 | tail -4 || { echo "supabase db reset failed"; exit 1; }
+else
+  supabase start --workdir "$WORK" -x "$EXCLUDE" 2>&1 | tail -2 || { echo "supabase start failed"; exit 1; }
 fi
 
-# Reset the public schema so the run is repeatable.
-docker exec -i "$DB_CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -q <<'SQL'
-drop schema if exists public cascade;
-create schema public;
-grant usage on schema public to postgres, anon, authenticated, service_role;
-alter default privileges in schema public grant all on tables to postgres, anon, authenticated, service_role;
-alter default privileges in schema public grant all on functions to postgres, anon, authenticated, service_role;
-alter default privileges in schema public grant all on sequences to postgres, anon, authenticated, service_role;
+docker exec -i "$DB_CONTAINER" psql -U postgres -d postgres -At <<'SQL'
+select 'migrations: ' || string_agg(version, ', ' order by version) from supabase_migrations.schema_migrations;
+select 'public tables=' || (select count(*) from pg_tables where schemaname = 'public') || ' functions=' || (select count(*) from pg_proc where pronamespace = 'public'::regnamespace)
+  || ' | buckets=' || (select count(*) from storage.buckets) || ' storage policies=' || (select count(*) from pg_policies where schemaname = 'storage')
+  || ' | cron jobs=' || (select count(*) from cron.job) || ' | auth.users triggers=' || (select count(*) from pg_trigger where tgrelid = 'auth.users'::regclass and not tgisinternal);
 SQL
-
-: > "$LOG"
-ok=0; failed=0
-for f in $(ls "$ROOT"/supabase/migrations/*.sql | sort); do
-  name="$(basename "$f")"
-  if out="$(docker exec -i "$DB_CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -q < "$f" 2>&1)"; then
-    ok=$((ok+1))
-  else
-    failed=$((failed+1))
-    { echo "=== FAILED: $name"; echo "$out" | head -6; } >> "$LOG"
-  fi
-done
-echo "migrations applied locally: $ok ok, $failed failed (details: loadtest/results/migrations-local.log)"
 echo "API URL: http://127.0.0.1:54321   DB: postgresql://postgres:postgres@127.0.0.1:54322/postgres"

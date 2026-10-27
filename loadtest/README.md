@@ -12,7 +12,7 @@ Every script checks the target when it starts and stops with an error if it is n
 ## Repeat everything
 
 ```bash
-bash loadtest/local-up.sh           # starts the local Supabase and replays supabase/migrations/*.sql (failures are logged, see below)
+bash loadtest/local-up.sh           # starts the local Supabase from supabase/migrations (245 baseline + 246 extras + newer); run again to `db reset`
 bash loadtest/run-sql-tests.sh      # 110 SQL checks (supabase/tests/*.sql), each in a transaction that is rolled back
 bash loadtest/run-all.sh            # read, realtime, gifts × 10, 100, 1000 VUs (1 min ramp + 3 min hold ≈ 40 min)
 python3 loadtest/summarize.py       # the results table
@@ -22,7 +22,7 @@ bash loadtest/local-up.sh --down    # stops the local stack
 One scenario at one level: `bash loadtest/run.sh read 100`. A quick check: `LOADTEST_RAMP=10s LOADTEST_HOLD=20s bash loadtest/run.sh gifts 10`.
 
 Results go to `loadtest/results/` (git-ignored): `<scenario>-<VUs>.html` (k6 web dashboard export), `.json` (summary), `.stats.csv`
-(docker stats of db / rest / realtime / kong / auth every 10 s), `migrations-local.log`, `saturated.txt`, `INFORME.md`.
+(docker stats of db / rest / realtime / kong / auth every 10 s), `saturated.txt`, `INFORME.md`.
 
 ## What is tested
 
@@ -38,13 +38,13 @@ Seed (`seed.sql`): 1001 users (auth + public), 1 venue with a room, 10 tables, a
 Thresholds: p95 < 500 ms and < 1 % failed requests on the HTTP scenarios; ≥ 99 % joins and join p95 < 2 s on realtime.
 `run-all.sh` stops raising the level of a scenario when a level ends with > 20 % failed requests (`results/saturated.txt` says where).
 
-## Why `local-up.sh` does not use `supabase start` on the repo's folder
+## How the local database is built
 
-The CLI takes the number before the first `_` of each file name as the migration version. The repo has two `033_*`, two `034_*` and three
-files with a letter suffix (`173a`, `173b`, `198c`), so `supabase start` / `db reset` abort with a duplicate key. The production migrations
-are not renamed for this: `local-up.sh` starts Supabase from a scratch folder with no migrations and feeds the files one by one, each in its
-own transaction, logging any that fail. **A fresh replay is not clean**: see `results/migrations-local.log` (15 files fail locally, mostly
-because they depend on objects that production has but no migration creates, e.g. `pos_can_access`, `orders.canceled_at`).
+`local-up.sh` runs the real `supabase start` (or `supabase db reset` when it is already up) on a scratch folder whose `supabase/migrations`
+is a symlink to the repo's: `245_baseline.sql` (production's schema as of 2026-10-27) + `246_baseline_extras.sql` (storage buckets and policies,
+the pg_cron jobs, the auth.users trigger) + anything numbered 247 or more. The 241 migrations that led there are in `supabase/migrations_archive/`
+(history; the CLI does not read it, which is why the old duplicate versions 033/034 and the 173a/173b/198c suffixes no longer matter). See
+`docs/MIGRATIONS_BASELINE_PLAN.md`.
 
 ## Later: the same tests against a cloud Supabase BRANCH (not tonight, not production)
 
