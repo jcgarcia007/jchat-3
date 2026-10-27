@@ -101,6 +101,9 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
     (id: string | null) => {
       if (!id || heldRef.current) return;
       void cancelGiftOffer(id);
+      // The unmount cleanup above reads this ref: clear it NOW (state only catches up on the next render, which may never come) so
+      // closing the sheet sends gift_offer_cancel exactly once.
+      offerIdRef.current = null;
       setOfferId(null);
     },
     [],
