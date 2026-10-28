@@ -4,6 +4,7 @@
  * It tests OUR layout and OUR payment function, not Stripe's forms.
  *
  * Controls the specs use (all on `window`):
+ *   __fakeCardCompact = true: a ~200 px card form (closer to Stripe's real one: number, expiry/CVC, country, postal code); default 340 px (taller than the real one).
  *   __wallet = 'apple' | 'google' | 'none'   (default 'none'): which wallet the Express Checkout Element reports as available.
  *   __confirmResults = [ 'held' | 'declined' | 'pending' ... ]: the answers of the next confirmPayment calls (default 'held').
  *       'pending' leaves the call hanging until window.__resolveConfirm('held' | 'declined') is called.
@@ -22,14 +23,16 @@ window.Stripe = function () {
     mount: function (node) {
       var frame = document.createElement('iframe');
       frame.setAttribute('data-fake-stripe', '1');
-      frame.style.cssText = 'width:100%;height:340px;border:0;display:block';
+      var compact = !!window.__fakeCardCompact;
+      frame.style.cssText = 'width:100%;height:' + (compact ? 200 : 340) + 'px;border:0;display:block';
       frame.srcdoc = '<body style="margin:0;font:16px sans-serif">' +
         ['Card number', 'MM / YY', 'CVC', 'Country', 'ZIP'].map(function (p) {
-          return '<input placeholder="' + p + '" style="font-size:16px;box-sizing:border-box;width:100%;height:44px;margin:0 0 12px;padding:0 12px;border:1px solid #888;border-radius:12px">';
+          return '<input placeholder="' + p + '" style="font-size:16px;box-sizing:border-box;width:100%;height:' + (compact ? 36 : 44) + 'px;margin:0 0 ' + (compact ? 4 : 12) + 'px;padding:0 12px;border:1px solid #888;border-radius:12px">';
         }).join('') + '</body>';
       frame.onload = function () {
         frame.contentDocument.querySelectorAll('input').forEach(function (input) {
           input.addEventListener('focus', function () { emit('focus'); });
+          input.addEventListener('blur', function () { emit('blur'); });
         });
         emit('ready');
       };

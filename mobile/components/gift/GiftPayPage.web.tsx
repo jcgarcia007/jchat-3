@@ -7,13 +7,15 @@
  * a Modal — shrinks with the keyboard by itself and needs no keyboard compensation. It has ONE scroller (the ScrollView below):
  * the summary, Stripe's card form, the Pay button right after the last field (in the flow, never pinned to the bottom) and the
  * fine print scroll together, with a gap under them for the autofill bar; focusing a card field scrolls the form into view
- * (GiftPaymentForm.web.tsx). Nothing is fixed to the bottom, so the keyboard can never cover the Pay button.
+ * (GiftPaymentForm.web.tsx). Nothing is fixed to the bottom, so the keyboard can never cover the Pay button. While a card field is focused the
+ * summary folds to its total line, and the form scrolls so the card field AND Pay are above the keyboard and its autofill bar when they
+ * fit (the focused field wins when they do not): utils/payPageScroll.ts.
  *
  * The arrow does what "Volver" / the X always did (GiftSheet.handleClose: the unpaid offer is cancelled, back to the chat).
  * Only the web renders this; devices keep the native PaymentSheet (GiftPayPage.tsx renders nothing). Theme tokens only.
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -34,6 +36,8 @@ export function GiftPayPage({ recipientName, venueName, itemsSummary, itemCount,
   const insets = useSafeAreaInsets();
   const { t } = useTranslation('chat');
   const headerRef = useRef<View>(null);
+  // While a card field has the focus (keyboard up) the summary folds to the total line, so the card field and the Pay button get the room.
+  const [folded, setFolded] = useState(false);
 
   // Opening the page moves the focus to its header (the button that opened it is gone): keyboard / screen-reader users do not
   // lose their place, and no field is focused, so the keyboard does not open by itself.
@@ -68,10 +72,10 @@ export function GiftPayPage({ recipientName, venueName, itemsSummary, itemCount,
         contentContainerStyle={[styles.content, { paddingBottom: AUTOFILL_BAR_GAP + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={[styles.summary, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
-          <Text style={[styles.summaryItems, { color: c.textPrimary }]} numberOfLines={2}>{itemsSummary}</Text>
-          <Text style={[styles.summaryMeta, { color: c.textSecondary }]} numberOfLines={1}>{meta}</Text>
-          <View style={styles.totalRow}>
+        <View testID="gift-pay-summary" style={[styles.summary, folded && styles.summaryFolded, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
+          {folded ? null : <Text style={[styles.summaryItems, { color: c.textPrimary }]} numberOfLines={2}>{itemsSummary}</Text>}
+          {folded ? null : <Text style={[styles.summaryMeta, { color: c.textSecondary }]} numberOfLines={1}>{meta}</Text>}
+          <View style={[styles.totalRow, folded && styles.totalRowFolded]}>
             <Text style={[styles.totalLabel, { color: c.textSecondary }]}>{t('gift.payTotal')}</Text>
             <Text style={[styles.totalValue, { color: c.textPrimary }]}>{formatCents(payParams.totalCents)}</Text>
           </View>
@@ -84,6 +88,7 @@ export function GiftPayPage({ recipientName, venueName, itemsSummary, itemCount,
           note={note}
           onHeld={onHeld}
           onBusyChange={onBusyChange}
+          onCardFocusChange={setFolded}
         />
       </ScrollView>
     </View>
@@ -101,9 +106,11 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { paddingHorizontal: 16, paddingTop: 16, gap: 16 },
   summary: { borderWidth: 1, borderRadius: 14, padding: 14, gap: 4 },
+  summaryFolded: { paddingVertical: 8, gap: 0 },
   summaryItems: { fontSize: 15, fontWeight: '700' },
   summaryMeta: { fontSize: 13 },
   totalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 },
+  totalRowFolded: { marginTop: 0 },
   totalLabel: { fontSize: 13, fontWeight: '600' },
   totalValue: { fontSize: 18, fontWeight: '800' },
 });

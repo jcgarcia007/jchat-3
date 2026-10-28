@@ -11,7 +11,7 @@ const form = read('components/gift/GiftPaymentForm.web.tsx');
 
 test('the gift\'s PaymentElement is created with wallets.link: never (a constant, no extra type import)', () => {
   assert.match(form, /const CARD_ONLY_OPTIONS = \{ wallets: \{ applePay: 'never', googlePay: 'never', link: 'never' \} \} as const;/);
-  assert.match(form, /<PaymentElement options=\{CARD_ONLY_OPTIONS\} onFocus=\{revealForm\} \/>/);
+  assert.match(form, /<PaymentElement options=\{CARD_ONLY_OPTIONS\} onFocus=\{revealForm\} onBlur=\{releaseForm\} \/>/);
   assert.equal((form.match(/<PaymentElement/g) ?? []).length, 1, 'one PaymentElement in the form');
   assert.doesNotMatch(form, /import type \{[^}]*StripePaymentElementOptions/, 'no new type import: fewer merge conflicts');
 });

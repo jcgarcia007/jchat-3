@@ -28,24 +28,27 @@ test.use({
 
 const KEYBOARD_PX = 336;
 
-/** A visualViewport the spec can shrink: Safari's behaviour when the keyboard opens (layout viewport unchanged). */
+/** A visualViewport the spec can shrink: Safari's behaviour when the keyboard opens (layout viewport unchanged), plus an optional bottom toolbar (Chrome for iPhone). */
 const FAKE_VISUAL_VIEWPORT = `
 (function () {
   var target = new EventTarget();
-  var keyboard = 0;
+  var state = { toolbar: 0, keyboard: 0 };
   var viewport = {
     offsetTop: 0, offsetLeft: 0, pageTop: 0, pageLeft: 0, scale: 1,
     get width() { return window.innerWidth; },
-    get height() { return window.innerHeight - keyboard; },
+    get height() { return window.innerHeight - state.toolbar - state.keyboard; },
     addEventListener: target.addEventListener.bind(target),
     removeEventListener: target.removeEventListener.bind(target),
     dispatchEvent: target.dispatchEvent.bind(target),
   };
   Object.defineProperty(window, 'visualViewport', { value: viewport, configurable: true });
-  window.__setKeyboard = function (px) {
-    keyboard = px;
+  window.__setViewport = function (toolbar, keyboard) {
+    state.toolbar = toolbar; state.keyboard = keyboard;
+    // index.html's fit(): <body> follows the visible area.
+    document.documentElement.style.setProperty('--app-h', Math.round(viewport.height) + 'px');
     target.dispatchEvent(new Event('resize'));
   };
+  window.__setKeyboard = function (px) { window.__setViewport(0, px); };
 })();`;
 
 async function enterChat(page: Page) {
@@ -104,18 +107,10 @@ const geometry = (page: Page) =>
     };
   });
 
-test('the card step is a full-screen page: field and Pay (in the flow) end up above the keyboard', async ({ page }) => {
+/** The simulated network + Stripe stand-in + fake visual viewport shared by every test here. `compact` = a ~200 px card form (closer to Stripe's real one). */
+async function prepare(page: Page, { compact = false }: { compact?: boolean } = {}) {
   await page.addInitScript(FAKE_VISUAL_VIEWPORT);
-  // Keep <body> on the visible area like public/index.html's fit() does on a real phone: the fake viewport fires `resize`.
-  await page.addInitScript(() => {
-    const w = window as unknown as { __scrolled: number };
-    w.__scrolled = 0;
-    const original = Element.prototype.scrollIntoView;
-    Element.prototype.scrollIntoView = function (...args: Parameters<typeof original>) {
-      w.__scrolled += 1;
-      return original.apply(this, args);
-    };
-  });
+  if (compact) await page.addInitScript(() => { (window as unknown as { __fakeCardCompact: boolean }).__fakeCardCompact = true; });
   const mock = await mockGamesNetwork(page, {
     gift_available: true,
     gift_offer_create: { id: '00000000-0000-4000-8000-0000000000a1', subtotal_cents: 500 },
@@ -131,7 +126,24 @@ test('the card step is a full-screen page: field and Pay (in the flow) end up ab
       body: JSON.stringify({ clientSecret: 'pi_fake_secret_fake', publishableKey: 'pk_test_fake', serverTotalCents: 540 }),
     });
   });
+  return mock;
+}
 
+const AUTOFILL_BAR_PX = 44; // the keyboard's autofill bar sits above the keys: Pay must end above it when the form fits
+const TOOLBAR_PX = 90; // Chrome for iPhone's bottom toolbar
+
+/** Taps the card number (Stripe's focus event) and lets the page see the viewport the keyboard (and the toolbar) leave. */
+async function openKeyboard(page: Page, toolbar = 0) {
+  await page.frameLocator('iframe[data-fake-stripe]').getByPlaceholder('Card number').click();
+  await page.evaluate(([t, k]) => (window as unknown as { __setViewport: (a: number, b: number) => void }).__setViewport(t, k), [toolbar, KEYBOARD_PX]);
+  await page.waitForTimeout(1200); // the page waits 350 ms for the viewport to settle, then scrolls smoothly
+}
+
+const cardInputBox = (page: Page) => page.frameLocator('iframe[data-fake-stripe]').getByPlaceholder('Card number').boundingBox();
+const zipBox = (page: Page) => page.frameLocator('iframe[data-fake-stripe]').getByPlaceholder('ZIP').boundingBox();
+
+test('the card step is a full-screen page: field and Pay (in the flow) end up above the keyboard', async ({ page }) => {
+  const mock = await prepare(page);
   await openCardStep(page);
   const closed = await geometry(page);
   await mkdir(SHOTS, { recursive: true });
@@ -155,37 +167,28 @@ test('the card step is a full-screen page: field and Pay (in the flow) end up ab
   await expect(page.getByTestId('gift-pay-page').getByRole('button', { name: 'Volver' })).toBeVisible();
   expect(await page.evaluate(() => document.activeElement !== document.body)).toBe(true);
 
-  // Tap the card field (Stripe's focus event) and let Safari open the keyboard: the visible area shrinks, <body> follows it.
-  await page.frameLocator('iframe[data-fake-stripe]').getByPlaceholder('Card number').click();
-  await page.evaluate((px) => (window as unknown as { __setKeyboard: (n: number) => void }).__setKeyboard(px), KEYBOARD_PX);
-  await page.evaluate(() => {
-    // index.html's fit(), which the fake viewport's `resize` would run on a real phone.
-    const vv = window.visualViewport!;
-    document.documentElement.style.setProperty('--app-h', `${Math.round(vv.height)}px`);
-  });
-  await page.waitForTimeout(1000);
-  expect(await page.evaluate(() => (window as unknown as { __scrolled: number }).__scrolled), 'focus scrolls the form into view').toBeGreaterThan(0);
+  // Tap the card field and let Safari open the keyboard: the visible area shrinks, <body> follows it, the summary folds to the total line.
+  await openKeyboard(page);
   const open = await geometry(page);
   await page.screenshot({ path: `${SHOTS}/pay-page-keyboard-open.png` });
-
   expect(open.visibleHeight).toBe(closed.innerHeight - KEYBOARD_PX);
   expect(open.page!.bottom, 'the page ends where the keyboard begins').toBeLessThanOrEqual(open.visibleBottom + 1);
-  // The card field and the Pay button are both above the keyboard, with room for the autofill bar under Pay.
-  const cardInput = await page.frameLocator('iframe[data-fake-stripe]').getByPlaceholder('Card number').boundingBox();
+  expect(open.texts).toMatch(/Regalo para /); // the header stays
+  const folded = await page.getByTestId('gift-pay-summary').innerText();
+  expect(folded, 'the summary folded: products and venue are gone').not.toMatch(/producto/);
+  expect(folded, 'the total line stays').toMatch(/Total\s+USD\s\d/);
+  // The card field is above the keyboard and below the header.
+  const cardInput = await cardInputBox(page);
   expect(cardInput!.y, 'card number below the header').toBeGreaterThanOrEqual(open.back!.bottom - 1);
   expect(cardInput!.y + cardInput!.height, 'card number above the keyboard').toBeLessThanOrEqual(open.visibleBottom);
-  expect(open.pay!.bottom, 'Pay above the keyboard').toBeLessThanOrEqual(open.visibleBottom);
-  expect(open.pay!.top).toBeGreaterThanOrEqual(open.back!.bottom - 1);
-  expect(open.texts).toMatch(/Regalo para /); // the header stays (nothing folds any more)
 
-  // The keyboard goes away: the page is whole again.
-  await page.evaluate(() => {
-    (window as unknown as { __setKeyboard: (n: number) => void }).__setKeyboard(0);
-    document.documentElement.style.setProperty('--app-h', `${window.innerHeight}px`);
-  });
-  await page.waitForTimeout(500);
+  // The keyboard goes away: the page is whole again, the summary unfolds.
+  await page.evaluate(() => (window as unknown as { __setViewport: (a: number, b: number) => void }).__setViewport(0, 0));
+  await page.frameLocator('iframe[data-fake-stripe]').getByPlaceholder('Card number').blur();
+  await page.waitForTimeout(700);
   const back = await geometry(page);
   expect(back.page!.bottom).toBeGreaterThanOrEqual(back.innerHeight - 1);
+  expect(await page.getByTestId('gift-pay-summary').innerText(), 'the summary unfolds once the field is left').toMatch(/\d+ producto/);
 
   // The arrow does what Volver / the X always did: the unpaid offer is cancelled and the page closes.
   await page.getByTestId('gift-pay-page-back').click();
@@ -194,4 +197,72 @@ test('the card step is a full-screen page: field and Pay (in the flow) end up ab
   expect(assertNothingLeaked(mock)).toEqual([]);
   expect(mock.unknownRpcs).toEqual([]);
   expect(mock.writes).toEqual([]);
+});
+
+test('keyboard 336 px + autofill bar 44 px, a form that FITS: the card field (down to postal code) AND Pay end above the bar', async ({ page }) => {
+  await prepare(page, { compact: true });
+  await openCardStep(page);
+  await openKeyboard(page);
+  const m = await geometry(page);
+  await mkdir(SHOTS, { recursive: true });
+  await page.screenshot({ path: `${SHOTS}/pay-page-keyboard-fits.png` });
+  const card = await cardInputBox(page);
+  const zip = await zipBox(page);
+  expect(card!.y, 'card number below the header').toBeGreaterThanOrEqual(m.back!.bottom - 1);
+  expect(zip!.y + zip!.height, 'postal code visible above the keyboard').toBeLessThanOrEqual(m.visibleBottom);
+  expect(m.pay!.top).toBeGreaterThanOrEqual(m.back!.bottom - 1);
+  expect(m.pay!.bottom, 'Pay above the keyboard AND its autofill bar').toBeLessThanOrEqual(m.visibleBottom - AUTOFILL_BAR_PX);
+});
+
+test('keyboard 336 px, a form TALLER than the room: the focused card field has priority (visible, under the header) and Pay is one scroll away', async ({ page }) => {
+  await prepare(page); // 340 px of card form: form + Pay + folded summary do not fit in 508 − 56 − 56
+  await openCardStep(page);
+  await openKeyboard(page);
+  const m = await geometry(page);
+  await page.screenshot({ path: `${SHOTS}/pay-page-keyboard-priority-field.png` });
+  const card = await cardInputBox(page);
+  expect(card!.y, 'the focused field is below the header').toBeGreaterThanOrEqual(m.back!.bottom - 1);
+  expect(card!.y + card!.height, 'the focused field is above the keyboard').toBeLessThanOrEqual(m.visibleBottom);
+  // Pay is reachable: scrolling the page to the end brings it above the keyboard and its autofill bar (the content keeps room under it).
+  await page.getByTestId('gift-pay-scroll').evaluate((el) => { (el as HTMLElement).scrollTop = (el as HTMLElement).scrollHeight; });
+  await page.waitForTimeout(300);
+  const end = await geometry(page);
+  expect(end.pay!.bottom, 'at the end of the page Pay is above the autofill bar').toBeLessThanOrEqual(end.visibleBottom - AUTOFILL_BAR_PX);
+});
+
+test('Chrome for iPhone (90 px bottom toolbar) + keyboard 336 px + autofill bar: field and Pay stay visible when they fit, the field when they do not', async ({ page }) => {
+  await prepare(page, { compact: true });
+  await openCardStep(page);
+  await openKeyboard(page, TOOLBAR_PX);
+  const m = await geometry(page);
+  await page.screenshot({ path: `${SHOTS}/pay-page-chrome-ios-keyboard.png` });
+  expect(m.visibleHeight, 'visible = innerHeight − toolbar − keyboard').toBe(m.innerHeight - TOOLBAR_PX - KEYBOARD_PX);
+  expect(m.page!.bottom, 'the page ends where the visible area ends').toBeLessThanOrEqual(m.visibleBottom + 1);
+  const card = await cardInputBox(page);
+  expect(card!.y, 'card number below the header').toBeGreaterThanOrEqual(m.back!.bottom - 1);
+  expect(card!.y + card!.height, 'card number above the keyboard').toBeLessThanOrEqual(m.visibleBottom);
+  // 418 px of visible area − 56 header: the folded summary + 200 px of card + Pay need ≈ 360 px, so it fits: Pay above the bar too.
+  expect(m.pay!.bottom, 'Pay above the autofill bar').toBeLessThanOrEqual(m.visibleBottom - AUTOFILL_BAR_PX);
+});
+
+test('Chrome for iPhone with the taller form: the focused field has priority', async ({ page }) => {
+  await prepare(page);
+  await openCardStep(page);
+  await openKeyboard(page, TOOLBAR_PX);
+  const m = await geometry(page);
+  const card = await cardInputBox(page);
+  expect(card!.y).toBeGreaterThanOrEqual(m.back!.bottom - 1);
+  expect(card!.y + card!.height).toBeLessThanOrEqual(m.visibleBottom);
+});
+
+test('moving from one card field to another does not flicker the summary (blur → focus keeps it folded)', async ({ page }) => {
+  await prepare(page, { compact: true });
+  await openCardStep(page);
+  await openKeyboard(page);
+  const frame = page.frameLocator('iframe[data-fake-stripe]');
+  await frame.getByPlaceholder('MM / YY').click();
+  await page.waitForTimeout(100);
+  await frame.getByPlaceholder('CVC').click();
+  await page.waitForTimeout(500);
+  expect(await page.getByTestId('gift-pay-summary').innerText(), 'still folded while moving between fields').not.toMatch(/producto/);
 });

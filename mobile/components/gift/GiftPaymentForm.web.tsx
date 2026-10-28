@@ -33,6 +33,7 @@ import { palette } from '../../theme/tokens';
 import { formatCents } from '../../utils/currency';
 import { giftPaymentOutcome, stripeLocale } from '../../utils/giftPaymentResult';
 import { nextGiftStep, walletAvailable } from '../../utils/giftPaymentFlow';
+import { planReveal } from '../../utils/payPageScroll';
 import { STRIPE_DIAG_STORAGE_KEY, WALLET_DIAG_TIMEOUT_MS, diagLineParts, isStripeTestKey, methodsFromChange, methodsFromReady, safeErrorParts, stripeDiagRequested, type WalletDiag } from '../../utils/walletDiagnostic';
 import type { GiftPaymentFormProps } from './GiftPaymentForm';
 
@@ -40,9 +41,10 @@ export type { GiftPaymentFormProps } from './GiftPaymentForm';
 
 type Colors = ReturnType<typeof useThemeColors>;
 
-/** px kept free under the Pay button when the form is scrolled into view (the keyboard's autofill bar), and the page header's height. */
-const AUTOFILL_BAR_ROOM = 72;
-const HEADER_ROOM = 72;
+/** px kept free under the Pay button when the form is scrolled into view: the keyboard's autofill bar (44) plus air. */
+const AUTOFILL_BAR_ROOM = 56;
+/** px of air above the card field when it is aligned to the top of the visible area (the field has priority when form + Pay do not fit). */
+const FIELD_TOP_MARGIN = 8;
 
 /**
  * Only Apple Pay and Google Pay (both are the PaymentIntent's `card` type). Everything else is off. The buttons carry no call to
@@ -68,14 +70,17 @@ function diagRequested(): boolean {
   }
 }
 
-function CardForm({ totalCents, onHeld, onBusyChange, note, initialFailures = 0, publishableKey }: Pick<GiftPaymentFormProps, 'totalCents' | 'onHeld' | 'onBusyChange' | 'note' | 'initialFailures' | 'publishableKey'>): React.ReactElement {
+function CardForm({ totalCents, onHeld, onBusyChange, note, initialFailures = 0, publishableKey, onCardFocusChange }: Pick<GiftPaymentFormProps, 'totalCents' | 'onHeld' | 'onBusyChange' | 'note' | 'initialFailures' | 'publishableKey' | 'onCardFocusChange'>): React.ReactElement {
   const c = useThemeColors();
   const { t } = useTranslation('chat');
   const stripe = useStripe();
   const elements = useElements();
   const formRef = useRef<View>(null);
+  const cardRef = useRef<View>(null);
+  const payRef = useRef<View>(null);
+  const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const focusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => { if (focusTimer.current) clearTimeout(focusTimer.current); }, []);
+  useEffect(() => () => { if (focusTimer.current) clearTimeout(focusTimer.current); if (blurTimer.current) clearTimeout(blurTimer.current); }, []);
 
   // TEST MODE ONLY (pk_test_…) AND only when asked for (`?stripe_diag=1`, remembered for the tab): what Stripe's Express Checkout Element answered
   // about the wallets, drawn as one small line and logged. With a live key, or without the flag, nothing is drawn or logged. Only the wallet
@@ -102,19 +107,44 @@ function CardForm({ totalCents, onHeld, onBusyChange, note, initialFailures = 0,
     setWalletDiag({ kind: 'methods', methods });
   };
 
-  // The card field lives in Stripe's iframe, so the page never sees its focus: Stripe's own 'focus' event is the signal. The keyboard
-  // takes a moment to slide in; once the visual viewport has settled the form (field + Pay button) is scrolled into view inside the
-  // page's ONE ScrollView, leaving room under the Pay button for the keyboard's autofill bar. A form taller than what is visible
-  // aligns its top instead, so the card field is never the part that is cut.
+  // The card field lives in Stripe's iframe, so the page never sees its focus: Stripe's own 'focus' event is the signal. The page folds its
+  // summary to the total line (onCardFocusChange) and, once the keyboard has settled the visual viewport, scrolls so that the card field AND the
+  // Pay button are above the keyboard and its autofill bar when they fit; when they do not, the focused field wins (utils/payPageScroll.ts).
+  const scrollParentOf = (node: HTMLElement): HTMLElement | null => {
+    for (let el = node.parentElement; el; el = el.parentElement) {
+      if (/(auto|scroll)/.test(getComputedStyle(el).overflowY) && el.scrollHeight > el.clientHeight) return el;
+    }
+    return null;
+  };
   const revealForm = () => {
+    if (blurTimer.current) clearTimeout(blurTimer.current);
+    onCardFocusChange?.(true);
     if (focusTimer.current) clearTimeout(focusTimer.current);
     focusTimer.current = setTimeout(() => {
-      const node = formRef.current as unknown as HTMLElement | null;
-      if (!node?.scrollIntoView) return;
-      const visible = window.visualViewport?.height ?? window.innerHeight;
-      node.style.scrollMarginBottom = `${AUTOFILL_BAR_ROOM}px`;
-      node.scrollIntoView({ block: node.getBoundingClientRect().height + AUTOFILL_BAR_ROOM > visible - HEADER_ROOM ? 'start' : 'end', behavior: 'smooth' });
-    }, 300);
+      const card = cardRef.current as unknown as HTMLElement | null;
+      const pay = payRef.current as unknown as HTMLElement | null;
+      if (!card?.getBoundingClientRect || !pay?.getBoundingClientRect) return;
+      const scroller = scrollParentOf(card);
+      if (!scroller) return;
+      const vv = window.visualViewport;
+      const scrollerRect = scroller.getBoundingClientRect();
+      const visibleBottom = Math.min(scrollerRect.bottom, vv ? vv.height + vv.offsetTop : window.innerHeight);
+      const plan = planReveal({
+        viewTop: scrollerRect.top,
+        viewBottom: visibleBottom,
+        cardTop: card.getBoundingClientRect().top,
+        payBottom: pay.getBoundingClientRect().bottom,
+        room: AUTOFILL_BAR_ROOM,
+        margin: FIELD_TOP_MARGIN,
+      });
+      if (plan.mode !== 'none' && Math.abs(plan.delta) > 1) scroller.scrollBy({ top: plan.delta, behavior: 'smooth' });
+    }, 350);
+  };
+  // Leaving the card (keyboard closing): unfold the summary. Moving from one field to another inside the iframe blurs and focuses again right
+  // away, so the unfold waits a moment and is cancelled by the next focus.
+  const releaseForm = () => {
+    if (blurTimer.current) clearTimeout(blurTimer.current);
+    blurTimer.current = setTimeout(() => onCardFocusChange?.(false), 250);
   };
   const [paying, setPaying] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -234,13 +264,16 @@ function CardForm({ totalCents, onHeld, onBusyChange, note, initialFailures = 0,
           <View style={[styles.orLine, { backgroundColor: c.borderSubtle }]} />
         </View>
       ) : null}
-      <PaymentElement options={CARD_ONLY_OPTIONS} onFocus={revealForm} />
+      <View ref={cardRef} testID="gift-card-field">
+        <PaymentElement options={CARD_ONLY_OPTIONS} onFocus={revealForm} onBlur={releaseForm} />
+      </View>
       {message ? (
         <Text accessibilityRole="alert" style={[styles.message, { color: processing ? c.textSecondary : c.dangerText }]}>
           {message}
         </Text>
       ) : null}
       <Pressable
+        ref={payRef as unknown as React.Ref<View>}
         testID="gift-pay"
         onPress={() => void confirm()}
         disabled={disabled}
@@ -286,7 +319,7 @@ function appearanceFor(c: Colors): Appearance {
   };
 }
 
-export function GiftPaymentForm({ clientSecret, publishableKey, totalCents, onHeld, onBusyChange, note, initialFailures }: GiftPaymentFormProps): React.ReactElement {
+export function GiftPaymentForm({ clientSecret, publishableKey, totalCents, onHeld, onBusyChange, note, initialFailures, onCardFocusChange }: GiftPaymentFormProps): React.ReactElement {
   const c = useThemeColors();
   const { i18n } = useTranslation('chat');
   const stripePromise = useMemo(() => loadStripe(publishableKey), [publishableKey]);
@@ -296,7 +329,7 @@ export function GiftPaymentForm({ clientSecret, publishableKey, totalCents, onHe
   );
   return (
     <Elements stripe={stripePromise} options={options}>
-      <CardForm totalCents={totalCents} onHeld={onHeld} onBusyChange={onBusyChange} note={note} initialFailures={initialFailures} publishableKey={publishableKey} />
+      <CardForm totalCents={totalCents} onHeld={onHeld} onBusyChange={onBusyChange} note={note} initialFailures={initialFailures} publishableKey={publishableKey} onCardFocusChange={onCardFocusChange} />
     </Elements>
   );
 }

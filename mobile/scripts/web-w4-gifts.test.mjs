@@ -212,10 +212,11 @@ test('R3 page: header arrow (44 px, labelled), summary, ONE ScrollView, nothing 
 
 test('R3 form: Pay sits in the flow right after Stripe\'s field with the fine print under it; Stripe\'s focus scrolls it into view above the autofill bar', () => {
   const form = read('components/gift/GiftPaymentForm.web.tsx');
-  assert.match(form, /<PaymentElement options=\{CARD_ONLY_OPTIONS\} onFocus=\{revealForm\} \/>/); // card only: scripts/gift-card-only.test.mjs
+  assert.match(form, /<PaymentElement options=\{CARD_ONLY_OPTIONS\} onFocus=\{revealForm\} onBlur=\{releaseForm\} \/>/); // card only: scripts/gift-card-only.test.mjs
   assert.equal((form.match(/<ScrollView/g) ?? []).length, 0, 'no inner scroller around Stripe\'s iframe');
-  assert.match(form, /node\.style\.scrollMarginBottom = `\$\{AUTOFILL_BAR_ROOM\}px`;/);
-  assert.match(form, /block: node\.getBoundingClientRect\(\)\.height \+ AUTOFILL_BAR_ROOM > visible - HEADER_ROOM \? 'start' : 'end'/);
+  // where it scrolls is utils/payPageScroll.ts (scripts/pay-page-scroll.test.mjs): the card field AND Pay above the keyboard + autofill bar, the field first when they do not fit
+  assert.match(form, /scroller\.scrollBy\(\{ top: plan\.delta, behavior: 'smooth' \}\)/);
+  assert.match(form, /const AUTOFILL_BAR_ROOM = 56;/);
   const pay = form.indexOf('testID="gift-pay"');
   const note = form.indexOf('{!note ? null :');
   assert.ok(form.indexOf('<PaymentElement') < form.indexOf('{message ?') && form.indexOf('{message ?') < pay && pay < note, 'field → message → Pay → fine print');

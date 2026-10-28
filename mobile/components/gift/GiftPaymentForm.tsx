@@ -16,6 +16,8 @@ export interface GiftPaymentFormProps {
   initialFailures?: number;
   /** Web: the fine print under the Pay button (what is authorized now, when it is charged or released). */
   note?: string;
+  /** Web: a card field got / lost focus (the page folds its summary to the total line while the keyboard is up). */
+  onCardFocusChange?: (focused: boolean) => void;
 }
 
 export function GiftPaymentForm(_props: GiftPaymentFormProps): null {
