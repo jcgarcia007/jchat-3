@@ -18,7 +18,7 @@ export function isStripeTestKey(publishableKey: string | null | undefined): bool
   return typeof publishableKey === 'string' && publishableKey.startsWith('pk_test_');
 }
 
-export type WalletDiag = { kind: 'methods'; methods: string[] } | { kind: 'timeout' };
+export type WalletDiag = { kind: 'methods'; methods: string[] } | { kind: 'timeout' } | { kind: 'error'; type: string; message: string };
 
 /** Names of the wallets Stripe says are available, from the element's `ready` event (`availablePaymentMethods`: name → boolean). */
 export function methodsFromReady(available: Partial<Record<string, boolean>> | null | undefined): string[] {
@@ -34,8 +34,17 @@ export function methodsFromChange(paymentMethods: WalletAvailability | null | un
     .sort();
 }
 
+const KEY_RE = /\b(?:sk|rk|pk|whsec|sb_secret|sb_publishable)_[A-Za-z0-9_]{6,}|\b(?:pi|seti)_[A-Za-z0-9]+_secret_[A-Za-z0-9]+/g;
+/** The `type` and `message` of a Stripe `loaderror`, safe to draw and log: anything that looks like a key or a client secret is replaced, and it is cut short. */
+export function safeErrorParts(error: { type?: unknown; message?: unknown } | null | undefined): { type: string; message: string } {
+  const clean = (v: unknown, max: number) => String(v ?? '').replace(KEY_RE, '[redacted]').replace(/\s+/g, ' ').trim().slice(0, max);
+  return { type: clean(error?.type, 40) || 'error', message: clean(error?.message, 140) };
+}
+
 /** The parts of the visible line: which i18n key to use and the wallet list to put in it. Null when nothing must be drawn. */
-export function diagLineParts(testKey: boolean, diag: WalletDiag | null): { key: 'wallets' | 'noReply'; list?: string[] } | null {
+export function diagLineParts(testKey: boolean, diag: WalletDiag | null): { key: 'wallets' | 'noReply' | 'error'; list?: string[]; type?: string; message?: string } | null {
   if (!testKey || !diag) return null;
-  return diag.kind === 'timeout' ? { key: 'noReply' } : { key: 'wallets', list: diag.methods };
+  if (diag.kind === 'timeout') return { key: 'noReply' };
+  if (diag.kind === 'error') return { key: 'error', type: diag.type, message: diag.message };
+  return { key: 'wallets', list: diag.methods };
 }

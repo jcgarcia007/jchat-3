@@ -432,7 +432,8 @@
     "diag": {
       "wallets": "Stripe test · monederos: {{list}}",
       "noReply": "Stripe test · sin respuesta del monedero (5 s)",
-      "none": "ninguno"
+      "none": "ninguno",
+      "error": "Stripe test · error del monedero: {{type}} {{message}}"
     }
   },
   "giftCard": {

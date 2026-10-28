@@ -174,7 +174,7 @@ const infoLogs = (page: Page) => {
   page.on('console', (m) => { if (m.type() === 'info') logs.push(m.text()); });
   return logs;
 };
-const walletMode = (page: Page, mode: 'apple' | 'silent') => page.addInitScript((m) => { (window as unknown as { __walletMode: string }).__walletMode = m; }, mode);
+const walletMode = (page: Page, mode: 'apple' | 'silent' | 'error') => page.addInitScript((m) => { (window as unknown as { __walletMode: string }).__walletMode = m; }, mode);
 
 test('test key: no wallet → the line says "monederos: ninguno" and the console says the same', async ({ page }) => {
   const logs = infoLogs(page);
@@ -198,8 +198,19 @@ test('test key: Stripe never answers → after 5 s the line says there was no an
   await expect(page.getByTestId('gift-wallet-diag')).toHaveText('Stripe test · sin respuesta del monedero (5 s)', { timeout: 10_000 });
 });
 
+test('test key: Stripe reports a load error → the line shows its type and message (a key-looking text is redacted), and the console says so', async ({ page }) => {
+  await walletMode(page, 'error');
+  const logs = infoLogs(page);
+  await startGift(page);
+  const line = page.getByTestId('gift-wallet-diag');
+  await expect(line).toContainText('Stripe test · error del monedero: invalid_request_error Invalid value for layout', { timeout: 10_000 });
+  await expect(line).not.toContainText('pk_test_51');
+  expect(logs.some((l) => /loaderror · invalid_request_error/.test(l))).toBe(true);
+  expect(logs.some((l) => /pk_test_51/.test(l))).toBe(false);
+});
+
 test('LIVE key (pk_live_): NOTHING is drawn and nothing is logged, whatever Stripe answers', async ({ page }) => {
-  for (const mode of ['apple', 'silent'] as const) {
+  for (const mode of ['apple', 'silent', 'error'] as const) {
     const fresh = await page.context().newPage();
     await walletMode(fresh, mode);
     const logs = infoLogs(fresh);

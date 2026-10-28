@@ -33,7 +33,7 @@ import { palette } from '../../theme/tokens';
 import { formatCents } from '../../utils/currency';
 import { giftPaymentOutcome, stripeLocale } from '../../utils/giftPaymentResult';
 import { nextGiftStep, walletAvailable } from '../../utils/giftPaymentFlow';
-import { WALLET_DIAG_TIMEOUT_MS, diagLineParts, isStripeTestKey, methodsFromChange, methodsFromReady, type WalletDiag } from '../../utils/walletDiagnostic';
+import { WALLET_DIAG_TIMEOUT_MS, diagLineParts, isStripeTestKey, methodsFromChange, methodsFromReady, safeErrorParts, type WalletDiag } from '../../utils/walletDiagnostic';
 import type { GiftPaymentFormProps } from './GiftPaymentForm';
 
 export type { GiftPaymentFormProps } from './GiftPaymentForm';
@@ -47,12 +47,16 @@ const HEADER_ROOM = 72;
 /**
  * Only Apple Pay and Google Pay (both are the PaymentIntent's `card` type). Everything else is off. The buttons carry no call to
  * action ('plain'): what happens is a HOLD, not a purchase. One column, no overflow menu.
+ *
+ * NEVER put `layout.maxRows` next to `layout.overflow: 'never'`: with the real Stripe.js that combination makes the element fire NEITHER
+ * `ready` NOR `loaderror` (it just stays silent), so the wallet never shows. Found with a probe against the real Stripe.js on WebKit and
+ * Chromium (e2e/real/ece-real-stripe.spec.ts); `overflow: 'auto'` or no `maxRows` both answer. One column + no overflow menu is enough.
  */
 const WALLET_OPTIONS: StripeExpressCheckoutElementOptions = {
   paymentMethods: { applePay: 'auto', googlePay: 'auto', link: 'never', paypal: 'never', amazonPay: 'never', klarna: 'never' },
   buttonType: { applePay: 'plain', googlePay: 'plain' },
   buttonHeight: 48,
-  layout: { maxColumns: 1, maxRows: 1, overflow: 'never' },
+  layout: { maxColumns: 1, overflow: 'never' },
 };
 
 function CardForm({ totalCents, onHeld, onBusyChange, note, initialFailures = 0, publishableKey }: Pick<GiftPaymentFormProps, 'totalCents' | 'onHeld' | 'onBusyChange' | 'note' | 'initialFailures' | 'publishableKey'>): React.ReactElement {
@@ -76,6 +80,12 @@ function CardForm({ totalCents, onHeld, onBusyChange, note, initialFailures = 0,
     }, WALLET_DIAG_TIMEOUT_MS);
     return () => clearTimeout(timer);
   }, [testKey]);
+  const reportLoadError = (error: { type?: unknown; message?: unknown } | null | undefined) => {
+    if (!testKey) return;
+    const parts = safeErrorParts(error);
+    console.info(`[GiftPaymentForm] Stripe test · loaderror · ${parts.type} ${parts.message}`);
+    setWalletDiag({ kind: 'error', type: parts.type, message: parts.message });
+  };
   const reportWallets = (source: 'ready' | 'availablepaymentmethodschange', methods: string[]) => {
     if (!testKey) return;
     console.info(`[GiftPaymentForm] Stripe test · ${source} · wallets: ${methods.length ? methods.join(', ') : 'none'}`);
@@ -198,6 +208,7 @@ function CardForm({ totalCents, onHeld, onBusyChange, note, initialFailures = 0,
         <ExpressCheckoutElement
           options={WALLET_OPTIONS}
           onReady={({ availablePaymentMethods }) => reportWallets('ready', methodsFromReady(availablePaymentMethods))}
+          onLoadError={({ error }) => reportLoadError(error)}
           onAvailablePaymentMethodsChange={({ paymentMethods }) => {
             setWalletReady(walletAvailable(paymentMethods));
             reportWallets('availablepaymentmethodschange', methodsFromChange(paymentMethods));
@@ -234,7 +245,9 @@ function CardForm({ totalCents, onHeld, onBusyChange, note, initialFailures = 0,
         if (!parts) return null;
         const text = parts.key === 'noReply'
           ? t('gift.diag.noReply')
-          : t('gift.diag.wallets', { list: parts.list && parts.list.length ? parts.list.join(', ') : t('gift.diag.none') });
+          : parts.key === 'error'
+            ? t('gift.diag.error', { type: parts.type, message: parts.message })
+            : t('gift.diag.wallets', { list: parts.list && parts.list.length ? parts.list.join(', ') : t('gift.diag.none') });
         return <Text testID="gift-wallet-diag" style={[styles.fine, { color: c.textSecondary }]}>{text}</Text>;
       })()}
     </View>

@@ -53,7 +53,8 @@ test('form: ONE Express Checkout Element inside the same Elements, only Apple Pa
   const form = read('components/gift/GiftPaymentForm.web.tsx');
   assert.match(form, /import \{ Elements, ExpressCheckoutElement, PaymentElement, useElements, useStripe \} from '@stripe\/react-stripe-js';/);
   assert.match(form, /paymentMethods: \{ applePay: 'auto', googlePay: 'auto', link: 'never', paypal: 'never', amazonPay: 'never', klarna: 'never' \}/);
-  assert.match(form, /layout: \{ maxColumns: 1, maxRows: 1, overflow: 'never' \}/);
+  // one column, no overflow menu. NO maxRows: with overflow 'never' it silences the element (scripts/ece-options.test.mjs)
+  assert.match(form, /layout: \{ maxColumns: 1, overflow: 'never' \}/);
   assert.equal((form.match(/<Elements /g) ?? []).length, 1, 'the SAME Elements (same PaymentIntent) holds the wallet and the card');
   assert.equal((form.match(/<ExpressCheckoutElement/g) ?? []).length, 1);
   assert.doesNotMatch(form, /#[0-9a-fA-F]{3,8}\b/, 'theme tokens only');

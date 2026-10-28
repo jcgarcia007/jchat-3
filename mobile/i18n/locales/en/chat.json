@@ -432,7 +432,8 @@
     "diag": {
       "wallets": "Stripe test · wallets: {{list}}",
       "noReply": "Stripe test · no wallet response (5 s)",
-      "none": "none"
+      "none": "none",
+      "error": "Stripe test · wallet error: {{type}} {{message}}"
     }
   },
   "giftCard": {

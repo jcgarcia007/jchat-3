@@ -33,11 +33,15 @@ window.Stripe = function () {
     on: function (name, handler) { (handlers[name] = handlers[name] || []).push(handler); },
     off: function () {}, update: function () {}, unmount: function () {}, destroy: function () {},
   };
-  // The Express Checkout Element. window.__walletMode: undefined = no wallet (default) · 'apple' = Apple Pay available · 'silent' = Stripe never answers.
+  // The Express Checkout Element. window.__walletMode: undefined = no wallet (default) · 'apple' = Apple Pay available · 'silent' = Stripe never answers · 'error' = loaderror.
   var noWallet = {
     mount: function () {
       var mode = window.__walletMode;
       if (mode === 'silent') return;
+      if (mode === 'error') {
+        setTimeout(function () { (noWallet.l || []).forEach(function (f) { f({ elementType: 'expressCheckout', error: { type: 'invalid_request_error', message: 'Invalid value for layout (key pk_test_51ABCdefGHIjkl)' } }); }); }, 30);
+        return;
+      }
       setTimeout(function () {
         var apple = mode === 'apple';
         (noWallet.r || []).forEach(function (f) { f({ elementType: 'expressCheckout', availablePaymentMethods: apple ? { applePay: true, googlePay: false, link: false, paypal: false, amazonPay: false, klarna: false } : undefined }); });
@@ -47,6 +51,7 @@ window.Stripe = function () {
     on: function (name, handler) {
       if (name === 'availablepaymentmethodschange') (noWallet.h = noWallet.h || []).push(handler);
       if (name === 'ready') (noWallet.r = noWallet.r || []).push(handler);
+      if (name === 'loaderror') (noWallet.l = noWallet.l || []).push(handler);
     },
     off: function () {}, update: function () {}, unmount: function () {}, destroy: function () {},
   };
