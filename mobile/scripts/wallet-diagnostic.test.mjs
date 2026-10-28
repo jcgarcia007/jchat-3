@@ -13,7 +13,7 @@ import ts from 'typescript';
 const dir = mkdtempSync(join(tmpdir(), 'wallet-diag-'));
 const source = readFileSync(new URL('../utils/walletDiagnostic.ts', import.meta.url), 'utf8');
 writeFileSync(join(dir, 'walletDiagnostic.mjs'), ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 } }).outputText);
-const { WALLET_DIAG_TIMEOUT_MS, diagLineParts, isStripeTestKey, methodsFromChange, methodsFromReady, safeErrorParts } = await import(pathToFileURL(join(dir, 'walletDiagnostic.mjs')).href);
+const { STRIPE_DIAG_STORAGE_KEY, WALLET_DIAG_TIMEOUT_MS, diagLineParts, isStripeTestKey, methodsFromChange, methodsFromReady, safeErrorParts, stripeDiagRequested } = await import(pathToFileURL(join(dir, 'walletDiagnostic.mjs')).href);
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const form = read('components/gift/GiftPaymentForm.web.tsx');
@@ -90,4 +90,24 @@ test('the line uses the secondary text colour and sits right after the retention
   const after = form.slice(form.indexOf('{!note ? null'));
   assert.ok(after.indexOf('gift-wallet-diag') > 0 && after.indexOf('gift-wallet-diag') < 700, 'the diagnostic line follows the note');
   assert.match(after, /testID="gift-wallet-diag" style=\{\[styles\.fine, \{ color: c\.textSecondary \}\]\}/);
+});
+
+test('?stripe_diag=1 asks for the diagnostic (any position in the query), or the tab remembers it; nothing else does', () => {
+  assert.equal(stripeDiagRequested('?stripe_diag=1', null), true);
+  assert.equal(stripeDiagRequested('?venue=bar-x&stripe_diag=1', null), true);
+  assert.equal(stripeDiagRequested('?stripe_diag=1&venue=bar-x', null), true);
+  assert.equal(stripeDiagRequested('', '1'), true);
+  for (const [search, remembered] of [['', null], [undefined, undefined], ['?stripe_diag=0', null], ['?stripe_diag=10', null], ['?xstripe_diag=1', null], ['?stripe_diag=', null], ['?venue=1', '0'], ['', 'true']]) {
+    assert.equal(stripeDiagRequested(search, remembered), false, `${search} / ${remembered}`);
+  }
+  assert.equal(STRIPE_DIAG_STORAGE_KEY, 'jchat.stripeDiag');
+});
+
+test('the form needs BOTH a test key and the request to draw or log anything; captureWebEntry remembers the flag for the tab', () => {
+  assert.match(form, /const testKey = isStripeTestKey\(publishableKey\) && diagRequested\(\);/);
+  assert.match(form, /return stripeDiagRequested\(window\.location\.search, window\.sessionStorage\.getItem\(STRIPE_DIAG_STORAGE_KEY\)\);/);
+  const capture = read('utils/captureWebEntry.web.ts');
+  const iFlag = capture.indexOf('stripeDiagRequested(window.location.search, null)');
+  assert.ok(iFlag > 0 && iFlag < capture.indexOf('parseEntryUrl('), 'the flag is read before the early return for non-entry URLs');
+  assert.match(capture, /sessionStorage\.setItem\(STRIPE_DIAG_STORAGE_KEY, '1'\)/);
 });

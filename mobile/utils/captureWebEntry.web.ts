@@ -10,9 +10,16 @@
 
 import { savePendingEntry } from '../services/venueEntry';
 import { parseEntryUrl } from './entryUrl';
+import { STRIPE_DIAG_STORAGE_KEY, stripeDiagRequested } from './walletDiagnostic';
 
 export function captureWebEntry(): void {
   if (typeof window === 'undefined' || !window.location) return;
+  // `?stripe_diag=1` turns on the test-mode wallet line of the gift page for this tab (the router rewrites the address later).
+  try {
+    if (stripeDiagRequested(window.location.search, null)) window.sessionStorage.setItem(STRIPE_DIAG_STORAGE_KEY, '1');
+  } catch {
+    // storage blocked: the flag simply is not remembered
+  }
   const target = parseEntryUrl(window.location.href, { allowVenueQuery: true });
   if (!target) return;
 

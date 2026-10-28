@@ -33,7 +33,7 @@ import { palette } from '../../theme/tokens';
 import { formatCents } from '../../utils/currency';
 import { giftPaymentOutcome, stripeLocale } from '../../utils/giftPaymentResult';
 import { nextGiftStep, walletAvailable } from '../../utils/giftPaymentFlow';
-import { WALLET_DIAG_TIMEOUT_MS, diagLineParts, isStripeTestKey, methodsFromChange, methodsFromReady, safeErrorParts, type WalletDiag } from '../../utils/walletDiagnostic';
+import { STRIPE_DIAG_STORAGE_KEY, WALLET_DIAG_TIMEOUT_MS, diagLineParts, isStripeTestKey, methodsFromChange, methodsFromReady, safeErrorParts, stripeDiagRequested, type WalletDiag } from '../../utils/walletDiagnostic';
 import type { GiftPaymentFormProps } from './GiftPaymentForm';
 
 export type { GiftPaymentFormProps } from './GiftPaymentForm';
@@ -59,6 +59,15 @@ const WALLET_OPTIONS: StripeExpressCheckoutElementOptions = {
   layout: { maxColumns: 1, overflow: 'never' },
 };
 
+/** `?stripe_diag=1` in the address, or remembered for this tab by captureWebEntry. */
+function diagRequested(): boolean {
+  try {
+    return stripeDiagRequested(window.location.search, window.sessionStorage.getItem(STRIPE_DIAG_STORAGE_KEY));
+  } catch {
+    return false;
+  }
+}
+
 function CardForm({ totalCents, onHeld, onBusyChange, note, initialFailures = 0, publishableKey }: Pick<GiftPaymentFormProps, 'totalCents' | 'onHeld' | 'onBusyChange' | 'note' | 'initialFailures' | 'publishableKey'>): React.ReactElement {
   const c = useThemeColors();
   const { t } = useTranslation('chat');
@@ -68,9 +77,10 @@ function CardForm({ totalCents, onHeld, onBusyChange, note, initialFailures = 0,
   const focusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (focusTimer.current) clearTimeout(focusTimer.current); }, []);
 
-  // TEST MODE ONLY (pk_test_…): what Stripe's Express Checkout Element answered about the wallets, drawn as one small line and logged. With a
-  // live key nothing is drawn or logged. Only the wallet names go out: never the key, the client secret or anything of the customer.
-  const testKey = isStripeTestKey(publishableKey);
+  // TEST MODE ONLY (pk_test_…) AND only when asked for (`?stripe_diag=1`, remembered for the tab): what Stripe's Express Checkout Element answered
+  // about the wallets, drawn as one small line and logged. With a live key, or without the flag, nothing is drawn or logged. Only the wallet
+  // names go out: never the key, the client secret or anything of the customer.
+  const testKey = isStripeTestKey(publishableKey) && diagRequested();
   const [walletDiag, setWalletDiag] = useState<WalletDiag | null>(null);
   useEffect(() => {
     if (!testKey) return undefined;

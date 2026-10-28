@@ -137,7 +137,7 @@ export function baseOptions(extra: HermeticOptions = {}): HermeticOptions {
 }
 
 /** Signs the synthetic user in, installs the harness and opens the venue's entry link. */
-export async function openVenue(page: Page, extra: HermeticOptions = {}): Promise<Hermetic> {
+export async function openVenue(page: Page, extra: HermeticOptions = {}, query = ''): Promise<Hermetic> {
   const h = await hermetic(page, baseOptions(extra));
   await signInSynthetic(page);
   await page.addInitScript(() => {
@@ -146,7 +146,7 @@ export async function openVenue(page: Page, extra: HermeticOptions = {}): Promis
     navigator.geolocation.getCurrentPosition = (ok) => ok(position as GeolocationPosition);
     navigator.geolocation.watchPosition = (ok) => { ok(position as GeolocationPosition); return 1; };
   });
-  await page.goto(`/?venue=${VENUE}`, { waitUntil: 'load' });
+  await page.goto(`/?venue=${VENUE}${query}`, { waitUntil: 'load' });
   return h;
 }
 

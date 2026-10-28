@@ -5,6 +5,9 @@
  * shows nothing there is no way to tell why, so in TEST mode only (publishable key `pk_test_…`) the page prints one small line with what
  * Stripe answered, and logs the same to the console. In live mode (`pk_live_…`) NOTHING is drawn or logged.
  *
+ * Even in test mode the line only shows when the address carries `?stripe_diag=1` (it is remembered for the tab in sessionStorage, because the
+ * router rewrites the address): a normal test-mode visit sees nothing.
+ *
  * Nothing in here ever sees the key itself beyond its prefix, nor the PaymentIntent's client secret.
  */
 
@@ -12,6 +15,14 @@ import type { WalletAvailability } from './giftPaymentFlow';
 
 /** How long to wait for Stripe's answer before saying there was none. */
 export const WALLET_DIAG_TIMEOUT_MS = 5000;
+
+/** sessionStorage key where `?stripe_diag=1` is remembered for the tab (set by captureWebEntry, read by the form). */
+export const STRIPE_DIAG_STORAGE_KEY = 'jchat.stripeDiag';
+
+/** The diagnostic was asked for: the address carries `stripe_diag=1` (any position in the query), or this tab remembered it. */
+export function stripeDiagRequested(search: string | null | undefined, remembered: string | null | undefined): boolean {
+  return /(?:^|[?&])stripe_diag=1(?:&|#|$)/.test(search ?? '') || remembered === '1';
+}
 
 /** True ONLY for a test-mode publishable key. Anything else (live, empty, malformed) draws and logs nothing. */
 export function isStripeTestKey(publishableKey: string | null | undefined): boolean {

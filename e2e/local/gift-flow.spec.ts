@@ -40,11 +40,11 @@ async function simulatePayments(page: Page, holds: Holds) {
 }
 
 /** Opens the venue, makes the other person speak, taps their avatar → quick card → Regalar → one product → Enviar regalo. */
-async function startGift(page: Page, holds: Holds = { bodies: [], failures: 0 }) {
+async function startGift(page: Page, holds: Holds = { bodies: [], failures: 0 }, query = '') {
   const h = await openVenue(page, {
     rpcs: { gift_offer_create: { id: OFFER_ID, subtotal_cents: 500, items: [] }, gift_offer_cancel: null },
     tables: { public_profiles: [ME, OTHER] },
-  });
+  }, query);
   await simulatePayments(page, holds);
   await enterChat(page);
   const delivered = await h.injectWhenReady('messages', 'INSERT', { id: crypto.randomUUID(), room_id: ROOM_ID, user_id: OTHER_ID, body: 'Hola desde la barra', type: 'text', media_url: null, metadata: {}, is_system: false, created_at: new Date().toISOString() });
@@ -168,17 +168,18 @@ test('the PaymentIntent was closed on the server meanwhile: "this offer is close
 });
 
 // ── Wallet diagnostic (test keys only) ─────────────────────────────────────────────────────────────────────────
-// With a pk_test_ key the page prints one small line with what Stripe's Express Checkout Element answered, and logs it; with pk_live_ NOTHING.
+// With a pk_test_ key AND `?stripe_diag=1` the page prints one small line with what Stripe's Express Checkout Element answered, and logs it; with pk_live_, or without the flag, NOTHING.
 const infoLogs = (page: Page) => {
   const logs: string[] = [];
   page.on('console', (m) => { if (m.type() === 'info') logs.push(m.text()); });
   return logs;
 };
+const DIAG = '&stripe_diag=1';
 const walletMode = (page: Page, mode: 'apple' | 'silent' | 'error') => page.addInitScript((m) => { (window as unknown as { __walletMode: string }).__walletMode = m; }, mode);
 
 test('test key: no wallet → the line says "monederos: ninguno" and the console says the same', async ({ page }) => {
   const logs = infoLogs(page);
-  await startGift(page);
+  await startGift(page, undefined, DIAG);
   await expect(page.getByTestId('gift-wallet-diag')).toHaveText('Stripe test · monederos: ninguno', { timeout: 10_000 });
   expect(logs.some((l) => /Stripe test · ready · wallets: none/.test(l))).toBe(true);
 });
@@ -186,14 +187,14 @@ test('test key: no wallet → the line says "monederos: ninguno" and the console
 test('test key: Apple Pay available → the line lists it', async ({ page }) => {
   await walletMode(page, 'apple');
   const logs = infoLogs(page);
-  await startGift(page);
+  await startGift(page, undefined, DIAG);
   await expect(page.getByTestId('gift-wallet-diag')).toHaveText('Stripe test · monederos: applePay', { timeout: 10_000 });
   expect(logs.some((l) => /wallets: applePay/.test(l))).toBe(true);
 });
 
 test('test key: Stripe never answers → after 5 s the line says there was no answer', async ({ page }) => {
   await walletMode(page, 'silent');
-  await startGift(page);
+  await startGift(page, undefined, DIAG);
   await expect(page.getByTestId('gift-wallet-diag')).toHaveCount(0);   // nothing before the 5 s are up
   await expect(page.getByTestId('gift-wallet-diag')).toHaveText('Stripe test · sin respuesta del monedero (5 s)', { timeout: 10_000 });
 });
@@ -201,7 +202,7 @@ test('test key: Stripe never answers → after 5 s the line says there was no an
 test('test key: Stripe reports a load error → the line shows its type and message (a key-looking text is redacted), and the console says so', async ({ page }) => {
   await walletMode(page, 'error');
   const logs = infoLogs(page);
-  await startGift(page);
+  await startGift(page, undefined, DIAG);
   const line = page.getByTestId('gift-wallet-diag');
   await expect(line).toContainText('Stripe test · error del monedero: invalid_request_error Invalid value for layout', { timeout: 10_000 });
   await expect(line).not.toContainText('pk_test_51');
@@ -214,11 +215,25 @@ test('LIVE key (pk_live_): NOTHING is drawn and nothing is logged, whatever Stri
     const fresh = await page.context().newPage();
     await walletMode(fresh, mode);
     const logs = infoLogs(fresh);
-    await startGift(fresh, { bodies: [], failures: 0, publishableKey: 'pk_live_stub' });
+    await startGift(fresh, { bodies: [], failures: 0, publishableKey: 'pk_live_stub' }, DIAG);   // even asked for, a live key shows nothing
     await fresh.waitForTimeout(6500);   // longer than the 5 s timeout
     await expect(fresh.getByTestId('gift-wallet-diag')).toHaveCount(0);
     expect(logs.filter((l) => /Stripe test/.test(l))).toEqual([]);
     expect(await fresh.getByText(/Stripe test/).count()).toBe(0);
     await fresh.close();
   }
+});
+
+test('test key but NO ?stripe_diag=1: nothing is drawn and nothing is logged (a normal test-mode visit sees no diagnostic)', async ({ page }) => {
+  const logs = infoLogs(page);
+  await startGift(page);
+  await page.waitForTimeout(6500);   // longer than the 5 s timeout
+  await expect(page.getByTestId('gift-wallet-diag')).toHaveCount(0);
+  expect(logs.filter((l) => /Stripe test/.test(l))).toEqual([]);
+});
+
+test('?stripe_diag=1 is remembered for the tab (sessionStorage): the line does not depend on the address staying as it was', async ({ page }) => {
+  await startGift(page, undefined, DIAG);
+  await expect(page.getByTestId('gift-wallet-diag')).toBeVisible({ timeout: 10_000 });
+  expect(await page.evaluate(() => window.sessionStorage.getItem('jchat.stripeDiag'))).toBe('1');
 });
