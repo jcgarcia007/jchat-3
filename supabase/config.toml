@@ -51,6 +51,11 @@ verify_jwt = false
 [functions.gift-worker]
 verify_jwt = false
 
+# Payment-domains sync: registers each verified venue's <subdomain>.jchat.cloud as a Stripe payment method domain (Apple Pay / Google Pay).
+# Invoked by pg_net (migration 247) with x-push-secret, or by hand with the project's secret key. NO public access: the handler checks both.
+[functions.payment-domains-sync]
+verify_jwt = false
+
 # Match photo moderation: invoked by pg_net (migration 193) with x-push-secret, not a user JWT.
 [functions.moderate-match-photo]
 verify_jwt = false
