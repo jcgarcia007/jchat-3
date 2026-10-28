@@ -33,9 +33,21 @@ window.Stripe = function () {
     on: function (name, handler) { (handlers[name] = handlers[name] || []).push(handler); },
     off: function () {}, update: function () {}, unmount: function () {}, destroy: function () {},
   };
+  // The Express Checkout Element. window.__walletMode: undefined = no wallet (default) · 'apple' = Apple Pay available · 'silent' = Stripe never answers.
   var noWallet = {
-    mount: function () { setTimeout(function () { (noWallet.h || []).forEach(function (f) { f({ elementType: 'expressCheckout', paymentMethods: undefined }); }); }, 30); },
-    on: function (name, handler) { if (name === 'availablepaymentmethodschange') (noWallet.h = noWallet.h || []).push(handler); },
+    mount: function () {
+      var mode = window.__walletMode;
+      if (mode === 'silent') return;
+      setTimeout(function () {
+        var apple = mode === 'apple';
+        (noWallet.r || []).forEach(function (f) { f({ elementType: 'expressCheckout', availablePaymentMethods: apple ? { applePay: true, googlePay: false, link: false, paypal: false, amazonPay: false, klarna: false } : undefined }); });
+        (noWallet.h || []).forEach(function (f) { f({ elementType: 'expressCheckout', paymentMethods: apple ? { applePay: { available: true }, googlePay: { available: false } } : undefined }); });
+      }, 30);
+    },
+    on: function (name, handler) {
+      if (name === 'availablepaymentmethodschange') (noWallet.h = noWallet.h || []).push(handler);
+      if (name === 'ready') (noWallet.r = noWallet.r || []).push(handler);
+    },
     off: function () {}, update: function () {}, unmount: function () {}, destroy: function () {},
   };
   var answer = function (kind) {

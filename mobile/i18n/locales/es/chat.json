@@ -428,7 +428,12 @@
     "paySummaryCount_one": "{{count}} producto",
     "paySummaryCount_other": "{{count}} productos",
     "payTotal": "Total",
-    "payOrCard": "o con tarjeta"
+    "payOrCard": "o con tarjeta",
+    "diag": {
+      "wallets": "Stripe test · monederos: {{list}}",
+      "noReply": "Stripe test · sin respuesta del monedero (5 s)",
+      "none": "ninguno"
+    }
   },
   "giftCard": {
     "nItems_one": "{{count}} artículo",

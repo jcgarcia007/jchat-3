@@ -22,7 +22,7 @@ const confirmCalls = (page: Page) => win(page, () => (window as unknown as { __c
 const setResults = (page: Page, results: string[]) => page.evaluate((r) => { (window as unknown as { __confirmResults: string[] }).__confirmResults = r; }, results);
 const cancels = (h: Hermetic) => h.rpcCalls.filter((c) => c.name === 'gift_offer_cancel');
 
-interface Holds { bodies: Record<string, unknown>[]; failures: number }
+interface Holds { bodies: Record<string, unknown>[]; failures: number; publishableKey?: string }
 
 /** Stripe.js and the `payments` Edge Function, simulated. `failures` is what the server says it already counted for the offer. */
 async function simulatePayments(page: Page, holds: Holds) {
@@ -34,7 +34,7 @@ async function simulatePayments(page: Page, holds: Holds) {
       status: 200,
       contentType: 'application/json',
       headers: { 'access-control-allow-origin': '*' },
-      body: JSON.stringify({ clientSecret: 'pi_stub_secret_stub', publishableKey: 'pk_test_stub', serverTotalCents: 540, paymentFailures: holds.failures }),
+      body: JSON.stringify({ clientSecret: 'pi_stub_secret_stub', publishableKey: holds.publishableKey ?? 'pk_test_stub', serverTotalCents: 540, paymentFailures: holds.failures }),
     });
   });
 }
@@ -165,4 +165,49 @@ test('the PaymentIntent was closed on the server meanwhile: "this offer is close
   await page.getByTestId('gift-pay').click();
   await expect(page.getByRole('alert')).toContainText(/ya se cerró/);
   await expect(page.getByTestId('gift-pay')).toBeDisabled();
+});
+
+// ── Wallet diagnostic (test keys only) ─────────────────────────────────────────────────────────────────────────
+// With a pk_test_ key the page prints one small line with what Stripe's Express Checkout Element answered, and logs it; with pk_live_ NOTHING.
+const infoLogs = (page: Page) => {
+  const logs: string[] = [];
+  page.on('console', (m) => { if (m.type() === 'info') logs.push(m.text()); });
+  return logs;
+};
+const walletMode = (page: Page, mode: 'apple' | 'silent') => page.addInitScript((m) => { (window as unknown as { __walletMode: string }).__walletMode = m; }, mode);
+
+test('test key: no wallet → the line says "monederos: ninguno" and the console says the same', async ({ page }) => {
+  const logs = infoLogs(page);
+  await startGift(page);
+  await expect(page.getByTestId('gift-wallet-diag')).toHaveText('Stripe test · monederos: ninguno', { timeout: 10_000 });
+  expect(logs.some((l) => /Stripe test · ready · wallets: none/.test(l))).toBe(true);
+});
+
+test('test key: Apple Pay available → the line lists it', async ({ page }) => {
+  await walletMode(page, 'apple');
+  const logs = infoLogs(page);
+  await startGift(page);
+  await expect(page.getByTestId('gift-wallet-diag')).toHaveText('Stripe test · monederos: applePay', { timeout: 10_000 });
+  expect(logs.some((l) => /wallets: applePay/.test(l))).toBe(true);
+});
+
+test('test key: Stripe never answers → after 5 s the line says there was no answer', async ({ page }) => {
+  await walletMode(page, 'silent');
+  await startGift(page);
+  await expect(page.getByTestId('gift-wallet-diag')).toHaveCount(0);   // nothing before the 5 s are up
+  await expect(page.getByTestId('gift-wallet-diag')).toHaveText('Stripe test · sin respuesta del monedero (5 s)', { timeout: 10_000 });
+});
+
+test('LIVE key (pk_live_): NOTHING is drawn and nothing is logged, whatever Stripe answers', async ({ page }) => {
+  for (const mode of ['apple', 'silent'] as const) {
+    const fresh = await page.context().newPage();
+    await walletMode(fresh, mode);
+    const logs = infoLogs(fresh);
+    await startGift(fresh, { bodies: [], failures: 0, publishableKey: 'pk_live_stub' });
+    await fresh.waitForTimeout(6500);   // longer than the 5 s timeout
+    await expect(fresh.getByTestId('gift-wallet-diag')).toHaveCount(0);
+    expect(logs.filter((l) => /Stripe test/.test(l))).toEqual([]);
+    expect(await fresh.getByText(/Stripe test/).count()).toBe(0);
+    await fresh.close();
+  }
 });

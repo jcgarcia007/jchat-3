@@ -61,7 +61,8 @@ test('form: ONE Express Checkout Element inside the same Elements, only Apple Pa
 
 test('form: no wallet → neither the button nor the separator is drawn; the element stays mounted (hidden) so Stripe can answer', () => {
   const form = read('components/gift/GiftPaymentForm.web.tsx');
-  assert.match(form, /onAvailablePaymentMethodsChange=\{\(\{ paymentMethods \}\) => setWalletReady\(walletAvailable\(paymentMethods\)\)\}/);
+  // (the handler also feeds the test-mode diagnostic line, scripts/wallet-diagnostic.test.mjs; what decides the button is unchanged)
+  assert.match(form, /onAvailablePaymentMethodsChange=\{\(\{ paymentMethods \}\) => \{\n\s+setWalletReady\(walletAvailable\(paymentMethods\)\);/);
   assert.match(form, /style=\{walletReady \? styles\.wallet : styles\.walletHidden\}/);
   assert.match(form, /walletHidden: \{ height: 0, overflow: 'hidden', opacity: 0 \}/);
   assert.match(form, /\{walletReady \? \(\s*<View testID="gift-wallet-or"/);

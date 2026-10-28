@@ -33,6 +33,7 @@ import { palette } from '../../theme/tokens';
 import { formatCents } from '../../utils/currency';
 import { giftPaymentOutcome, stripeLocale } from '../../utils/giftPaymentResult';
 import { nextGiftStep, walletAvailable } from '../../utils/giftPaymentFlow';
+import { WALLET_DIAG_TIMEOUT_MS, diagLineParts, isStripeTestKey, methodsFromChange, methodsFromReady, type WalletDiag } from '../../utils/walletDiagnostic';
 import type { GiftPaymentFormProps } from './GiftPaymentForm';
 
 export type { GiftPaymentFormProps } from './GiftPaymentForm';
@@ -54,7 +55,7 @@ const WALLET_OPTIONS: StripeExpressCheckoutElementOptions = {
   layout: { maxColumns: 1, maxRows: 1, overflow: 'never' },
 };
 
-function CardForm({ totalCents, onHeld, onBusyChange, note, initialFailures = 0 }: Pick<GiftPaymentFormProps, 'totalCents' | 'onHeld' | 'onBusyChange' | 'note' | 'initialFailures'>): React.ReactElement {
+function CardForm({ totalCents, onHeld, onBusyChange, note, initialFailures = 0, publishableKey }: Pick<GiftPaymentFormProps, 'totalCents' | 'onHeld' | 'onBusyChange' | 'note' | 'initialFailures' | 'publishableKey'>): React.ReactElement {
   const c = useThemeColors();
   const { t } = useTranslation('chat');
   const stripe = useStripe();
@@ -62,6 +63,24 @@ function CardForm({ totalCents, onHeld, onBusyChange, note, initialFailures = 0 
   const formRef = useRef<View>(null);
   const focusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (focusTimer.current) clearTimeout(focusTimer.current); }, []);
+
+  // TEST MODE ONLY (pk_test_…): what Stripe's Express Checkout Element answered about the wallets, drawn as one small line and logged. With a
+  // live key nothing is drawn or logged. Only the wallet names go out: never the key, the client secret or anything of the customer.
+  const testKey = isStripeTestKey(publishableKey);
+  const [walletDiag, setWalletDiag] = useState<WalletDiag | null>(null);
+  useEffect(() => {
+    if (!testKey) return undefined;
+    const timer = setTimeout(() => {
+      setWalletDiag((current) => current ?? { kind: 'timeout' });
+      console.info('[GiftPaymentForm] Stripe test · no answer from the wallet element in 5 s');
+    }, WALLET_DIAG_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [testKey]);
+  const reportWallets = (source: 'ready' | 'availablepaymentmethodschange', methods: string[]) => {
+    if (!testKey) return;
+    console.info(`[GiftPaymentForm] Stripe test · ${source} · wallets: ${methods.length ? methods.join(', ') : 'none'}`);
+    setWalletDiag({ kind: 'methods', methods });
+  };
 
   // The card field lives in Stripe's iframe, so the page never sees its focus: Stripe's own 'focus' event is the signal. The keyboard
   // takes a moment to slide in; once the visual viewport has settled the form (field + Pay button) is scrolled into view inside the
@@ -178,7 +197,11 @@ function CardForm({ totalCents, onHeld, onBusyChange, note, initialFailures = 0 
       <View testID="gift-wallet" style={walletReady ? styles.wallet : styles.walletHidden} pointerEvents={disabled ? 'none' : 'auto'}>
         <ExpressCheckoutElement
           options={WALLET_OPTIONS}
-          onAvailablePaymentMethodsChange={({ paymentMethods }) => setWalletReady(walletAvailable(paymentMethods))}
+          onReady={({ availablePaymentMethods }) => reportWallets('ready', methodsFromReady(availablePaymentMethods))}
+          onAvailablePaymentMethodsChange={({ paymentMethods }) => {
+            setWalletReady(walletAvailable(paymentMethods));
+            reportWallets('availablepaymentmethodschange', methodsFromChange(paymentMethods));
+          }}
           onConfirm={onWalletConfirm}
           onCancel={onWalletCancel}
         />
@@ -206,6 +229,14 @@ function CardForm({ totalCents, onHeld, onBusyChange, note, initialFailures = 0 
         {paying ? <Spinner color={palette.onBrand} /> : <Text style={[styles.payLabel, { color: palette.onBrand }]}>{t('gift.payButton', { amount: formatCents(totalCents) })}</Text>}
       </Pressable>
       {!note ? null : <Text style={[styles.fine, { color: c.textSecondary }]}>{note}</Text>}
+      {(() => {
+        const parts = diagLineParts(testKey, walletDiag);
+        if (!parts) return null;
+        const text = parts.key === 'noReply'
+          ? t('gift.diag.noReply')
+          : t('gift.diag.wallets', { list: parts.list && parts.list.length ? parts.list.join(', ') : t('gift.diag.none') });
+        return <Text testID="gift-wallet-diag" style={[styles.fine, { color: c.textSecondary }]}>{text}</Text>;
+      })()}
     </View>
   );
 }
@@ -242,7 +273,7 @@ export function GiftPaymentForm({ clientSecret, publishableKey, totalCents, onHe
   );
   return (
     <Elements stripe={stripePromise} options={options}>
-      <CardForm totalCents={totalCents} onHeld={onHeld} onBusyChange={onBusyChange} note={note} initialFailures={initialFailures} />
+      <CardForm totalCents={totalCents} onHeld={onHeld} onBusyChange={onBusyChange} note={note} initialFailures={initialFailures} publishableKey={publishableKey} />
     </Elements>
   );
 }

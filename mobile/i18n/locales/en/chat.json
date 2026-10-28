@@ -428,7 +428,12 @@
     "paySummaryCount_one": "{{count}} item",
     "paySummaryCount_other": "{{count}} items",
     "payTotal": "Total",
-    "payOrCard": "or pay with card"
+    "payOrCard": "or pay with card",
+    "diag": {
+      "wallets": "Stripe test · wallets: {{list}}",
+      "noReply": "Stripe test · no wallet response (5 s)",
+      "none": "none"
+    }
   },
   "giftCard": {
     "nItems_one": "{{count}} item",
