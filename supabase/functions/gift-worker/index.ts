@@ -22,6 +22,7 @@
 
 import Stripe from "npm:stripe@16.2.0";
 import { createAdminClient } from "../_shared/supabaseAdmin.ts";
+import { safeEqual } from "../_shared/safeEqual.ts";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CANCEL_STATUSES = ["declined", "expired", "cancelled"];
@@ -30,17 +31,6 @@ const CANCELABLE_PI = ["requires_capture", "requires_payment_method", "requires_
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
-}
-
-/** Constant-time comparison so the secret can't be probed by timing. */
-function secretsMatch(a: string, b: string): boolean {
-  const enc = new TextEncoder();
-  const x = enc.encode(a);
-  const y = enc.encode(b);
-  if (x.length !== y.length) return false;
-  let diff = 0;
-  for (let i = 0; i < x.length; i++) diff |= x[i] ^ y[i];
-  return diff === 0;
 }
 
 function getAdminClient() {
@@ -71,7 +61,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   const expected = Deno.env.get("PUSH_WEBHOOK_SECRET") ?? "";
   const provided = req.headers.get("x-push-secret") ?? "";
-  if (!expected || !secretsMatch(provided, expected)) return json({ error: "Unauthorized" }, 401);
+  if (!expected || !safeEqual(provided, expected)) return json({ error: "Unauthorized" }, 401);
 
   let body: { gift_offer_id?: unknown; status?: unknown; stripe_pi_id?: unknown };
   try {

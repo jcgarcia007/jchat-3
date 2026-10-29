@@ -20,6 +20,7 @@
  */
 
 import { createAdminClient } from "../_shared/supabaseAdmin.ts";
+import { safeEqual } from "../_shared/safeEqual.ts";
 import {
   decideMatchPhoto as decide,
   safeSearch,
@@ -63,7 +64,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     console.error("[moderate-match-photo] PUSH_WEBHOOK_SECRET is not configured");
     return jsonResponse({ error: "Internal server error" }, 500);
   }
-  if (req.headers.get("x-push-secret") !== expectedSecret) {
+  if (!safeEqual(req.headers.get("x-push-secret") ?? "", expectedSecret)) {
     return jsonResponse({ error: "Unauthorized" }, 401);
   }
 

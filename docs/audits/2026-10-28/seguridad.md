@@ -27,7 +27,7 @@ Ninguno crítico (no hay escalada de rol, ni acceso a dinero, ni lectura de DMs 
 ### BAJA
 - B1 `reviews: author update` permite al autor reescribir `owner_reply` (A26). Arreglado en 248 (`using (false)`; el dueño responde por su camino propio, OK7).
 - B2 `pos_tab_total` / `balance` sin comprobación de autorización explícita dentro de la función (solo exponen cifras de cuentas cuyo id hay que conocer).
-- B3 `x-push-secret` se compara con `===` (no constante) en `send-push`, `moderate-match-photo`, `moderate-dm-photo`, `safety-alert`, `gift-worker`. Usar comparación en tiempo constante.
+- B3 `x-push-secret` se comparaba con `!==` (no constante) en `send-push` y `moderate-match-photo`; `moderate-dm-photo`, `safety-alert` y `gift-worker` ya comparaban en tiempo constante con copias locales. **Corregido** en la rama `fix/store-blockers`: helper compartido `_shared/safeEqual.ts` en las cinco (sin desplegar).
 - B4 Un único secreto compartido para todas las funciones internas: rotarlo implica tocar todos los triggers/cron.
 - B5 `businesses.stripe_account_id` legible por público: es un id `acct_…` no secreto, pero no hace falta exponerlo.
 
@@ -81,7 +81,7 @@ Controles de no regresión (OK1–OK7: ves tus stories, el autor ve sus vistas, 
 | subscriptions | false | firma Stripe + `getUser` | OK |
 | stripe-webhook | false | `constructEvent` (firma) | OK |
 | delete-account, stripe-refund, menu-assistant | sin entrada en config.toml (por defecto true) | `getUser` | OK |
-| send-push, gift-worker, moderate-dm-photo, moderate-match-photo, safety-alert | false | `x-push-secret` | B3/B4 |
+| send-push, gift-worker, moderate-dm-photo, moderate-match-photo, safety-alert | false | `x-push-secret` (tiempo constante tras `fix/store-blockers`) | B3 corregido; B4 sigue |
 | tab-pay | false | `pay_token` no adivinable; solo un `tab_payment` pendiente; el importe lo calcula el servidor | OK por diseño (pagador sin cuenta); revisar expiración del token |
 | guest-pay, guest-tab | false | hCaptcha de un solo uso + tokens de mesa/sesión | OK por diseño; revisar límites de frecuencia por IP/dispositivo |
 

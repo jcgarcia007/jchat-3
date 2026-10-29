@@ -19,6 +19,7 @@
  */
 
 import { createAdminClient } from "../_shared/supabaseAdmin.ts";
+import { safeEqual } from "../_shared/safeEqual.ts";
 import { decideDmPhoto, safeSearch, toBase64, type SafeSearch } from "../_shared/safesearch.ts";
 
 const BUCKET = "dm-media";
@@ -39,16 +40,6 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-/** Constant-time comparison of the shared header secret. */
-function safeEqual(a: string, b: string): boolean {
-  const ea = new TextEncoder().encode(a);
-  const eb = new TextEncoder().encode(b);
-  if (ea.length !== eb.length) return false;
-  let diff = 0;
-  for (let i = 0; i < ea.length; i++) diff |= ea[i] ^ eb[i];
-  return diff === 0;
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {

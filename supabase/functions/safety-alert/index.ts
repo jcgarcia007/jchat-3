@@ -25,6 +25,7 @@
  */
 
 import { createAdminClient } from "../_shared/supabaseAdmin.ts";
+import { safeEqual } from "../_shared/safeEqual.ts";
 
 const RESEND_URL = "https://api.resend.com/emails";
 const RESEND_TIMEOUT_MS = 15_000;
@@ -50,16 +51,6 @@ function isObject(value: unknown): value is Record<string, unknown> {
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-/** Constant-time string comparison (the secret is a shared header value). */
-function safeEqual(a: string, b: string): boolean {
-  const ea = new TextEncoder().encode(a);
-  const eb = new TextEncoder().encode(b);
-  if (ea.length !== eb.length) return false;
-  let diff = 0;
-  for (let i = 0; i < ea.length; i++) diff |= ea[i] ^ eb[i];
-  return diff === 0;
-}
 
 /** Only short enum-like tokens ever reach the email (reason / type / priority), never free text. */
 function token(value: unknown): string {
