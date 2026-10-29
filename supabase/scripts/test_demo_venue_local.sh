@@ -66,14 +66,14 @@ rollback;
 SQL
 }
 check "reviewer: access as owner" "$(as_user $REVIEWER)" "true,true,owner"
-gift_ok() { psq <<SQL | grep -E '^(true|false)$' | tail -1
+gift_ok() { psq <<SQL | grep -E '^(t|f)$' | tail -1
 begin;
 select set_config('request.jwt.claims','{"sub":"$REVIEWER","role":"authenticated"}',true);
 select public.gift_available('$BIZ', 'd3000000-0000-4000-8000-000000000301');
 rollback;
 SQL
 }
-check "reviewer can gift a demo person (gift_available)" "$(gift_ok)" true
+check "reviewer can gift a demo person (gift_available)" "$(gift_ok)" t
 check "stranger: refused outside the radius" "$(as_user $STRANGER | cut -d, -f1,3)" "false,outside_radius"
 
 echo "── teardown twice"
