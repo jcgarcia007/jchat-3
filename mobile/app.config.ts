@@ -15,6 +15,31 @@ import type { ExpoConfig } from 'expo/config';
 const ANDROID_GOOGLE_SERVICES = process.env.GOOGLE_SERVICES_JSON ?? './google-services.json';
 const IOS_GOOGLE_SERVICES = process.env.GOOGLE_SERVICE_INFO_PLIST ?? './GoogleService-Info.plist';
 
+// What the app collects, as App Store Connect's "App Privacy" asks for it (same table as docs/store-listing/app-privacy-labels.md; they must match).
+// Everything is linked to the user's account and nothing is used for tracking. Card numbers are typed into Stripe's own fields.
+const P = 'NSPrivacyCollectedDataTypePurpose';
+const collected = (type: string, purpose: 'AppFunctionality' | 'Analytics' = 'AppFunctionality') => ({
+  NSPrivacyCollectedDataType: `NSPrivacyCollectedDataType${type}`,
+  NSPrivacyCollectedDataTypeLinked: true,
+  NSPrivacyCollectedDataTypeTracking: false,
+  NSPrivacyCollectedDataTypePurposes: [`${P}${purpose}`],
+});
+const COLLECTED_DATA_TYPES = [
+  collected('EmailAddress'),
+  collected('Name'),
+  collected('PhoneNumber'), // optional: contact phone of a guest order
+  collected('PreciseLocation'), // sent to the server to check presence in the venue; coordinates are not stored
+  collected('PhotosorVideos'), // profile, posts, stories, DMs, Match, verification selfies
+  collected('AudioData'), // voice messages
+  collected('OtherUserContent'), // messages, posts, comments, reviews
+  collected('UserID'), // account id, push token
+  collected('PurchaseHistory'), // orders and gifts
+  collected('PaymentInfo'), // card details, collected by Stripe's fields
+  collected('CrashData', 'Analytics'), // Sentry
+  collected('PerformanceData', 'Analytics'), // Sentry
+  collected('OtherDataTypes'), // year of birth (age confirmation)
+];
+
 // iOS permission texts (English default in Info.plist; the Spanish ones live in assets/locales/es.json and are written to
 // InfoPlist.strings at prebuild). One string per key so two plugins can never disagree about it.
 const LOCATION_WHEN_IN_USE = 'JChat uses your location only while you use the app, to confirm you are at the venue and open its chat, show nearby venues on the map, and connect to card readers.';
@@ -71,6 +96,7 @@ const config: ExpoConfig = {
     privacyManifests: {
       NSPrivacyTracking: false,
       NSPrivacyTrackingDomains: [],
+      NSPrivacyCollectedDataTypes: COLLECTED_DATA_TYPES,
       NSPrivacyAccessedAPITypes: [
         { NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryUserDefaults', NSPrivacyAccessedAPITypeReasons: ['CA92.1'] },
         { NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryFileTimestamp', NSPrivacyAccessedAPITypeReasons: ['C617.1'] },
