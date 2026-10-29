@@ -26,7 +26,10 @@ pass=0; fail=0; skip=0
 for f in "$TESTS"/${1:-0}*.sql; do
   name="$(basename "$f")"
   [[ "$name" == _* ]] && continue
-  out="$( { cat "$TESTS/_helpers.sql" "$f"; printf "\nselect 'RESULT|' || coalesce(ok::text, 'skip') || '|' || name || '|' || coalesce(detail, '') from t_results;\nrollback;\n"; } \
+  # A test may contain a line `-- @apply <file>`: it is replaced by supabase/migrations/<file> (inside the same rolled-back transaction),
+  # so one test can show a flaw BEFORE a draft migration and its fix AFTER it, without applying anything for real.
+  expanded="$(python3 -c 'import re,sys,pathlib; mig=pathlib.Path(sys.argv[2]); print(re.sub(r"(?m)^-- @apply (\S+)\s*$", lambda m: (mig / m.group(1)).read_text(), pathlib.Path(sys.argv[1]).read_text()))' "$f" "$ROOT/supabase/migrations")"
+  out="$( { cat "$TESTS/_helpers.sql"; printf '%s\n' "$expanded"; printf "\nselect 'RESULT|' || coalesce(ok::text, 'skip') || '|' || name || '|' || coalesce(detail, '') from t_results;\nrollback;\n"; } \
           | docker exec -i "$DB_CONTAINER" psql -U postgres -d postgres -At -v ON_ERROR_STOP=1 2>&1 )"
   echo "── $name"
   if ! grep -q '^RESULT|' <<<"$out"; then
