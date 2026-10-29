@@ -1,4 +1,4 @@
--- 250: reportar historias (stories). BORRADOR PARA REVISIÓN: NO está aplicada en Supabase. La aplica Juan Carlos por MCP, DESPUÉS de la 248.
+-- 250: reportar historias (stories). APLICADA en producción por MCP el 2026-10-29, después de la 248.
 -- Reversión: supabase/rollbacks/250_story_reports_rollback.sql · Comprobación: supabase/scripts/250_check.sql · Prueba local: supabase/tests/11_story_reports.sql
 --
 -- Apple 1.2 / Google UGC: las historias no se podían reportar (report_content solo aceptaba user/post/comment/message/dm_message) ni ocultar

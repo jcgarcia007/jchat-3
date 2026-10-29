@@ -1,5 +1,5 @@
 -- 248: security hardening found by the 2026-10-28 audit (docs/audits/2026-10-28/seguridad.md).
--- BORRADOR PARA REVISIÓN: NO está aplicada en Supabase. La aplica Juan Carlos por MCP.
+-- APLICADA en producción por MCP el 2026-10-29 (migración `security_hardening_248`; el SQL de abajo es el que se aplicó).
 -- Reversión: supabase/rollbacks/248_security_hardening_rollback.sql · Comprobación: supabase/scripts/248_check.sql
 -- Demostración local (antes / después, dentro de una transacción que se revierte): supabase/tests/10_security_attacks.sql
 --
