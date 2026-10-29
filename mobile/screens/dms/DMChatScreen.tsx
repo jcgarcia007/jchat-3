@@ -220,6 +220,7 @@ function MessageBubble({ message, isOwn, onReportPhoto, onOpenPhoto, onLongPress
             >
               <Image
                 source={{ uri: mediaUri }}
+                accessibilityLabel={t('dmChat.photoA11y')}
                 style={[styles.bubbleImage, photoBlurred && styles.bubbleImageGated]}
                 resizeMode="cover"
                 blurRadius={photoBlurred ? 40 : 0}

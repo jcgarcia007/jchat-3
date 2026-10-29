@@ -162,7 +162,7 @@ export default function MatchProfileScreen() {
                 accessibilityLabel={t('profileView.photoA11y', { name })}
                 style={[styles.mainPhoto, { borderColor: card.super_liked_me ? c.brand : c.borderSubtle }]}
               >
-                <Image source={{ uri: urls[photos[0]] }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                <Image source={{ uri: urls[photos[0]] }} style={StyleSheet.absoluteFill} contentFit="cover" accessible={false} />
               </Pressable>
             ) : null}
 
@@ -177,7 +177,7 @@ export default function MatchProfileScreen() {
                       accessibilityLabel={t('profileView.photoA11y', { name })}
                       style={styles.thumb}
                     >
-                      <Image source={{ uri: urls[path] }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                      <Image source={{ uri: urls[path] }} style={StyleSheet.absoluteFill} contentFit="cover" accessible={false} />
                     </Pressable>
                   ) : null,
                 )}

@@ -197,7 +197,7 @@ export default function MatchActivityScreen() {
         >
           <View style={[styles.avatar, { backgroundColor: c.bgSurface }]}>
             {photo ? (
-              <Image source={{ uri: photo }} style={StyleSheet.absoluteFill} contentFit="cover" />
+              <Image source={{ uri: photo }} style={StyleSheet.absoluteFill} contentFit="cover" accessible={false} />
             ) : (
               <IconUser size={24} color={c.textTertiary} />
             )}

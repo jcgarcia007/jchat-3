@@ -316,6 +316,7 @@ export default function StoryViewerScreen({
           source={{ uri: currentStory.media_url }}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
+          accessibilityLabel={t('storyViewer.imageA11y', { name: currentGroup?.displayName ?? currentGroup?.username ?? t('post.unknownAuthor') })}
         />
 
         {/* ── Dim overlay ────────────────────────────────────────────── */}
@@ -365,6 +366,7 @@ export default function StoryViewerScreen({
               <Image
                 source={{ uri: currentGroup.avatarUrl }}
                 style={styles.authorAvatar}
+                accessible={false}
               />
             ) : (
               <View style={[styles.authorAvatar, styles.avatarPlaceholder]} />
@@ -491,6 +493,7 @@ export default function StoryViewerScreen({
                       <Image
                         source={{ uri: item.viewer.avatar_url }}
                         style={styles.viewerAvatar}
+                        accessible={false}
                       />
                     ) : (
                       <View

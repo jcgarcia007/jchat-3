@@ -238,7 +238,7 @@ export default function UserQuickCard({
           <Pressable onPress={() => {}} style={[styles.card, { backgroundColor: bg }]}>
             <Pressable style={styles.header} onPress={handleProfile} accessibilityRole="button">
               {targetAvatar ? (
-                <Image source={{ uri: targetAvatar }} style={styles.avatar} />
+                <Image source={{ uri: targetAvatar }} style={styles.avatar} accessible={false} />
               ) : (
                 <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: c.bgElevated }]}>
                   <Text style={[styles.avatarInitial, { color: c.textPrimary }]}>

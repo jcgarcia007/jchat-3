@@ -112,6 +112,7 @@
     "block": "Block",
     "cancel": "Cancel",
     "blockErrorTitle": "Could not block",
-    "blockError": "Something went wrong. Try again."
+    "blockError": "Something went wrong. Try again.",
+    "imageA11y": "Story by {{name}}"
   }
 }

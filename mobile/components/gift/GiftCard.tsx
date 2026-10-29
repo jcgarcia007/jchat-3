@@ -242,7 +242,7 @@ function GiftDetailsSheet({ visible, onClose, view }: { visible: boolean; onClos
           {view.items.map((item) => (
             <View key={item.menu_item_id} style={[styles.itemRow, { borderBottomColor: c.borderSubtle }]}>
               {photos[item.menu_item_id] ? (
-                <Image source={{ uri: photos[item.menu_item_id] }} style={styles.photo} />
+                <Image source={{ uri: photos[item.menu_item_id] }} style={styles.photo} accessible={false} />
               ) : (
                 <View style={[styles.photo, { backgroundColor: c.bgElevated }]} />
               )}

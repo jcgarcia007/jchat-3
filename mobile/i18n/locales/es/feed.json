@@ -112,6 +112,7 @@
     "block": "Bloquear",
     "cancel": "Cancelar",
     "blockErrorTitle": "No se pudo bloquear",
-    "blockError": "Algo salió mal. Inténtalo de nuevo."
+    "blockError": "Algo salió mal. Inténtalo de nuevo.",
+    "imageA11y": "Historia de {{name}}"
   }
 }

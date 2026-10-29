@@ -70,6 +70,7 @@
     "takePhoto": "Take photo",
     "chooseFromGallery": "Choose from gallery",
     "openPhotoA11y": "View photo full screen",
+    "photoA11y": "Photo in the conversation",
     "gifNotAllowedTitle": "GIF not allowed",
     "gifNotAllowed": "GIFs aren't supported in messages. Please choose another photo.",
     "photoViewerErrorTitle": "Couldn't open the photo",

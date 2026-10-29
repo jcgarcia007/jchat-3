@@ -340,6 +340,7 @@ export function MessageBubble({
             <Image
               source={{ uri: message.sender_avatar }}
               style={[styles.avatar, { borderColor: theme.border }]}
+              accessible={false}
             />
           ) : (
             <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: theme.bubbleInBg, borderColor: theme.border }]}>
@@ -413,7 +414,7 @@ export function MessageBubble({
           style={[styles.avatarWrap, webSlop(6), Platform.OS === 'web' ? { marginBottom: -4 } : null]}
         >
           {message.sender_avatar ? (
-            <Image source={{ uri: message.sender_avatar }} style={[styles.avatar, { borderColor: theme.border }]} />
+            <Image source={{ uri: message.sender_avatar }} style={[styles.avatar, { borderColor: theme.border }]} accessible={false} />
           ) : (
             <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: theme.bubbleOutBg, borderColor: theme.border }]}>
               <Text style={[styles.avatarInitial, { color: theme.bubbleOutText }]}>{getInitials(displayName)}</Text>

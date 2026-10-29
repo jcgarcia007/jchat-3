@@ -88,7 +88,7 @@ export default function MatchItsAMatchScreen() {
 
   const photo = (url: string | null) =>
     url ? (
-      <Image source={{ uri: url }} style={StyleSheet.absoluteFill} contentFit="cover" />
+      <Image source={{ uri: url }} style={StyleSheet.absoluteFill} contentFit="cover" accessible={false} />
     ) : (
       <View style={[StyleSheet.absoluteFill, styles.photoPlaceholder, { backgroundColor: c.bgElevated }]}>
         <IconUser size={36} color={c.textTertiary} />

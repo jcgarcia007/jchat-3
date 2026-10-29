@@ -319,7 +319,7 @@ export default function MatchMyProfileScreen() {
                 style={[styles.tile, { width: tile, height: tile * 1.25, backgroundColor: c.bgElevated }]}
               >
                 {photo.url ? (
-                  <Image source={{ uri: photo.url }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                  <Image source={{ uri: photo.url }} style={StyleSheet.absoluteFill} contentFit="cover" accessible={false} />
                 ) : null}
                 <View style={[styles.statusPill, { backgroundColor: statusColor(photo.status) }]}>
                   <Text style={[styles.statusText, { color: palette.onBrand }]}>
