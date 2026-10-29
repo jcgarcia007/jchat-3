@@ -25,11 +25,12 @@ import { useUnreadBadge } from '../../hooks/useUnreadBadge';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import ProfileTabAvatar from './ProfileTabAvatar';
+import { notchSegment } from './notchGeometry';
 
 export const BAR_HEIGHT = 68;
 const BAR_RADIUS = 34;
+/** Width reserved in the middle of the bar for the notch (the two groups of tabs share the rest). notchGeometry's notch must fit in it. */
 const NOTCH_WIDTH = 104;
-const NOTCH_DEPTH = 34;
 /** Android has no drop shadow on a view without a background, so the shadow is a second, blurred copy of the path. */
 const SHADOW_OFFSET_Y = 4;
 const SHADOW_BLUR = 6;
@@ -38,13 +39,10 @@ const IS_IOS = Platform.OS === 'ios';
 
 function notchPath(width: number): string {
   const center = width / 2;
-  const notchLeft = center - NOTCH_WIDTH / 2;
-  const notchRight = center + NOTCH_WIDTH / 2;
   return [
     `M ${BAR_RADIUS} 0`,
-    `H ${notchLeft}`,
-    `C ${center - 39} 0, ${center - 38} ${NOTCH_DEPTH}, ${center} ${NOTCH_DEPTH}`,
-    `C ${center + 38} ${NOTCH_DEPTH}, ${center + 39} 0, ${notchRight} 0`,
+    // The notch: a bowl concentric with the centre button + rounded shoulders (see notchGeometry.ts).
+    ...notchSegment(center),
     `H ${width - BAR_RADIUS}`,
     `A ${BAR_RADIUS} ${BAR_RADIUS} 0 0 1 ${width} ${BAR_RADIUS}`,
     `V ${BAR_HEIGHT - BAR_RADIUS}`,
