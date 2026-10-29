@@ -210,7 +210,8 @@ const config: ExpoConfig = {
       '@stripe/stripe-react-native',
       {
         merchantIdentifier: 'merchant.com.otunitylabs.jchat',
-        enableGooglePay: false,
+        // Google Pay in the native PaymentSheet (orders and gifts). services/stripe.ts sets googlePay.testEnv from the publishable key.
+        enableGooglePay: true,
       },
     ],
     // Stripe Terminal: physical card reader support for the employee POS (C2a).

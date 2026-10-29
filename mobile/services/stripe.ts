@@ -30,6 +30,7 @@ import { supabase, isSupabaseConfigured } from './supabase';
 import { readVenueCoords } from './venueAccess';
 import { AppError, toUserMessage } from '../utils/errors';
 import { palette } from '../theme/tokens';
+import { isStripeTestKey } from '../utils/walletDiagnostic';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -345,7 +346,9 @@ async function presentSheetForParams(params: PaymentSheetParams): Promise<Stripe
     // Google Pay
     googlePay: {
       merchantCountryCode: 'US',
-      testEnv: __DEV__,
+      // The environment follows the KEY, not the build: a release build pointed at Stripe test mode must use Google Pay's TEST environment
+      // (and a live key the production one); __DEV__ was false in every store build.
+      testEnv: isStripeTestKey(params.publishableKey),
     },
     // Appearance — uses the JChat brand color token
     appearance: {
