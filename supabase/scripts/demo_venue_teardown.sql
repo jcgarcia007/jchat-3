@@ -17,6 +17,9 @@ begin
   delete from public.room_geo_presence where room_id in (select id from public.rooms where business_id = v_biz);
   delete from public.room_members where room_id in (select id from public.rooms where business_id = v_biz);
 
+  delete from public.match_presence where business_id = v_biz;
+  delete from public.game_optins where business_id = v_biz;
+  delete from public.business_games where business_id = v_biz;
   delete from public.tables where business_id = v_biz;
   delete from public.menu_items where business_id = v_biz;
   delete from public.menu_categories where business_id = v_biz;

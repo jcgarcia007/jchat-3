@@ -13,6 +13,9 @@
 --   · el local "JChat Demo" (subdominio jchat-demo), verificado, abierto 24 h, en Apple Park (Cupertino), radio por defecto
 --   · sala principal, 6 mesas T1–T6, 2 categorías y 10 productos (2 con id_required: cerveza y vino)
 --   · 4 personas ficticias (users.is_test = true, sin foto: la app muestra iniciales) y 8 mensajes de bienvenida en el chat
+--   · Match y Verdad o Reto activados en el local, y PRESENCIA de 14 días para la revisora y las 4 personas (room_geo_presence + match_presence).
+--     Por qué: el dueño entra al chat sin GPS pero eso NO le da presencia (venue_presence_ok mira room_geo_presence), y los regalos, Match y
+--     Verdad o Reto exigen presencia. Sin estas filas la revisora vería el chat pero no podría probar nada más. Vuelve a ejecutar el seed para renovar los 14 días.
 -- Qué toca de la cuenta del revisor: SOLO su plan (users.plan = 'business'), porque el límite de locales por plan (enforce_business_limit) da 0 locales
 -- a una cuenta 'regular'. No toca nada más de ella.
 
@@ -136,5 +139,28 @@ begin
             now() - ((v_msg->>'m')::int * interval '1 minute'))
     on conflict (id) do nothing;
   end loop;
+
+  -- 10. games on, and 14 days of presence so a remote reviewer can try gifts, Match and Truth or Dare (see the header)
+  -- only for the games the catalog (public.games) really has: production has both; a bare local database may not
+  insert into public.business_games (business_id, game_key, enabled)
+  select v_biz, g.key, true from public.games g where g.key in ('match', 'truth_or_dare')
+  on conflict (business_id, game_key) do update set enabled = true, updated_at = now();
+  insert into public.room_geo_presence (room_id, user_id, expires_at, last_seen_at)
+  select v_room, u, now() + interval '14 days', now()
+    from unnest(array[v_reviewer,
+      'd3000000-0000-4000-8000-000000000301'::uuid, 'd3000000-0000-4000-8000-000000000302'::uuid,
+      'd3000000-0000-4000-8000-000000000303'::uuid, 'd3000000-0000-4000-8000-000000000304'::uuid]) as u
+  on conflict (room_id, user_id) do update set expires_at = excluded.expires_at, last_seen_at = excluded.last_seen_at;
+  insert into public.game_optins (user_id, business_id, game_key)
+  select u, v_biz, 'match' from unnest(array[
+      'd3000000-0000-4000-8000-000000000301'::uuid, 'd3000000-0000-4000-8000-000000000302'::uuid,
+      'd3000000-0000-4000-8000-000000000303'::uuid, 'd3000000-0000-4000-8000-000000000304'::uuid]) as u
+  where exists (select 1 from public.games where key = 'match')
+  on conflict do nothing;
+  insert into public.match_presence (user_id, business_id, entered_at, last_seen_at, expires_at, active_since, method)
+  select u, v_biz, now(), now(), now() + interval '14 days', now(), 'geo' from unnest(array[
+      'd3000000-0000-4000-8000-000000000301'::uuid, 'd3000000-0000-4000-8000-000000000302'::uuid,
+      'd3000000-0000-4000-8000-000000000303'::uuid, 'd3000000-0000-4000-8000-000000000304'::uuid]) as u
+  on conflict (user_id, business_id) do update set expires_at = excluded.expires_at, last_seen_at = excluded.last_seen_at, active_since = coalesce(public.match_presence.active_since, now());
 end
 $demo$;

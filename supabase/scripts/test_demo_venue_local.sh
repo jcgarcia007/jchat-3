@@ -31,6 +31,9 @@ insert into auth.users (id, instance_id, aud, role, email) values
 insert into public.users (id, username) values ('$REVIEWER','reviewer_test'),('$STRANGER','stranger_test') on conflict do nothing;
 SQL
 
+# a bare local database has no game catalog (production does): add the two games for the test and remove them at the end if we added them
+GAMES_ADDED="$(psq -c "insert into public.games (key, name_es, name_en) select k, k, k from unnest(array['match','truth_or_dare']) k where not exists (select 1 from public.games g where g.key = k) returning key" | tr '\n' ' ')"
+
 echo "── marker left unreplaced is refused"
 if psq < "$ROOT/supabase/scripts/demo_venue_seed.sql" >/dev/null 2>&1; then bad "the seed ran with the marker :reviewer_user_id still in it"; else ok "the seed stops with a clear error when the marker is not replaced"; fi
 
@@ -49,6 +52,9 @@ check "2 items with id_required" "$(psq -c "select count(*) from public.menu_ite
 check "1 main room" "$(psq -c "select count(*) from public.rooms where business_id='$BIZ' and is_main")" 1
 check "4 test people" "$(psq -c "select count(*) from public.users where is_test and id::text like 'd3000000-%'")" 4
 check "8 messages" "$(psq -c "select count(*) from public.messages where room_id='$ROOM'")" 8
+check "Match and Truth or Dare on" "$(psq -c "select count(*) from public.business_games where business_id='$BIZ' and enabled")" 2
+check "presence for the reviewer and the 4 people" "$(psq -c "select count(*) from public.room_geo_presence where room_id='$ROOM' and expires_at > now() + interval '13 days'")" 5
+check "the reviewer passes venue_presence_ok (gifts, Match, Truth or Dare need it)" "$(psq -c "select public.venue_presence_ok('$BIZ', '$REVIEWER')")" t
 check "reviewer got a plan that allows a business" "$(psq -c "select plan from public.users where id='$REVIEWER'")" business
 
 echo "── the reviewer enters the venue chat with NO location (far away: London); a stranger from there is refused"
@@ -60,6 +66,14 @@ rollback;
 SQL
 }
 check "reviewer: access as owner" "$(as_user $REVIEWER)" "true,true,owner"
+gift_ok() { psq <<SQL | grep -E '^(true|false)$' | tail -1
+begin;
+select set_config('request.jwt.claims','{"sub":"$REVIEWER","role":"authenticated"}',true);
+select public.gift_available('$BIZ', 'd3000000-0000-4000-8000-000000000301');
+rollback;
+SQL
+}
+check "reviewer can gift a demo person (gift_available)" "$(gift_ok)" true
 check "stranger: refused outside the radius" "$(as_user $STRANGER | cut -d, -f1,3)" "false,outside_radius"
 
 echo "── teardown twice"
@@ -72,6 +86,7 @@ check "reviewer account untouched" "$(psq -c "select count(*) from public.users 
 
 echo "── seed → teardown once more, then clean the test people"
 seed && teardown && ok "seed then teardown" || bad "seed then teardown"
+[ -n "$GAMES_ADDED" ] && psq >/dev/null -c "delete from public.games where key in ('match','truth_or_dare')"
 psq >/dev/null -c "delete from public.users where id in ('$REVIEWER','$STRANGER'); delete from auth.users where id in ('$REVIEWER','$STRANGER');"
 
 echo
