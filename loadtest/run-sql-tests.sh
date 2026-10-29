@@ -3,7 +3,7 @@
 # loadtest/local-up.sh). LOCAL ONLY: it talks to the container through `docker exec`, never to a network address, and it refuses to
 # run if the container is not the local one or if DOCKER_HOST is not a local socket.
 #
-#   bash loadtest/run-sql-tests.sh              # every supabase/tests/0*.sql
+#   bash loadtest/run-sql-tests.sh              # every supabase/tests/*.sql (with a prefix, e.g. 10, only the files that start with it)
 #   bash loadtest/run-sql-tests.sh 04           # only the files whose name starts with 04
 #
 # Each file runs inside ONE transaction that always ends in ROLLBACK (see supabase/tests/_helpers.sql): nothing it seeds survives.
@@ -23,7 +23,7 @@ esac
 docker ps --format '{{.Names}}' | grep -qx "$DB_CONTAINER" || { echo "local database container $DB_CONTAINER is not running (bash loadtest/local-up.sh)"; exit 2; }
 
 pass=0; fail=0; skip=0
-for f in "$TESTS"/${1:-0}*.sql; do
+for f in "$TESTS"/${1:-}*.sql; do
   name="$(basename "$f")"
   [[ "$name" == _* ]] && continue
   # A test may contain a line `-- @apply <file>`: it is replaced by supabase/migrations/<file> (inside the same rolled-back transaction),
