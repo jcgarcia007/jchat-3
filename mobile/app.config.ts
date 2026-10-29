@@ -17,7 +17,7 @@ const IOS_GOOGLE_SERVICES = process.env.GOOGLE_SERVICE_INFO_PLIST ?? './GoogleSe
 
 // iOS permission texts (English default in Info.plist; the Spanish ones live in assets/locales/es.json and are written to
 // InfoPlist.strings at prebuild). One string per key so two plugins can never disagree about it.
-const LOCATION_WHEN_IN_USE = 'JChat uses your location to show nearby venues on the map and to connect to nearby card readers.';
+const LOCATION_WHEN_IN_USE = 'JChat uses your location only while you use the app, to confirm you are at the venue and open its chat, show nearby venues on the map, and connect to card readers.';
 const CAMERA = 'JChat uses the camera to take photos for chat, posts and your profile, and to scan inventory barcodes.';
 const FACE_ID = 'JChat uses Face ID to unlock the app when you turn on biometric lock.';
 const MOTION = "JChat uses your device's motion sensors to detect how you are holding it, so photos you take with the camera are saved the right way up.";

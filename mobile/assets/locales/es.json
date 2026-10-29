@@ -3,7 +3,7 @@
     "NSPhotoLibraryUsageDescription": "JChat usa tus fotos para tu perfil, publicaciones, mensajes y Match.",
     "NSCameraUsageDescription": "JChat usa la cámara para tomar fotos para el chat, las publicaciones y tu perfil, y para escanear códigos de barras del inventario.",
     "NSMicrophoneUsageDescription": "JChat necesita tu micrófono para enviar notas de voz.",
-    "NSLocationWhenInUseUsageDescription": "JChat usa tu ubicación para mostrar los locales cercanos en el mapa y para conectar con lectores de tarjetas cercanos.",
+    "NSLocationWhenInUseUsageDescription": "JChat usa tu ubicación solo mientras usas la app, para confirmar que estás en el local y abrir su chat, mostrar los locales cercanos en el mapa y conectar con lectores de tarjetas.",
     "NSFaceIDUsageDescription": "JChat usa Face ID para desbloquear la app cuando activas el bloqueo biométrico.",
     "NSMotionUsageDescription": "JChat usa los sensores de movimiento de tu dispositivo para detectar cómo sostienes el teléfono y que las fotos que tomas con la cámara se guarden en la orientación correcta.",
     "NSBluetoothAlwaysUsageDescription": "JChat usa Bluetooth para conectarse a los lectores de tarjetas Stripe Terminal en pagos presenciales.",
