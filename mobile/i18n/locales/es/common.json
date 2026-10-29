@@ -1,5 +1,6 @@
 {
   "appName": "JChat",
+  "idRequiredNotice": "Solo para mayores de 21. Te pedirán identificación en el local.",
   "back": "Volver",
   "actions": {
     "ok": "OK",

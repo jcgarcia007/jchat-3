@@ -3482,6 +3482,7 @@ export default function MenuPage() {
           dietary_tags: it.dietary_tags,
           badge: it.badge,
           stock_count: it.stock_count,
+          id_required: it.id_required,
           options: { sizes: it.options?.sizes ?? [], extras: it.options?.extras ?? [] },
           groups: [],
           photos: [],

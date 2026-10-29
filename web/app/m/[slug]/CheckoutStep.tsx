@@ -48,6 +48,8 @@ export interface CheckoutCartItem {
   selectedExtras: MenuItemOption[];
   groupSelections: GroupSel[];
   notes?: string;
+  /** 21+ product: shows the ID notice before paying. */
+  idRequired?: boolean;
 }
 
 const fmt = formatCents;
@@ -347,6 +349,15 @@ export function CheckoutStep({
             <span style={{ fontSize: 18, fontWeight: 800 }}>{fmt(intent.serverTotalCents)}</span>
           </div>
           <Muted>{t("finalAmountNote")}</Muted>
+          {cartItems.some((ci) => ci.idRequired) && (
+            <div
+              role="note"
+              data-testid="id-required-notice"
+              style={{ fontSize: 13, lineHeight: "18px", padding: "10px 12px", borderRadius: 10, border: "1px solid var(--color-warning)", color: "var(--text-primary)" }}
+            >
+              {t("idNotice")}
+            </div>
+          )}
           <Elements
             stripe={stripePromise}
             options={{ clientSecret: intent.clientSecret, appearance: { theme: "stripe" } }}

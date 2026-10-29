@@ -13,6 +13,8 @@ export interface GiftPayPageProps {
   /** The gifted products, already shortened ("A, B +1"). */
   itemsSummary: string;
   itemCount: number;
+  /** A gifted product is 21+ (id_required): the pay step shows the ID notice. */
+  idRequired?: boolean;
   payParams: GiftHoldParams;
   /** The fine print under the Pay button (holdNote). */
   note: string;

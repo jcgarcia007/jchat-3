@@ -10,6 +10,7 @@
     "preparingPayment": "Preparando el pago…",
     "estimatedTotal": "Total estimado",
     "finalAmountNote": "El importe definitivo aparecerá en tu recibo tras el pago.",
+    "idNotice": "Solo para mayores de 21. Te pedirán identificación en el local.",
     "paymentReceived": "¡Pago recibido!",
     "orderStartingNote": "El negocio ya tiene tu pedido y empezará a prepararlo.",
     "receiptWarning": "Guarda o imprime este recibo: no podrás volver a consultarlo.",

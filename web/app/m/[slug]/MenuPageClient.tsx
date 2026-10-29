@@ -71,6 +71,8 @@ interface CartItem {
   groupSelections: GroupSelection[];
   lineTotalCents: number;
   notes?: string;
+  /** 21+ product: the pay step shows the ID notice. */
+  idRequired?: boolean;
 }
 
 type AppStep = "menu" | "cart" | "pickup" | "choice" | "tabCode" | "noCode" | "tabConfirm" | "pay"
@@ -1984,6 +1986,7 @@ export default function MenuPageClient({
           groupSelections,
           lineTotalCents,
           notes: notes?.trim() || undefined,
+          idRequired: item.id_required === true,
         },
       ]);
       setCustomizerItem(null);

@@ -24,6 +24,7 @@ import { IconArrowLeft } from '@tabler/icons-react-native';
 import { useThemeColors } from '../../theme/colors';
 import { formatCents } from '../../utils/currency';
 import { GiftPaymentForm } from './GiftPaymentForm';
+import { IdRequiredNotice } from '../common/IdRequiredNotice';
 import type { GiftPayPageProps } from './GiftPayPage';
 
 export type { GiftPayPageProps } from './GiftPayPage';
@@ -31,7 +32,7 @@ export type { GiftPayPageProps } from './GiftPayPage';
 /** px under the content so the Pay button can scroll above the keyboard's autofill bar. */
 const AUTOFILL_BAR_GAP = 88;
 
-export function GiftPayPage({ recipientName, venueName, itemsSummary, itemCount, payParams, note, onBack, onHeld, onBusyChange }: GiftPayPageProps): React.ReactElement {
+export function GiftPayPage({ recipientName, venueName, itemsSummary, itemCount, idRequired, payParams, note, onBack, onHeld, onBusyChange }: GiftPayPageProps): React.ReactElement {
   const c = useThemeColors();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation('chat');
@@ -80,6 +81,7 @@ export function GiftPayPage({ recipientName, venueName, itemsSummary, itemCount,
             <Text style={[styles.totalValue, { color: c.textPrimary }]}>{formatCents(payParams.totalCents)}</Text>
           </View>
         </View>
+        {idRequired ? <IdRequiredNotice /> : null}
         <GiftPaymentForm
           clientSecret={payParams.clientSecret}
           publishableKey={payParams.publishableKey}

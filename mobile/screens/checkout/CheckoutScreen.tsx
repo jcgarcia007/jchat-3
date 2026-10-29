@@ -60,6 +60,7 @@ import {
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { useCart } from '../../context/CartContext';
+import { IdRequiredNotice } from '../../components/common/IdRequiredNotice';
 import { useAuth } from '../../context/AuthContext';
 import { initAndPresentPaymentSheet, quoteOrder, QuoteError } from '../../services/stripe';
 import { fetchVenueAccess, readVenueCoords } from '../../services/venueAccess';
@@ -983,6 +984,7 @@ export default function CheckoutScreen() {
 
         {/* ── Pay Button Bar (sticky) ── */}
         <View style={[styles.payBar, { backgroundColor: c.bgSurface, borderTopColor: c.borderSubtle }]}>
+          {lines.some((l) => l.item.id_required) ? <IdRequiredNotice /> : null}
           <Animated.View style={{ transform: [{ scale: payBtnScale }], width: '100%' }}>
             <Pressable
               onPress={() => { void handlePay(); }}

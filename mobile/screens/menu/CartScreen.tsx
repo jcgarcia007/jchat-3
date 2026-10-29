@@ -61,6 +61,7 @@ import {
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { useCart } from '../../context/CartContext';
+import { IdRequiredNotice } from '../../components/common/IdRequiredNotice';
 import { qtyOfItemInOtherLines, stockLimitOf } from '../../context/CartContext';
 import type { CartLine, OrderType } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
@@ -676,6 +677,7 @@ export default function CartScreen() {
             </Text>
           ) : null}
 
+          {lines.some((l) => l.item.id_required) ? <IdRequiredNotice /> : null}
           <Pressable
             onPress={handleProceedToCheckout}
             disabled={!canCheckout}

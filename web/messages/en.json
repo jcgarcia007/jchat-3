@@ -10,6 +10,7 @@
     "preparingPayment": "Preparing your payment…",
     "estimatedTotal": "Estimated total",
     "finalAmountNote": "The final amount will appear on your receipt after payment.",
+    "idNotice": "Only for ages 21 and over. You will be asked for ID at the venue.",
     "paymentReceived": "Payment received!",
     "orderStartingNote": "The business already has your order and will start preparing it.",
     "receiptWarning": "Save or print this receipt: you won't be able to view it again.",

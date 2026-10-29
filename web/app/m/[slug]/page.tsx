@@ -67,6 +67,8 @@ export interface PublicMenuItem {
   dietary_tags: string[];
   badge: string | null;
   stock_count: number | null;
+  /** The product is only served to people of 21 or more (the venue asks for ID). */
+  id_required: boolean;
   options: ItemOptions;
   groups: ModifierGroup[];
   sort: number;
@@ -167,7 +169,7 @@ async function getMenuData(slug: string, embed = false): Promise<{
   const { data: rawItems } = await supabase
     .from("menu_items")
     .select(
-      "id, category_id, name, description, price_cents, photo_url, dietary_tags, badge, stock_count, options, sort"
+      "id, category_id, name, description, price_cents, photo_url, dietary_tags, badge, stock_count, options, sort, id_required"
     )
     .eq("business_id", biz.id)
     .eq("is_published", true)
@@ -301,6 +303,7 @@ async function getMenuData(slug: string, embed = false): Promise<{
           dietary_tags: ((i.dietary_tags ?? []) as string[]),
           badge: i.badge ?? null,
           stock_count: i.stock_count ?? null,
+          id_required: i.id_required === true,
           options: opts,
           groups: buildGroups(i.id, opts),
           sort: i.sort,

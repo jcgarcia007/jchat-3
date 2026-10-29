@@ -33,6 +33,7 @@ import { holdGiftPayment } from '../../services/stripe';
 import { fetchGiftHold } from '../../services/giftHold';
 import type { GiftHoldParams } from '../../utils/giftHold';
 import { GiftPayPage } from './GiftPayPage';
+import { IdRequiredNotice } from '../common/IdRequiredNotice';
 import { formatCents } from '../../utils/currency';
 import { showAlert } from '../../utils/dialog';
 
@@ -149,6 +150,12 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
   }, [categories]);
 
   const lines = useMemo(() => Object.entries(qty).filter(([, n]) => n > 0), [qty]);
+  const idById = useMemo(() => {
+    const map = new Map<string, boolean>();
+    categories.forEach((cat) => cat.items.forEach((i) => map.set(i.id, i.id_required === true)));
+    return map;
+  }, [categories]);
+  const needsId = lines.some(([id]) => idById.get(id) === true);
   const count = lines.reduce((sum, [, n]) => sum + n, 0);
   const subtotal = lines.reduce((sum, [id, n]) => sum + (priceById.get(id) ?? 0) * n, 0);
   const locked = offerId !== null;
@@ -239,6 +246,7 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
         venueName={venueName ?? ''}
         itemsSummary={paySummary}
         itemCount={count}
+        idRequired={needsId}
         payParams={payParams}
         note={holdNote}
         onBack={handleClose}
@@ -326,6 +334,7 @@ export function GiftSheet({ visible, onClose, businessId, recipient, conversatio
             accessibilityLabel={t('gift.notePlaceholder')}
           />
 
+          {needsId ? <IdRequiredNotice /> : null}
           <Pressable
             onPress={() => void handleSend()}
             disabled={sending || count === 0}
