@@ -20,9 +20,11 @@ interface Props {
   /** The viewer published this result. */
   isOwn: boolean;
   authorName: string;
+  /** Opens the chat's message sheet (report / block) for this result; given for other people's results only. */
+  onReport?: () => void;
 }
 
-export function TodDrawResult({ metadata, theme, isOwn, authorName }: Props) {
+export function TodDrawResult({ metadata, theme, isOwn, authorName, onReport }: Props) {
   const { t, i18n } = useTranslation('tod');
   const game = useTodChat();
   const meta = parseDrawMeta(metadata);
@@ -56,6 +58,7 @@ export function TodDrawResult({ metadata, theme, isOwn, authorName }: Props) {
     <View style={styles.wrap}>
       {meta.is_random ? <Text style={[styles.random, { color: textColor }]}>🎲 {t('result.randomMark')}</Text> : null}
       <Text style={[styles.sentence, { color: textColor }]}>{sentence}</Text>
+      <View style={styles.actions}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={isOwn ? t('result.ownA11y', { count }) : t('result.applaudA11y', { count })}
@@ -68,6 +71,19 @@ export function TodDrawResult({ metadata, theme, isOwn, authorName }: Props) {
           👏 {count}
         </Text>
       </Pressable>
+      {!isOwn && onReport ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('result.reportA11y')}
+          onPress={onReport}
+          hitSlop={8}
+          style={styles.report}
+          testID="tod-report"
+        >
+          <Text style={[styles.reportText, { color: textColor }]}>{t('result.report')}</Text>
+        </Pressable>
+      ) : null}
+      </View>
     </View>
   );
 }
@@ -78,4 +94,7 @@ const styles = StyleSheet.create({
   sentence: { fontSize: 15, lineHeight: 21 },
   clap: { minHeight: 36, minWidth: 64, borderRadius: 18, borderWidth: 1, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
   clapText: { fontSize: 15, fontWeight: '700' },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  report: { minHeight: 36, justifyContent: 'center' },
+  reportText: { fontSize: 13, fontWeight: '600', textDecorationLine: 'underline', opacity: 0.8 },
 });

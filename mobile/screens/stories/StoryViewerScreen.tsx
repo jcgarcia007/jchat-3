@@ -39,8 +39,10 @@ import {
 import { AppModal } from '../../components/common/AppModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
+  IconBan,
   IconChevronLeft,
   IconEye,
+  IconFlag,
   IconX,
 } from '@tabler/icons-react-native';
 import { useTranslation } from 'react-i18next';
@@ -55,6 +57,9 @@ import {
   type StoryViewer,
 } from '../../services/stories';
 import { getAppWindow } from '../../utils/appWindow';
+import { ReportReasonSheet } from '../../components/report/ReportReasonSheet';
+import { blockUser } from '../../services/blocks';
+import { confirm, showAlert } from '../../utils/dialog';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -95,6 +100,9 @@ export default function StoryViewerScreen({
   const [showViewers, setShowViewers] = useState(false);
   const [viewers, setViewers] = useState<StoryViewer[]>([]);
   const [loadingViewers, setLoadingViewers] = useState(false);
+
+  // Report / block of somebody else's story (Apple 1.2, Google UGC). The progress bar stops while the report sheet is open.
+  const [reportOpen, setReportOpen] = useState(false);
 
   // Progress animation (one Animated.Value per story in the current user group).
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -192,6 +200,41 @@ export default function StoryViewerScreen({
       timerRef.current && clearTimeout(timerRef.current);
     };
   }, []);
+
+  // Pause the story while the report sheet is open and start its clock again when it closes.
+  const wasReporting = useRef(false);
+  useEffect(() => {
+    if (reportOpen) {
+      wasReporting.current = true;
+      animRef.current?.stop();
+      timerRef.current && clearTimeout(timerRef.current);
+    } else if (wasReporting.current) {
+      wasReporting.current = false;
+      if (visible && currentStory) startProgress();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportOpen]);
+
+  const handleBlockAuthor = useCallback(() => {
+    if (!currentGroup) return;
+    const name = currentGroup.displayName ?? currentGroup.username ?? t('post.unknownAuthor');
+    animRef.current?.stop();
+    timerRef.current && clearTimeout(timerRef.current);
+    void confirm(t('storyViewer.blockTitle', { name }), t('storyViewer.blockMessage'), {
+      confirmText: t('storyViewer.block'),
+      cancelText: t('storyViewer.cancel'),
+      destructive: true,
+    }).then(async (accepted) => {
+      if (!accepted) { startProgress(); return; }
+      try {
+        await blockUser(currentGroup.userId);
+        onClose();
+      } catch {
+        showAlert(t('storyViewer.blockErrorTitle'), t('storyViewer.blockError'));
+        startProgress();
+      }
+    });
+  }, [currentGroup, onClose, startProgress, t]);
 
   // ── Swipe gesture (left/right between users) ──────────────────────────────
 
@@ -333,6 +376,32 @@ export default function StoryViewerScreen({
               {formatTimeAgo(currentStory.created_at, t)}
             </Text>
 
+            {/* Report / block somebody else's story */}
+            {!isOwnStory ? (
+              <>
+                <TouchableOpacity
+                  onPress={() => setReportOpen(true)}
+                  hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+                  style={styles.closeBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('storyViewer.reportA11y')}
+                  testID="story-report"
+                >
+                  <IconFlag size={20} color={palette.textPrimary} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleBlockAuthor}
+                  hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+                  style={styles.closeBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('storyViewer.blockA11y')}
+                  testID="story-block"
+                >
+                  <IconBan size={20} color={palette.textPrimary} />
+                </TouchableOpacity>
+              </>
+            ) : null}
+
             {/* Close button */}
             <TouchableOpacity
               onPress={onClose}
@@ -451,6 +520,15 @@ export default function StoryViewerScreen({
           </View>
         ) : null}
       </View>
+      {currentStory && currentGroup && !isOwnStory ? (
+        <ReportReasonSheet
+          visible={reportOpen}
+          targetName={currentGroup.displayName ?? currentGroup.username ?? t('post.unknownAuthor')}
+          contentType="story"
+          contentId={currentStory.id}
+          onClose={() => setReportOpen(false)}
+        />
+      ) : null}
     </AppModal>
   );
 }

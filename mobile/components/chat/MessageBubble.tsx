@@ -138,11 +138,13 @@ interface BubbleContentProps {
   theme: ChatTheme;
   onImagePress?: (url: string) => void;
   onOrderNow?: (offer: Offer) => void;
+  /** Opens the message sheet (report / block) of this message; the Truth or Dare result shows a visible Report button with it. */
+  onReportMessage?: (message: ChatMessage) => void;
   /** Name of the author (Truth or Dare cards say who started the round / got the card). */
   displayName: string;
 }
 
-function BubbleContent({ message, isOwn, theme, onImagePress, onOrderNow, displayName }: BubbleContentProps) {
+function BubbleContent({ message, isOwn, theme, onImagePress, onOrderNow, onReportMessage, displayName }: BubbleContentProps) {
   const { t } = useTranslation('chat');
   // Some venue themes set text colours that miss 4.5:1 on their own bubble: nudge only the TEXT (same hue); bubbles keep the theme colours.
   const textColor = ensureTextContrast(isOwn ? theme.bubbleOutText : theme.bubbleInText, isOwn ? theme.bubbleOutBg : theme.bubbleInBg, 4.5);
@@ -243,7 +245,7 @@ function BubbleContent({ message, isOwn, theme, onImagePress, onOrderNow, displa
       return <TodRoundCard metadata={message.metadata} theme={theme} isOwn={isOwn} creatorName={displayName} />;
 
     case 'tod_draw':
-      return <TodDrawResult metadata={message.metadata} theme={theme} isOwn={isOwn} authorName={displayName} />;
+      return <TodDrawResult metadata={message.metadata} theme={theme} isOwn={isOwn} authorName={displayName} onReport={onReportMessage ? () => onReportMessage(message) : undefined} />;
 
     case 'system':
     default:
@@ -387,10 +389,10 @@ export function MessageBubble({
         {/* Bubble (offer messages render the full OfferCard with no bubble chrome) */}
         <Pressable onLongPress={handleLongPressMessage} delayLongPress={400} {...webContextMenuProps}>
           {isCard ? (
-            <BubbleContent message={message} isOwn={isOwn} theme={theme} onImagePress={onImagePress} onOrderNow={onOrderNow} displayName={displayName} />
+            <BubbleContent message={message} isOwn={isOwn} theme={theme} onImagePress={onImagePress} onOrderNow={onOrderNow} onReportMessage={isOwn ? undefined : onLongPressMessage} displayName={displayName} />
           ) : (
             <View style={[styles.bubble, { backgroundColor: bubbleBg }]}>
-              <BubbleContent message={message} isOwn={isOwn} theme={theme} onImagePress={onImagePress} onOrderNow={onOrderNow} displayName={displayName} />
+              <BubbleContent message={message} isOwn={isOwn} theme={theme} onImagePress={onImagePress} onOrderNow={onOrderNow} onReportMessage={isOwn ? undefined : onLongPressMessage} displayName={displayName} />
             </View>
           )}
         </Pressable>

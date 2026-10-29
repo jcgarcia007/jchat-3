@@ -104,6 +104,14 @@
     "nextA11y": "Next story",
     "viewersBtnA11y": "See who viewed this story",
     "viewers": "Viewers",
-    "noViews": "No views yet."
+    "noViews": "No views yet.",
+    "reportA11y": "Report this story",
+    "blockA11y": "Block this person",
+    "blockTitle": "Block {{name}}?",
+    "blockMessage": "You will no longer see their stories, posts or messages, and they will not see yours.",
+    "block": "Block",
+    "cancel": "Cancel",
+    "blockErrorTitle": "Could not block",
+    "blockError": "Something went wrong. Try again."
   }
 }

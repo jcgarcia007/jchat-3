@@ -104,6 +104,14 @@
     "nextA11y": "Historia siguiente",
     "viewersBtnA11y": "Ver quién vio esta historia",
     "viewers": "Espectadores",
-    "noViews": "Aún no hay vistas."
+    "noViews": "Aún no hay vistas.",
+    "reportA11y": "Reportar esta historia",
+    "blockA11y": "Bloquear a esta persona",
+    "blockTitle": "¿Bloquear a {{name}}?",
+    "blockMessage": "Dejarás de ver sus historias, publicaciones y mensajes, y no verá los tuyos.",
+    "block": "Bloquear",
+    "cancel": "Cancelar",
+    "blockErrorTitle": "No se pudo bloquear",
+    "blockError": "Algo salió mal. Inténtalo de nuevo."
   }
 }

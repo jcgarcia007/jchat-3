@@ -20,7 +20,7 @@ export const REPORT_REASONS = [
 ] as const;
 export type ReportReason = (typeof REPORT_REASONS)[number];
 
-export type ReportContentType = 'user' | 'post' | 'comment' | 'message' | 'dm_message';
+export type ReportContentType = 'user' | 'post' | 'comment' | 'message' | 'dm_message' | 'story';
 
 /** Max length of the free-text detail (the server cuts at the same size). */
 export const REPORT_DETAILS_MAX = 1000;

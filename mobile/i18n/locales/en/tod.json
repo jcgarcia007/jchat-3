@@ -36,7 +36,9 @@
     "randomMark": "Random",
     "applaud": "Applaud",
     "applaudA11y": "Applaud this result. Applause: {{count}}",
-    "ownA11y": "Your result. Applause: {{count}}"
+    "ownA11y": "Your result. Applause: {{count}}",
+    "report": "Report",
+    "reportA11y": "Report this result or block its author"
   },
   "card": {
     "title": "Your card",
