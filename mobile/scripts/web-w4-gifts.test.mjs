@@ -166,7 +166,7 @@ test('R3: on the web the card step is a full-screen page INSIDE <body>, not the 
   const page = sheet.indexOf("if (Platform.OS === 'web' && visible && payParams) {");
   const modal = sheet.indexOf('<AppModal visible={visible}');
   assert.ok(page > 0 && modal > page, 'the page returns before the Modal is rendered');
-  assert.match(sheet, /<GiftPayPage\s+recipientName=\{recipient\.name\}\s+venueName=\{venueName \?\? ''\}\s+itemsSummary=\{paySummary\}\s+itemCount=\{count\}\s+payParams=\{payParams\}\s+note=\{holdNote\}\s+onBack=\{handleClose\}\s+onHeld=\{handleHeld\}\s+onBusyChange=\{setPayBusy\}/);
+  assert.match(sheet, /<GiftPayPage\s+recipientName=\{recipient\.name\}\s+venueName=\{venueName \?\? ''\}\s+itemsSummary=\{paySummary\}\s+itemCount=\{count\}\s+idRequired=\{needsId\}\s+payParams=\{payParams\}\s+note=\{holdNote\}\s+onBack=\{handleClose\}\s+onHeld=\{handleHeld\}\s+onBusyChange=\{setPayBusy\}/);
   // the keyboard compensation of the old sheet is gone from the payment step
   assert.doesNotMatch(sheet, /useKeyboardCover|CARD_CHROME|cardFieldMaxHeight|cardScrollMaxHeight|keyboardOpen|payScroll/);
   // devices: payParams is only ever set in the web branch of handleSend, and the native twin renders nothing
