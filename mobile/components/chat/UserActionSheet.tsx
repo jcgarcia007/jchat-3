@@ -260,7 +260,7 @@ function rowStyles(c: ThemeColors) {
       fontSize: 16,
     },
     labelDestructive: {
-      color: palette.danger,
+      color: c.dangerText,
     },
     spinner: {
       marginLeft: 'auto',

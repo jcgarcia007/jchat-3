@@ -397,7 +397,7 @@ export default function ProductDetailScreen() {
             {/* ID required notice */}
             {item.id_required ? (
               <View style={[styles.idNotice, { backgroundColor: palette.warning + '22', borderColor: palette.warning + '55' }]}>
-                <Text style={[styles.idNoticeText, { color: palette.warning }]}>
+                <Text style={[styles.idNoticeText, { color: c.warningText }]}>
                   {t('productDetail.idRequired')}
                 </Text>
               </View>
@@ -412,7 +412,7 @@ export default function ProductDetailScreen() {
                   {t('productDetail.size')}
                 </Text>
                 <View style={[styles.requiredBadge, { backgroundColor: palette.danger + '22' }]}>
-                  <Text style={[styles.requiredBadgeText, { color: palette.danger }]}>
+                  <Text style={[styles.requiredBadgeText, { color: c.dangerText }]}>
                     {t('productDetail.required')}
                   </Text>
                 </View>
@@ -530,7 +530,7 @@ export default function ProductDetailScreen() {
           ) : null}
           {modifiersState === 'error' ? (
             <View style={[styles.section, { backgroundColor: c.bgSurface, alignItems: 'center' }]}>
-              <Text style={[styles.optionsStateText, { color: palette.danger }]}>{t('productDetail.optionsError')}</Text>
+              <Text style={[styles.optionsStateText, { color: c.dangerText }]}>{t('productDetail.optionsError')}</Text>
               <Pressable
                 onPress={() => setModifiersNonce((n) => n + 1)}
                 accessibilityRole="button"
@@ -555,7 +555,7 @@ export default function ProductDetailScreen() {
                   </Text>
                   {isRequired ? (
                     <View style={[styles.requiredBadge, { backgroundColor: palette.danger + '22' }]}>
-                      <Text style={[styles.requiredBadgeText, { color: palette.danger }]}>
+                      <Text style={[styles.requiredBadgeText, { color: c.dangerText }]}>
                         {t('productDetail.required')}
                       </Text>
                     </View>
@@ -701,7 +701,7 @@ export default function ProductDetailScreen() {
               </Pressable>
             </View>
             {stockLimit !== null && (stockNotice || qty >= stockLimit) ? (
-              <Text style={[styles.optionsStateText, { color: palette.warning }]}>
+              <Text style={[styles.optionsStateText, { color: c.warningText }]}>
                 {t('productDetail.onlyLeft', { count: stockLimit })}
               </Text>
             ) : null}

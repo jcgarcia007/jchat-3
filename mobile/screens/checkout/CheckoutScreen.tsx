@@ -793,7 +793,7 @@ export default function CheckoutScreen() {
                 hitSlop={8}
               >
                 <IconEdit size={16} color={palette.brand} strokeWidth={2} />
-                <Text style={[styles.editBtnText, { color: palette.brand }]}>{t('checkout.edit')}</Text>
+                <Text style={[styles.editBtnText, { color: c.brandText }]}>{t('checkout.edit')}</Text>
               </Pressable>
             </View>
 
@@ -807,7 +807,7 @@ export default function CheckoutScreen() {
                 ]}
               >
                 <View style={[styles.qtyBadge, { backgroundColor: palette.brandLight }]}>
-                  <Text style={[styles.qtyBadgeText, { color: palette.brand }]}>{row.qty}</Text>
+                  <Text style={[styles.qtyBadgeText, { color: c.brandText }]}>{row.qty}</Text>
                 </View>
                 <Text style={[styles.summaryItemName, { color: c.textPrimary }]} numberOfLines={1}>
                   {row.name}
@@ -942,7 +942,7 @@ export default function CheckoutScreen() {
 
             {quoteState.status === 'error' ? (
               <View style={styles.quoteErrorBox}>
-                <Text style={[styles.quoteErrorText, { color: palette.danger }]}>{quoteState.message}</Text>
+                <Text style={[styles.quoteErrorText, { color: c.dangerText }]}>{quoteState.message}</Text>
                 <Pressable
                   onPress={handleRetryQuote}
                   accessibilityRole="button"

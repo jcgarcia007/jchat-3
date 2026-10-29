@@ -870,7 +870,7 @@ export default function PrivacyScreen() {
               ]}
             >
               <IconLock size={11} color={palette.danger} strokeWidth={2.5} />
-              <Text style={[styles.lockedBadgeText, { color: palette.danger }]}>
+              <Text style={[styles.lockedBadgeText, { color: c.dangerText }]}>
                 {t('privacy.alwaysOffLocked')}
               </Text>
             </View>

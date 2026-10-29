@@ -536,7 +536,7 @@ export default function CartScreen() {
               {giftRecipientId && selectedGiftUser ? (
                 <View style={styles.recipientRow}>
                   <View style={[styles.recipientChip, { backgroundColor: palette.brandLight, borderColor: palette.brand }]}>
-                    <Text style={[styles.recipientName, { color: palette.brand }]}>
+                    <Text style={[styles.recipientName, { color: c.brandText }]}>
                       {selectedGiftUser.displayName}
                     </Text>
                     {selectedGiftUser.username ? (
@@ -551,7 +551,7 @@ export default function CartScreen() {
                     accessibilityRole="button"
                     accessibilityLabel={t('cart.changeRecipientA11y')}
                   >
-                    <Text style={[styles.changeBtnText, { color: palette.brand }]}>
+                    <Text style={[styles.changeBtnText, { color: c.brandText }]}>
                       {t('cart.change')}
                     </Text>
                   </Pressable>
@@ -602,7 +602,7 @@ export default function CartScreen() {
                         accessibilityLabel={t('cart.sendGiftToUserA11y', { name: u.displayName })}
                       >
                         <View style={[styles.avatarCircle, { backgroundColor: palette.brandLight }]}>
-                          <Text style={[styles.avatarInitial, { color: palette.brand }]}>
+                          <Text style={[styles.avatarInitial, { color: c.brandText }]}>
                             {getInitials(u.displayName)}
                           </Text>
                         </View>
@@ -624,7 +624,7 @@ export default function CartScreen() {
 
               {/* Required notice */}
               {!giftRecipientId ? (
-                <Text style={[styles.recipientRequired, { color: palette.warning }]}>
+                <Text style={[styles.recipientRequired, { color: c.warningText }]}>
                   {t('cart.recipientRequired')}
                 </Text>
               ) : null}
@@ -667,12 +667,12 @@ export default function CartScreen() {
         <View style={[styles.checkoutBar, { backgroundColor: c.bgSurface, borderTopColor: c.borderSubtle }]}>
           {/* Disabled hint */}
           {!canCheckout && orderType === 'gift' && !giftRecipientId ? (
-            <Text style={[styles.checkoutHint, { color: palette.warning }]}>
+            <Text style={[styles.checkoutHint, { color: c.warningText }]}>
               {t('cart.checkoutHint')}
             </Text>
           ) : null}
           {!canCheckout && orderType === 'table' && !tableLabel?.trim() ? (
-            <Text style={[styles.checkoutHint, { color: palette.warning }]}>
+            <Text style={[styles.checkoutHint, { color: c.warningText }]}>
               {t('cart.tableRequired')}
             </Text>
           ) : null}
