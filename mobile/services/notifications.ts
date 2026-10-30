@@ -37,6 +37,8 @@ import {
   type Icon as TablerIcon,
 } from '@tabler/icons-react-native';
 import { supabase, isSupabaseConfigured } from './supabase';
+import { Sentry } from './monitoring';
+import { shouldRequestPushPermission } from './pushPermission';
 import { palette } from '../theme/tokens';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -140,6 +142,28 @@ export type NotificationRoute =
 
 // ── Push permission & token registration ──────────────────────────────────────
 
+/** True once this app session has shown the system permission dialog (or tried to): never a second one in the same session. */
+let permissionRequestedThisSession = false;
+let warnedThisSession = false;
+
+/** Whether the system permission dialog was already requested in this session (the foreground retry in useNotifications must not repeat it). */
+export function pushPermissionRequestedThisSession(): boolean {
+  return permissionRequestedThisSession;
+}
+
+/** One console.warn per session for the quiet "push is off" outcomes (no alert, no modal). */
+function warnOncePerSession(message: string): void {
+  if (warnedThisSession) return;
+  warnedThisSession = true;
+  console.warn(`[notifications] ${message}`);
+}
+
+/** A push-registration failure: a short console.warn (no token, no user data) and a Sentry event (Sentry scrubs tokens in beforeSend; a no-op without a DSN). */
+export function reportPushError(message: string, error: unknown): void {
+  console.warn(`[notifications] ${message}:`, error instanceof Error ? error.message : String(error));
+  Sentry.captureException(error, { tags: { area: 'push' } });
+}
+
 /**
  * Requests push notification permission, obtains an Expo push token, and
  * upserts it into `users.push_token` for the currently authenticated user.
@@ -167,12 +191,21 @@ export async function registerForPushNotifications(
     });
   }
 
-  // Prompt only while the user has never answered. A denied permission must not
-  // produce a new prompt on every login or foreground transition.
+  // Ask while the system still lets us (see pushPermission.ts: on Android 13+ a never-asked permission reads as `denied`, not `undetermined`).
+  // At most one system dialog per app session: coming back to the foreground after the dialog must not open a second one.
   const existingPermission = await Notifications.getPermissionsAsync();
   let status = existingPermission.status;
 
-  if (status === Notifications.PermissionStatus.UNDETERMINED && existingPermission.canAskAgain) {
+  if (
+    !permissionRequestedThisSession
+    && shouldRequestPushPermission({
+      platform: Platform.OS,
+      status,
+      canAskAgain: existingPermission.canAskAgain,
+      granted: existingPermission.granted,
+    })
+  ) {
+    permissionRequestedThisSession = true;
     const result = await Notifications.requestPermissionsAsync({
       ios: { allowAlert: true, allowBadge: true, allowSound: true },
     });
@@ -180,7 +213,8 @@ export async function registerForPushNotifications(
   }
 
   if (status !== 'granted') {
-    // User denied permission — do not store anything.
+    // Refused (or blocked by the system after two refusals): store nothing, no alert, no modal. One warning per session.
+    warnOncePerSession(`push permission not granted (status ${status}, canAskAgain ${existingPermission.canAskAgain})`);
     return null;
   }
 
@@ -188,12 +222,15 @@ export async function registerForPushNotifications(
   try {
     const projectId = Constants.expoConfig?.extra?.eas?.projectId
       ?? Constants.easConfig?.projectId;
-    if (typeof projectId !== 'string' || !projectId) return null;
+    if (typeof projectId !== 'string' || !projectId) {
+      warnOncePerSession('no EAS projectId in the app config: push token not requested');
+      return null;
+    }
     const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
     expoPushToken = tokenData.data;
-  } catch {
-    // Token fetch can fail in Expo Go without EAS project configuration,
-    // in simulators, or when offline. Fail silently.
+  } catch (error) {
+    // Token fetch can fail in Expo Go without EAS project configuration, in simulators, or when offline. Not fatal, but not silent either.
+    reportPushError('getExpoPushTokenAsync failed', error);
     return null;
   }
 
