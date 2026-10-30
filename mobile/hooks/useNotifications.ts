@@ -23,8 +23,11 @@ import * as Notifications from 'expo-notifications';
 import type { EventSubscription } from 'expo-modules-core';
 import { supabase, isSupabaseConfigured, channelTopic } from '../services/supabase';
 import { useAuth } from '../context/AuthContext';
+import { shouldRequestPushPermission } from '../services/pushPermission';
 import {
   registerForPushNotifications,
+  pushPermissionRequestedThisSession,
+  reportPushError,
   deleteNotification,
   listNotifications,
   markAllNotificationsRead,
@@ -212,7 +215,7 @@ export function useNotifications({ passive = false }: UseNotificationsOptions = 
     const userId = user.id;
     let cancelled = false;
     let registrationInFlight = false;
-    let shouldRetryUndeterminedPermission = false;
+    let shouldRetryPermission = false;
 
     const refetch = () => {
       if (cancelled || !isSupabaseConfigured) return;
@@ -226,14 +229,19 @@ export function useNotifications({ passive = false }: UseNotificationsOptions = 
       registrationInFlight = true;
       try {
         await registerForPushNotifications(userId);
+        // Retry on the next foreground only if the system would still let us ask AND no dialog was shown yet in this session
+        // (the dialog itself sends the app to the background and back: that return must not open a second one).
         const permission = await Notifications.getPermissionsAsync();
-        shouldRetryUndeterminedPermission = (
-          permission.status === Notifications.PermissionStatus.UNDETERMINED
-          && permission.canAskAgain
-        );
-      } catch {
-        // Native permission/channel APIs can fail on unsupported devices.
-        // Registration is best-effort and must never interrupt the app session.
+        shouldRetryPermission = !pushPermissionRequestedThisSession() && shouldRequestPushPermission({
+          platform: Platform.OS,
+          status: permission.status,
+          canAskAgain: permission.canAskAgain,
+          granted: permission.granted,
+        });
+      } catch (error) {
+        // Native permission/channel APIs can fail on unsupported devices. Registration stays best-effort and never interrupts the session,
+        // but the failure is now reported (short warning + Sentry) instead of swallowed.
+        reportPushError('push registration failed', error);
       } finally {
         registrationInFlight = false;
       }
@@ -249,7 +257,7 @@ export function useNotifications({ passive = false }: UseNotificationsOptions = 
     const appStateSubscription = AppState.addEventListener('change', (status) => {
       if (status !== 'active') return;
       refetch();
-      if (shouldRetryUndeterminedPermission) void attemptPushRegistration();
+      if (shouldRetryPermission) void attemptPushRegistration();
     });
 
     // 3. Foreground received listener — refresh the list so the new row appears (native only: no push on web).
