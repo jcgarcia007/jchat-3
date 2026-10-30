@@ -50,12 +50,7 @@ export const palette = {
   textSecondaryLight: '#55555a',
   textTertiaryLight: '#6d6d72',
 
-  // 1.3b Tab bar "glass" fill (NotchTabBar). iOS paints it over a BlurView (72 %); Android has no blur, so it is
-  // nearly opaque (94 %). Light = white, dark = bgSurface (#18181b).
-  tabBarGlassLight: 'rgba(255,255,255,0.72)',
-  tabBarGlassDark: 'rgba(24,24,27,0.72)',
-  tabBarGlassLightAndroid: 'rgba(255,255,255,0.94)',
-  tabBarGlassDarkAndroid: 'rgba(24,24,27,0.94)',
+  // 1.3b The tab bar "glass" fills (NotchTabBar) are derived from bgSurface / bgSurfaceLight in `glass` below.
 
   // 1.4 Map Colors — light
   mapLightBase: '#eef1f8',
@@ -127,3 +122,52 @@ export const palette = {
 
 export type Palette = typeof palette;
 export type PaletteToken = keyof Palette;
+
+/** "#rrggbb" + an alpha → "rgba(r,g,b,a)". Derived tokens use it so they follow the colour they come from, never a hand-written rgba. */
+export function withAlpha(color: string, alpha: number): string {
+  const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color);
+  if (!hex) throw new Error(`withAlpha: "${color}" is not a #rgb / #rrggbb colour`);
+  const full = hex[1].length === 3 ? [...hex[1]].map((x) => x + x).join('') : hex[1];
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16));
+  return `rgba(${r},${g},${b},${Math.round(alpha * 1000) / 1000})`;
+}
+
+/**
+ * "Liquid glass" tokens of the tab bar, the profile buttons and the offers button. Every colour is calculated with `withAlpha` from a
+ * palette colour (brand ones from brand / brandFill, so they follow it). The bar fill is 82 %: at 72 % the labels do not reach 4.5:1 on the
+ * worst background (a black photo behind the light bar, a white one behind the dark bar) — see scripts/glass-contrast.test.mjs.
+ */
+export const glass = {
+  /** Bar fill over the iOS blur; Android has no blur, so it is nearly opaque. */
+  barAlpha: 0.82,
+  barAlphaAndroid: 0.94,
+  tabBarLight: withAlpha(palette.bgSurfaceLight, 0.82),
+  tabBarDark: withAlpha(palette.bgSurface, 0.82),
+  tabBarLightAndroid: withAlpha(palette.bgSurfaceLight, 0.94),
+  tabBarDarkAndroid: withAlpha(palette.bgSurface, 0.94),
+  /** 1 pt contour of the bar, and the 1.2 pt bright line on its top half. */
+  edgeLineLight: withAlpha(palette.shadow, 0.06),
+  edgeLineDark: withAlpha(palette.onImage, 0.1),
+  edgeHighlightLight: withAlpha(palette.onImage, 0.95),
+  edgeHighlightDark: withAlpha(palette.onImage, 0.22),
+  /** Round buttons over the cover. */
+  buttonFillLight: withAlpha(palette.onImage, 0.3),
+  buttonFillDark: withAlpha(palette.onImage, 0.16),
+  buttonBorderLight: withAlpha(palette.onImage, 0.65),
+  buttonBorderDark: withAlpha(palette.onImage, 0.28),
+  /** "Edit profile" capsule on the sheet. */
+  sheetButtonFillLight: withAlpha(palette.onImage, 0.7),
+  sheetButtonFillDark: withAlpha(palette.onImage, 0.16),
+  /** Offers button: brand fill (92 %), soft highlight up-left, 1 pt border. */
+  brandFillGlass: withAlpha(palette.brandFill, 0.92),
+  reflect: withAlpha(palette.onImage, 0.35),
+  offersBorderLight: withAlpha(palette.onImage, 0.6),
+  offersBorderDark: withAlpha(palette.onImage, 0.3),
+  /** "Publish" capsule: brand at 96 % (86 % gave 3.9:1 with white text on a light page). */
+  brandFillSoft: withAlpha(palette.brandFill, 0.96),
+  /** Active tab bubble. */
+  tabPillActive: withAlpha(palette.brand, 0.14),
+  /** Shadows (numbers, not colours): the bar's is wide and neutral; the offers button's is brand-coloured and only downwards. */
+  barShadow: { opacityLight: 0.16, opacityDark: 0.55, radius: 22, offsetY: 10 },
+  offersShadow: { opacityLight: 0.35, opacityDark: 0.45, radius: 14, offsetY: 6, color: palette.brandFill },
+} as const;

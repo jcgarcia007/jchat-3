@@ -9,7 +9,7 @@
  */
 
 import { useColorScheme } from 'react-native';
-import { palette } from './tokens';
+import { glass, palette } from './tokens';
 
 /** Theme-independent tokens shared by both schemes. */
 const shared = {
@@ -58,10 +58,20 @@ export const darkColors = {
   textPrimary: palette.textPrimary,
   textSecondary: palette.textSecondary,
   textTertiary: palette.textTertiary,
-  /** Tab bar fill over the iOS blur (72 %). */
-  tabBarGlass: palette.tabBarGlassDark,
+  /** Tab bar fill over the iOS blur (82 %). */
+  tabBarGlass: glass.tabBarDark,
   /** Tab bar fill on Android, where there is no blur (94 %). */
-  tabBarGlassAndroid: palette.tabBarGlassDarkAndroid,
+  tabBarGlassAndroid: glass.tabBarDarkAndroid,
+  glassEdgeLine: glass.edgeLineDark,
+  glassEdgeHighlight: glass.edgeHighlightDark,
+  glassButtonFill: glass.buttonFillDark,
+  glassButtonBorder: glass.buttonBorderDark,
+  glassSheetButtonFill: glass.sheetButtonFillDark,
+  offersBorder: glass.offersBorderDark,
+  brandFillGlass: glass.brandFillGlass,
+  brandFillSoft: glass.brandFillSoft,
+  glassReflect: glass.reflect,
+  tabPillActive: glass.tabPillActive,
 };
 
 /** All color values widen to `string` so light/dark share one shape. */
@@ -84,9 +94,33 @@ export const lightColors: ThemeColors = {
   textPrimary: palette.textPrimaryLight,
   textSecondary: palette.textSecondaryLight,
   textTertiary: palette.textTertiaryLight,
-  tabBarGlass: palette.tabBarGlassLight,
-  tabBarGlassAndroid: palette.tabBarGlassLightAndroid,
+  tabBarGlass: glass.tabBarLight,
+  tabBarGlassAndroid: glass.tabBarLightAndroid,
+  glassEdgeLine: glass.edgeLineLight,
+  glassEdgeHighlight: glass.edgeHighlightLight,
+  glassButtonFill: glass.buttonFillLight,
+  glassButtonBorder: glass.buttonBorderLight,
+  glassSheetButtonFill: glass.sheetButtonFillLight,
+  offersBorder: glass.offersBorderLight,
+  brandFillGlass: glass.brandFillGlass,
+  brandFillSoft: glass.brandFillSoft,
+  glassReflect: glass.reflect,
+  tabPillActive: glass.tabPillActive,
 };
+
+/** Numeric glass metrics (shadow opacity / radius / offset) for a scheme: not colours, so not in ThemeColors. */
+export function glassMetrics(scheme: string | null | undefined) {
+  const dark = scheme !== 'light';
+  return {
+    barShadowOpacity: dark ? glass.barShadow.opacityDark : glass.barShadow.opacityLight,
+    barShadowRadius: glass.barShadow.radius,
+    barShadowOffsetY: glass.barShadow.offsetY,
+    offersShadowOpacity: dark ? glass.offersShadow.opacityDark : glass.offersShadow.opacityLight,
+    offersShadowRadius: glass.offersShadow.radius,
+    offersShadowOffsetY: glass.offersShadow.offsetY,
+    offersShadowColor: glass.offersShadow.color,
+  };
+}
 
 export type ColorScheme = 'light' | 'dark';
 
