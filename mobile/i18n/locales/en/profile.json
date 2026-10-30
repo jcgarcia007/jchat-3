@@ -71,7 +71,7 @@
     "changeCoverA11y": "Change cover photo",
     "avatarA11y": "{{name}}'s avatar",
     "verifiedA11y": "Verified",
-    "editProfileA11y": "Edit profile",
+    "editProfileA11y": "Edit profile", "editProfileRequestsA11y": "Edit profile, {{count}} follow requests waiting",
     "editProfile": "Edit Profile",
     "edit": "Edit",
     "messageA11y": "Message {{name}}",

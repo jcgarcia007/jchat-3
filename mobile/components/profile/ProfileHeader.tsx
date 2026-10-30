@@ -1,14 +1,16 @@
 /**
- * JChat 3.0 — ProfileHeader (design "B5": left-aligned avatar with the figures beside it)
+ * JChat 3.0 — ProfileHeader ("Liquid Glass": canvas "JChat · Perfil", LG1 / LG2 / LG3)
  *
- * A 130 px gradient at the top (the profile theme's headerGradient) that fades into the page background, the avatar
- * (88 px, a 3 px ring in the theme's accent and a 4 px page-coloured border) on the left, half over the gradient, with
- * the three figures in line to its right (Posts · Followers · Following, no cards). Under it, left-aligned: the name
- * (+ the "Edit" chip on the own profile), the bio (3 lines and "more"), the city (only when the owner shows it). Another
- * person's profile also gets the Follow / Message buttons; the own profile has none (the "+" lives in the screen).
+ * A full-bleed cover (the profile theme's gradient, up to the top edge of the screen, the status bar included) with two round glass buttons over it
+ * (share and settings on my profile; back and ⋯ on someone else's), and over its lower edge a content sheet with rounded top corners. The 92 pt avatar
+ * straddles the sheet's edge; the name (26 pt) and @username sit to its right. Under them: the bio (or "+ Add a bio" on my profile), the city (only when
+ * the owner shows it), two capsules on my profile ("Edit profile" in glass, "+ Post" in brand) or Follow / Message on someone else's.
+ * There are no counters (posts, followers, following): the lists live in Edit profile ("Your network") and in the ⋯ menu of other profiles.
  *
- * The profile theme only gives the accent (ring, primary button) and the gradient. Page, cards, texts and borders come
- * from useThemeColors(), so a profile follows the system light / dark.
+ * `ProfileCompactBar` takes over from the cover buttons once the big name has scrolled out of sight (see utils/profileHeaderState.ts).
+ *
+ * The profile theme gives the cover gradient, the readable colour of the cover's icons (nameColor) and the accent of the follow button. Page, texts and
+ * borders come from useThemeColors(); the glass from the glass tokens.
  *
  * PRIVACY (decision A.1): nothing here shows where a person is right now.
  */
@@ -18,33 +20,31 @@ import { Image, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'reac
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import {
-  IconArrowLeft, IconCircleCheckFilled, IconDots, IconX,
-  IconMapPin, IconMessage, IconPencil, IconSettings, IconShare3,
+  IconArrowLeft, IconCircleCheckFilled, IconDots, IconMapPin, IconMessage, IconPlus, IconSettings, IconShare3, IconX,
 } from '@tabler/icons-react-native';
 
 import { Spinner } from '../common/Spinner';
 import { useThemeColors } from '../../theme/colors';
+import { palette } from '../../theme/tokens';
 import { readableOn, type ProfileTheme } from '../../theme/profileThemes';
 import type { FollowRelation } from '../../hooks/useFollowSystem';
 import { getInitials } from '../../utils/initials';
+import {
+  AVATAR_BORDER, AVATAR_SIZE, BUTTONS_BELOW_INSET, COMPACT_HEIGHT, COVER_BELOW_INSET, NAME_LEFT, NAME_TOP, SHEET_OVERLAP, SHEET_RADIUS,
+} from '../../utils/profileHeaderState';
+import { GlassIconButton } from './GlassIconButton';
+import { GlassSurface } from './GlassSurface';
 
-/** Height of the gradient behind the avatar. */
-export const HEADER_GRADIENT_HEIGHT = 130;
-/** Vertical centre of the avatar, measured from the top of the header (half over the gradient). */
-const AVATAR_CENTER_Y = 144;
-const AVATAR_SIZE = 88;
-const AVATAR_RING = 3;
-const AVATAR_BORDER = 4;
-const AVATAR_OUTER = AVATAR_SIZE + (AVATAR_RING + AVATAR_BORDER) * 2;
 const BIO_MAX_LINES = 3;
+const SIDE_MARGIN = 16;
 
-export interface ProfileTopBarProps {
+/** What the round buttons need (cover and compact header). */
+export interface ProfileChromeProps {
   isOwnProfile: boolean;
   /** Own profile opened as a stacked screen (e.g. from the chat): show the back arrow. */
   showBack?: boolean;
   /** Inside the profile sheet the sheet's own ✕ closes it: no back arrow (own or other's profile). */
   hideBack?: boolean;
-  username: string;
   topInset: number;
   onBack: () => void;
   onOpenMenu: () => void;
@@ -52,8 +52,7 @@ export interface ProfileTopBarProps {
   onSettings: () => void;
 }
 
-export interface ProfileHeaderProps {
-  isOwnProfile: boolean;
+export interface ProfileHeaderProps extends ProfileChromeProps {
   displayName: string | null;
   username: string;
   avatarUrl: string | null;
@@ -61,21 +60,18 @@ export interface ProfileHeaderProps {
   /** Already filtered by the owner's "show city" choice: null / empty hides the line. */
   city: string | null;
   isVerified: boolean;
-  postCount: number;
-  followerCount: number;
-  followingCount: number;
-  /** Not painted any more (the "Places" card was removed); kept optional so old callers still compile. */
-  placesCount?: number | null;
   /** Relationship with the viewed user (ignored on the own profile). */
   relation: FollowRelation;
   /** A relationship action is in flight (or the relationship is still loading). */
   followBusy: boolean;
   completion: { hasPhoto: boolean; hasBio: boolean; hasPost: boolean };
   completionVisible: boolean;
+  /** Own profile: follow requests waiting for an answer (a dot on "Edit profile" while > 0). */
+  pendingRequests: number;
   onEditProfile: () => void;
+  /** Own profile in the Profile tab: the "+ Post" capsule (what the floating button did). Not given → no capsule. */
+  onPublish?: () => void;
   onDismissCompletion: () => void;
-  onOpenFollowers: () => void;
-  onOpenFollowing: () => void;
   onFollow: () => void;
   onUnfollow: () => void;
   onCancelRequest: () => void;
@@ -84,76 +80,79 @@ export interface ProfileHeaderProps {
   theme: ProfileTheme;
 }
 
-function formatCount(value: number): string {
-  return value >= 1000 ? `${(value / 1000).toFixed(1)}k` : String(value);
+/** Whether the back arrow shows: my profile only when it is a stacked screen; someone else's unless it is inside the sheet. */
+function showsBack({ isOwnProfile, showBack, hideBack }: ProfileChromeProps): boolean {
+  return isOwnProfile ? Boolean(showBack && !hideBack) : !hideBack;
 }
 
-function IconButton({ label, onPress, children, testID }: { label: string; onPress: () => void; children: React.ReactNode; testID?: string }) {
-  return (
-    <TouchableOpacity testID={testID} style={styles.iconButton} onPress={onPress} accessibilityRole="button" accessibilityLabel={label}>
-      {children}
-    </TouchableOpacity>
+/** The round buttons over the cover: back / share / settings on my profile, back / ⋯ on someone else's. */
+function CoverButtons({ props, iconColor }: { props: ProfileChromeProps; iconColor: string }) {
+  const { t } = useTranslation('profile');
+  const { isOwnProfile, onBack, onOpenMenu, onShare, onSettings } = props;
+  const back = showsBack(props);
+  const backButton = back ? (
+    <GlassIconButton label={t('header.backA11y')} onPress={onBack} testID="profile-back"><IconArrowLeft size={20} color={iconColor} strokeWidth={2} /></GlassIconButton>
+  ) : null;
+  const shareButton = (
+    <GlassIconButton label={t('header.shareA11y')} onPress={onShare} testID="profile-share"><IconShare3 size={19} color={iconColor} strokeWidth={2} /></GlassIconButton>
   );
-}
-
-/** One figure of the row beside the avatar: the number over its label. Tappable only when it has an action. */
-function Stat({ label, value, onPress, testID }: { label: string; value: number; onPress?: () => void; testID?: string }) {
-  const c = useThemeColors();
   return (
-    <Pressable
-      testID={testID}
-      style={styles.stat}
-      onPress={onPress}
-      disabled={!onPress}
-      accessibilityRole={onPress ? 'button' : 'text'}
-      accessibilityLabel={`${label}: ${formatCount(value)}`}
-    >
-      <Text style={[styles.statValue, { color: c.textPrimary }]}>{formatCount(value)}</Text>
-      <Text style={[styles.statLabel, { color: c.textSecondary }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-        {label}
-      </Text>
-    </Pressable>
+    <>
+      <View style={styles.buttonGroup}>{backButton ?? (isOwnProfile ? shareButton : null)}</View>
+      <View style={styles.buttonGroup}>
+        {isOwnProfile && backButton ? shareButton : null}
+        {isOwnProfile ? (
+          <GlassIconButton label={t('header.settingsA11y')} onPress={onSettings} testID="profile-open-settings"><IconSettings size={19} color={iconColor} strokeWidth={2} /></GlassIconButton>
+        ) : (
+          <GlassIconButton label={t('header.moreA11y')} onPress={onOpenMenu} testID="profile-more"><IconDots size={22} color={iconColor} strokeWidth={2} /></GlassIconButton>
+        )}
+      </View>
+    </>
   );
 }
 
 /**
- * Fixed top bar (username on the left; share + settings on the own profile, the ⋯ menu on someone else's), rendered
- * as a sibling ABOVE the screen's ScrollView so it never scrolls. It respects `topInset` itself.
+ * The compact header, fixed at the top while the big name is out of sight: a glass pill with the avatar, the name and the @username, and the same
+ * round buttons in the bar's glass. It replaces the buttons over the cover instantly (no fade: the glass's opacity is never animated).
  */
-export function ProfileTopBar({
-  isOwnProfile, showBack = false, hideBack = false, username, topInset, onBack, onOpenMenu, onShare, onSettings,
-}: ProfileTopBarProps) {
+export function ProfileCompactBar(props: ProfileChromeProps & { displayName: string | null; username: string; avatarUrl: string | null }) {
   const { t } = useTranslation('profile');
   const c = useThemeColors();
-  const back = (
-    <IconButton label={t('header.backA11y')} onPress={onBack}><IconArrowLeft size={24} color={c.textPrimary} /></IconButton>
-  );
+  const name = props.displayName?.trim() || props.username;
   return (
-    <View style={[styles.topBarRoot, { backgroundColor: c.bgBase, paddingTop: topInset }]}>
-      <View style={styles.topBar}>
-        {isOwnProfile ? (showBack && !hideBack ? back : null) : hideBack ? null : back}
-        <Text style={[styles.topUsername, { color: c.textPrimary }]} numberOfLines={1}>@{username}</Text>
-        <View style={styles.topActions}>
-          {isOwnProfile ? (
-            <>
-              <IconButton label={t('header.shareA11y')} onPress={onShare}><IconShare3 size={22} color={c.textPrimary} /></IconButton>
-              <IconButton testID="profile-open-settings" label={t('header.settingsA11y')} onPress={onSettings}><IconSettings size={22} color={c.textPrimary} /></IconButton>
-            </>
+    <View testID="profile-compact-bar" style={[styles.compactRow, { top: props.topInset + BUTTONS_BELOW_INSET }]} pointerEvents="box-none">
+      {showsBack(props) ? (
+        <GlassIconButton tone="bar" size={COMPACT_HEIGHT} label={t('header.backA11y')} onPress={props.onBack}><IconArrowLeft size={21} color={c.textPrimary} strokeWidth={2} /></GlassIconButton>
+      ) : null}
+      <GlassSurface variant="bar" style={styles.compactPill}>
+        <View style={styles.compactPillInner}>
+          {props.avatarUrl ? (
+            <Image source={{ uri: props.avatarUrl }} style={styles.compactAvatar} accessible={false} />
           ) : (
-            <IconButton label={t('header.moreA11y')} onPress={onOpenMenu}><IconDots size={25} color={c.textPrimary} /></IconButton>
+            <View style={[styles.compactAvatar, styles.avatarFallback, { backgroundColor: c.bgElevated }]}>
+              <Text style={[styles.compactInitials, { color: c.textPrimary }]}>{getInitials(name, 2)}</Text>
+            </View>
           )}
+          <View style={styles.compactNames}>
+            <Text style={[styles.compactName, { color: c.textPrimary }]} numberOfLines={1}>{name}</Text>
+            <Text style={[styles.compactHandle, { color: c.textSecondary }]} numberOfLines={1}>@{props.username}</Text>
+          </View>
         </View>
-      </View>
+      </GlassSurface>
+      {props.isOwnProfile ? (
+        <GlassIconButton tone="bar" size={COMPACT_HEIGHT} label={t('header.settingsA11y')} onPress={props.onSettings} testID="profile-open-settings-compact"><IconSettings size={20} color={c.textPrimary} strokeWidth={2} /></GlassIconButton>
+      ) : (
+        <GlassIconButton tone="bar" size={COMPACT_HEIGHT} label={t('header.moreA11y')} onPress={props.onOpenMenu} testID="profile-more-compact"><IconDots size={23} color={c.textPrimary} strokeWidth={2} /></GlassIconButton>
+      )}
     </View>
   );
 }
 
-export default function ProfileHeader({
-  isOwnProfile, displayName, username, avatarUrl, bio, city, isVerified, postCount,
-  followerCount, followingCount, relation, followBusy, completion,
-  completionVisible, onEditProfile, onDismissCompletion, onOpenFollowers, onOpenFollowing,
-  onFollow, onUnfollow, onCancelRequest, onUnblock, onMessage, theme,
-}: ProfileHeaderProps) {
+export default function ProfileHeader(props: ProfileHeaderProps) {
+  const {
+    isOwnProfile, displayName, username, avatarUrl, bio, city, isVerified, relation, followBusy, completion, completionVisible, pendingRequests,
+    onEditProfile, onPublish, onDismissCompletion, onFollow, onUnfollow, onCancelRequest, onUnblock, onMessage, theme, topInset,
+  } = props;
   const { t } = useTranslation('profile');
   const c = useThemeColors();
   const [bioExpanded, setBioExpanded] = useState(false);
@@ -168,56 +167,51 @@ export default function ProfileHeader({
   const bioText = bio?.trim() ?? '';
   const outlined = [styles.button, styles.outlinedButton, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }];
   const primary = [styles.button, { backgroundColor: theme.accent }];
+  // The cover's icons: the profile theme's readable colour on its cover (white or near-black, whichever contrasts).
+  const coverIcon = theme.nameColor;
+  const editLabel = pendingRequests > 0 ? t('header.editProfileRequestsA11y', { count: pendingRequests }) : t('header.editProfileA11y');
 
   return (
-    <View style={[styles.container, { backgroundColor: c.bgBase }]}>
-      {/* Gradient: the theme's two colours, fading into the page at the bottom */}
-      <LinearGradient
-        pointerEvents="none"
-        colors={[theme.headerGradient[0], theme.headerGradient[1], c.bgBase]}
-        locations={[0, 0.55, 1]}
-        style={styles.gradient}
-      />
-
-      <View style={styles.topRow}>
-        <View style={[styles.avatarBorder, { backgroundColor: c.bgBase }]}>
-          <View style={[styles.avatarRing, { borderColor: theme.accent }]}>
-            {avatarUrl ? (
-              <Image source={{ uri: avatarUrl }} style={styles.avatar} resizeMode="cover" accessibilityLabel={t('header.avatarA11y', { name })} />
-            ) : (
-              <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: c.bgSurface }]}>
-                <Text style={[styles.avatarInitials, { color: c.textPrimary }]}>{initials}</Text>
-              </View>
-            )}
-          </View>
-        </View>
-        <View style={styles.statsRow}>
-          <Stat label={t('header.posts')} value={postCount} />
-          <Stat label={t('header.followers')} value={followerCount} onPress={onOpenFollowers} />
-          <Stat label={t('header.following')} value={followingCount} onPress={onOpenFollowing} />
+    <View style={styles.container}>
+      <View style={{ height: topInset + COVER_BELOW_INSET }}>
+        <LinearGradient
+          pointerEvents="none"
+          colors={[theme.coverGradient[0], theme.coverGradient[1]]}
+          start={{ x: 0.1, y: 0 }}
+          end={{ x: 0.9, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={[styles.coverButtons, { top: topInset + BUTTONS_BELOW_INSET }]} pointerEvents="box-none">
+          <CoverButtons props={props} iconColor={coverIcon} />
         </View>
       </View>
 
-      <View style={styles.identity}>
-        <View style={styles.nameRow}>
-          <Text style={[styles.displayName, { color: c.textPrimary }]} numberOfLines={1}>{name}</Text>
-          {isVerified ? <IconCircleCheckFilled size={20} color={theme.accent} /> : null}
-          {isOwnProfile ? (
-            <Pressable
-              testID="profile-edit"
-              style={[styles.editChip, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}
-              onPress={onEditProfile}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel={t('header.editProfile')}
-            >
-              <IconPencil size={13} color={c.textPrimary} />
-              <Text style={[styles.editChipLabel, { color: c.textPrimary }]} numberOfLines={1}>{t('header.edit')}</Text>
-            </Pressable>
+      <View style={[styles.sheet, { backgroundColor: c.bgBase }]}>
+        <View style={[styles.avatarBorder, { backgroundColor: c.bgBase }]}>
+          {avatarUrl ? (
+            <Image source={{ uri: avatarUrl }} style={styles.avatar} resizeMode="cover" accessibilityLabel={t('header.avatarA11y', { name })} />
+          ) : (
+            <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: c.bgSurface }]}>
+              <Text style={[styles.avatarInitials, { color: c.textPrimary }]}>{initials}</Text>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.nameBlock}>
+          <View style={styles.nameRow}>
+            <Text style={[styles.displayName, { color: c.textPrimary }]} numberOfLines={1}>{name}</Text>
+            {isVerified ? <IconCircleCheckFilled size={20} color={theme.accent} /> : null}
+          </View>
+          <Text style={[styles.handle, { color: c.textSecondary }]} numberOfLines={1}>@{username}</Text>
+          {!bioText && isOwnProfile ? (
+            <TouchableOpacity onPress={onEditProfile} accessibilityRole="button" hitSlop={8}>
+              <Text style={[styles.addBio, { color: c.brandText }]}>{t('header.addBio')}</Text>
+            </TouchableOpacity>
           ) : null}
         </View>
+
         {bioText ? (
-          <>
+          <View style={styles.bioBlock}>
             <Text
               style={[styles.bio, { color: c.textPrimary }]}
               numberOfLines={bioExpanded ? undefined : BIO_MAX_LINES}
@@ -230,107 +224,118 @@ export default function ProfileHeader({
                 <Text style={[styles.bioMore, { color: c.brandText }]}>{bioExpanded ? t('header.bioLess') : t('header.bioMore')}</Text>
               </TouchableOpacity>
             ) : null}
-          </>
-        ) : isOwnProfile ? (
-          <TouchableOpacity onPress={onEditProfile} accessibilityRole="button" hitSlop={8}>
-            <Text style={[styles.addBio, { color: c.brandText }]}>{t('header.addBio')}</Text>
-          </TouchableOpacity>
+          </View>
         ) : null}
         {city?.trim() ? (
           <View style={styles.cityRow}><IconMapPin size={16} color={c.textSecondary} /><Text style={[styles.city, { color: c.textSecondary }]}>{city.trim()}</Text></View>
         ) : null}
-      </View>
 
-      {isOwnProfile && completionVisible && completedCount < 3 ? (
-        <View style={[styles.completionStrip, { borderColor: c.borderSubtle, backgroundColor: c.bgSurface }]}>
-          <View style={styles.completionCopy}>
-            <Text style={[styles.completionSummary, { color: c.textPrimary }]} numberOfLines={1}>
-              {t('completion.summary', { count: completedCount })}
-            </Text>
-            <View style={[styles.progressTrack, { backgroundColor: c.borderSubtle }]}>
-              <View style={[styles.progressFill, { backgroundColor: theme.accent, width: `${(completedCount / 3) * 100}%` }]} />
-            </View>
+        {isOwnProfile ? (
+          <View style={styles.capsules}>
+            <Pressable testID="profile-edit" style={styles.capsuleCell} onPress={onEditProfile} accessibilityRole="button" accessibilityLabel={editLabel}>
+              <GlassSurface variant="sheet" style={styles.capsule}>
+                <Text style={[styles.capsuleLabel, { color: c.textPrimary }]} numberOfLines={1}>{t('header.editProfile')}</Text>
+              </GlassSurface>
+              {pendingRequests > 0 ? <View testID="profile-requests-dot" style={[styles.requestsDot, { backgroundColor: c.danger, borderColor: c.bgBase }]} /> : null}
+            </Pressable>
+            {onPublish ? (
+              <Pressable testID="profile-publish" style={styles.capsuleCell} onPress={onPublish} accessibilityRole="button" accessibilityLabel={t('header.createPostA11y')}>
+                <View style={[styles.capsule, styles.publishCapsule, { backgroundColor: c.brandFillSoft, borderColor: c.offersBorder }]}>
+                  <IconPlus size={16} color={palette.onBrand} strokeWidth={2.6} />
+                  <Text style={[styles.capsuleLabel, { color: palette.onBrand }]} numberOfLines={1}>{t('header.publish')}</Text>
+                </View>
+              </Pressable>
+            ) : null}
           </View>
-          <Pressable style={styles.completionDismiss} onPress={onDismissCompletion} accessibilityRole="button" accessibilityLabel={t('completion.dismissA11y')}>
-            <IconX size={18} color={c.textSecondary} />
-          </Pressable>
-        </View>
-      ) : null}
+        ) : null}
 
-      {isOwnProfile ? null : (
-        <View style={styles.actionRow}>
-          {relation === 'blockedMe' ? (
-            <Text style={[styles.blockedNotice, { color: c.textSecondary }]}>{t('header.blockedMe')}</Text>
-          ) : relation === 'blockedByMe' ? (
-            <TouchableOpacity style={outlined} onPress={onUnblock} disabled={followBusy} accessibilityRole="button">
-              {followBusy ? <Spinner color={c.textPrimary} /> : <Text style={[styles.buttonLabel, { color: c.textPrimary }]}>{t('header.unblock')}</Text>}
-            </TouchableOpacity>
-          ) : (
-            <>
-              <TouchableOpacity testID="profile-follow" style={followOutlined ? outlined : primary} onPress={followAction} disabled={followBusy} accessibilityRole="button">
-                {followBusy ? <Spinner color={followOutlined ? c.textPrimary : onAccent} /> : <Text style={[styles.buttonLabel, { color: followOutlined ? c.textPrimary : onAccent }]}>{followLabel}</Text>}
+        {isOwnProfile && completionVisible && completedCount < 3 ? (
+          <View style={[styles.completionStrip, { borderColor: c.borderSubtle, backgroundColor: c.bgSurface }]}>
+            <View style={styles.completionCopy}>
+              <Text style={[styles.completionSummary, { color: c.textPrimary }]} numberOfLines={1}>
+                {t('completion.summary', { count: completedCount })}
+              </Text>
+              <View style={[styles.progressTrack, { backgroundColor: c.borderSubtle }]}>
+                <View style={[styles.progressFill, { backgroundColor: theme.accent, width: `${(completedCount / 3) * 100}%` }]} />
+              </View>
+            </View>
+            <Pressable style={styles.completionDismiss} onPress={onDismissCompletion} accessibilityRole="button" accessibilityLabel={t('completion.dismissA11y')}>
+              <IconX size={18} color={c.textSecondary} />
+            </Pressable>
+          </View>
+        ) : null}
+
+        {isOwnProfile ? null : (
+          <View style={styles.actionRow}>
+            {relation === 'blockedMe' ? (
+              <Text style={[styles.blockedNotice, { color: c.textSecondary }]}>{t('header.blockedMe')}</Text>
+            ) : relation === 'blockedByMe' ? (
+              <TouchableOpacity style={outlined} onPress={onUnblock} disabled={followBusy} accessibilityRole="button">
+                {followBusy ? <Spinner color={c.textPrimary} /> : <Text style={[styles.buttonLabel, { color: c.textPrimary }]}>{t('header.unblock')}</Text>}
               </TouchableOpacity>
-              <TouchableOpacity style={outlined} onPress={onMessage} accessibilityRole="button">
-                <IconMessage size={18} color={c.textPrimary} />
-                <Text style={[styles.buttonLabel, { color: c.textPrimary }]}>{t('header.message')}</Text>
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
-      )}
+            ) : (
+              <>
+                <TouchableOpacity testID="profile-follow" style={followOutlined ? outlined : primary} onPress={followAction} disabled={followBusy} accessibilityRole="button">
+                  {followBusy ? <Spinner color={followOutlined ? c.textPrimary : onAccent} /> : <Text style={[styles.buttonLabel, { color: followOutlined ? c.textPrimary : onAccent }]}>{followLabel}</Text>}
+                </TouchableOpacity>
+                <TouchableOpacity style={outlined} onPress={onMessage} accessibilityRole="button">
+                  <IconMessage size={18} color={c.textPrimary} />
+                  <Text style={[styles.buttonLabel, { color: c.textPrimary }]}>{t('header.message')}</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        )}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { width: '100%' },
-  gradient: { position: 'absolute', top: 0, left: 0, right: 0, height: HEADER_GRADIENT_HEIGHT },
-  topBarRoot: { width: '100%' },
-  topBar: { height: 52, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10 },
-  topUsername: { flex: 1, paddingLeft: 6, fontSize: 17, fontWeight: '800' },
-  topActions: { marginLeft: 'auto', flexDirection: 'row' },
-  iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  // Avatar + figures in one row. The avatar's centre sits at AVATAR_CENTER_Y: the row starts half its outer size above.
-  topRow: { flexDirection: 'row', alignItems: 'center', marginTop: AVATAR_CENTER_Y - AVATAR_OUTER / 2, paddingLeft: 16, paddingRight: 12 },
+  coverButtons: { position: 'absolute', left: SIDE_MARGIN, right: SIDE_MARGIN, flexDirection: 'row', justifyContent: 'space-between' },
+  buttonGroup: { flexDirection: 'row', gap: 8 },
+  // The content sheet overlaps the cover and has rounded top corners; the avatar is centred on its top edge.
+  sheet: { marginTop: -SHEET_OVERLAP, borderTopLeftRadius: SHEET_RADIUS, borderTopRightRadius: SHEET_RADIUS, paddingBottom: 8, minHeight: 120 },
   avatarBorder: {
-    width: AVATAR_OUTER,
-    height: AVATAR_OUTER,
-    borderRadius: AVATAR_OUTER / 2,
-    padding: AVATAR_BORDER,
+    position: 'absolute', left: 20, top: -AVATAR_SIZE / 2, width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2, padding: AVATAR_BORDER,
   },
-  avatarRing: {
-    width: AVATAR_SIZE + AVATAR_RING * 2,
-    height: AVATAR_SIZE + AVATAR_RING * 2,
-    borderRadius: (AVATAR_SIZE + AVATAR_RING * 2) / 2,
-    borderWidth: AVATAR_RING,
-    overflow: 'hidden',
-  },
-  avatar: { width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2 },
+  avatar: { width: AVATAR_SIZE - AVATAR_BORDER * 2, height: AVATAR_SIZE - AVATAR_BORDER * 2, borderRadius: (AVATAR_SIZE - AVATAR_BORDER * 2) / 2 },
   avatarFallback: { alignItems: 'center', justifyContent: 'center' },
   avatarInitials: { fontSize: 28, fontWeight: '800' },
-  statsRow: { flex: 1, flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', alignSelf: 'flex-end', marginBottom: 8 },
-  stat: { minHeight: 44, minWidth: 48, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
-  statValue: { fontSize: 20, lineHeight: 24, fontWeight: '800' },
-  statLabel: { fontSize: 12, lineHeight: 16, fontWeight: '600', textAlign: 'center' },
-  identity: { alignItems: 'flex-start', paddingHorizontal: 16, paddingTop: 4 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'stretch' },
-  displayName: { flexShrink: 1, fontSize: 20, lineHeight: 26, fontWeight: '800' },
-  editChip: { marginLeft: 'auto', height: 32, borderRadius: 16, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12 },
-  editChipLabel: { fontSize: 13, fontWeight: '700' },
-  bio: { marginTop: 6, fontSize: 15, lineHeight: 21, textAlign: 'left' },
+  nameBlock: { marginLeft: NAME_LEFT, marginRight: SIDE_MARGIN, marginTop: NAME_TOP, minHeight: 70 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  displayName: { flexShrink: 1, fontSize: 26, lineHeight: 30, fontWeight: '800', letterSpacing: -0.6 },
+  handle: { marginTop: 2, fontSize: 14, lineHeight: 19 },
+  addBio: { marginTop: 2, fontSize: 13, lineHeight: 18, fontWeight: '700' },
+  bioBlock: { marginTop: 10, marginHorizontal: 20 },
+  bio: { fontSize: 15, lineHeight: 21, textAlign: 'left' },
   bioMore: { marginTop: 2, fontSize: 14, fontWeight: '700' },
-  addBio: { marginTop: 6, fontSize: 14, lineHeight: 20, fontWeight: '600' },
-  cityRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8 },
+  cityRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, marginHorizontal: 20 },
   city: { fontSize: 14, lineHeight: 19 },
-  actionRow: { flexDirection: 'row', gap: 10, marginHorizontal: 16, marginTop: 12 },
-  button: { flex: 1, height: 46, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
+  capsules: { flexDirection: 'row', gap: 10, marginHorizontal: 20, marginTop: 14 },
+  capsuleCell: { flex: 1, height: 44 },
+  capsule: { height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 },
+  publishCapsule: { borderWidth: 1 },
+  capsuleLabel: { fontSize: 15, fontWeight: '700' },
+  requestsDot: { position: 'absolute', top: 2, right: 10, width: 11, height: 11, borderRadius: 6, borderWidth: 2 },
+  actionRow: { flexDirection: 'row', gap: 10, marginHorizontal: 20, marginTop: 14 },
+  button: { flex: 1, height: 44, borderRadius: 22, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
   outlinedButton: { borderWidth: 1 },
   buttonLabel: { fontSize: 15, fontWeight: '700' },
   blockedNotice: { flex: 1, fontSize: 14, lineHeight: 20, paddingVertical: 12, textAlign: 'center' },
-  completionStrip: { height: 44, marginHorizontal: 16, marginTop: 8, borderWidth: 1, borderRadius: 12, flexDirection: 'row', alignItems: 'center', paddingLeft: 12 },
+  completionStrip: { height: 44, marginHorizontal: 20, marginTop: 12, borderWidth: 1, borderRadius: 12, flexDirection: 'row', alignItems: 'center', paddingLeft: 12 },
   completionCopy: { flex: 1, gap: 4 },
   completionSummary: { fontSize: 13, lineHeight: 16, fontWeight: '700' },
   completionDismiss: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   progressTrack: { height: 3, borderRadius: 2, overflow: 'hidden' },
   progressFill: { height: 3, borderRadius: 2 },
+  compactRow: { position: 'absolute', left: SIDE_MARGIN, right: SIDE_MARGIN, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  compactPill: { flex: 1, height: COMPACT_HEIGHT, borderRadius: COMPACT_HEIGHT / 2 },
+  compactPillInner: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, paddingLeft: 6, paddingRight: 12 },
+  compactAvatar: { width: 36, height: 36, borderRadius: 18 },
+  compactInitials: { fontSize: 13, fontWeight: '800' },
+  compactNames: { flexShrink: 1, minWidth: 0 },
+  compactName: { fontSize: 15, lineHeight: 18, fontWeight: '800' },
+  compactHandle: { fontSize: 12, lineHeight: 15 },
 });

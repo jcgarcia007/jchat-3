@@ -71,7 +71,7 @@
     "changeCoverA11y": "Cambiar foto de portada",
     "avatarA11y": "Avatar de {{name}}",
     "verifiedA11y": "Verificado",
-    "editProfileA11y": "Editar perfil",
+    "editProfileA11y": "Editar perfil", "editProfileRequestsA11y": "Editar perfil, {{count}} solicitudes de seguimiento pendientes",
     "editProfile": "Editar perfil",
     "edit": "Editar",
     "messageA11y": "Enviar mensaje a {{name}}",

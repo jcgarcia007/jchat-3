@@ -5,10 +5,14 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  useColorScheme,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from 'react-native';
 import { AppModal } from '../../components/common/AppModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -19,7 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { ReportReasonSheet } from '../../components/report/ReportReasonSheet';
 import {
-  IconBan, IconFlag, IconLock, IconPhoto, IconPlus, IconShare3, IconStack2, IconX,
+  IconBan, IconFlag, IconLock, IconPhoto, IconShare3, IconStack2, IconX,
 } from '@tabler/icons-react-native';
 
 import type { MainStackParamList } from '../../navigation/AppNavigator';
@@ -27,14 +31,15 @@ import { useAuth } from '../../context/AuthContext';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { getProfileTheme, readableOn } from '../../theme/profileThemes';
-import { canViewProfile, getOwnProfilePrivacy, getPublicProfile, getProfileCounts, type ProfileCounts } from '../../services/users';
+import { canViewProfile, getOwnProfilePrivacy, getPublicProfile } from '../../services/users';
+import { listPendingRequests } from '../../services/follows';
 import type { PublicProfileRow } from '../../services/users';
 import { getUserPosts } from '../../services/posts';
 import type { PostRow } from '../../services/posts';
 import { getOrCreateConversation, DmGateError } from '../../services/dms';
 import { blockUser } from '../../services/blocks';
 import { useFollowSystem } from '../../hooks/useFollowSystem';
-import ProfileHeader, { ProfileTopBar } from '../../components/profile/ProfileHeader';
+import ProfileHeader, { ProfileCompactBar } from '../../components/profile/ProfileHeader';
 import { BAR_HEIGHT } from '../../components/navigation/NotchTabBar';
 import { toUserMessage } from '../../utils/errors';
 import { useHomeBarInset } from '../../components/venue/HomeBarInset';
@@ -42,6 +47,7 @@ import { confirm, showAlert } from '../../utils/dialog';
 import { shareContent } from '../../utils/shareContent';
 import { useAppWindow } from '../../utils/appWindow';
 import { parseProfilePrivacy, type ProfilePrivacyView } from '../../utils/profilePlaces';
+import { isCompactHeader } from '../../utils/profileHeaderState';
 
 // The same screen backs the Profile tab, the stacked UserProfile and the ProfileSheet over the chat.
 type ProfileParams = { userId?: string } | undefined;
@@ -50,10 +56,6 @@ type ProfileRoute = RouteProp<{ UserProfile: ProfileParams; ProfileSheet: Profil
 const GRID_COLUMNS = 3;
 const GRID_GAP = 2;
 const PROFILE_COMPLETION_DISMISSED_KEY = 'profile.completionDismissed';
-/** Floating "+" button: its size and the gap to the tab bar / the screen edge. */
-const FAB_SIZE = 56;
-const FAB_RIGHT = 20;
-const FAB_BAR_GAP = 16;
 /** The tab bar floats this far above the bottom inset (see NotchTabBar). */
 const TAB_BAR_LIFT = 26;
 
@@ -151,6 +153,7 @@ function SheetRow({ icon, label, color, borderColor, onPress }: { icon?: React.R
 
 export default function ProfileScreen({ userId }: { userId?: string } = {}) {
   const c = useThemeColors();
+  const colorScheme = useColorScheme();
   const { t } = useTranslation('profile');
   const insets = useSafeAreaInsets();
   const homeBarInset = useHomeBarInset();
@@ -167,7 +170,11 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
 
   const [profile, setProfile] = useState<PublicProfileRow | null>(null);
   const [posts, setPosts] = useState<PostRow[]>([]);
-  const [counts, setCounts] = useState<ProfileCounts>({ followers: 0, following: 0, posts: 0 });
+  // Own profile: follow requests waiting for an answer (a dot on "Edit profile").
+  const [pendingRequests, setPendingRequests] = useState(0);
+  // The compact header replaces the buttons over the cover once the big name has scrolled out of sight.
+  const [compact, setCompact] = useState(false);
+  const compactRef = useRef(false);
   // Own profile only: my privacy choices for this page (the city).
   const [privacy, setPrivacy] = useState<ProfilePrivacyView>(() => parseProfilePrivacy(null));
   // False for a private account I don't follow (the grid is replaced by a notice). Default true:
@@ -200,13 +207,13 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
     if (mode === 'pull') setRefreshing(true); else if (mode === 'initial') setInitialLoading(true);
     setError(null);
     try {
-      const [canView, profileRow, profileCounts, ownPrivacy] = await Promise.all([
+      const [canView, profileRow, ownPrivacy, requests] = await Promise.all([
         isOwnProfile || !authUser?.id ? Promise.resolve(true) : canViewProfile(authUser.id, targetId).catch(() => true),
         getPublicProfile(targetId),
-        // A counters failure must not take the whole profile down: keep what we had.
-        getProfileCounts(targetId).catch(() => null),
         // My privacy choices (the city) exist only on my own profile; a failure falls back to the safe defaults.
         isOwnProfile ? getOwnProfilePrivacy(targetId).catch(() => parseProfilePrivacy(null)) : Promise.resolve(parseProfilePrivacy(null)),
+        // Requests waiting for an answer (my own profile only); a failure just means no dot.
+        isOwnProfile ? listPendingRequests().then((rows) => rows.length).catch(() => 0) : Promise.resolve(0),
       ]);
       if (!profileRow) throw new Error(t('view.profileNotFound'));
       // Posts are only requested when the viewer may see them.
@@ -214,8 +221,8 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
       setCanViewPosts(canView);
       setProfile(profileRow);
       setPosts(postRows);
-      if (profileCounts) setCounts(profileCounts);
       setPrivacy(ownPrivacy);
+      setPendingRequests(requests);
     } catch (loadError) {
       setError(toUserMessage(loadError, 'profile:view.loadProfileError'));
     } finally {
@@ -276,19 +283,10 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
     }
   }, [authUser?.id, navigation, t, targetId]);
 
-  // Optimistic ±1 on the follower counter, then the server's number replaces it.
-  const reconcileCounts = useCallback(() => {
-    if (!targetId) return;
-    void getProfileCounts(targetId).then(setCounts).catch(() => undefined);
-  }, [targetId]);
-
   const handleFollow = useCallback(async () => {
     const result = await follow();
     if (result === null) { showAlert(t('actions.errorTitle'), t('follow.error')); return; }
-    // 'requested' (private account) does NOT add a follower yet.
-    if (result === 'following') setCounts((value) => ({ ...value, followers: value.followers + 1 }));
-    reconcileCounts();
-  }, [follow, reconcileCounts, t]);
+  }, [follow, t]);
 
   const handleUnfollow = useCallback(() => {
     if (!profile) return;
@@ -296,12 +294,10 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
       if (!accepted) return;
       void (async () => {
         const done = await unfollow();
-        if (!done) { showAlert(t('actions.errorTitle'), t('follow.error')); return; }
-        setCounts((value) => ({ ...value, followers: Math.max(0, value.followers - 1) }));
-        reconcileCounts();
+        if (!done) showAlert(t('actions.errorTitle'), t('follow.error'));
       })();
     });
-  }, [profile, unfollow, reconcileCounts, t]);
+  }, [profile, unfollow, t]);
 
   const handleCancelRequest = useCallback(() => {
     void confirm(t('follow.cancelRequestTitle'), t('follow.cancelRequestMessage'), { confirmText: t('follow.cancelRequestConfirm'), cancelText: t('follow.keepRequest'), destructive: true }).then((accepted) => {
@@ -352,47 +348,48 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
 
   // The city shows only when the owner allows it (the choice is read for my own profile).
   const shownCity = isOwnProfile && !privacy.showCity ? null : profile.city;
-  // The floating "+" belongs to the own profile in the Profile tab (the stacked own profile has no tab bar to sit above).
-  const showFab = isOwnProfile && route.name === 'Profile';
-  const fabBottom = TAB_BAR_LIFT + insets.bottom + BAR_HEIGHT + FAB_BAR_GAP;
-  const onAccent = readableOn(theme.accent);
+  // "+ Post" (the capsule that replaced the floating button) belongs to the own profile in the Profile tab.
+  const showPublish = isOwnProfile && route.name === 'Profile';
+  // The content passes behind the tab bar (the Profile tab) or just needs a margin at the bottom.
+  const bottomPadding = route.name === 'Profile' ? TAB_BAR_LIFT + insets.bottom + BAR_HEIGHT + 24 : 24 + insets.bottom;
+  // The status bar sits over the cover (light or dark icons, whichever the theme's cover needs); over the compact header it follows the system.
+  const coverNeedsLightIcons = readableOn(theme.coverGradient[0]) === palette.onBrand;
+  const statusBarStyle = compact ? (colorScheme === 'light' ? 'dark-content' : 'light-content') : coverNeedsLightIcons ? 'light-content' : 'dark-content';
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const next = isCompactHeader(event.nativeEvent.contentOffset.y);
+    if (next !== compactRef.current) { compactRef.current = next; setCompact(next); }
+  };
+  const chrome = {
+    isOwnProfile, showBack: route.name === 'UserProfile', hideBack: inSheet, topInset,
+    onBack: () => navigation.goBack(), onOpenMenu: () => setMenuVisible(true), onShare: () => void shareProfile(), onSettings: () => navigation.navigate('Settings'),
+  };
 
   return (
     <View style={[styles.root, { backgroundColor: c.bgBase }]}>
-      <ProfileTopBar
-        isOwnProfile={isOwnProfile} showBack={route.name === 'UserProfile'} hideBack={inSheet} username={profile.username} topInset={topInset}
-        onBack={() => navigation.goBack()} onOpenMenu={() => setMenuVisible(true)} onShare={() => void shareProfile()}
-        onSettings={() => navigation.navigate('Settings')}
-      />
+      {inSheet ? null : <StatusBar barStyle={statusBarStyle} translucent backgroundColor="transparent" />}
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: showFab ? fabBottom + FAB_SIZE + FAB_BAR_GAP : 102 + insets.bottom }]}
+        onScroll={handleScroll}
+        scrollEventThrottle={32}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadProfile('pull')} tintColor={c.brand} colors={[c.brand]} progressBackgroundColor={c.bgSurface} />}
       >
         <ProfileHeader
-          isOwnProfile={isOwnProfile} displayName={profile.display_name} username={profile.username} avatarUrl={profile.avatar_url}
-          bio={profile.bio} city={shownCity} isVerified={profile.is_verified} postCount={counts.posts} followerCount={counts.followers}
-          followingCount={counts.following} relation={relation} followBusy={relationLoading || relationBusy}
+          {...chrome}
+          displayName={profile.display_name} username={profile.username} avatarUrl={profile.avatar_url}
+          bio={profile.bio} city={shownCity} isVerified={profile.is_verified} relation={relation} followBusy={relationLoading || relationBusy}
           completion={{ hasPhoto: Boolean(profile.avatar_url), hasBio: Boolean(profile.bio?.trim()), hasPost: posts.length > 0 }}
           completionVisible={completionDismissed === false} onDismissCompletion={dismissCompletion}
-          onEditProfile={() => navigation.navigate('EditProfile')}
-          onOpenFollowers={() => openFriends('followers')} onOpenFollowing={() => openFriends('following')}
+          pendingRequests={pendingRequests} onEditProfile={() => navigation.navigate('EditProfile')}
+          onPublish={showPublish ? () => navigation.navigate('CreatePost') : undefined}
           onFollow={() => void handleFollow()} onUnfollow={handleUnfollow} onCancelRequest={handleCancelRequest} onUnblock={handleUnblock}
           onMessage={() => void openMessage()} theme={theme}
         />
         <View style={styles.gridTop}>{renderPosts()}</View>
       </ScrollView>
 
-      {showFab ? (
-        <Pressable
-          testID="profile-publish-fab"
-          style={[styles.fab, { bottom: fabBottom, backgroundColor: theme.accent, shadowColor: theme.accent }]}
-          onPress={() => navigation.navigate('CreatePost')}
-          accessibilityRole="button"
-          accessibilityLabel={t('header.publish')}
-        >
-          <IconPlus size={26} color={onAccent} strokeWidth={2.4} />
-        </Pressable>
+      {compact ? (
+        <ProfileCompactBar {...chrome} displayName={profile.display_name} username={profile.username} avatarUrl={profile.avatar_url} />
       ) : null}
 
       <AppModal visible={menuVisible} transparent animationType="slide" onRequestClose={() => setMenuVisible(false)}>
@@ -425,11 +422,6 @@ const styles = StyleSheet.create({
   skeletonHandle: { width: 110, height: 14, borderRadius: 7, alignSelf: 'flex-start', marginLeft: 16, marginTop: 8 }, skeletonStats: { height: 70, borderRadius: 16, marginHorizontal: 16, marginTop: 28 },
   skeletonGrid: { marginTop: 24, flexDirection: 'row', flexWrap: 'wrap', gap: 2 }, skeletonCell: { width: '32.9%', aspectRatio: 1 },
   gridTop: { marginTop: 12 },
-  fab: {
-    position: 'absolute', right: FAB_RIGHT, width: FAB_SIZE, height: FAB_SIZE, borderRadius: FAB_SIZE / 2,
-    alignItems: 'center', justifyContent: 'center',
-    shadowOpacity: 0.35, shadowRadius: 10, shadowOffset: { width: 0, height: 6 }, elevation: 8,
-  },
   postsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP }, postCell: { overflow: 'hidden' }, postTextWrap: { alignItems: 'center', justifyContent: 'center', padding: 8 }, postText: { fontSize: 10, lineHeight: 14 },
   multiPhotoBadge: { position: 'absolute', top: 6, right: 6, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: palette.scrim },
   emptyState: { minHeight: 270, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 34, paddingVertical: 34 }, emptyTitle: { marginTop: 14, textAlign: 'center', fontSize: 18, fontWeight: '800' },
