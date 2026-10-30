@@ -67,8 +67,6 @@
     "loadError": "Failed to load gifts."
   },
   "header": {
-    "posts": "Posts",
-    "followers": "Followers",
     "following": "Following",
     "follow": "Follow",
     "requested": "Requested",
@@ -96,8 +94,7 @@
     "publish": "Post",
     "places": "Places",
     "bioMore": "more",
-    "bioLess": "less",
-    "statsA11y": "{{label}}: {{value}}"
+    "bioLess": "less"
   },
   "empty": {
     "ownPostsTitle": "Share your first photo",

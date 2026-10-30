@@ -15,7 +15,8 @@ export const MAIN_SCREEN_FILES = [
   // DMs
   'screens/dms/DMChatScreen.tsx', 'screens/dms/DMInboxScreen.tsx', 'screens/dms/MessagesScreen.tsx',
   // profile
-  'screens/profile/ProfileScreen.tsx', 'components/profile/ProfileHeader.tsx',
+  'screens/profile/ProfileScreen.tsx', 'components/profile/ProfileHeader.tsx', 'components/profile/GlassIconButton.tsx', 'components/profile/GlassSurface.tsx',
+  'components/profile/YourNetwork.tsx', 'components/navigation/NotchTabBar.tsx',
   // gift
   'components/gift/GiftSheet.tsx', 'components/gift/GiftCard.tsx', 'components/gift/GiftPayPage.web.tsx', 'components/gift/GiftPaymentForm.web.tsx',
   // menu / cart / checkout

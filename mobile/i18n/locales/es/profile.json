@@ -67,8 +67,6 @@
     "loadError": "No se pudieron cargar los regalos."
   },
   "header": {
-    "posts": "Publicaciones",
-    "followers": "Seguidores",
     "following": "Siguiendo",
     "follow": "Seguir",
     "requested": "Solicitado",
@@ -96,8 +94,7 @@
     "publish": "Publicar",
     "places": "Lugares",
     "bioMore": "más",
-    "bioLess": "menos",
-    "statsA11y": "{{label}}: {{value}}"
+    "bioLess": "menos"
   },
   "empty": {
     "ownPostsTitle": "Comparte tu primera foto",
