@@ -345,7 +345,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
   ) : posts.length ? (
     <View style={styles.postsGrid}>{posts.map((post) => <PostCell key={post.id} post={post} size={cellSize} onPress={() => navigation.navigate('PostDetail', { postId: post.id })} />)}</View>
   ) : (
-    <EmptyState icon={<IconPhoto size={42} color={c.textTertiary} />} title={isOwnProfile ? t('empty.ownPostsTitle') : t('empty.otherPostsTitle')} subtitle={isOwnProfile ? t('empty.ownPostsSubtitle') : t('empty.otherPostsSubtitle')} actionLabel={isOwnProfile ? t('empty.createPost') : undefined} onAction={isOwnProfile ? () => navigation.navigate('CreatePost') : undefined} accent={theme.accent} />
+    <EmptyState icon={<IconPhoto size={42} color={c.textTertiary} />} title={isOwnProfile ? t('empty.ownPostsTitle') : t('empty.otherPostsTitle')} subtitle={isOwnProfile ? t('empty.ownPostsSubtitle') : t('empty.otherPostsSubtitle')} accent={theme.accent} />
   );
 
   // The city shows only when the owner allows it (the choice is read for my own profile).

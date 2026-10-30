@@ -100,8 +100,7 @@
     "ownPostsTitle": "Share your first photo",
     "ownPostsSubtitle": "Your photos and posts from the places you visit will appear here.",
     "otherPostsTitle": "No posts yet",
-    "otherPostsSubtitle": "Their posts will appear here.",
-    "createPost": "New post"
+    "otherPostsSubtitle": "Their posts will appear here."
   },
   "actions": {
     "shareText": "Find @{{username}} on JChat — https://jchat.cloud",

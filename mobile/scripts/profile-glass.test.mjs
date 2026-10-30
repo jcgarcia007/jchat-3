@@ -56,3 +56,15 @@ test('pure rule of the compact header', async () => {
   assert.equal(isCompactHeader(COMPACT_SCROLL_Y + 1), true);
   assert.equal(isCompactHeader(Number.NaN), false);
 });
+
+test('there is a single Settings button on the profile (the glass one over the cover; the compact bar one only replaces it)', () => {
+  assert.equal((header.match(/testID="profile-open-settings"/g) ?? []).length, 1);
+  assert.equal((header.match(/testID="profile-open-settings-compact"/g) ?? []).length, 1);
+  assert.equal((header.match(/<IconSettings\b/g) ?? []).length, 2, 'cover + compact bar, nothing else');
+  assert.doesNotMatch(screen, /IconSettings|open-settings/);
+});
+
+test('the empty state of the profile has no "New post" button: "+ Publish" is right above', () => {
+  assert.doesNotMatch(screen, /empty\.createPost/);
+  assert.doesNotMatch(screen, /navigation\.navigate\('CreatePost'\)[^\n]*accent=\{theme\.accent\}/);
+});
