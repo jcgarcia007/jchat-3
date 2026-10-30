@@ -51,7 +51,12 @@
     "checkingUsername": "Checking username availability…",
     "saveErrorGeneric": "An error occurred while saving.",
     "saveFailedTitle": "Save failed",
-    "avatarChangeFailed": "We couldn't change your photo. Please try again."
+    "avatarChangeFailed": "We couldn't change your photo. Please try again.",
+    "networkTitle": "Your network",
+    "networkFollowers": "Followers",
+    "networkFollowing": "Following",
+    "networkRequests": "Requests",
+    "networkA11y": "{{label}}, {{count}}"
   },
   "gifts": {
     "someone": "Someone",
@@ -71,7 +76,8 @@
     "changeCoverA11y": "Change cover photo",
     "avatarA11y": "{{name}}'s avatar",
     "verifiedA11y": "Verified",
-    "editProfileA11y": "Edit profile", "editProfileRequestsA11y": "Edit profile, {{count}} follow requests waiting",
+    "editProfileA11y": "Edit profile",
+    "editProfileRequestsA11y": "Edit profile, {{count}} follow requests waiting",
     "editProfile": "Edit Profile",
     "edit": "Edit",
     "messageA11y": "Message {{name}}",
@@ -111,7 +117,9 @@
     "share": "Share profile",
     "report": "Report",
     "block": "Block",
-    "unblock": "Unblock"
+    "unblock": "Unblock",
+    "viewFollowers": "View followers",
+    "viewFollowing": "View following"
   },
   "report": {
     "title": "Why are you reporting this profile?",

@@ -51,7 +51,12 @@
     "checkingUsername": "Verificando disponibilidad del nombre de usuario…",
     "saveErrorGeneric": "Ocurrió un error al guardar.",
     "saveFailedTitle": "No se pudo guardar",
-    "avatarChangeFailed": "No se pudo cambiar tu foto. Inténtalo de nuevo."
+    "avatarChangeFailed": "No se pudo cambiar tu foto. Inténtalo de nuevo.",
+    "networkTitle": "Tu red",
+    "networkFollowers": "Seguidores",
+    "networkFollowing": "Siguiendo",
+    "networkRequests": "Solicitudes",
+    "networkA11y": "{{label}}, {{count}}"
   },
   "gifts": {
     "someone": "Alguien",
@@ -71,7 +76,8 @@
     "changeCoverA11y": "Cambiar foto de portada",
     "avatarA11y": "Avatar de {{name}}",
     "verifiedA11y": "Verificado",
-    "editProfileA11y": "Editar perfil", "editProfileRequestsA11y": "Editar perfil, {{count}} solicitudes de seguimiento pendientes",
+    "editProfileA11y": "Editar perfil",
+    "editProfileRequestsA11y": "Editar perfil, {{count}} solicitudes de seguimiento pendientes",
     "editProfile": "Editar perfil",
     "edit": "Editar",
     "messageA11y": "Enviar mensaje a {{name}}",
@@ -111,7 +117,9 @@
     "share": "Compartir perfil",
     "report": "Reportar",
     "block": "Bloquear",
-    "unblock": "Desbloquear"
+    "unblock": "Desbloquear",
+    "viewFollowers": "Ver seguidores",
+    "viewFollowing": "Ver siguiendo"
   },
   "report": {
     "title": "¿Por qué reportas este perfil?",

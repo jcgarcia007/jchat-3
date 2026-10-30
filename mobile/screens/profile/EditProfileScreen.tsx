@@ -60,9 +60,13 @@ import { getProfileTheme } from '../../theme/profileThemes';
 import type { ProfileTheme } from '../../theme/profileThemes';
 
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
-import { getUserById } from '../../services/users';
+import { getUserById, getProfileCounts } from '../../services/users';
 import type { UserRow } from '../../services/users';
 import { uploadImage } from '../../services/storage';
+import { listPendingRequests } from '../../services/follows';
+import { YourNetwork, type NetworkTab } from '../../components/profile/YourNetwork';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { MainStackParamList } from '../../navigation/AppNavigator';
 
 import ProfileThemeSelector from '../../components/profile/ProfileThemeSelector';
 
@@ -92,7 +96,7 @@ const AVATAR_BUCKET = 'avatars';
 export default function EditProfileScreen(): React.JSX.Element {
   const c = useThemeColors();
   const { t } = useTranslation('profile');
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { user: authUser } = useAuth();
 
   // ── Local form state ──────────────────────────────────────────────────────
@@ -120,6 +124,24 @@ export default function EditProfileScreen(): React.JSX.Element {
   // ── Profile theme modal ───────────────────────────────────────────────────
 
   const [themeModalVisible, setThemeModalVisible] = useState(false);
+
+  // ── "Your network": numbers shown here now that the profile has no counters ──
+
+  const [network, setNetwork] = useState({ followers: 0, following: 0, requests: 0 });
+  useEffect(() => {
+    if (!authUser?.id) return;
+    let alive = true;
+    void (async () => {
+      try {
+        const [counts, pending] = await Promise.all([getProfileCounts(authUser.id), listPendingRequests()]);
+        if (alive) setNetwork({ followers: counts.followers, following: counts.following, requests: pending.length });
+      } catch {
+        // The rows keep showing 0; the screen still works.
+      }
+    })();
+    return () => { alive = false; };
+  }, [authUser?.id]);
+  const openNetwork = (tab: NetworkTab) => navigation.navigate('Friends', { userId: authUser?.id, initialTab: tab });
 
   // ── Load profile on mount ─────────────────────────────────────────────────
 
@@ -430,6 +452,8 @@ export default function EditProfileScreen(): React.JSX.Element {
               </View>
             </TouchableOpacity>
           </View>
+
+          <YourNetwork followers={network.followers} following={network.following} requests={network.requests} onOpen={openNetwork} />
 
           {/* ── Form fields ───────────────────────────────────────────────── */}
           <View style={styles.form}>

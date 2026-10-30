@@ -23,7 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { ReportReasonSheet } from '../../components/report/ReportReasonSheet';
 import {
-  IconBan, IconFlag, IconLock, IconPhoto, IconShare3, IconStack2, IconX,
+  IconBan, IconFlag, IconLock, IconPhoto, IconShare3, IconStack2, IconUsers, IconX,
 } from '@tabler/icons-react-native';
 
 import type { MainStackParamList } from '../../navigation/AppNavigator';
@@ -269,6 +269,8 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
       navigation.navigate('Friends', { userId: isOwnProfile ? undefined : targetId ?? undefined, initialTab }),
     [isOwnProfile, navigation, targetId],
   );
+  // Same rule as the lists themselves: only when the viewer may see this profile and nobody blocked anybody.
+  const canSeeNetwork = !isOwnProfile && canViewPosts && relation !== 'blockedByMe' && relation !== 'blockedMe';
   const dismissCompletion = useCallback(() => {
     setCompletionDismissed(true);
     void AsyncStorage.setItem(PROFILE_COMPLETION_DISMISSED_KEY, '1').catch(() => undefined);
@@ -398,6 +400,12 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
           <View style={styles.sheetHandleWrap}><View style={[styles.sheetHandle, { backgroundColor: c.borderSubtle }]} /></View>
           <Text style={[styles.sheetTitle, { color: c.textPrimary }]}>@{profile.username}</Text>
           <SheetRow icon={<IconShare3 size={20} color={c.textPrimary} />} label={t('menu.share')} color={c.textPrimary} borderColor={c.borderSubtle} onPress={() => { setMenuVisible(false); void shareProfile(); }} />
+          {canSeeNetwork ? (
+            <>
+              <SheetRow icon={<IconUsers size={20} color={c.textPrimary} />} label={t('menu.viewFollowers')} color={c.textPrimary} borderColor={c.borderSubtle} onPress={() => { setMenuVisible(false); openFriends('followers'); }} />
+              <SheetRow icon={<IconUsers size={20} color={c.textPrimary} />} label={t('menu.viewFollowing')} color={c.textPrimary} borderColor={c.borderSubtle} onPress={() => { setMenuVisible(false); openFriends('following'); }} />
+            </>
+          ) : null}
           <SheetRow icon={<IconFlag size={20} color={c.dangerText} />} label={t('menu.report')} color={c.dangerText} borderColor={c.borderSubtle} onPress={() => { setMenuVisible(false); setReportVisible(true); }} />
           <SheetRow icon={<IconBan size={20} color={c.dangerText} />} label={blocked ? t('menu.unblock') : t('menu.block')} color={c.dangerText} borderColor={c.borderSubtle} onPress={confirmBlock} />
           <SheetRow icon={<IconX size={20} color={c.textSecondary} />} label={t('actions.cancel')} color={c.textSecondary} borderColor={c.borderSubtle} onPress={() => setMenuVisible(false)} />
