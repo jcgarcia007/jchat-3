@@ -12,7 +12,7 @@ import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaskedView from '@react-native-masked-view/masked-view';
 import { BlurView } from 'expo-blur';
-import Svg, { Defs, FeGaussianBlur, Filter, Path } from 'react-native-svg';
+import Svg, { Circle, ClipPath, Defs, FeGaussianBlur, Filter, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import {
   IconMap,
   IconMessageCircle,
@@ -21,52 +21,37 @@ import {
 } from '@tabler/icons-react-native';
 import { useTranslation } from 'react-i18next';
 
+import { useReduceTransparency } from '../../hooks/useReduceTransparency';
 import { useUnreadBadge } from '../../hooks/useUnreadBadge';
-import { useThemeColors } from '../../theme/colors';
+import { glassMetrics, useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import ProfileTabAvatar from './ProfileTabAvatar';
+import { BAR_HEIGHT, BUTTON_SIZE, CENTER_Y, NOTCH_ROOM, barPath } from './notchGeometry';
 
-export const BAR_HEIGHT = 68;
-const BAR_RADIUS = 34;
-const NOTCH_WIDTH = 104;
-const NOTCH_DEPTH = 34;
-/** Android has no drop shadow on a view without a background, so the shadow is a second, blurred copy of the path. */
-const SHADOW_OFFSET_Y = 4;
-const SHADOW_BLUR = 6;
-const SHADOW_PAD = 24;
+/** Screens read the bar's height to leave room for it. */
+export { BAR_HEIGHT };
+
+/** Side margin of the bar (the canvas: 14 pt; a 390 pt phone gets a 362 pt bar). */
+const BAR_MARGIN = 14;
+/** The shadow of the bar is a blurred copy of its outline, drawn the same way on iOS and Android (a translucent view casts a weak native shadow). */
+const SHADOW_BLUR = 8;
+const SHADOW_PAD = 36;
 const IS_IOS = Platform.OS === 'ios';
-
-function notchPath(width: number): string {
-  const center = width / 2;
-  const notchLeft = center - NOTCH_WIDTH / 2;
-  const notchRight = center + NOTCH_WIDTH / 2;
-  return [
-    `M ${BAR_RADIUS} 0`,
-    `H ${notchLeft}`,
-    `C ${center - 39} 0, ${center - 38} ${NOTCH_DEPTH}, ${center} ${NOTCH_DEPTH}`,
-    `C ${center + 38} ${NOTCH_DEPTH}, ${center + 39} 0, ${notchRight} 0`,
-    `H ${width - BAR_RADIUS}`,
-    `A ${BAR_RADIUS} ${BAR_RADIUS} 0 0 1 ${width} ${BAR_RADIUS}`,
-    `V ${BAR_HEIGHT - BAR_RADIUS}`,
-    `A ${BAR_RADIUS} ${BAR_RADIUS} 0 0 1 ${width - BAR_RADIUS} ${BAR_HEIGHT}`,
-    `H ${BAR_RADIUS}`,
-    `A ${BAR_RADIUS} ${BAR_RADIUS} 0 0 1 0 ${BAR_HEIGHT - BAR_RADIUS}`,
-    `V ${BAR_RADIUS}`,
-    `A ${BAR_RADIUS} ${BAR_RADIUS} 0 0 1 ${BAR_RADIUS} 0`,
-    'Z',
-  ].join(' ');
-}
 
 export default function NotchTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const colors = useThemeColors();
   const scheme = useColorScheme() === 'light' ? 'light' : 'dark';
+  const metrics = glassMetrics(scheme);
   const insets = useSafeAreaInsets();
   const commonTranslation = useTranslation('common');
   const hasUnread = useUnreadBadge();
+  // Reduce transparency (iOS): the blur and the translucent fill become a SOLID surface with the same shape.
+  const reduceTransparency = useReduceTransparency();
   // 'Offers' is a hidden route of the tabs (index 4): the centre button is the active one while it is focused.
   const offersFocused = state.routes[state.index]?.name === 'Offers';
   const [width, setWidth] = useState(0);
-  const sideWidth = Math.max(0, (width - NOTCH_WIDTH) / 2);
+  const sideWidth = Math.max(0, (width - NOTCH_ROOM) / 2);
+  const outline = width > 0 ? barPath(width) : '';
 
   const onLayout = (event: LayoutChangeEvent) => {
     setWidth(event.nativeEvent.layout.width);
@@ -78,8 +63,9 @@ export default function NotchTabBar({ state, descriptors, navigation }: BottomTa
     const focused = state.index === routeIndex;
     const descriptor = descriptors[route.key];
     const label = commonTranslation.t(`tabs.${route.name.toLowerCase()}`);
-    // brandText, not brand: the 11 px label needs the text-contrast variant of the primary colour.
-    const color = focused ? colors.brandText : colors.textSecondary;
+    // Icons: brandText when active, textSecondary otherwise (3:1 or more over the glass on the worst background). Labels: textPrimary
+    // (4.5:1 or more there), bold when active; the active tab is also marked by its bubble.
+    const iconColor = focused ? colors.brandText : colors.textSecondary;
     const onPress = () => {
       const event = navigation.emit({
         type: 'tabPress',
@@ -90,12 +76,12 @@ export default function NotchTabBar({ state, descriptors, navigation }: BottomTa
     };
 
     let icon: React.ReactNode;
-    if (route.name === 'Map') icon = <IconMap size={24} color={color} strokeWidth={2} />;
-    else if (route.name === 'Nearby') icon = <IconRadar2 size={24} color={color} strokeWidth={2} />;
+    if (route.name === 'Map') icon = <IconMap size={24} color={iconColor} strokeWidth={2} />;
+    else if (route.name === 'Nearby') icon = <IconRadar2 size={24} color={iconColor} strokeWidth={2} />;
     else if (route.name === 'Messages') {
       icon = (
         <View>
-          <IconMessageCircle size={24} color={color} strokeWidth={2} />
+          <IconMessageCircle size={24} color={iconColor} strokeWidth={2} />
           {hasUnread ? (
             <View style={[styles.unreadDot, { backgroundColor: colors.danger, borderColor: colors.bgSurface }]} />
           ) : null}
@@ -116,14 +102,14 @@ export default function NotchTabBar({ state, descriptors, navigation }: BottomTa
         style={styles.tabItem}
         testID={descriptor.options.tabBarButtonTestID ?? `tab-${route.name.toLowerCase()}`}
       >
-        <View style={[styles.pill, focused && { backgroundColor: colors.brandLight }]}>
+        <View style={[styles.pill, focused && { backgroundColor: colors.tabPillActive }]}>
           <View style={styles.iconSlot}>{icon}</View>
           <Text
             adjustsFontSizeToFit
             maxFontSizeMultiplier={1.2}
             minimumFontScale={0.85}
             numberOfLines={1}
-            style={[styles.label, { color }]}
+            style={[styles.label, { color: colors.textPrimary, fontWeight: focused ? '800' : '600' }]}
           >
             {label}
           </Text>
@@ -132,48 +118,43 @@ export default function NotchTabBar({ state, descriptors, navigation }: BottomTa
     );
   };
 
+  const fill = reduceTransparency ? colors.bgSurface : IS_IOS ? colors.tabBarGlass : colors.tabBarGlassAndroid;
+
   return (
     <View
       testID="tab-bar"
       onLayout={onLayout}
-      style={[
-        styles.container,
-        {
-          bottom: 26 + insets.bottom,
-          shadowColor: colors.textPrimary,
-        },
-        IS_IOS ? styles.iosShadow : null,
-      ]}
+      style={[styles.container, { bottom: 26 + insets.bottom }]}
     >
-      {width > 0 && !IS_IOS ? (
-        // Android: shadow drawn in SVG (elevation needs a background), under the bar.
+      {width > 0 ? (
+        // The bar's own shadow: wide and neutral, apart from the button's (which is brand-coloured and only downwards).
         <Svg
           height={BAR_HEIGHT + SHADOW_PAD * 2}
           pointerEvents="none"
-          style={[styles.androidShadow, { left: -SHADOW_PAD, top: -SHADOW_PAD }]}
+          style={[styles.shadow, { left: -SHADOW_PAD, top: -SHADOW_PAD }]}
           width={width + SHADOW_PAD * 2}
         >
           <Defs>
-            <Filter height="200%" id="barShadowBlur" width="200%" x="-50%" y="-50%">
+            <Filter height="260%" id="barShadowBlur" width="140%" x="-20%" y="-80%">
               <FeGaussianBlur stdDeviation={SHADOW_BLUR} />
             </Filter>
           </Defs>
           <Path
-            d={notchPath(width)}
-            fill={colors.textPrimary}
+            d={outline}
+            fill={palette.shadow}
             filter="url(#barShadowBlur)"
-            opacity={0.12}
-            transform={`translate(${SHADOW_PAD} ${SHADOW_PAD + SHADOW_OFFSET_Y})`}
+            opacity={metrics.barShadowOpacity}
+            transform={`translate(${SHADOW_PAD} ${SHADOW_PAD + metrics.barShadowOffsetY})`}
           />
         </Svg>
       ) : null}
 
-      {IS_IOS && width > 0 ? (
+      {IS_IOS && width > 0 && !reduceTransparency ? (
         // iOS: the blur is masked with the exact bar shape, so the notch stays transparent.
         <MaskedView
           maskElement={
             <Svg height={BAR_HEIGHT} width={width}>
-              <Path d={notchPath(width)} fill="black" />
+              <Path d={outline} fill="black" />
             </Svg>
           }
           pointerEvents="none"
@@ -185,12 +166,14 @@ export default function NotchTabBar({ state, descriptors, navigation }: BottomTa
 
       {width > 0 ? (
         <Svg height={BAR_HEIGHT} pointerEvents="none" style={[StyleSheet.absoluteFill, styles.visible]} width={width}>
-          <Path
-            d={notchPath(width)}
-            fill={IS_IOS ? colors.tabBarGlass : colors.tabBarGlassAndroid}
-            stroke={colors.borderSubtle}
-            strokeWidth={1}
-          />
+          <Defs>
+            <ClipPath id="barTopHalf">
+              <Rect x={-2} y={-2} width={width + 4} height={BAR_HEIGHT / 2 + 2} />
+            </ClipPath>
+          </Defs>
+          <Path d={outline} fill={fill} stroke={colors.glassEdgeLine} strokeWidth={1} />
+          {/* The bright line on the top half of the outline (the bar's specular edge). */}
+          <Path clipPath="url(#barTopHalf)" d={outline} fill="none" stroke={colors.glassEdgeHighlight} strokeWidth={1.2} />
         </Svg>
       ) : null}
 
@@ -203,6 +186,15 @@ export default function NotchTabBar({ state, descriptors, navigation }: BottomTa
         {renderRoute(3)}
       </View>
 
+      <Text
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        numberOfLines={1}
+        style={[styles.offersLabel, { color: colors.textPrimary, fontWeight: offersFocused ? '800' : '700' }]}
+      >
+        {commonTranslation.t('tabs.offers')}
+      </Text>
+
       <Pressable
         accessibilityLabel={commonTranslation.t('tabs.offers')}
         accessibilityRole="button"
@@ -212,13 +204,27 @@ export default function NotchTabBar({ state, descriptors, navigation }: BottomTa
         style={[
           styles.offersButton,
           {
-            backgroundColor: colors.brandFill,
-            shadowColor: colors.brand,
+            backgroundColor: colors.brandFillGlass,
+            borderColor: colors.offersBorder,
+            shadowColor: metrics.offersShadowColor,
+            shadowOpacity: metrics.offersShadowOpacity,
+            shadowRadius: metrics.offersShadowRadius,
+            shadowOffset: { width: 0, height: metrics.offersShadowOffsetY },
           },
-          offersFocused && { borderColor: colors.bgSurface, borderWidth: 3, transform: [{ scale: 1.08 }] },
+          offersFocused && { transform: [{ scale: 1.06 }] },
         ]}
       >
-        <IconSpeakerphone size={26} color={palette.bgSurfaceLight} strokeWidth={2.2} />
+        {/* Soft highlight up-left (a radial gradient, as in the canvas). */}
+        <Svg height={BUTTON_SIZE} pointerEvents="none" style={StyleSheet.absoluteFill} width={BUTTON_SIZE}>
+          <Defs>
+            <RadialGradient cx="35%" cy="25%" id="offersReflect" r="45%">
+              <Stop offset="0" stopColor={colors.glassReflect} />
+              <Stop offset="1" stopColor={colors.glassReflect} stopOpacity={0} />
+            </RadialGradient>
+          </Defs>
+          <Circle cx={BUTTON_SIZE / 2} cy={BUTTON_SIZE / 2} fill="url(#offersReflect)" r={BUTTON_SIZE / 2} />
+        </Svg>
+        <IconSpeakerphone size={28} color={palette.onBrand} strokeWidth={2.2} />
       </Pressable>
     </View>
   );
@@ -227,16 +233,11 @@ export default function NotchTabBar({ state, descriptors, navigation }: BottomTa
 const styles = StyleSheet.create({
   container: {
     height: BAR_HEIGHT,
-    left: 16,
+    left: BAR_MARGIN,
     position: 'absolute',
-    right: 16,
+    right: BAR_MARGIN,
   },
-  iosShadow: {
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.14,
-    shadowRadius: 12,
-  },
-  androidShadow: { position: 'absolute' },
+  shadow: { position: 'absolute' },
   visible: { overflow: 'visible' },
   side: {
     flexDirection: 'row',
@@ -251,7 +252,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: BAR_HEIGHT,
     justifyContent: 'center',
-    minWidth: 48,
+    minWidth: 44,
   },
   pill: {
     alignItems: 'center',
@@ -272,7 +273,6 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 11,
-    fontWeight: '600',
   },
   unreadDot: {
     borderRadius: 5,
@@ -283,19 +283,28 @@ const styles = StyleSheet.create({
     top: -3,
     width: 9,
   },
+  // Under the notch, inside the bar (the notch is 41 pt deep, the bar 64: the label sits in the 23 pt below it).
+  offersLabel: {
+    bottom: 5,
+    fontSize: 10,
+    left: '50%',
+    marginLeft: -NOTCH_ROOM / 2,
+    position: 'absolute',
+    textAlign: 'center',
+    width: NOTCH_ROOM,
+  },
+  // Its centre is CENTER_Y below the bar's top edge, concentric with the notch's bowl.
   offersButton: {
     alignItems: 'center',
-    borderRadius: 30,
-    elevation: 12,
-    height: 60,
+    borderRadius: BUTTON_SIZE / 2,
+    borderWidth: 1,
+    elevation: 8,
+    height: BUTTON_SIZE,
     justifyContent: 'center',
     left: '50%',
-    marginLeft: -30,
+    marginLeft: -BUTTON_SIZE / 2,
     position: 'absolute',
-    shadowOffset: { width: 0, height: 7 },
-    shadowOpacity: 0.38,
-    shadowRadius: 11,
-    top: -30,
-    width: 60,
+    top: CENTER_Y - BUTTON_SIZE / 2,
+    width: BUTTON_SIZE,
   },
 });
