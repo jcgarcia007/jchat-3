@@ -38,6 +38,18 @@ supabase functions serve              # local edge functions
 supabase functions deploy <name>      # deploy edge function
 ```
 
+### Antes de cada `eas build` (obligatorio)
+```bash
+cd mobile && node scripts/preflight-eas.mjs
+```
+Comprueba que los paquetes con código nativo de `node_modules` son idénticos byte a byte a los del registro para la versión del lockfile
+(`npm pack` + diff). Si un build local (Gradle, pod install, prebuild) dejó archivos dentro de `node_modules` (p. ej. `android/build`,
+`HAVE_GOOGLE_MAPS 0`), EAS calcula otro fingerprint y el build falla en "Configure expo-updates" con *Runtime version mismatch*
+(build 11, 2026-10-29: masked-view y react-native-maps). Si da ✖: mover esa carpeta fuera, `npm install <paquete>@<versión>` y repetir.
+No es un script de npm a propósito: los `scripts` de `package.json` entran en el fingerprint de EAS, y añadir uno cambia el runtime version
+y rompe la compatibilidad OTA con el build instalado.
+Después: `npx expo-updates fingerprint:generate --platform ios|android` debe dar el mismo hash que el log de EAS.
+
 > No existe aún `package.json`. Estos comandos aplican una vez completada la
 > Task 0.1 (init del proyecto).
 
