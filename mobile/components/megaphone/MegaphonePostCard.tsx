@@ -19,6 +19,7 @@ import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { formatSocialTime } from '../../utils/formatSocialTime';
 import { formatDistance } from '../../utils/distanceUnits';
+import { Skeleton } from '../common/Skeleton';
 import BusinessAvatar from './BusinessAvatar';
 import { useAppWindow } from '../../utils/appWindow';
 
@@ -173,7 +174,37 @@ export default function MegaphonePostCard({
   );
 }
 
+/** Placeholder with the real card's header (36 avatar + two lines), the 4:5 media block of the SAME size, two body lines and the actions row. */
+export function MegaphonePostCardSkeleton() {
+  const colors = useThemeColors();
+  const { width: screenWidth } = useAppWindow();
+  const mediaWidth = screenWidth - LIST_HORIZONTAL_PADDING;
+  const mediaHeight = Math.round((mediaWidth * 5) / 4);
+  return (
+    <View style={[styles.card, { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }]}>
+      <View style={styles.header}>
+        <Skeleton circle height={36} />
+        <View style={styles.headerText}>
+          <Skeleton width="60%" height={13} />
+          <Skeleton width="40%" height={10} />
+        </View>
+      </View>
+      <Skeleton width={mediaWidth} height={mediaHeight} radius={0} />
+      <View style={styles.bodyWrap}>
+        <Skeleton width="85%" height={12} />
+        <Skeleton width="55%" height={12} />
+      </View>
+      <View style={styles.actions}>
+        <Skeleton width={52} height={24} />
+        <Skeleton width={52} height={24} />
+        <Skeleton width={78} height={34} radius={12} style={styles.skeletonEnter} />
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  skeletonEnter: { marginLeft: 'auto' },
   card: { borderRadius: 18, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
   header: { alignItems: 'center', flexDirection: 'row', gap: 10, padding: 12 },
   headerText: { flex: 1, gap: 1 },

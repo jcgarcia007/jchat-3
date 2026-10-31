@@ -7,14 +7,14 @@ import {
   View,
   type ListRenderItemInfo,
 } from 'react-native';
-import { Spinner } from '../../components/common/Spinner';
+import { ArrivalFade, SkeletonGroup, useDelayedLoading } from '../../components/common/Skeleton';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconBuildingStore } from '@tabler/icons-react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import BusinessCard from '../../components/nearby/BusinessCard';
+import BusinessCard, { BusinessCardSkeleton } from '../../components/nearby/BusinessCard';
 import NearbyFilters from '../../components/nearby/NearbyFilters';
 import { useNearbyBusinesses } from '../../hooks/useNearbyBusinesses';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
@@ -30,6 +30,9 @@ export default function NearbyScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const nearby = useNearbyBusinesses();
   const homeBarInset = useHomeBarInset();
+  // `nearby.loading` is true only for the first fetch (a pull-to-refresh uses `refreshing`), so it is exactly "first load without data".
+  // The header and filters stay on screen; only the list shows the skeleton, and only if the load lasts 200 ms.
+  const showSkeleton = useDelayedLoading(nearby.loading);
 
   const enterBusiness = useCallback((business: NearbyBusiness) => {
     navigation.navigate('ChatRoom', { id: business.main_room_id ?? business.id });
@@ -45,14 +48,6 @@ export default function NearbyScreen() {
     },
     [enterBusiness, position],
   );
-
-  if (nearby.loading) {
-    return (
-      <View style={[styles.centered, { backgroundColor: colors.bgBase }]}>
-        <Spinner size="large" color={colors.brandText} />
-      </View>
-    );
-  }
 
   return (
     <View style={[styles.root, { backgroundColor: colors.bgBase }]}>
@@ -81,6 +76,7 @@ export default function NearbyScreen() {
           selectedCategory={nearby.selectedCategory}
         />
       </View>
+      <ArrivalFade loading={nearby.loading} style={styles.listArea}>
       <FlatList
         contentContainerStyle={[styles.list, { paddingBottom: 102 + insets.bottom }]}
         data={nearby.filtered}
@@ -95,7 +91,13 @@ export default function NearbyScreen() {
             tintColor={colors.brand}
           />
         )}
-        ListEmptyComponent={(
+        ListEmptyComponent={nearby.loading ? (
+          showSkeleton ? (
+            <SkeletonGroup style={styles.skeletonList} testID="nearby-skeleton">
+              {Array.from({ length: 3 }).map((_, index) => <BusinessCardSkeleton key={index} />)}
+            </SkeletonGroup>
+          ) : null
+        ) : (
           <View style={styles.empty}>
             <IconBuildingStore size={40} color={colors.textTertiary} strokeWidth={1.5} />
             <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
@@ -107,13 +109,15 @@ export default function NearbyScreen() {
           </View>
         )}
       />
+      </ArrivalFade>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  listArea: { flex: 1 },
+  skeletonList: { gap: 10 },
   header: { paddingHorizontal: 16, paddingBottom: 12, gap: 12, borderBottomWidth: StyleSheet.hairlineWidth },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   title: { fontSize: 26, fontWeight: '700', letterSpacing: -0.3 },

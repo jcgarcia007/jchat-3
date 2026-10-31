@@ -8,6 +8,7 @@ import { canEnterOffer } from '../../utils/offerEntry';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { formatDistance } from '../../utils/distanceUnits';
+import { Skeleton } from '../common/Skeleton';
 import BusinessAvatar from './BusinessAvatar';
 
 interface MegaphoneOfferCardProps {
@@ -83,7 +84,28 @@ export default function MegaphoneOfferCard({ item, onEnter }: MegaphoneOfferCard
   );
 }
 
+/** Placeholder with the real offer card's container (padding 16, gap 10): business row, title, two description lines, discount pill and the button. */
+export function MegaphoneOfferCardSkeleton() {
+  const colors = useThemeColors();
+  return (
+    <View style={[styles.card, { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }]}>
+      <View style={styles.businessRow}>
+        <Skeleton circle height={36} />
+        <Skeleton width="40%" height={12} />
+      </View>
+      <Skeleton width="70%" height={19} />
+      <View style={styles.skeletonDescription}>
+        <Skeleton width="90%" height={12} />
+        <Skeleton width="60%" height={12} />
+      </View>
+      <Skeleton width={84} height={26} radius={12} />
+      <Skeleton width="100%" height={42} radius={14} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  skeletonDescription: { gap: 6 },
   card: { borderRadius: 18, borderWidth: StyleSheet.hairlineWidth, gap: 10, padding: 16 },
   businessRow: { alignItems: 'center', flexDirection: 'row', gap: 10 },
   businessName: { flex: 1, fontSize: 13, fontWeight: '600' },

@@ -8,6 +8,7 @@ import { palette } from '../../theme/tokens';
 import { type NearbyBusiness } from '../../services/nearby';
 import { getOpenStatus } from '../../utils/hours';
 import { BusinessIcon } from '../common/BusinessIcon';
+import { Skeleton } from '../common/Skeleton';
 
 interface BusinessCardProps {
   item: NearbyBusiness;
@@ -80,7 +81,33 @@ export default function BusinessCard({ item, onEnter }: BusinessCardProps) {
   );
 }
 
+/** Placeholder with the real card's container, avatar tile (48, radius 13), title and category lines and the 34 pt button, so the list does not jump. */
+export function BusinessCardSkeleton() {
+  const colors = useThemeColors();
+  return (
+    <View style={[styles.card, { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }]}>
+      <Skeleton width={48} height={48} radius={13} />
+      <View style={styles.content}>
+        <View style={styles.skeletonTitleLine}>
+          <Skeleton width="60%" height={13} />
+        </View>
+        <View style={styles.skeletonCategoryLine}>
+          <Skeleton width="40%" height={10} />
+        </View>
+        <View style={styles.bottomRow}>
+          <View style={styles.stats}>
+            <Skeleton width="45%" height={10} />
+          </View>
+          <Skeleton width={72} height={34} radius={17} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  skeletonTitleLine: { height: 20, justifyContent: 'center' },
+  skeletonCategoryLine: { height: 15, justifyContent: 'center' },
   card: {
     flexDirection: 'row',
     alignItems: 'center',

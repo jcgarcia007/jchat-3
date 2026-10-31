@@ -152,3 +152,39 @@ test('the content fade starts at opacity 1 (the skeleton inside the container mu
   assert.match(source, /useLayoutEffect/);
   assert.match(source, /opacity\.setValue\(0\);\s*\n\s*Animated\.timing/);
 });
+
+// ── Step 3: Nearby and Offers ──────────────────────────────────────────────────
+
+test('Nearby: 3 skeleton cards in the real card (avatar tile 48/13, 60% x 13 and 40% x 10 lines, 34 pt button); header and filters stay; no full-screen spinner', () => {
+  const card = read('components/nearby/BusinessCard.tsx');
+  assert.match(card, /export function BusinessCardSkeleton/);
+  assert.match(card, /<Skeleton width=\{48\} height=\{48\} radius=\{13\} \/>/);
+  assert.match(card, /<Skeleton width="60%" height=\{13\} \/>/);
+  assert.match(card, /<Skeleton width="40%" height=\{10\} \/>/);
+  assert.match(card, /<Skeleton width=\{72\} height=\{34\} radius=\{17\} \/>/);
+  const screen = read('screens/nearby/NearbyScreen.tsx');
+  assert.match(screen, /Array\.from\(\{ length: 3 \}\)/);
+  assert.match(screen, /useDelayedLoading\(nearby\.loading\)/);
+  assert.doesNotMatch(screen, /<Spinner/, 'the full-screen spinner is gone');
+  assert.match(screen, /NearbyFilters/, 'the header and filters are always rendered');
+});
+
+test('Offers: one post card skeleton (4:5 photo of the real size) + two offer card skeletons, only for the first load', () => {
+  const post = read('components/megaphone/MegaphonePostCard.tsx');
+  assert.match(post, /export function MegaphonePostCardSkeleton/);
+  assert.equal((post.match(/Math\.round\(\(mediaWidth \* 5\) \/ 4\)/g) ?? []).length, 2, 'the skeleton uses the same media height formula as the card');
+  assert.match(read('components/megaphone/MegaphoneOfferCard.tsx'), /export function MegaphoneOfferCardSkeleton/);
+  const screen = read('screens/offers/OffersScreen.tsx');
+  assert.equal((screen.match(/<MegaphonePostCardSkeleton \/>/g) ?? []).length, 1);
+  assert.equal((screen.match(/<MegaphoneOfferCardSkeleton \/>/g) ?? []).length, 2);
+  assert.match(screen, /useDelayedLoading\(loading\)/);
+  assert.match(screen, /\{loading \? \(/);
+});
+
+test('refreshes never show a skeleton: Nearby and Offers drive it from the first-load flag, not from `refreshing`', () => {
+  for (const file of ['screens/nearby/NearbyScreen.tsx', 'screens/offers/OffersScreen.tsx']) {
+    const src = read(file);
+    assert.doesNotMatch(src, /useDelayedLoading\([^)]*refreshing/, file);
+    assert.doesNotMatch(src, /useDelayedLoading\([^)]*loadingMore/, file);
+  }
+});

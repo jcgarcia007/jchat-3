@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Animated,
   FlatList,
   Platform,
   Pressable,
@@ -10,6 +11,7 @@ import {
   type ListRenderItemInfo,
 } from 'react-native';
 import { Spinner } from '../../components/common/Spinner';
+import { SkeletonGroup, useArrivalFade, useDelayedLoading } from '../../components/common/Skeleton';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,8 +20,8 @@ import { IconArrowLeft, IconMapPin, IconSpeakerphone } from '@tabler/icons-react
 import { useTranslation } from 'react-i18next';
 
 import { useHomeBarInset } from '../../components/venue/HomeBarInset';
-import MegaphoneOfferCard from '../../components/megaphone/MegaphoneOfferCard';
-import MegaphonePostCard from '../../components/megaphone/MegaphonePostCard';
+import MegaphoneOfferCard, { MegaphoneOfferCardSkeleton } from '../../components/megaphone/MegaphoneOfferCard';
+import MegaphonePostCard, { MegaphonePostCardSkeleton } from '../../components/megaphone/MegaphonePostCard';
 import RadiusSheet from '../../components/megaphone/RadiusSheet';
 import { useAuth } from '../../context/AuthContext';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
@@ -73,6 +75,10 @@ export default function OffersScreen() {
   const firstLoadPendingRef = useRef(false);
   const lastLoadedAtRef = useRef(0);
   const likesInFlightRef = useRef(new Set<string>());
+  // `loading` is true only until the FIRST page has come back (refreshes use `refreshing`, and re-focusing keeps the loaded pages), so it is exactly
+  // "first load without data". The skeleton shows only if that lasts 200 ms; the header and the radius chip stay on screen.
+  const showSkeleton = useDelayedLoading(loading);
+  const contentOpacity = useArrivalFade(loading);
 
   /**
    * First page. It does NOT wait for the position: it paints with the last known one (or none) and, when the
@@ -274,10 +280,20 @@ export default function OffersScreen() {
       />
 
       {loading ? (
-        <View style={styles.center}>
-          <Spinner color={colors.brandText} size="large" />
-        </View>
+        showSkeleton ? (
+          // One post card (header + 4:5 photo) and two offer cards, in the list's own padding and gap.
+          <View style={styles.skeletonViewport}>
+            <SkeletonGroup style={styles.skeletonList} testID="offers-skeleton">
+              <MegaphonePostCardSkeleton />
+              <MegaphoneOfferCardSkeleton />
+              <MegaphoneOfferCardSkeleton />
+            </SkeletonGroup>
+          </View>
+        ) : (
+          <View style={styles.center} />
+        )
       ) : (
+        <Animated.View style={[styles.contentArea, { opacity: contentOpacity }]}>
         <FlatList
           contentContainerStyle={[styles.list, items.length === 0 && styles.emptyList, { paddingBottom: 26 + insets.bottom + (isWeb ? 0 : BAR_HEIGHT + 16) }]}
           data={items}
@@ -322,6 +338,7 @@ export default function OffersScreen() {
             </View>
           )}
         />
+        </Animated.View>
       )}
     </View>
   );
@@ -342,6 +359,9 @@ const styles = StyleSheet.create({
   radiusChip: { alignItems: 'center', borderRadius: 16, flexDirection: 'row', gap: 4, paddingHorizontal: 12, paddingVertical: 7 },
   radiusChipText: { fontSize: 13, fontWeight: '700' },
   center: { alignItems: 'center', flex: 1, justifyContent: 'center' },
+  contentArea: { flex: 1 },
+  skeletonViewport: { flex: 1, overflow: 'hidden' },
+  skeletonList: { gap: 12, padding: 16 },
   list: { gap: 12, padding: 16, paddingBottom: 36 },
   emptyList: { flexGrow: 1 },
   footer: { paddingVertical: 16 },
