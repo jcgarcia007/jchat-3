@@ -188,3 +188,33 @@ test('refreshes never show a skeleton: Nearby and Offers drive it from the first
     assert.doesNotMatch(src, /useDelayedLoading\([^)]*loadingMore/, file);
   }
 });
+
+// ── Step 4: Profile ────────────────────────────────────────────────────────────
+
+test('Profile: the header skeleton has the real geometry (cover height, 92 pt avatar ring, name block, bio line, two 44 pt capsules) and no counters', () => {
+  const header = read('components/profile/ProfileHeader.tsx');
+  const skeleton = header.slice(header.indexOf('export function ProfileHeaderSkeleton'), header.indexOf('export function ProfileCompactBar'));
+  assert.ok(skeleton.length > 500, 'ProfileHeaderSkeleton found');
+  assert.match(skeleton, /topInset \+ COVER_BELOW_INSET/);
+  assert.match(skeleton, /AVATAR_SIZE - AVATAR_BORDER \* 2/);
+  assert.match(skeleton, /<Skeleton width="70%" height=\{15\}/);
+  assert.match(skeleton, /<Skeleton width="50%" height=\{11\}/);
+  assert.match(skeleton, /<Skeleton width="85%" height=\{10\}/);
+  assert.match(skeleton, /height=\{44\} radius=\{22\}/);
+  assert.match(skeleton, /styles\.sheet/, 'same sheet container');
+  assert.doesNotMatch(skeleton, /Stat\b|followers|following|posts/i, 'no counters');
+  assert.doesNotMatch(skeleton, /coverGradient|LinearGradient/, 'the cover is a neutral bone, never a profile theme');
+  assert.match(skeleton, /<CoverButtons props=\{props\} iconColor=\{c\.textPrimary\} loading \/>/, 'the glass buttons are the real ones');
+});
+
+test('Profile: 12 grid bones of the real cell size and gap; the old counters skeleton is gone; the real content fades in', () => {
+  const screen = read('screens/profile/ProfileScreen.tsx');
+  assert.doesNotMatch(screen, /function ProfileSkeleton\b|skeletonStats|skeletonCell/);
+  assert.match(screen, /Array\.from\(\{ length: 12 \}\)/);
+  assert.match(screen, /<Skeleton key=\{index\} width=\{cellSize\} height=\{cellSize\} radius=\{0\} \/>/);
+  assert.match(screen, /style=\{styles\.postsGrid\}/, 'the same grid container (row, wrap, gap 2)');
+  assert.match(screen, /useDelayedLoading\(initialLoading\)/);
+  assert.match(screen, /useArrivalFade\(initialLoading\)/);
+  assert.match(screen, /<Animated\.View style=\{\[styles\.contentArea, \{ opacity: contentOpacity \}\]\}>/);
+  assert.doesNotMatch(screen, /useDelayedLoading\([^)]*(refreshing|silent)/, 'a refresh never shows the skeleton');
+});

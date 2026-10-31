@@ -39,7 +39,8 @@ import type { PostRow } from '../../services/posts';
 import { getOrCreateConversation, DmGateError } from '../../services/dms';
 import { blockUser } from '../../services/blocks';
 import { useFollowSystem } from '../../hooks/useFollowSystem';
-import ProfileHeader, { ProfileCompactBar } from '../../components/profile/ProfileHeader';
+import ProfileHeader, { ProfileCompactBar, ProfileHeaderSkeleton } from '../../components/profile/ProfileHeader';
+import { Skeleton, SkeletonGroup, useArrivalFade, useDelayedLoading } from '../../components/common/Skeleton';
 import { BAR_HEIGHT } from '../../components/navigation/NotchTabBar';
 import { toUserMessage } from '../../utils/errors';
 import { useHomeBarInset } from '../../components/venue/HomeBarInset';
@@ -59,31 +60,13 @@ const PROFILE_COMPLETION_DISMISSED_KEY = 'profile.completionDismissed';
 /** The tab bar floats this far above the bottom inset (see NotchTabBar). */
 const TAB_BAR_LIFT = 26;
 
-function ProfileSkeleton({ topInset }: { topInset: number }) {
-  const c = useThemeColors();
-  const opacity = useRef(new Animated.Value(0.38)).current;
-  useEffect(() => {
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, { toValue: 0.82, duration: 650, useNativeDriver: true }),
-        Animated.timing(opacity, { toValue: 0.38, duration: 650, useNativeDriver: true }),
-      ]),
-    );
-    animation.start();
-    return () => animation.stop();
-  }, [opacity]);
-  const block = { backgroundColor: c.borderSubtle };
+/** 12 squares with the real grid's size (3 columns) and gap, drawn only once the 200 ms anti-flicker delay has passed. */
+function ProfileGridSkeleton({ cellSize, showBones }: { cellSize: number; showBones: boolean }) {
+  if (!showBones) return null;
   return (
-    <View style={[styles.skeletonRoot, { backgroundColor: c.bgBase, paddingTop: topInset + 12 }]}>
-      <Animated.View style={[styles.skeletonTop, block, { opacity }]} />
-      <Animated.View style={[styles.skeletonAvatar, { backgroundColor: c.bgSurface, borderColor: c.bgBase, opacity }]} />
-      <Animated.View style={[styles.skeletonName, block, { opacity }]} />
-      <Animated.View style={[styles.skeletonHandle, block, { opacity }]} />
-      <Animated.View style={[styles.skeletonStats, block, { opacity }]} />
-      <View style={styles.skeletonGrid}>
-        {Array.from({ length: 6 }).map((_, index) => <Animated.View key={index} style={[styles.skeletonCell, block, { opacity }]} />)}
-      </View>
-    </View>
+    <SkeletonGroup announce={false} style={styles.postsGrid}>
+      {Array.from({ length: 12 }).map((_, index) => <Skeleton key={index} width={cellSize} height={cellSize} radius={0} />)}
+    </SkeletonGroup>
   );
 }
 
@@ -181,6 +164,9 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
   // if the check itself fails, RLS still decides what the posts query returns.
   const [canViewPosts, setCanViewPosts] = useState(true);
   const [initialLoading, setInitialLoading] = useState(true);
+  // The skeleton is for the FIRST load only ('silent' reloads and pull-to-refresh keep the content), and only if it lasts 200 ms.
+  const showSkeleton = useDelayedLoading(initialLoading);
+  const contentOpacity = useArrivalFade(initialLoading);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [completionDismissed, setCompletionDismissed] = useState<boolean | null>(null);
@@ -335,7 +321,24 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
   }, [actionBusy, blocked, handleUnblock, navigation, profile, relationBusy, t, targetId]);
 
   const topInset = inSheet ? 4 : insets.top + (route.name === 'Profile' ? homeBarInset : 0);
-  if (initialLoading) return <ProfileSkeleton topInset={topInset} />;
+  if (initialLoading) {
+    // Same container as the real screen (a ScrollView with the same bottom padding): only the content differs, so nothing jumps. The round glass buttons
+    // are the real ones; the profile's own menu and share have nothing to act on yet.
+    const loadingChrome = {
+      isOwnProfile, showBack: route.name === 'UserProfile', hideBack: inSheet, topInset,
+      onBack: () => navigation.goBack(), onOpenMenu: () => undefined, onShare: () => undefined, onSettings: () => navigation.navigate('Settings'),
+    };
+    const loadingBottom = route.name === 'Profile' ? TAB_BAR_LIFT + insets.bottom + BAR_HEIGHT + 24 : 24 + insets.bottom;
+    return (
+      <View style={[styles.root, { backgroundColor: c.bgBase }]}>
+        {inSheet ? null : <StatusBar barStyle={colorScheme === 'light' ? 'dark-content' : 'light-content'} translucent backgroundColor="transparent" />}
+        <ScrollView scrollEnabled={false} showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scrollContent, { paddingBottom: loadingBottom }]}>
+          <ProfileHeaderSkeleton {...loadingChrome} showBones={showSkeleton} capsuleCount={isOwnProfile && route.name !== 'Profile' ? 1 : 2} />
+          <View style={styles.gridTop}><ProfileGridSkeleton cellSize={cellSize} showBones={showSkeleton} /></View>
+        </ScrollView>
+      </View>
+    );
+  }
   if (error || !profile) {
     return <View style={[styles.errorRoot, { backgroundColor: c.bgBase }]}><Text style={[styles.errorText, { color: c.dangerText }]}>{error ?? t('view.profileNotFound')}</Text></View>;
   }
@@ -369,6 +372,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
   return (
     <View style={[styles.root, { backgroundColor: c.bgBase }]}>
       {inSheet ? null : <StatusBar barStyle={statusBarStyle} translucent backgroundColor="transparent" />}
+      <Animated.View style={[styles.contentArea, { opacity: contentOpacity }]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}
@@ -389,6 +393,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
         />
         <View style={styles.gridTop}>{renderPosts()}</View>
       </ScrollView>
+      </Animated.View>
 
       {compact ? (
         <ProfileCompactBar {...chrome} displayName={profile.display_name} username={profile.username} avatarUrl={profile.avatar_url} />
@@ -424,11 +429,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 }, scrollContent: {}, errorRoot: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }, errorText: { textAlign: 'center', fontSize: 14 },
-  skeletonRoot: { flex: 1 }, skeletonTop: { width: 150, height: 18, borderRadius: 9, marginLeft: 16 }, skeletonCover: { height: 120, marginHorizontal: 16, marginTop: 18, borderRadius: 20 },
-  skeletonAvatar: { width: 88, height: 88, borderRadius: 44, borderWidth: 4, alignSelf: 'flex-start', marginLeft: 16, marginTop: 40 }, skeletonName: { width: 180, height: 22, borderRadius: 8, alignSelf: 'flex-start', marginLeft: 16, marginTop: 14 },
-  skeletonHandle: { width: 110, height: 14, borderRadius: 7, alignSelf: 'flex-start', marginLeft: 16, marginTop: 8 }, skeletonStats: { height: 70, borderRadius: 16, marginHorizontal: 16, marginTop: 28 },
-  skeletonGrid: { marginTop: 24, flexDirection: 'row', flexWrap: 'wrap', gap: 2 }, skeletonCell: { width: '32.9%', aspectRatio: 1 },
+  root: { flex: 1 }, contentArea: { flex: 1 }, scrollContent: {}, errorRoot: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }, errorText: { textAlign: 'center', fontSize: 14 },
   gridTop: { marginTop: 12 },
   postsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP }, postCell: { overflow: 'hidden' }, postTextWrap: { alignItems: 'center', justifyContent: 'center', padding: 8 }, postText: { fontSize: 10, lineHeight: 14 },
   multiPhotoBadge: { position: 'absolute', top: 6, right: 6, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: palette.scrim },

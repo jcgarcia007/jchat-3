@@ -23,6 +23,7 @@ import {
   IconArrowLeft, IconCircleCheckFilled, IconDots, IconMapPin, IconMessage, IconPlus, IconSettings, IconShare3, IconX,
 } from '@tabler/icons-react-native';
 
+import { Skeleton, SkeletonGroup } from '../common/Skeleton';
 import { Spinner } from '../common/Spinner';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
@@ -85,8 +86,11 @@ function showsBack({ isOwnProfile, showBack, hideBack }: ProfileChromeProps): bo
   return isOwnProfile ? Boolean(showBack && !hideBack) : !hideBack;
 }
 
-/** The round buttons over the cover: back / share / settings on my profile, back / ⋯ on someone else's. */
-function CoverButtons({ props, iconColor }: { props: ProfileChromeProps; iconColor: string }) {
+/**
+ * The round buttons over the cover: back / share / settings on my profile, back / ⋯ on someone else's.
+ * `loading` (the profile has not arrived yet): someone else's ⋯ menu has nothing to act on, so it is left out until the data is there.
+ */
+function CoverButtons({ props, iconColor, loading = false }: { props: ProfileChromeProps; iconColor: string; loading?: boolean }) {
   const { t } = useTranslation('profile');
   const { isOwnProfile, onBack, onOpenMenu, onShare, onSettings } = props;
   const back = showsBack(props);
@@ -103,11 +107,62 @@ function CoverButtons({ props, iconColor }: { props: ProfileChromeProps; iconCol
         {isOwnProfile && backButton ? shareButton : null}
         {isOwnProfile ? (
           <GlassIconButton label={t('header.settingsA11y')} onPress={onSettings} testID="profile-open-settings"><IconSettings size={19} color={iconColor} strokeWidth={2} /></GlassIconButton>
-        ) : (
+        ) : loading ? null : (
           <GlassIconButton label={t('header.moreA11y')} onPress={onOpenMenu} testID="profile-more"><IconDots size={22} color={iconColor} strokeWidth={2} /></GlassIconButton>
         )}
       </View>
     </>
+  );
+}
+
+/**
+ * The header while the profile is loading for the first time: the SAME container, cover height, sheet, 92 pt avatar ring, name block and capsule
+ * row as the real header (so nothing jumps when the data arrives), with bones instead of the content. The round glass buttons over the cover are the
+ * real ones (settings, back…), not bones. The cover is a neutral bone, never a profile theme: the theme is not known yet and would flash the wrong colour.
+ * `showBones` false (the first 200 ms of the load) draws the same layout without bones, so a fast load never flashes a skeleton.
+ */
+export function ProfileHeaderSkeleton(props: ProfileChromeProps & { showBones: boolean; capsuleCount?: number }) {
+  const c = useThemeColors();
+  const { topInset, showBones, capsuleCount = 2 } = props;
+  const coverHeight = topInset + COVER_BELOW_INSET;
+  return (
+    <View style={styles.container}>
+      <View style={{ height: coverHeight }}>
+        {showBones ? (
+          <SkeletonGroup style={StyleSheet.absoluteFill} testID="profile-skeleton">
+            <Skeleton width="100%" height={coverHeight} radius={0} />
+          </SkeletonGroup>
+        ) : null}
+        <View style={[styles.coverButtons, { top: topInset + BUTTONS_BELOW_INSET }]} pointerEvents="box-none">
+          <CoverButtons props={props} iconColor={c.textPrimary} loading />
+        </View>
+      </View>
+
+      <View style={[styles.sheet, { backgroundColor: c.bgBase }]}>
+        <View style={[styles.avatarBorder, { backgroundColor: c.bgBase }]}>
+          {showBones ? (
+            <SkeletonGroup announce={false}>
+              <Skeleton circle height={AVATAR_SIZE - AVATAR_BORDER * 2} />
+            </SkeletonGroup>
+          ) : null}
+        </View>
+
+        {showBones ? (
+          <SkeletonGroup announce={false}>
+            <View style={styles.nameBlock}>
+              <Skeleton width="70%" height={15} style={styles.skeletonName} />
+              <Skeleton width="50%" height={11} style={styles.skeletonHandle} />
+            </View>
+            <View style={styles.bioBlock}>
+              <Skeleton width="85%" height={10} />
+            </View>
+            <View style={styles.capsules}>
+              {Array.from({ length: capsuleCount }).map((_, index) => <Skeleton key={index} height={44} radius={22} style={styles.skeletonCapsule} />)}
+            </View>
+          </SkeletonGroup>
+        ) : <View style={styles.nameBlock} />}
+      </View>
+    </View>
   );
 }
 
@@ -293,6 +348,9 @@ export default function ProfileHeader(props: ProfileHeaderProps) {
 
 const styles = StyleSheet.create({
   container: { width: '100%' },
+  skeletonName: { marginTop: 8 },
+  skeletonHandle: { marginTop: 14 },
+  skeletonCapsule: { flex: 1 },
   coverButtons: { position: 'absolute', left: SIDE_MARGIN, right: SIDE_MARGIN, flexDirection: 'row', justifyContent: 'space-between' },
   buttonGroup: { flexDirection: 'row', gap: 8 },
   // The content sheet overlaps the cover and has rounded top corners; the avatar is centred on its top edge.
