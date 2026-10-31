@@ -215,6 +215,24 @@ test('Profile: 12 grid bones of the real cell size and gap; the old counters ske
   assert.match(screen, /style=\{styles\.postsGrid\}/, 'the same grid container (row, wrap, gap 2)');
   assert.match(screen, /useDelayedLoading\(initialLoading\)/);
   assert.match(screen, /useArrivalFade\(initialLoading\)/);
-  assert.match(screen, /<Animated\.View style=\{\[styles\.contentArea, \{ opacity: contentOpacity \}\]\}>/);
+  assert.match(screen, /<Animated\.View needsOffscreenAlphaCompositing style=\{\[styles\.contentArea, \{ opacity: contentOpacity \}\]\}>/);
   assert.doesNotMatch(screen, /useDelayedLoading\([^)]*(refreshing|silent)/, 'a refresh never shows the skeleton');
+});
+
+test('every container that fades the real content in composites its children as one group (Android would show what is behind a row through it)', () => {
+  for (const file of ['components/common/Skeleton.tsx', 'components/dms/ConversationList.tsx', 'screens/offers/OffersScreen.tsx', 'screens/profile/ProfileScreen.tsx']) {
+    const src = read(file);
+    for (const m of src.matchAll(/<Animated\.View[^>]*opacity[^>]*>/g)) {
+      if (/contentOpacity|\{ opacity \}/.test(m[0])) assert.match(m[0], /needsOffscreenAlphaCompositing/, `${file}: ${m[0]}`);
+    }
+  }
+});
+
+test('the profile grid cell size is floored to 0.01 so three cells always fit one row (Yoga wrapped the third on a 411.43 dp screen)', () => {
+  const screen = read('screens/profile/ProfileScreen.tsx');
+  assert.match(screen, /const cellSize = Math\.floor\(\(\(windowWidth - GRID_GAP \* \(GRID_COLUMNS - 1\)\) \/ GRID_COLUMNS\) \* 100\) \/ 100;/);
+  for (const width of [360, 375, 390, 393, 402, 411.4285714285714, 412, 428, 430, 600]) {
+    const cell = Math.floor(((width - 2 * 2) / 3) * 100) / 100;
+    assert.ok(3 * cell + 2 * 2 <= width, `${width}: ${3 * cell + 4} must not exceed it`);
+  }
 });

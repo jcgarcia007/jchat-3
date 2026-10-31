@@ -197,5 +197,7 @@ export function useArrivalFade(loading: boolean): Animated.Value {
 /** Wrapper that applies `useArrivalFade` to its children. */
 export function ArrivalFade({ loading, style, children }: { loading: boolean; style?: StyleProp<ViewStyle>; children: React.ReactNode }) {
   const opacity = useArrivalFade(loading);
-  return <Animated.View style={[style, { opacity }]}>{children}</Animated.View>;
+  // needsOffscreenAlphaCompositing: on Android, opacity < 1 would fade every child on its own, and whatever sits behind a row (SwipeToDelete's red
+  // layer) would show through; compositing the group first fades it as one picture.
+  return <Animated.View needsOffscreenAlphaCompositing style={[style, { opacity }]}>{children}</Animated.View>;
 }

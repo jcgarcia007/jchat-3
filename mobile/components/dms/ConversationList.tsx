@@ -239,7 +239,7 @@ export default function ConversationList({
   }
 
   return (
-    <Animated.View style={[styles.fill, { opacity: contentOpacity }]}>
+    <Animated.View needsOffscreenAlphaCompositing style={[styles.fill, { opacity: contentOpacity }]}>
     <FlatList
       contentContainerStyle={[
         contentContainerStyle,

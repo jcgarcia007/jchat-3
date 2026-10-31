@@ -141,7 +141,9 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
   const insets = useSafeAreaInsets();
   const homeBarInset = useHomeBarInset();
   const { width: windowWidth } = useAppWindow();
-  const cellSize = (windowWidth - GRID_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS;
+  // Floored to 0.01: on a 411.43 dp screen (Android, 420 dpi) three cells of (width - gaps) / 3 add up to the container width only up to float rounding,
+  // and Yoga then wraps the third cell onto the next row (2 columns). Losing a hundredth of a point cannot do that.
+  const cellSize = Math.floor(((windowWidth - GRID_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS) * 100) / 100;
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const route = useRoute<ProfileRoute>();
   const { user: authUser } = useAuth();
@@ -372,7 +374,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
   return (
     <View style={[styles.root, { backgroundColor: c.bgBase }]}>
       {inSheet ? null : <StatusBar barStyle={statusBarStyle} translucent backgroundColor="transparent" />}
-      <Animated.View style={[styles.contentArea, { opacity: contentOpacity }]}>
+      <Animated.View needsOffscreenAlphaCompositing style={[styles.contentArea, { opacity: contentOpacity }]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}

@@ -293,7 +293,7 @@ export default function OffersScreen() {
           <View style={styles.center} />
         )
       ) : (
-        <Animated.View style={[styles.contentArea, { opacity: contentOpacity }]}>
+        <Animated.View needsOffscreenAlphaCompositing style={[styles.contentArea, { opacity: contentOpacity }]}>
         <FlatList
           contentContainerStyle={[styles.list, items.length === 0 && styles.emptyList, { paddingBottom: 26 + insets.bottom + (isWeb ? 0 : BAR_HEIGHT + 16) }]}
           data={items}
