@@ -21,6 +21,7 @@ import { IconArrowLeft } from '@tabler/icons-react-native';
 
 import ConversationList from '../../components/dms/ConversationList';
 import SwipeToDelete from '../../components/common/SwipeToDelete';
+import { ArrivalFade, Skeleton, SkeletonGroup, useDelayedLoading } from '../../components/common/Skeleton';
 import { useNotifications } from '../../hooks/useNotifications';
 import {
   NOTIFICATION_ICONS,
@@ -44,6 +45,25 @@ import { showAlert } from '../../utils/dialog';
 
 type MessagesNavigation = NativeStackNavigationProp<MainStackParamList>;
 
+/** Four placeholder rows with the real notification row's size and padding (minHeight 66): a 40 circle and two lines. */
+function NotificationSkeleton() {
+  const colors = useThemeColors();
+  return (
+    // The conversations skeleton above already announces "Loading…": this group stays silent for screen readers.
+    <SkeletonGroup announce={false} testID="notifications-skeleton">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <View key={index} style={[styles.notificationRow, { backgroundColor: colors.bgBase, borderBottomColor: colors.borderSubtle }]}>
+          <Skeleton circle height={40} />
+          <View style={styles.notificationContent}>
+            <Skeleton width="85%" height={12} />
+            <Skeleton width="30%" height={10} />
+          </View>
+        </View>
+      ))}
+    </SkeletonGroup>
+  );
+}
+
 export default function MessagesScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
@@ -59,10 +79,13 @@ export default function MessagesScreen() {
   const commonTranslation = useTranslation('common');
   const [dmUnreadCount, setDmUnreadCount] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
-  const { notifications, markRead, refresh, remove } = useNotifications({ passive: true });
+  const { notifications, markRead, refresh, remove, initialized } = useNotifications({ passive: true });
 
   const { visible: socialNotifications, textFor: notificationText } = useNotificationPresenter(notifications);
   const clearSurface = `${colors.bgSurface}00`;
+  // Skeleton only until the first fetch of notifications has finished (never for a refresh, never for a list that is really empty), and only after 200 ms.
+  const waitingNotifications = !initialized;
+  const showNotificationsSkeleton = useDelayedLoading(waitingNotifications);
 
   useFocusEffect(useCallback(() => {
     void refresh();
@@ -213,8 +236,9 @@ export default function MessagesScreen() {
       <Text style={[styles.notificationsTitle, { color: colors.textPrimary }]}>
         {translation.t('messages.notificationsTitle')}
       </Text>
+      <ArrivalFade loading={waitingNotifications} style={styles.notificationsArea}>
       <FlatList
-        contentContainerStyle={socialNotifications.length === 0 && pinnedOrders.length === 0 ? styles.emptyNotifications : undefined}
+        contentContainerStyle={!waitingNotifications && socialNotifications.length === 0 && pinnedOrders.length === 0 ? styles.emptyNotifications : undefined}
         data={socialNotifications}
         ListHeaderComponent={pinnedOrders.length > 0 ? (
           <View>
@@ -238,12 +262,15 @@ export default function MessagesScreen() {
           />
         )}
         renderItem={renderNotification}
-        ListEmptyComponent={pinnedOrders.length > 0 ? null : (
-          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-            {translation.t('messages.emptyNotifications')}
-          </Text>
-        )}
+        ListEmptyComponent={waitingNotifications
+          ? (showNotificationsSkeleton ? <NotificationSkeleton /> : null)
+          : pinnedOrders.length > 0 ? null : (
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+              {translation.t('messages.emptyNotifications')}
+            </Text>
+          )}
       />
+      </ArrivalFade>
     </View>
   );
 }
@@ -261,6 +288,7 @@ const styles = StyleSheet.create({
   newChipText: { fontSize: 11, fontWeight: '800' },
   conversationArea: { flex: 1 },
   scrollHint: { bottom: 0, height: 36, left: 0, position: 'absolute', right: 0 },
+  notificationsArea: { flex: 1 },
   notificationsTitle: { fontSize: 19, fontWeight: '800', paddingBottom: 8, paddingTop: 18 },
   notificationRow: { alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', minHeight: 66, paddingHorizontal: 10, paddingVertical: 10 },
   notificationIcon: { alignItems: 'center', borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },

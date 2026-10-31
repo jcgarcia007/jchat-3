@@ -86,6 +86,11 @@ export function notificationTypesForFilter(filter: NotificationFilter): string[]
 export interface UseNotificationsResult {
   /** Sorted array (newest first) of the current user's notifications. */
   notifications: NotificationRow[];
+  /**
+   * False until the FIRST fetch has finished (successfully or not; true at once when there is no backend to ask). It tells "first load, nothing to
+   * show yet" apart from "loaded and really empty": a skeleton belongs to the former only. It never goes back to false (a refresh keeps the rows).
+   */
+  initialized: boolean;
   /** Number of unread notifications. */
   unreadCount: number;
   /**
@@ -125,6 +130,7 @@ export function useNotifications({ passive = false }: UseNotificationsOptions = 
   const { user, isAuthenticated } = useAuth();
 
   const [notifications, setNotifications] = useState<NotificationRow[]>([]);
+  const [initialized, setInitialized] = useState(false);
   const [pendingRoute, setPendingRoute] = useState<NotificationRoute | null>(null);
 
   // Refs for cleanup — avoids stale-closure issues with the effect.
@@ -142,8 +148,12 @@ export function useNotifications({ passive = false }: UseNotificationsOptions = 
 
   const refresh = useCallback(async () => {
     if (!isAuthenticated || !isSupabaseConfigured) return;
-    const rows = await listNotifications();
-    setNotifications(rows);
+    try {
+      const rows = await listNotifications();
+      setNotifications(rows);
+    } finally {
+      setInitialized(true);
+    }
   }, [isAuthenticated]);
 
   const markRead = useCallback(async (id: string) => {
@@ -218,10 +228,18 @@ export function useNotifications({ passive = false }: UseNotificationsOptions = 
     let shouldRetryPermission = false;
 
     const refetch = () => {
-      if (cancelled || !isSupabaseConfigured) return;
-      void listNotifications().then((rows) => {
-        if (!cancelled) setNotifications(rows);
-      });
+      if (cancelled) return;
+      if (!isSupabaseConfigured) {
+        setInitialized(true); // nothing to wait for
+        return;
+      }
+      void listNotifications()
+        .then((rows) => {
+          if (!cancelled) setNotifications(rows);
+        })
+        .finally(() => {
+          if (!cancelled) setInitialized(true);
+        });
     };
 
     const attemptPushRegistration = async () => {
@@ -357,6 +375,7 @@ export function useNotifications({ passive = false }: UseNotificationsOptions = 
 
   return {
     notifications,
+    initialized,
     unreadCount,
     markRead,
     markAllRead,

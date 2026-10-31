@@ -10,7 +10,7 @@
  * Reduce motion (iOS/Android setting, and `prefers-reduced-motion` on the web through react-native-web's AccessibilityInfo): the bones stay still at a
  * fixed opacity. Only JS + the `Animated` of react-native (native driver off on the web): nothing native is added, so it ships over the air.
  */
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Animated, Easing, Platform, View, type DimensionValue, type StyleProp, type ViewStyle } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -110,26 +110,34 @@ interface SkeletonGroupProps {
   children: React.ReactNode;
   /** What a screen reader says; default "Loading…". */
   label?: string;
+  /** False for a second group on the same screen: it stays hidden from screen readers so "Loading…" is announced only once. Default true. */
+  announce?: boolean;
   style?: StyleProp<ViewStyle>;
   testID?: string;
 }
 
 /** Wrap ONLY bones in it: a group is a single accessible element, so anything real inside would not be reachable. */
-export function SkeletonGroup({ children, label, style, testID }: SkeletonGroupProps) {
+export function SkeletonGroup({ children, label, announce = true, style, testID }: SkeletonGroupProps) {
   const { t } = useTranslation('common');
   const opacity = useSkeletonOpacity();
   return (
     <SkeletonOpacityContext.Provider value={opacity}>
-      <View
-        accessible
-        accessibilityRole="progressbar"
-        accessibilityLabel={label ?? t('state.loading')}
-        accessibilityState={{ busy: true }}
-        style={style}
-        testID={testID}
-      >
-        {children}
-      </View>
+      {announce ? (
+        <View
+          accessible
+          accessibilityRole="progressbar"
+          accessibilityLabel={label ?? t('state.loading')}
+          accessibilityState={{ busy: true }}
+          style={style}
+          testID={testID}
+        >
+          {children}
+        </View>
+      ) : (
+        <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" aria-hidden style={style} testID={testID}>
+          {children}
+        </View>
+      )}
     </SkeletonOpacityContext.Provider>
   );
 }
@@ -158,18 +166,19 @@ export function useDelayedLoading(loading: boolean, delayMs: number = SKELETON_D
 }
 
 /**
- * Opacity for the real content. If the screen started out loading, the content fades in (200 ms) when the data arrives; if there was nothing to wait
- * for (data already in memory) it is simply there. With "Reduce motion" (or before the OS has answered) there is no fade.
+ * Opacity for a container that holds the skeleton first and the real content afterwards. It stays 1 while loading (the skeleton must be visible); when the
+ * data arrives the real content fades in from 0 over 200 ms. If there was nothing to wait for (data already in memory) nothing animates. With "Reduce
+ * motion" (or before the OS has answered) there is no fade. The switch to 0 runs in a layout effect so the real content never flashes at full opacity.
  */
 export function useArrivalFade(loading: boolean): Animated.Value {
   const reduceMotion = useReduceMotion();
   const sawLoading = useRef(loading);
-  const opacity = useRef(new Animated.Value(loading ? 0 : 1)).current;
+  const opacity = useRef(new Animated.Value(1)).current;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (loading) {
       sawLoading.current = true;
-      opacity.setValue(0);
+      opacity.setValue(1);
       return;
     }
     if (!sawLoading.current) return;
@@ -178,6 +187,7 @@ export function useArrivalFade(loading: boolean): Animated.Value {
       opacity.setValue(1);
       return;
     }
+    opacity.setValue(0);
     Animated.timing(opacity, { toValue: 1, duration: CONTENT_FADE_MS, easing: Easing.out(Easing.ease), useNativeDriver: USE_NATIVE_DRIVER }).start();
   }, [loading, reduceMotion, opacity]);
 

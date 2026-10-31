@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
+  Animated,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -13,6 +14,7 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import SwipeToDelete from '../common/SwipeToDelete';
+import { Skeleton, SkeletonGroup, useArrivalFade, useDelayedLoading } from '../common/Skeleton';
 import { useAuth } from '../../context/AuthContext';
 import {
   hideConversation,
@@ -36,6 +38,24 @@ interface ConversationListProps {
 
 function initials(name: string | null, username: string): string {
   return getInitials(name ?? username, 2);
+}
+
+/** Six placeholder rows with the SAME padding, avatar and borders as a real row (so nothing jumps when the data arrives). */
+function ConversationSkeleton() {
+  const colors = useThemeColors();
+  return (
+    <SkeletonGroup testID="dm-list-skeleton">
+      {Array.from({ length: 6 }).map((_, index) => (
+        <View key={index} style={[styles.row, { backgroundColor: colors.bgSurface, borderBottomColor: colors.borderSubtle }]}>
+          <Skeleton circle height={48} style={styles.skeletonAvatar} />
+          <View style={styles.rowContent}>
+            <Skeleton width="55%" height={12} style={styles.skeletonName} />
+            <Skeleton width="85%" height={10} />
+          </View>
+        </View>
+      ))}
+    </SkeletonGroup>
+  );
 }
 
 function ConversationRow({
@@ -124,6 +144,11 @@ export default function ConversationList({
   const [conversations, setConversations] = useState<ConversationPreview[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  // The skeleton shows only for the FIRST load with nothing to show yet (and only if it lasts 200 ms): a reload with conversations in memory
+  // shows them, never the skeleton.
+  const waitingFirstLoad = loading && conversations.length === 0;
+  const showSkeleton = useDelayedLoading(waitingFirstLoad);
+  const contentOpacity = useArrivalFade(waitingFirstLoad);
 
   const load = useCallback(async () => {
     if (!user?.id) return;
@@ -209,17 +234,12 @@ export default function ConversationList({
     });
   }, [removeConversation, translation]);
 
-  if (loading && conversations.length === 0) {
-    return (
-      <View style={styles.center}>
-        <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
-          {translation.t('state.loading', { ns: 'common' })}
-        </Text>
-      </View>
-    );
+  if (waitingFirstLoad) {
+    return showSkeleton ? <ConversationSkeleton /> : <View style={styles.center} />;
   }
 
   return (
+    <Animated.View style={[styles.fill, { opacity: contentOpacity }]}>
     <FlatList
       contentContainerStyle={[
         contentContainerStyle,
@@ -251,6 +271,7 @@ export default function ConversationList({
         </View>
       )}
     />
+    </Animated.View>
   );
 }
 
@@ -273,6 +294,9 @@ const styles = StyleSheet.create({
   rowPreview: { flex: 1, fontSize: 14, marginRight: 8 },
   badge: { alignItems: 'center', borderRadius: 10, height: 20, justifyContent: 'center', minWidth: 20, paddingHorizontal: 5 },
   badgeText: { fontSize: 11, fontWeight: '700' },
+  skeletonAvatar: { marginRight: 12 },
+  skeletonName: { marginBottom: 8 },
+  fill: { flex: 1 },
   center: { alignItems: 'center', flex: 1, justifyContent: 'center', paddingHorizontal: 32 },
   emptyContainer: { flexGrow: 1 },
   emptyText: { fontSize: 15, lineHeight: 22, textAlign: 'center' },

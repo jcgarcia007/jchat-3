@@ -114,3 +114,41 @@ test('screen readers: one progressbar announcing the loading label; bones hidden
   assert.match(source, /importantForAccessibility="no-hide-descendants"/);
   assert.match(source, /aria-hidden/);
 });
+
+// ── Step 2: Messages ───────────────────────────────────────────────────────────
+
+test('Messages: conversations skeleton = 6 rows (circle 48 + lines 55% x 12 and 85% x 10) with the real row styles, only for the first load without data', () => {
+  const list = read('components/dms/ConversationList.tsx');
+  assert.match(list, /Array\.from\(\{ length: 6 \}\)/);
+  assert.match(list, /<Skeleton circle height=\{48\}/);
+  assert.match(list, /<Skeleton width="55%" height=\{12\}/);
+  assert.match(list, /<Skeleton width="85%" height=\{10\}/);
+  assert.match(list, /\[styles\.row, \{ backgroundColor: colors\.bgSurface/, 'same row container as the real row');
+  assert.match(list, /const waitingFirstLoad = loading && conversations\.length === 0/);
+  assert.match(list, /useDelayedLoading\(waitingFirstLoad\)/);
+});
+
+test('Messages: notifications skeleton = 4 rows (circle 40 + two lines) in the real row, only until useNotifications is initialized', () => {
+  const screen = read('screens/dms/MessagesScreen.tsx');
+  assert.match(screen, /Array\.from\(\{ length: 4 \}\)/);
+  assert.match(screen, /<Skeleton circle height=\{40\} \/>/);
+  assert.match(screen, /styles\.notificationRow, \{ backgroundColor: colors\.bgBase/, 'same row container (minHeight 66) as the real row');
+  assert.match(screen, /const waitingNotifications = !initialized/);
+  assert.match(screen, /<SkeletonGroup announce=\{false\}/, 'the second group is silent: "Loading…" is announced once');
+  assert.match(screen, /messages\.emptyNotifications/, 'a really empty list keeps its text');
+});
+
+test('useNotifications exposes `initialized`: false until the first fetch settles (also on failure), true at once without a backend, never back to false', () => {
+  const hook = read('hooks/useNotifications.ts');
+  assert.match(hook, /initialized: boolean;/);
+  assert.match(hook, /useState\(false\);\n/);
+  assert.match(hook, /\.finally\(\(\) => \{\s*if \(!cancelled\) setInitialized\(true\);/);
+  assert.match(hook, /if \(!isSupabaseConfigured\) \{\s*setInitialized\(true\)/);
+  assert.doesNotMatch(hook, /setInitialized\(false\)/);
+});
+
+test('the content fade starts at opacity 1 (the skeleton inside the container must stay visible) and drops to 0 only when data arrives', () => {
+  assert.match(source, /const opacity = useRef\(new Animated\.Value\(1\)\)\.current/);
+  assert.match(source, /useLayoutEffect/);
+  assert.match(source, /opacity\.setValue\(0\);\s*\n\s*Animated\.timing/);
+});
