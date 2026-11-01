@@ -53,8 +53,8 @@ export const darkColors = {
   bgBase: palette.bgBase,
   bgSurface: palette.bgSurface,
   bgElevated: palette.bgElevated,
-  /** Skeleton bones (components/common/Skeleton.tsx): the same value as bgElevated in dark mode. */
-  skeleton: palette.bgElevated,
+  /** Skeleton bones (components/common/Skeleton.tsx): a blue-grey of bgElevated's family, 1.3 to 1.4:1 against bgSurface. */
+  skeleton: palette.skeletonDark,
   bgOverlay: palette.bgOverlay,
   borderSubtle: palette.borderSubtle,
   textPrimary: palette.textPrimary,

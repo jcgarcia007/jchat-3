@@ -240,7 +240,7 @@ test('the profile grid cell size is floored to 0.01 so three cells always fit on
 
 // ── The skeleton colour is visible enough ──────────────────────────────────────
 
-test('skeleton token: light mode 1.3-1.4:1 on bgSurface (not the 1.12:1 of bgElevated), dark mode is bgElevated', () => {
+test('skeleton token: 1.3-1.4:1 on bgSurface in light AND dark (bgElevated gave 1.12:1 / 1.06:1), at least 1.25:1 on bgBase', () => {
   const tokens = read('theme/tokens.ts');
   const colors = read('theme/colors.ts');
   const hex = (name) => tokens.match(new RegExp(`\\b${name}: '(#[0-9a-fA-F]{6})'`))[1];
@@ -249,10 +249,18 @@ test('skeleton token: light mode 1.3-1.4:1 on bgSurface (not the 1.12:1 of bgEle
     return 0.2126 * r + 0.7152 * g + 0.0722 * b;
   };
   const contrast = (a, b) => { const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05); };
-  const bone = hex('skeletonLight');
-  assert.ok(contrast(bone, hex('bgSurfaceLight')) >= 1.3 && contrast(bone, hex('bgSurfaceLight')) <= 1.4, `on bgSurface: ${contrast(bone, hex('bgSurfaceLight')).toFixed(2)}`);
-  assert.ok(contrast(bone, hex('bgBaseLight')) >= 1.25, `on bgBase: ${contrast(bone, hex('bgBaseLight')).toFixed(2)}`);
-  assert.ok(contrast(bone, hex('bgSurfaceLight')) > contrast(hex('bgElevatedLight'), hex('bgSurfaceLight')) + 0.15, 'clearly more visible than bgElevated');
-  assert.match(colors, /skeleton: palette\.bgElevated,/, 'dark: the same value as bgElevated');
+  for (const [scheme, bone, surface, base, old] of [
+    ['light', 'skeletonLight', 'bgSurfaceLight', 'bgBaseLight', 'bgElevatedLight'],
+    ['dark', 'skeletonDark', 'bgSurface', 'bgBase', 'bgElevated'],
+  ]) {
+    const onSurface = contrast(hex(bone), hex(surface));
+    const onBase = contrast(hex(bone), hex(base));
+    assert.ok(onSurface >= 1.3 && onSurface <= 1.4, `${scheme} on bgSurface: ${onSurface.toFixed(2)}`);
+    assert.ok(onBase >= 1.25, `${scheme} on bgBase: ${onBase.toFixed(2)}`);
+    assert.ok(onSurface > contrast(hex(old), hex(surface)) + 0.15, `${scheme}: clearly more visible than ${old}`);
+  }
+  assert.match(tokens, /skeletonDark: '#[0-9a-fA-F]{6}'/);
+  assert.match(colors, /skeleton: palette\.skeletonDark,/);
   assert.match(colors, /skeleton: palette\.skeletonLight,/);
+  assert.doesNotMatch(colors, /skeleton: palette\.bgElevated/);
 });
