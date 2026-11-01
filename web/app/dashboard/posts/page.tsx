@@ -629,8 +629,8 @@ function PostForm({
               onClick={() => fileInputRef.current?.click()}
               disabled={saving}
               style={{
-                width: 84,
-                height: 84,
+                width: 112,
+                aspectRatio: "4 / 3",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
@@ -649,6 +649,9 @@ function PostForm({
             </button>
           )}
         </div>
+        {photoCount > 0 && (
+          <p style={{ fontSize: "11px", color: "var(--db-text-secondary)", marginTop: "6px" }}>{t("postsCropPreview")}</p>
+        )}
         <input
           ref={fileInputRef}
           type="file"
@@ -719,8 +722,9 @@ function PhotoThumb({
     <div
       style={{
         position: "relative",
-        width: 84,
-        height: 84,
+        // 4:3 like the photo in the app's Offers list: the centred crop is what people will see (the file itself is kept whole).
+        width: 112,
+        aspectRatio: "4 / 3",
         borderRadius: "var(--db-radius)",
         overflow: "hidden",
         border: "1px solid var(--db-border)",

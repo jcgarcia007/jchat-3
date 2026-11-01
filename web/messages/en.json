@@ -2330,6 +2330,7 @@
     "postsUnverifiedNotice": "Your business isn't verified yet. You can create posts now; they will be visible in the app once your business is verified.",
     "postsLoadMore": "Load more",
     "postsThumbAlt": "Post photo",
+    "postsCropPreview": "This is how it will look in the app",
     "postsPhotoOnly": "Photo post",
     "postsLikesLabel": "Likes",
     "postsCommentsLabel": "Comments",
