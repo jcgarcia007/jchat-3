@@ -42,6 +42,9 @@ const PUSH_TYPES = [
   "order_status",
   "gift_offer",
   "gift_response",
+  "match_photo_approved",
+  "match_photo_rejected",
+  "admin_alert",
 ] as const;
 type PushType = typeof PUSH_TYPES[number];
 type Language = "en" | "es";
@@ -234,6 +237,35 @@ function localizedContent(
             status: payload.status,
           },
         },
+      };
+    }
+    case "match_photo_approved": {
+      // migration 254: only the user's FIRST approved Match photo notifies. Not preview-gated: it is about their own photo, never about another person.
+      const business = nonEmptyString(payload.business_name);
+      const present = payload.present === true && business !== null;
+      return {
+        title: "JChat",
+        body: present
+          ? (english ? `You're now in Match at ${business}` : `Ya apareces en Match en ${business}`)
+          : (english ? "Your Match photo was approved" : "Tu foto de Match fue aprobada"),
+        data: { type, payload: { photo_id: payload.photo_id, business_id: payload.business_id } },
+      };
+    }
+    case "match_photo_rejected":
+      return {
+        title: "JChat",
+        body: english
+          ? "Your photo doesn't meet the rules. Upload another one to appear."
+          : "Tu foto no cumple las normas. Sube otra para aparecer.",
+        data: { type, payload: { photo_id: payload.photo_id } },
+      };
+    case "admin_alert": {
+      // Sent to platform admins by photo_moderation_alert() (migration 254): photos waiting for moderation more than 10 minutes.
+      const count = typeof payload.count === "number" ? payload.count : Number(payload.count) || 0;
+      return {
+        title: "JChat",
+        body: english ? `Photos pending moderation: ${count}` : `Fotos pendientes de moderación: ${count}`,
+        data: { type, payload: { kind: payload.kind, count } },
       };
     }
     default:
@@ -454,7 +486,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     const settings = isObject(recipient?.settings) ? recipient.settings : {};
     const isSocial = type === "dm" || type === "follower" || type === "like" || type === "comment" ||
-      isMatchType(type) || isGiftType(type);
+      isMatchType(type) || isGiftType(type) || type === "match_photo_approved" || type === "match_photo_rejected";
     if (isSocial && settings.notifSocial === false) return noContent();
     if (type === "work_alert" && settings.notifWork === false) return noContent();
 
