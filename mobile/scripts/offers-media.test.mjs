@@ -25,3 +25,46 @@ test('a tap on a photo opens the viewer on THAT photo with all of the post\'s ph
 test('the offer card has no photo block (offers carry no media) and does not change', () => {
   assert.doesNotMatch(offer, /Image|media_urls|mediaHeight/);
 });
+
+// ── "Ver local" ────────────────────────────────────────────────────────────────
+
+const offers = read('screens/offers/OffersScreen.tsx');
+
+test('onEnter opens the business card (BusinessCardSheet → BusinessPreviewCard) and no longer navigates to ChatRoom from Offers', () => {
+  assert.match(offers, /const viewVenue = useCallback\(async \(item: MegaphoneItem\) => \{/);
+  assert.match(offers, /onEnter=\{viewVenue\}/);
+  assert.doesNotMatch(offers, /navigate\('ChatRoom'/);
+  assert.doesNotMatch(offers, /enterBusiness/);
+  assert.match(offers, /<BusinessCardSheet business=\{venueCard\?\.business \?\? null\} userCoords=\{venueCard\?\.coords \?\? null\}/);
+  assert.match(read('components/map/BusinessCardSheet.tsx'), /<BusinessPreviewCard/);
+});
+
+test('one read of the business by id, with the same columns the Map reads; a failure shows the generic error; the button shows a spinner meanwhile', () => {
+  assert.match(offers, /await fetchBusinessForCard\(item\.business_id\)/);
+  assert.match(offers, /showAlert\(commonTranslation\.t\('state\.error'\)\)/);
+  assert.match(offers, /setVenueCard\(\{ business, coords: coordsRef\.current \}\)/, 'inside_radius stays unknown without a position');
+  const service = read('services/businesses.ts');
+  assert.match(service, /\.eq\('id', businessId\)\.maybeSingle\(\)/);
+  assert.match(service, /export const BUSINESS_CARD_COLUMNS =/);
+  const map = read('screens/map/MapScreen.tsx');
+  assert.match(map, /\.select\(BUSINESS_CARD_COLUMNS\)/);
+  assert.match(map, /resolveMainRoomId.*from '\.\.\/\.\.\/services\/businesses'|from '\.\.\/\.\.\/services\/businesses'/);
+  for (const card of [post, offer]) {
+    assert.match(card, /opening\?: boolean;/);
+    assert.match(card, /<Spinner size="small"/);
+  }
+});
+
+test('inside the card, outside the radius "Entrar al chat" is disabled (inside_radius === false); the card computes it from the position', () => {
+  const preview = read('components/map/BusinessPreviewCard.tsx');
+  assert.match(preview, /const blocked = inside_radius === false;/);
+  assert.match(preview, /disabled=\{blocked\}/);
+  const sheet = read('components/map/BusinessCardSheet.tsx');
+  assert.match(sheet, /inside_radius: typeof radius === 'number' && radius > 0 \? distance_m <= radius : null/);
+  assert.match(sheet, /inside_radius=\{geo\.inside_radius\}/);
+});
+
+test('the button says "Ver local" / "View venue"', () => {
+  assert.equal(JSON.parse(read('i18n/locales/es/offers.json')).enter, 'Ver local');
+  assert.equal(JSON.parse(read('i18n/locales/en/offers.json')).enter, 'View venue');
+});

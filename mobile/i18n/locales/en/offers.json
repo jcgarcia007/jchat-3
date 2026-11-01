@@ -1,6 +1,6 @@
 {
   "title": "Business offers",
-  "enter": "Enter",
+  "enter": "View venue",
   "expires": "Ends {{date}}",
   "code": "Code {{code}}",
   "emptyTitle": "No offers right now",

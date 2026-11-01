@@ -43,6 +43,8 @@ import {
   type FeedRadiusMiles,
 } from '../../utils/distanceUnits';
 import { showAlert } from '../../utils/dialog';
+import BusinessCardSheet from '../../components/map/BusinessCardSheet';
+import { fetchBusinessForCard, type CardBusiness } from '../../services/businesses';
 
 type OffersNavigation = NativeStackNavigationProp<MainStackParamList, 'Offers'>;
 
@@ -70,6 +72,9 @@ export default function OffersScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [hasLocation, setHasLocation] = useState(false);
+  // "Ver local": the business read by id (one read) and the position it was opened with; the id shows a spinner in its button while it loads.
+  const [venueCard, setVenueCard] = useState<{ business: CardBusiness; coords: { lat: number; lng: number } | null } | null>(null);
+  const [openingVenueId, setOpeningVenueId] = useState<string | null>(null);
   const requestRef = useRef(0);
   const coordsRef = useRef<{ lat: number; lng: number } | null>(null);
   const firstLoadPendingRef = useRef(false);
@@ -201,9 +206,25 @@ export default function OffersScreen() {
     }
   }, [hasMore, items, loadingMore, radiusMiles]);
 
-  const enterBusiness = useCallback((item: MegaphoneItem) => {
-    navigation.navigate('ChatRoom', { id: item.room_id ?? item.business_id });
-  }, [navigation]);
+  /** "Ver local": opens the business card (the map pin's card). Entering the chat happens from the card, past the radius gate. */
+  const viewVenue = useCallback(async (item: MegaphoneItem) => {
+    if (openingVenueId !== null) return;
+    setOpeningVenueId(item.business_id);
+    try {
+      const business = await fetchBusinessForCard(item.business_id);
+      if (!business) {
+        showAlert(commonTranslation.t('state.error'));
+        return;
+      }
+      // Without a position inside_radius stays unknown (null) and the card does not warn.
+      setVenueCard({ business, coords: coordsRef.current });
+    } catch (error) {
+      console.warn('[megaphone] venue card read error:', error);
+      showAlert(commonTranslation.t('state.error'));
+    } finally {
+      setOpeningVenueId(null);
+    }
+  }, [openingVenueId, commonTranslation]);
 
   const openComments = useCallback((item: MegaphoneItem) => {
     navigation.navigate('PostDetail', { postId: item.id });
@@ -238,14 +259,15 @@ export default function OffersScreen() {
     item.kind === 'post' ? (
       <MegaphonePostCard
         item={item}
-        onEnter={enterBusiness}
+        onEnter={viewVenue}
+        opening={openingVenueId === item.business_id}
         onOpenComments={openComments}
         onToggleLike={(post) => { void toggleLike(post); }}
       />
     ) : (
-      <MegaphoneOfferCard item={item} onEnter={enterBusiness} />
+      <MegaphoneOfferCard item={item} onEnter={viewVenue} opening={openingVenueId === item.business_id} />
     )
-  ), [enterBusiness, openComments, toggleLike]);
+  ), [viewVenue, openingVenueId, openComments, toggleLike]);
 
   return (
     <View style={[styles.root, { backgroundColor: colors.bgBase, paddingTop: insets.top }]}>
@@ -279,6 +301,8 @@ export default function OffersScreen() {
         visible={radiusSheetOpen}
       />
 
+      <BusinessCardSheet business={venueCard?.business ?? null} userCoords={venueCard?.coords ?? null} onClose={() => setVenueCard(null)} />
+
       {loading ? (
         showSkeleton ? (
           // One post card (header + 4:5 photo) and two offer cards, in the list's own padding and gap.
@@ -297,6 +321,7 @@ export default function OffersScreen() {
         <FlatList
           contentContainerStyle={[styles.list, items.length === 0 && styles.emptyList, { paddingBottom: 26 + insets.bottom + (isWeb ? 0 : BAR_HEIGHT + 16) + homeBarInset }]}
           data={items}
+          extraData={openingVenueId}
           ListHeaderComponent={isWeb && !hasLocation ? (
             <View testID="web-offers-location" style={[styles.locationHint, { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }]}>
               <IconMapPin size={20} color={colors.textSecondary} strokeWidth={2} />

@@ -20,6 +20,7 @@ import { palette } from '../../theme/tokens';
 import { formatSocialTime } from '../../utils/formatSocialTime';
 import { formatDistance } from '../../utils/distanceUnits';
 import { ImageViewerModal } from '../ImageViewerModal';
+import { Spinner } from '../common/Spinner';
 import { Skeleton } from '../common/Skeleton';
 import BusinessAvatar from './BusinessAvatar';
 import { useAppWindow } from '../../utils/appWindow';
@@ -35,6 +36,8 @@ interface MegaphonePostCardProps {
   onToggleLike: (item: MegaphoneItem) => void;
   onOpenComments: (item: MegaphoneItem) => void;
   onEnter: (item: MegaphoneItem) => void;
+  /** The business is being read for the card: the button shows a spinner and does nothing. */
+  opening?: boolean;
 }
 
 export default function MegaphonePostCard({
@@ -42,6 +45,7 @@ export default function MegaphonePostCard({
   onToggleLike,
   onOpenComments,
   onEnter,
+  opening = false,
 }: MegaphonePostCardProps) {
   const colors = useThemeColors();
   const translation = useTranslation('offers');
@@ -177,9 +181,11 @@ export default function MegaphonePostCard({
           accessibilityRole="button"
           activeOpacity={0.8}
           onPress={() => onEnter(item)}
+          disabled={opening}
+          accessibilityState={{ disabled: opening, busy: opening }}
           style={[styles.enterButton, { backgroundColor: colors.brandFill }]}
         >
-          <Text style={[styles.enterText, { color: palette.bgSurfaceLight }]}>{translation.t('enter')}</Text>
+          {opening ? <Spinner size="small" color={palette.bgSurfaceLight} /> : <Text style={[styles.enterText, { color: palette.bgSurfaceLight }]}>{translation.t('enter')}</Text>}
         </TouchableOpacity>
       </View>
       {viewerIndex !== null ? <ImageViewerModal visible uris={item.media_urls} initialIndex={viewerIndex} onClose={() => setViewerIndex(null)} /> : null}

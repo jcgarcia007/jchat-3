@@ -170,10 +170,10 @@ test('Nearby: 3 skeleton cards in the real card (avatar tile 48/13, 60% x 13 and
   assert.match(screen, /NearbyFilters/, 'the header and filters are always rendered');
 });
 
-test('Offers: one post card skeleton (4:5 photo of the real size) + two offer card skeletons, only for the first load', () => {
+test('Offers: one post card skeleton (4:3 photo of the real size) + two offer card skeletons, only for the first load', () => {
   const post = read('components/megaphone/MegaphonePostCard.tsx');
   assert.match(post, /export function MegaphonePostCardSkeleton/);
-  assert.equal((post.match(/Math\.round\(\(mediaWidth \* 5\) \/ 4\)/g) ?? []).length, 2, 'the skeleton uses the same media height formula as the card');
+  assert.equal((post.match(/Math\.round\(\(mediaWidth \* 3\) \/ 4\)/g) ?? []).length, 2, 'the skeleton uses the same media height formula as the card');
   assert.match(read('components/megaphone/MegaphoneOfferCard.tsx'), /export function MegaphoneOfferCardSkeleton/);
   const screen = read('screens/offers/OffersScreen.tsx');
   assert.equal((screen.match(/<MegaphonePostCardSkeleton \/>/g) ?? []).length, 1);

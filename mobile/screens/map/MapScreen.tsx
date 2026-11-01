@@ -56,22 +56,9 @@ import { palette } from '../../theme/tokens';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { useHomeBarInset } from '../../components/venue/HomeBarInset';
 import { shareContent } from '../../utils/shareContent';
+import { BUSINESS_CARD_COLUMNS, resolveMainRoomId, toCardBusiness } from '../../services/businesses';
 
 type MapNav = NativeStackNavigationProp<MainStackParamList>;
-
-/** Resolve a business's main room id (is_main first, else lowest sort). */
-async function resolveMainRoomId(businessId: string): Promise<string | null> {
-  if (!isSupabaseConfigured) return businessId;
-  const { data } = await supabase
-    .from('rooms')
-    .select('id, is_main, sort')
-    .eq('business_id', businessId)
-    .order('is_main', { ascending: false })
-    .order('sort', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  return (data?.id as string | undefined) ?? null;
-}
 
 interface MapBusiness {
   id: string;
@@ -253,23 +240,17 @@ export default function MapScreen() {
     try {
       const { data, error } = await supabase
         .from('businesses')
-        .select('id, name, category, icon_emoji, icon_url, logo_url, lat, lng, status, address, cover_url, hours, slug, description, geofence_radius_m')
+        .select(BUSINESS_CARD_COLUMNS)
         .eq('status', 'verified');
       if (error) throw error;
       if (!isMounted.current) return;
-      const rows = (data ?? []) as Array<Partial<MapBusiness>>;
+      const rows = (data ?? []) as unknown as Array<Parameters<typeof toCardBusiness>[0]>;
       setBusinesses(
-        rows
-          .filter((r) => typeof r.lat === 'number' && typeof r.lng === 'number')
-          .map((r) => ({
-            id: r.id!, name: r.name ?? '', category: r.category ?? '',
-            icon_emoji: r.icon_emoji ?? '📍', icon_url: r.icon_url ?? null, logo_url: r.logo_url ?? null, lat: r.lat!, lng: r.lng!,
-            status: r.status ?? 'verified', activeCount: 0, // the live count comes from venue_people_counts (peopleCounts)
-            address: r.address ?? '', cover_url: r.cover_url ?? null, hours: r.hours ?? null,
-            slug: r.slug ?? null,
-            description: r.description ?? null,
-            geofence_radius_m: typeof r.geofence_radius_m === 'number' ? r.geofence_radius_m : null,
-          })),
+        rows.flatMap((row) => {
+          const business = toCardBusiness(row);
+          // the live count comes from venue_people_counts (peopleCounts)
+          return business ? [{ ...business, activeCount: 0 }] : [];
+        }),
       );
     } catch (error) {
       console.warn('[map] businesses load error:', error);

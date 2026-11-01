@@ -1,6 +1,6 @@
 {
   "title": "Ofertas de negocios",
-  "enter": "Entrar",
+  "enter": "Ver local",
   "expires": "Vence {{date}}",
   "code": "Código {{code}}",
   "emptyTitle": "No hay ofertas por ahora",

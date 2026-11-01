@@ -9,14 +9,17 @@ import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { formatDistance } from '../../utils/distanceUnits';
 import { Skeleton } from '../common/Skeleton';
+import { Spinner } from '../common/Spinner';
 import BusinessAvatar from './BusinessAvatar';
 
 interface MegaphoneOfferCardProps {
   item: MegaphoneItem;
   onEnter: (item: MegaphoneItem) => void;
+  /** The business is being read for the card: the button shows a spinner and does nothing. */
+  opening?: boolean;
 }
 
-export default function MegaphoneOfferCard({ item, onEnter }: MegaphoneOfferCardProps) {
+export default function MegaphoneOfferCard({ item, onEnter, opening = false }: MegaphoneOfferCardProps) {
   const colors = useThemeColors();
   const { session } = useVenueSession();
   // D-13: on the web, "Entrar" needs an active session at this venue (devices: always enabled).
@@ -69,13 +72,13 @@ export default function MegaphoneOfferCard({ item, onEnter }: MegaphoneOfferCard
 
       <TouchableOpacity
         accessibilityRole="button"
-        accessibilityState={{ disabled: !canEnter }}
+        accessibilityState={{ disabled: !canEnter || opening, busy: opening }}
         activeOpacity={0.8}
-        disabled={!canEnter}
+        disabled={!canEnter || opening}
         onPress={() => onEnter(item)}
         style={[styles.enterButton, { backgroundColor: canEnter ? colors.brandFill : colors.bgElevated }]}
       >
-        <Text style={[styles.enterText, { color: canEnter ? palette.bgSurfaceLight : colors.textSecondary }]}>{translation.t('enter')}</Text>
+        {opening ? <Spinner size="small" color={palette.bgSurfaceLight} /> : <Text style={[styles.enterText, { color: canEnter ? palette.bgSurfaceLight : colors.textSecondary }]}>{translation.t('enter')}</Text>}
       </TouchableOpacity>
       {!canEnter ? (
         <Text style={[styles.enterHint, { color: colors.textSecondary }]}>{translation.t('webEnterNeedsQr')}</Text>
