@@ -61,3 +61,17 @@ from public.photo_moderation_log group by 1;
 
 -- (l) Cuántas personas ya completaron sexo e interés (para decidir la fecha de enforce_profile_from).
 select count(*) filter (where gender is not null and seeking is not null) as completos, count(*) as filas from public.match_profiles;
+
+-- (m) match_profiles: los clientes solo actualizan gender y seeking, y no pueden borrar.   Esperado: UPDATE solo en gender y seeking; sin DELETE
+select privilege_type, string_agg(column_name, ', ' order by column_name) as columnas
+from information_schema.column_privileges where table_schema = 'public' and table_name = 'match_profiles' and grantee = 'authenticated' and privilege_type = 'UPDATE'
+group by 1;
+select count(*) as con_delete_para_authenticated from information_schema.role_table_grants
+where table_schema = 'public' and table_name = 'match_profiles' and grantee in ('anon', 'authenticated') and privilege_type = 'DELETE';
+
+-- (n) Trigger del límite de cambios (3 cada 24 h).   Esperado: 1 fila, habilitado ('O')
+select tgname, tgenabled from pg_trigger where tgrelid = 'public.match_profiles'::regclass and tgname = 'trg_match_profiles_change_guard';
+
+-- (o) match_common_business solo responde por quien llama, y authenticated conserva EXECUTE (lo usan dos políticas).   Esperado: true, true
+select pg_get_functiondef('public.match_common_business(uuid,uuid)'::regprocedure) like '%p_viewer = (select auth.uid())%' as solo_quien_llama,
+       has_function_privilege('authenticated', 'public.match_common_business(uuid,uuid)', 'execute') as authenticated_ejecuta;

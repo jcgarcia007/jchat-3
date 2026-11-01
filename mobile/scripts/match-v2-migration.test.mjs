@@ -39,7 +39,8 @@ test('match_orientation_ok and match_profile_enforced: no EXECUTE for anon, auth
 test('match_common_business answers only for the caller (p_viewer = auth.uid()): it cannot be used to probe whether two other people fit each other', () => {
   const body = sql.slice(sql.indexOf('create or replace function public.match_common_business('), sql.indexOf('revoke all on function public.match_fits'));
   assert.match(body, /and public\.match_orientation_ok\(p_viewer, p_target\)/);
-  assert.match(body.replace(/--.*$/gm, ''), /and \(auth\.uid\(\) is null or p_viewer = auth\.uid\(\)\)/);
+  assert.match(body.replace(/--.*$/gm, ''), /and \(auth\.uid\(\) is null or p_viewer = \(select auth\.uid\(\)\)\)/);
+  assert.match(sql, /grant execute on function public\.match_fits/, 'sanity');
 });
 
 test('the other SECURITY DEFINER functions that write or push are not callable by clients either', () => {
@@ -85,6 +86,31 @@ test('254_check.sql only reads: no insert / update / delete / DDL / grants and n
   assert.doesNotMatch(code, /\b(perform|do)\b\s/i);
   assert.doesNotMatch(code, /\b(match_photo_retry_moderation|dm_photo_retry_moderation|photo_moderation_alert|push_dispatch|cron\.(schedule|unschedule)|net\.http_post)\s*\(/i);
   // the only functions it calls are pure / read-only
-  const calls = new Set([...code.matchAll(/\bpublic\.([a-z_]+)\(/gi)].map((m) => m[1]));
+  // (names inside quotes, like the regprocedure literals, are lookups, not calls)
+  const calls = new Set([...code.replace(/'[^']*'/g, "''").matchAll(/\bpublic\.([a-z_]+)\(/gi)].map((m) => m[1]));
   assert.deepEqual([...calls].sort(), ['match_fits', 'match_profile_enforced']);
+});
+
+test('match_common_business keeps EXECUTE for authenticated (two RLS policies call it with the user session): the migration never revokes it', () => {
+  const code = sql.replace(/--.*$/gm, '');
+  assert.doesNotMatch(code, /revoke[^;]*function public\.match_common_business/i);
+});
+
+test('sex / interest changes are limited: 3 per 24 h, P0001 match_profile_change_limit, the first save and completing an empty value do not count', () => {
+  const body = sql.slice(sql.indexOf('create or replace function public.match_profiles_change_guard()'), sql.indexOf('create or replace trigger trg_match_profiles_change_guard'));
+  assert.match(body, /c_limit constant int := 3;/);
+  assert.match(body, /c_window constant interval := interval '24 hours';/);
+  assert.match(body, /raise exception 'match_profile_change_limit' using errcode = 'P0001';/);
+  assert.match(body, /old\.gender is not null and new\.gender is distinct from old\.gender/);
+  assert.match(body, /old\.seeking is not null and new\.seeking is distinct from old\.seeking/);
+  assert.match(body, /if tg_op = 'INSERT' then\s*new\.change_log := '\{\}';/);
+  assert.match(sql, /create or replace trigger trg_match_profiles_change_guard before insert or update on public\.match_profiles/);
+});
+
+test('clients can neither delete their match_profiles row (it would reset the limit) nor write change_log: UPDATE only on gender and seeking', () => {
+  const code = sql.replace(/--.*$/gm, '');
+  assert.match(code, /grant update \(gender, seeking\) on table public\.match_profiles to authenticated;/);
+  assert.doesNotMatch(code, /grant [^;]*\bdelete\b[^;]*on table public\.match_profiles/i);
+  assert.doesNotMatch(code, /policy match_profiles_own_delete/);
+  assert.doesNotMatch(code, /grant update on table public\.match_profiles/i);
 });

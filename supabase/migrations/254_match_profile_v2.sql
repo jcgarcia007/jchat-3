@@ -4,6 +4,8 @@
 --
 -- Qué hace
 --  1. match_profiles (tabla aparte): sexo ('woman'|'man'|'nonbinary') e interés ('women'|'men'|'all') de cada persona. RLS: solo la propia fila.
+--     Límite: como máximo 3 cambios de sexo/interés cada 24 h (trigger match_profiles_change_guard; el insert y completar un dato vacío no cuentan).
+--     Los clientes no pueden borrar la fila ni escribir change_log (solo UPDATE de gender y seeking).
 --     NO están en public.users ni en ninguna vista (public_profiles tiene una lista explícita de columnas), ni en match_card: ningún otro usuario puede leerlos.
 --     Al ser una tabla nueva no toca la allowlist de UPDATE de users. Se borra en cascada con la cuenta.
 --  2. Coincidencia MUTUA: match_orientation_ok(a, b) y match_common_business (la puerta que usan el deck, el swipe, los perfiles, "los que pasé" y la
@@ -40,9 +42,11 @@ create table if not exists public.match_profiles (
   user_id uuid primary key references public.users(id) on delete cascade,
   gender text,
   seeking text,
+  change_log timestamptz[] not null default '{}',   -- cuándo cambió sexo/interés (lo escribe SOLO el trigger de límite)
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+alter table public.match_profiles add column if not exists change_log timestamptz[] not null default '{}';
 
 do $$
 begin
@@ -70,17 +74,47 @@ begin
     create policy match_profiles_own_update on public.match_profiles for update to authenticated
       using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
   end if;
-  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'match_profiles' and policyname = 'match_profiles_own_delete') then
-    create policy match_profiles_own_delete on public.match_profiles for delete to authenticated using (user_id = (select auth.uid()));
-  end if;
 end $$;
 
+-- Sin DELETE para clientes (borrar y volver a insertar reiniciaría el límite de cambios; la fila se borra en cascada con la cuenta) y UPDATE solo de
+-- las dos columnas de datos: change_log, created_at y updated_at no los escribe el cliente.
 revoke all on table public.match_profiles from anon, authenticated;
-grant select, insert, update, delete on table public.match_profiles to authenticated;
+grant select, insert on table public.match_profiles to authenticated;
+grant update (gender, seeking) on table public.match_profiles to authenticated;
 grant all on table public.match_profiles to service_role;
 
 create or replace trigger trg_match_profiles_updated_at before update on public.match_profiles
   for each row execute function public.set_updated_at();
+
+-- Límite de cambios de sexo/interés: mitiga deducir los datos de otras personas cambiando el propio perfil para ver quién aparece.
+-- El primer guardado (insert) y completar un dato vacío no cuentan; cambiar un dato ya guardado sí. Si ya hubo c_limit cambios en la última
+-- ventana, el cambio se rechaza con P0001 'match_profile_change_limit'. Para cambiar el número: c_limit (y c_window para la ventana).
+create or replace function public.match_profiles_change_guard()
+returns trigger language plpgsql set search_path = public as $$
+declare
+  c_limit constant int := 3;
+  c_window constant interval := interval '24 hours';
+  v_log timestamptz[];
+begin
+  if tg_op = 'INSERT' then
+    new.change_log := '{}';
+    return new;
+  end if;
+  new.change_log := old.change_log;   -- el cliente nunca lo escribe
+  if (old.gender is not null and new.gender is distinct from old.gender)
+     or (old.seeking is not null and new.seeking is distinct from old.seeking) then
+    select coalesce(array_agg(t), '{}') into v_log from unnest(old.change_log) as t where t > now() - c_window;
+    if cardinality(v_log) >= c_limit then
+      raise exception 'match_profile_change_limit' using errcode = 'P0001';
+    end if;
+    new.change_log := v_log || now();
+  end if;
+  return new;
+end;
+$$;
+
+create or replace trigger trg_match_profiles_change_guard before insert or update on public.match_profiles
+  for each row execute function public.match_profiles_change_guard();
 
 comment on table public.match_profiles is 'Sexo e interés para la coincidencia de Match. PRIVADO: solo la propia fila (RLS); nunca en vistas ni tarjetas.';
 
@@ -149,8 +183,9 @@ returns uuid language sql stable security definer set search_path = public as $$
     and coalesce((select (u.settings->>'gamesEnabled')::boolean from public.users u where u.id = p_target), true)
     and public.match_orientation_ok(p_viewer, p_target)
     -- Un cliente solo puede preguntar por SÍ MISMO: con ids ajenos (p_viewer) la respuesta (null o un local) revelaría si X encaja con Z, es decir, su
-    -- sexo/interés. Todos los usos (deck, swipe, perfil, "los que pasé", política match_photos_visible) pasan auth.uid(); service_role no tiene uid.
-    and (auth.uid() is null or p_viewer = auth.uid())
+    -- sexo/interés. Todos los usos pasan auth.uid() como p_viewer (verificado en match_get_deck, match_get_passed, match_get_profile, match_swipe y en las políticas
+    -- match_photos_visible y match_photos_storage_visible, que son las que obligan a mantener EXECUTE para authenticated); cron/servicio no tiene uid.
+    and (auth.uid() is null or p_viewer = (select auth.uid()))
   limit 1;
 $$;
 
