@@ -62,6 +62,7 @@ import { MatchQrScanner } from '../../components/match/MatchQrScanner';
 import { matchCheckInWithQr } from '../../services/matchPresence';
 import { fetchVenueAccess } from '../../services/venueAccess';
 import { goBackOrHome } from '../../utils/navFlow';
+import { confirmLeaveVenue } from '../../utils/confirmLeaveVenue';
 import { setWebThemeColorOverride } from '../../utils/webThemeColor';
 import { useVenueSession } from '../../context/VenueSessionContext';
 import { ChatNotificationsSheet } from '../../components/chat/ChatNotificationsSheet';
@@ -575,12 +576,12 @@ export default function ChatRoomScreen() {
 
   // "Salir del local" is the only way (besides leaving the area) to end the venue session.
   const handleLeaveVenue = useCallback(() => {
-    void confirm(t('venueSession.leaveConfirmTitle'), t('venueSession.leaveConfirmBody', { business: business?.name ?? '' }), { confirmText: t('venueSession.leave'), cancelText: i18n.t('menu.cancel', { ns: 'match' }), destructive: true }).then((accepted) => {
+    void confirmLeaveVenue(business?.name ?? '').then((accepted) => {
       if (!accepted) return;
       // Ends the session and lands on the Map whatever is open over the chat (web: the root says "Saliste de {local}").
       void venue.leaveVenue().then(() => resetToMapTab(business?.name));
     });
-  }, [business?.name, navigation, i18n, t, venue]);
+  }, [business?.name, venue]);
 
   // The online row shows the room on screen; demo mode falls back to demo users.
   const liveUsers = presenceByRoom[activeRoomId] ?? [];
