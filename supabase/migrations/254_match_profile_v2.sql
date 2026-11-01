@@ -1,7 +1,6 @@
 -- 254: Match v2 — sexo e interés para la coincidencia, reintentos de moderación sin corte, alerta de fotos atascadas y aviso al usuario.
 -- BORRADOR. NO APLICADA. La aplica Juan Carlos por MCP (nunca db push). Comprobación después: supabase/scripts/254_check.sql (solo select).
--- Antes de aplicar: 251, 252 y 253 deben estar aplicadas, y hay que comparar las definiciones de producción de match_common_business,
--- match_photo_retry_moderation y dm_photo_retry_moderation con las del baseline 245 (este archivo las vuelve a crear con CREATE OR REPLACE a partir del baseline).
+-- Independiente de 251–253; producción está en 250 y match_common_business coincide con el baseline 245 (verificado).
 --
 -- Qué hace
 --  1. match_profiles (tabla aparte): sexo ('woman'|'man'|'nonbinary') e interés ('women'|'men'|'all') de cada persona. RLS: solo la propia fila.
@@ -10,6 +9,9 @@
 --  2. Coincidencia MUTUA: match_orientation_ok(a, b) y match_common_business (la puerta que usan el deck, el swipe, los perfiles, "los que pasé" y la
 --     política match_photos_visible) la exigen. match_get_deck NO se reescribe: ya llama a match_common_business.
 --     Reglas: "Todos" acepta a cualquiera; "No binario" solo encaja con quien eligió "Todos"; sin sexo o sin interés = perfil incompleto.
+--     Privacidad de las funciones: match_orientation_ok y match_profile_enforced SOLO para service_role (revoke a public, anon y authenticated);
+--     si no, cualquiera podría deducir el sexo/interés de otra persona llamándolas con ids ajenos. match_common_business (SECURITY DEFINER) las llama
+--     como owner y no necesita el grant. match_fits no lee datos y puede ser pública para authenticated.
 --  3. Transición: match_v2_flags.enforce_profile_from. Mientras sea NULL (estado al aplicar) quien no tiene datos es compatible con todos (nadie
 --     desaparece del deck de golpe) y un desacuerdo CONOCIDO sí filtra. Cuando Juan ponga una fecha (update public.match_v2_flags set
 --     enforce_profile_from = '…') y llegue, "sin datos" pasa a "no aparece".
@@ -18,9 +20,10 @@
 --     10 min × 2^(intentos hechos): 20, 40, 80, 160, 320 min, con tope de 6 h (el cron corre cada 10 min).
 --  6. photo_moderation_alert() cada 5 min: foto sin moderar >10 min → fila en security_logs ('photo_moderation_stuck', se ve en /super-admin/alerts)
 --     y UN push por administrador y pasada. Una sola alerta por foto (alerted_at). El push exige que send-push conozca el tipo 'admin_alert'.
---  7. match_photo_verdict_notify: al aprobar/rechazar una foto de Match, aviso al usuario (fila en notifications + push_dispatch). Una vez por foto; la
---     aprobación solo avisa si es la PRIMERA foto aprobada, el rechazo solo si no le queda ninguna aprobada. Exige que send-push conozca
---     'match_photo_approved' y 'match_photo_rejected'. No toca el trigger trg_push_on_notification_insert (llama a push_dispatch directamente).
+--  7. match_photo_verdict_notify: al aprobar/rechazar una foto de Match, aviso al usuario: SOLO inserta la fila en notifications; el trigger
+--     existente trg_push_on_notification_insert (que llama a push_dispatch en cada insert) envía el push, así que aquí NO se llama a push_dispatch
+--     (evita el doble push). Una vez por foto; la aprobación solo avisa si es la PRIMERA foto aprobada, el rechazo solo si no le queda ninguna
+--     aprobada. Exige que send-push conozca 'match_photo_approved' y 'match_photo_rejected'.
 --
 -- No borra nada. Idempotente (create if not exists / create or replace / bloques DO).
 --
@@ -129,7 +132,7 @@ begin
 end;
 $$;
 
--- Igual que el baseline 245 (2786-2804) más la última condición.
+-- Igual que el baseline 245 (2786-2804) más dos condiciones: match_orientation_ok y que p_viewer sea quien llama (ver abajo).
 create or replace function public.match_common_business(p_viewer uuid, p_target uuid)
 returns uuid language sql stable security definer set search_path = public as $$
   select v.business_id
@@ -145,15 +148,20 @@ returns uuid language sql stable security definer set search_path = public as $$
     and not public.is_blocked(p_viewer, p_target)
     and coalesce((select (u.settings->>'gamesEnabled')::boolean from public.users u where u.id = p_target), true)
     and public.match_orientation_ok(p_viewer, p_target)
+    -- Un cliente solo puede preguntar por SÍ MISMO: con ids ajenos (p_viewer) la respuesta (null o un local) revelaría si X encaja con Z, es decir, su
+    -- sexo/interés. Todos los usos (deck, swipe, perfil, "los que pasé", política match_photos_visible) pasan auth.uid(); service_role no tiene uid.
+    and (auth.uid() is null or p_viewer = auth.uid())
   limit 1;
 $$;
 
 revoke all on function public.match_fits(text, text) from public;
-revoke all on function public.match_orientation_ok(uuid, uuid) from public;
-revoke all on function public.match_profile_enforced() from public;
 grant execute on function public.match_fits(text, text) to authenticated, service_role;
-grant execute on function public.match_orientation_ok(uuid, uuid) to authenticated, service_role;
-grant execute on function public.match_profile_enforced() to authenticated, service_role;
+
+-- Estas dos leen datos privados: ni anon ni authenticated pueden llamarlas (Supabase concede EXECUTE a anon/authenticated por defecto en public).
+revoke all on function public.match_orientation_ok(uuid, uuid) from public, anon, authenticated;
+grant execute on function public.match_orientation_ok(uuid, uuid) to service_role;
+revoke all on function public.match_profile_enforced() from public, anon, authenticated;
+grant execute on function public.match_profile_enforced() to service_role;
 
 -- ── 4. Registro de moderación (intentos, alerta, aviso) ──────────────────────────────────────────────────────────
 
@@ -283,7 +291,7 @@ exception when others then
 end;
 $$;
 
-revoke all on function public.photo_moderation_alert() from public;
+revoke all on function public.photo_moderation_alert() from public, anon, authenticated;
 grant execute on function public.photo_moderation_alert() to service_role;
 
 do $$
@@ -294,10 +302,11 @@ begin
 end $$;
 
 -- ── 7. Aviso al usuario cuando su foto de Match se aprueba o se rechaza ─────────────────────────────────────────
+-- La función solo escribe la fila en notifications; el push lo envía el trigger existente trg_push_on_notification_insert.
 
 create or replace function public.match_photo_verdict_notify()
 returns trigger language plpgsql security definer set search_path = public, extensions as $$
-declare v_first uuid; v_type text; v_biz uuid; v_name text; v_nid uuid; v_payload jsonb;
+declare v_first uuid; v_type text; v_biz uuid; v_name text; v_payload jsonb;
 begin
   if old.status <> 'pending' or new.status not in ('approved', 'rejected') then return new; end if;
 
@@ -319,15 +328,16 @@ begin
    order by mp.last_seen_at desc limit 1;
 
   v_payload := jsonb_build_object('photo_id', new.id, 'business_id', v_biz, 'business_name', v_name, 'present', v_biz is not null);
-  insert into public.notifications (user_id, type, payload) values (new.user_id, v_type, v_payload) returning id into v_nid;
-  perform public.push_dispatch('notification', jsonb_build_object(
-    'id', v_nid, 'user_id', new.user_id, 'type', v_type, 'payload', v_payload, 'created_at', now()));
+  -- Solo el insert: trg_push_on_notification_insert llama a push_dispatch en cada insert (un push; no llamar aquí a push_dispatch).
+  insert into public.notifications (user_id, type, payload) values (new.user_id, v_type, v_payload);
   return new;
 exception when others then
   raise warning 'match_photo_verdict_notify failed: %', sqlerrm;   -- nunca bloquea la moderación
   return new;
 end;
 $$;
+
+revoke all on function public.match_photo_verdict_notify() from public, anon, authenticated;
 
 create or replace trigger trg_match_photo_verdict_notify
   after update of status on public.match_photos
