@@ -60,7 +60,9 @@ export type NotificationType =
   | 'match_new_people'
   | 'order_status'
   | 'gift_offer'
-  | 'gift_response';
+  | 'gift_response'
+  | 'match_photo_approved'
+  | 'match_photo_rejected';
 
 export const MATCH_NOTIFICATION_TYPES: readonly NotificationType[] = [
   'match_like',
@@ -80,6 +82,13 @@ export function isOrderNotificationType(value: unknown): value is NotificationTy
   return typeof value === 'string' && ORDER_NOTIFICATION_TYPES.includes(value as NotificationType);
 }
 
+/** The verdict on my Match photo (migration 254): shown in the list with their own texts; a tap opens "Mi perfil de Match" on its result. */
+export const MATCH_PHOTO_NOTIFICATION_TYPES: readonly NotificationType[] = ['match_photo_approved', 'match_photo_rejected'];
+
+export function isMatchPhotoNotificationType(value: unknown): value is NotificationType {
+  return typeof value === 'string' && MATCH_PHOTO_NOTIFICATION_TYPES.includes(value as NotificationType);
+}
+
 export const SOCIAL_NOTIFICATION_TYPES: readonly NotificationType[] = [
   'dm',
   'follower',
@@ -88,6 +97,7 @@ export const SOCIAL_NOTIFICATION_TYPES: readonly NotificationType[] = [
   'work_alert',
   ...MATCH_NOTIFICATION_TYPES,
   ...ORDER_NOTIFICATION_TYPES,
+  ...MATCH_PHOTO_NOTIFICATION_TYPES,
 ];
 
 export function isSocialNotificationType(value: unknown): value is NotificationType {
@@ -137,6 +147,7 @@ export type NotificationRoute =
   | { screen: 'PostDetail'; params: { postId: string } }
   | { screen: 'MatchActivity'; params: { businessId: string; tab: 'likes' | 'likedMe' | 'matches' } }
   | { screen: 'MatchHome'; params: { businessId: string } }
+  | { screen: 'MatchMyProfile'; params: { focus: 'result' } }
   | { screen: 'OrderTracking'; params: { orderId: string; roomId?: string } }
   | { screen: 'MyOrders' };
 
@@ -285,12 +296,20 @@ export function getNotificationStyle(type: NotificationType): NotificationStyle 
     case 'match_super':
       return { icon: IconStar, accent: palette.brand };
 
+    case 'match_photo_approved':
+    case 'match_photo_rejected':
+      return { icon: IconHeart, accent: type === 'match_photo_rejected' ? palette.warning : palette.brand };
+
     case 'order_status':
       return { icon: IconReceipt, accent: palette.brand };
 
     case 'gift_offer':
     case 'gift_response':
       return { icon: IconGift, accent: palette.brand };
+
+    default:
+      // A type this build does not know (a newer server): a neutral bell, never a crash.
+      return { icon: IconBell, accent: palette.brand };
   }
 }
 
@@ -474,6 +493,11 @@ export function routeForNotification(
       return businessId ? { screen: 'MatchHome', params: { businessId } } : null;
     }
 
+    case 'match_photo_approved':
+    case 'match_photo_rejected':
+      // Approved → "Perfil completo"; rejected → "Cambia tu foto para aparecer": the screen picks the result from my photos.
+      return { screen: 'MatchMyProfile', params: { focus: 'result' } };
+
     case 'order_status': {
       const orderId = typeof payload?.order_id === 'string' && payload.order_id ? payload.order_id : null;
       return orderId ? { screen: 'OrderTracking', params: { orderId } } : { screen: 'MyOrders' };
@@ -487,6 +511,9 @@ export function routeForNotification(
       }
       return { screen: 'DMs', params: { screen: 'DMInbox' } };
     }
+
+    default:
+      return null; // a type this build does not know: tapping it opens nothing
   }
 }
 

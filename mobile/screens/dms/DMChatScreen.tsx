@@ -136,7 +136,12 @@ function MessageBubble({ message, isOwn, onReportPhoto, onOpenPhoto, onLongPress
   const [revealed, setRevealed] = useState(false);
   const moderation = message.media_moderation ?? null;
   const photoRejected = !isOwn && message.media_url != null && moderation === 'rejected';
-  const photoBlurred = !isOwn && message.media_url != null && (moderation === 'pending' || moderation === 'blurred') && !revealed;
+  // 'pending' (no verdict yet): the receiver sees "Revisando foto…" over a blurred photo that opens as soon as it is approved; the sender sees
+  // their own photo with an "En revisión" tag. 'blurred' keeps "Foto sensible" with "View anyway" / "Report".
+  const photoPending = message.media_url != null && moderation === 'pending';
+  const photoReviewing = !isOwn && photoPending;
+  const photoBlurred = !isOwn && message.media_url != null && moderation === 'blurred' && !revealed;
+  const photoGated = photoBlurred || photoReviewing;
   // Viewer rules: the sender always opens their own photo. The receiver opens it when it is clear (or has no verdict),
   // or 'blurred' AFTER tapping "View anyway". 'pending' never opens (even if revealed) and 'rejected' never opens.
   const canOpenPhoto =
@@ -220,11 +225,22 @@ function MessageBubble({ message, isOwn, onReportPhoto, onOpenPhoto, onLongPress
               <Image
                 source={{ uri: mediaUri }}
                 accessibilityLabel={t('dmChat.photoA11y')}
-                style={[styles.bubbleImage, photoBlurred && styles.bubbleImageGated]}
+                style={[styles.bubbleImage, photoGated && styles.bubbleImageGated]}
                 resizeMode="cover"
-                blurRadius={photoBlurred ? 40 : 0}
+                blurRadius={photoGated ? 40 : 0}
               />
             </Pressable>
+            {isOwn && photoPending ? (
+              <View pointerEvents="none" style={[styles.reviewTag, { backgroundColor: palette.scrimMedium }]}>
+                <Text style={[styles.reviewTagText, { color: palette.onImageStrong }]}>{tc('dmPhoto.senderReviewing')}</Text>
+              </View>
+            ) : null}
+            {photoReviewing ? (
+              <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.photoGate, { backgroundColor: palette.scrim }]}>
+                <Text style={[styles.photoGateTitle, { color: palette.onImageStrong }]}>{tc('dmPhoto.receiverReviewingTitle')}</Text>
+                <Text style={[styles.photoGateText, { color: palette.onImageStrong }]}>{tc('dmPhoto.receiverReviewingHint')}</Text>
+              </View>
+            ) : null}
             {photoBlurred ? (
               <View style={[StyleSheet.absoluteFill, styles.photoGate, { backgroundColor: palette.scrim }]}>
                 <Text style={[styles.photoGateTitle, { color: palette.onImageStrong }]}>{tc('dmPhoto.blurredTitle')}</Text>
@@ -1073,6 +1089,8 @@ const styles = StyleSheet.create({
   photoGateBtn: { minHeight: 40, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
   photoGateBtnText: { fontSize: 13, fontWeight: '700', textDecorationLine: 'underline' },
   bubbleImageGated: { height: 200 },
+  reviewTag: { position: 'absolute', left: 8, bottom: 8, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
+  reviewTagText: { fontSize: 11, fontWeight: '700' },
   bubbleImage: {
     width: 200,
     height: 160,

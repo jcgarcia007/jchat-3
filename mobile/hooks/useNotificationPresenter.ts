@@ -41,6 +41,8 @@ export const NOTIFICATION_ICONS: Record<NotificationType, Icon> = {
   order_status: IconReceipt,
   gift_offer: IconGift,
   gift_response: IconGift,
+  match_photo_approved: IconHeart,
+  match_photo_rejected: IconBell,
 };
 
 function actorName(payload: Record<string, unknown> | null, fallback: string): string {
@@ -108,6 +110,14 @@ export function useNotificationPresenter(notifications: NotificationRow[]) {
         }[notification.type as 'match_like' | 'match_super' | 'match_match' | 'match_new_people'];
         return t(`messages.notif.${key}`, { name: nameOf(userId), business: businessName });
       }
+
+      if (notification.type === 'match_photo_approved') {
+        return payload?.present === true && businessName
+          ? t('messages.notif.matchPhotoApprovedHere', { business: businessName })
+          : t('messages.notif.matchPhotoApproved');
+      }
+
+      if (notification.type === 'match_photo_rejected') return t('messages.notif.matchPhotoRejected');
 
       if (notification.type === 'order_status') {
         const status = typeof payload?.status === 'string' ? payload.status : '';
