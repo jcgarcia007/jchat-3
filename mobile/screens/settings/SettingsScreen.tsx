@@ -35,11 +35,16 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import { useMyMatchProfile } from '../../hooks/useMyMatchProfile';
+import { settingsStatus } from '../../utils/matchProfileState';
+import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { SettingsStackParamList } from '../../navigation/SettingsStack';
 import {
   IconBell,
+  IconDeviceGamepad2,
+  IconHeartHandshake,
   IconEyeOff,
   IconBriefcase,
   IconChevronLeft,
@@ -92,6 +97,8 @@ import { ThemedSwitch } from '../../components/common/ThemedSwitch';
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
+
+const MATCH_STATUS_KEY = { complete: 'Complete', reviewing: 'Reviewing', incomplete: 'Incomplete' } as const;
 
 function defaultSettings(): UserSettings {
   return {
@@ -245,6 +252,8 @@ export default function SettingsScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<SettingsStackParamList, 'SettingsHome'>>();
   const { user, signOut } = useAuth();
+  // "Mi perfil de Match": its state (Completo / En revisión / Incompleto), read again whenever Settings regains focus.
+  const matchProfile = useMyMatchProfile();
 
   // ── Local state ────────────────────────────────────────────────────────────
   const [settings, setSettings] = useState<UserSettings>(defaultSettings);
@@ -660,6 +669,38 @@ export default function SettingsScreen() {
         <View style={styles.sectionGap} />
           </>
         ) : null}
+
+        {/* ── 2b. GAMES ────────────────────────────────────────────────────── */}
+        <SectionHeader label={t('main.sectionGames')} />
+
+        {/* The one switch (users.settings.gamesEnabled): Match and Truth or Dare at every venue. Also on the venue entry sheet. */}
+        <SettingsRow
+          testID="settings-games-enabled"
+          icon={<IconDeviceGamepad2 size={20} color={c.brandText} strokeWidth={2} />}
+          label={t('main.gamesTitle')}
+          sublabel={t('main.gamesSub')}
+          right={
+            <ThemedSwitch
+              value={settings.gamesEnabled}
+              onValueChange={(v) => patch({ gamesEnabled: v })}
+              trackColor={{ false: c.borderSubtle, true: c.brand }}
+              accessibilityLabel={t('main.gamesA11y')}
+            />
+          }
+        />
+
+        <SectionDivider />
+
+        <SettingsRow
+          testID="settings-match-profile"
+          icon={<IconHeartHandshake size={20} color={c.brandText} strokeWidth={2} />}
+          label={t('main.matchProfile')}
+          sublabel={matchProfile.loading ? undefined : t(`main.matchProfile${MATCH_STATUS_KEY[settingsStatus(matchProfile.summary)]}`)}
+          right={<ChevronRight />}
+          onPress={() => navigation.getParent<NativeStackNavigationProp<MainStackParamList>>()?.navigate('MatchMyProfile')}
+        />
+
+        <View style={styles.sectionGap} />
 
         {/* ── 3. LANGUAGE ──────────────────────────────────────────────────── */}
         <SectionHeader label={t('main.sectionLanguage')} />

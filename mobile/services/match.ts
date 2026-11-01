@@ -97,7 +97,6 @@ export async function matchLeaveVenue(businessId: string): Promise<void> {
 // ── Local flags (AsyncStorage; per business) ────────────────────────────────
 
 const NOTICE_SEEN_KEY = (businessId: string) => `match.noticeSeen.${businessId}`;
-const OPT_IN_KEY = (businessId: string) => `match.optIn.${businessId}`;
 
 /** True once the user saw the FULL entry notice at this venue (later visits get the short one). */
 export async function hasSeenMatchNotice(businessId: string): Promise<boolean> {
@@ -130,23 +129,6 @@ export async function hasSkippedInterestsQuiz(): Promise<boolean> {
 export async function markInterestsQuizSkipped(): Promise<void> {
   try {
     await AsyncStorage.setItem(INTERESTS_SKIPPED_KEY, '1');
-  } catch {
-    // best effort
-  }
-}
-
-/** The per-venue "Match" switch of the entry notice. Defaults to ON (Match activates on entry). */
-export async function getMatchOptIn(businessId: string): Promise<boolean> {
-  try {
-    return (await AsyncStorage.getItem(OPT_IN_KEY(businessId))) !== '0';
-  } catch {
-    return true;
-  }
-}
-
-export async function setMatchOptIn(businessId: string, value: boolean): Promise<void> {
-  try {
-    await AsyncStorage.setItem(OPT_IN_KEY(businessId), value ? '1' : '0');
   } catch {
     // best effort
   }

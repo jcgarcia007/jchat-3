@@ -1,22 +1,22 @@
 /**
- * JChat 3.0 — Match entry notice (Fase D1)
+ * JChat 3.0 — games entry notice (Fase D1, Match v2)
  *
- * Block shown inside the chat's pre-entry sheet when Match is enabled at the venue.
- *  - FIRST time at a venue (full): 4 key points, switches, safety guide box (scroll) and legal links.
- *  - Later visits (short): the switches + a "See safety guide" toggle.
- * Switches: global "Take part in games" (users.settings.gamesEnabled) + one per catalog game
- * (today only Match). Turning the venue switch off leaves the venue on entry (match_leave_venue).
+ * Block shown inside the chat's pre-entry sheet when the venue has ANY game on (Match and/or Truth or Dare).
+ *  - FIRST time at a venue (full): 6 key points, the switch, safety guide box (scroll) and legal links.
+ *  - Later visits (short): the switch + a "See safety guide" toggle.
+ * ONE switch: "Take part in games" (users.settings.gamesEnabled), for Match and Truth or Dare at every venue; it can also be changed in Settings.
+ * Turning it off leaves the venue's Match on entry (match_leave_venue).
+ * The ES / EN selector next to the title changes ONLY the texts of this sheet (it starts in the app's language and never changes the app's language).
  * Presentational: state and persistence live in ChatRoomScreen.
  */
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { IconCamera, IconEye, IconLifebuoy, IconTrash } from '@tabler/icons-react-native';
+import { IconBan, IconCamera, IconEye, IconLifebuoy, IconShieldCheck, IconTrash } from '@tabler/icons-react-native';
 
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
-import type { GameRow } from '../../services/match';
 import { ThemedSwitch } from '../common/ThemedSwitch';
 
 const TERMS_URL = 'https://jchat.cloud/terms';
@@ -31,17 +31,26 @@ const GUIDE_SECTIONS = [
   { key: 'data', count: 2 },
 ] as const;
 
+/** The six key points, in order, each with its icon (texts in match.json entry.points). */
+const POINTS = [
+  { key: 'here', Icon: IconEye },
+  { key: 'adults', Icon: IconShieldCheck },
+  { key: 'erased', Icon: IconTrash },
+  { key: 'block', Icon: IconBan },
+  { key: 'screenshots', Icon: IconCamera },
+  { key: 'help', Icon: IconLifebuoy },
+] as const;
+
+type SheetLanguage = 'en' | 'es';
+
 interface MatchEntryNoticeProps {
   businessName: string;
   /** First time at this venue → full notice. */
   full: boolean;
-  games: GameRow[];
   gamesEnabled: boolean;
   onGamesEnabledChange: (value: boolean) => void;
-  /** Per-venue "Match" switch. */
-  matchOptIn: boolean;
-  onMatchOptInChange: (value: boolean) => void;
-  language: 'en' | 'es';
+  /** The app's language: where the sheet's own selector starts. */
+  language: SheetLanguage;
 }
 
 interface SwitchRowProps {
@@ -79,26 +88,39 @@ function SwitchRow({ label, hint, value, disabled, onChange }: SwitchRowProps) {
   );
 }
 
-export function MatchEntryNotice({
-  businessName,
-  full,
-  games,
-  gamesEnabled,
-  onGamesEnabledChange,
-  matchOptIn,
-  onMatchOptInChange,
-  language,
-}: MatchEntryNoticeProps) {
+/** ES | EN selector: two small buttons, the active one filled. */
+function LanguageSelector({ value, onChange, label }: { value: SheetLanguage; onChange: (next: SheetLanguage) => void; label: string }) {
   const c = useThemeColors();
-  const { t } = useTranslation('match');
-  const [guideOpen, setGuideOpen] = useState(full);
+  return (
+    <View accessibilityRole="radiogroup" accessibilityLabel={label} style={[styles.langBox, { borderColor: c.borderSubtle }]}>
+      {(['es', 'en'] as const).map((code) => {
+        const active = code === value;
+        return (
+          <Pressable
+            key={code}
+            testID={`entry-lang-${code}`}
+            onPress={() => onChange(code)}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: active }}
+            accessibilityLabel={code === 'es' ? 'Español' : 'English'}
+            hitSlop={{ top: 8, bottom: 8 }}
+            style={[styles.langBtn, active && { backgroundColor: c.brandFill }]}
+          >
+            <Text style={[styles.langText, { color: active ? palette.onBrand : c.textSecondary }]}>{code.toUpperCase()}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
 
-  const points: { key: 'here' | 'erased' | 'screenshots' | 'help'; Icon: typeof IconEye }[] = [
-    { key: 'here', Icon: IconEye },
-    { key: 'erased', Icon: IconTrash },
-    { key: 'screenshots', Icon: IconCamera },
-    { key: 'help', Icon: IconLifebuoy },
-  ];
+export function MatchEntryNotice({ businessName, full, gamesEnabled, onGamesEnabledChange, language }: MatchEntryNoticeProps) {
+  const c = useThemeColors();
+  const { i18n } = useTranslation();
+  const [sheetLanguage, setSheetLanguage] = useState<SheetLanguage>(language);
+  // Fixed to the sheet's own language: switching it never touches i18n.language (the app keeps its language).
+  const t = useMemo(() => i18n.getFixedT(sheetLanguage, 'match'), [i18n, sheetLanguage]);
+  const [guideOpen, setGuideOpen] = useState(full);
 
   return (
     <ScrollView
@@ -107,13 +129,16 @@ export function MatchEntryNotice({
       showsVerticalScrollIndicator={false}
       nestedScrollEnabled
     >
-      <Text style={[styles.title, { color: c.textPrimary }]} accessibilityRole="header">
-        {full ? t('entry.title') : t('entry.shortTitle', { business: businessName })}
-      </Text>
+      <View style={styles.titleRow}>
+        <Text style={[styles.title, { color: c.textPrimary }]} accessibilityRole="header" numberOfLines={2}>
+          {full ? t('entry.title') : t('entry.shortTitle', { business: businessName })}
+        </Text>
+        <LanguageSelector value={sheetLanguage} onChange={setSheetLanguage} label={t('entry.langA11y')} />
+      </View>
 
       {/* Key points: always visible */}
       <View style={styles.points}>
-        {points.map(({ key, Icon }) => (
+        {POINTS.map(({ key, Icon }) => (
           <View key={key} style={styles.pointRow}>
             <Icon size={20} color={c.brandText} />
             <View style={styles.pointTexts}>
@@ -124,7 +149,7 @@ export function MatchEntryNotice({
         ))}
       </View>
 
-      {/* Switches: global + one per catalog game */}
+      {/* The one switch: Match and Truth or Dare */}
       <View style={[styles.switchBlock, { borderColor: c.borderSubtle, backgroundColor: c.bgElevated }]}>
         <SwitchRow
           label={t('entry.gamesGlobal')}
@@ -132,20 +157,6 @@ export function MatchEntryNotice({
           value={gamesEnabled}
           onChange={onGamesEnabledChange}
         />
-        {games.map((game) => {
-          const name = language === 'es' ? game.name_es : game.name_en;
-          const isMatch = game.key === 'match';
-          return (
-            <SwitchRow
-              key={game.key}
-              label={name}
-              hint={t('entry.gameSwitchHint', { game: name })}
-              value={isMatch ? matchOptIn && gamesEnabled : false}
-              disabled={!gamesEnabled || !isMatch}
-              onChange={isMatch ? onMatchOptInChange : () => undefined}
-            />
-          );
-        })}
       </View>
 
       {/* Safety guide */}
@@ -212,7 +223,11 @@ export function MatchEntryNotice({
 const styles = StyleSheet.create({
   scroll: { flexShrink: 1 },
   content: { gap: 14, paddingBottom: 4 },
-  title: { fontSize: 17, fontWeight: '700', textAlign: 'center' },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  title: { flex: 1, fontSize: 17, fontWeight: '700' },
+  langBox: { flexDirection: 'row', borderWidth: 1, borderRadius: 999, overflow: 'hidden' },
+  langBtn: { minWidth: 40, minHeight: 32, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
+  langText: { fontSize: 12, fontWeight: '800' },
   points: { gap: 10 },
   pointRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   pointTexts: { flex: 1, gap: 1 },

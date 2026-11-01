@@ -96,12 +96,10 @@ import { openNotificationRoute, useNotificationPresenter } from '../../hooks/use
 import { useMatchPresence } from '../../hooks/useMatchPresence';
 import {
   fetchGames,
-  getMatchOptIn,
   hasSeenMatchNotice,
   isMatchEnabledForBusiness,
   markMatchNoticeSeen,
   matchLeaveVenue,
-  setMatchOptIn,
 } from '../../services/match';
 import type { GameRow } from '../../services/match';
 import { loadUserSettings, updateMySettings } from '../../services/userSettings';
@@ -452,7 +450,6 @@ export default function ChatRoomScreen() {
   const [matchAvailable, setMatchAvailable] = useState(false);
   const [matchGames, setMatchGames] = useState<GameRow[]>([]);
   const [gamesEnabled, setGamesEnabled] = useState(true);
-  const [matchOptInValue, setMatchOptInValue] = useState(true);
   const [matchNoticeFull, setMatchNoticeFull] = useState(true);
   // Truth or Dare is enabled per venue by the owner (off by default); independent from Match.
   const [todAvailable, setTodAvailable] = useState(false);
@@ -465,15 +462,13 @@ export default function ChatRoomScreen() {
       fetchGames(),
       loadUserSettings(user.id),
       hasSeenMatchNotice(matchBusinessId),
-      getMatchOptIn(matchBusinessId),
     ])
-      .then(([available, games, settings, seen, optIn]) => {
+      .then(([available, games, settings, seen]) => {
         if (!alive) return;
         setMatchAvailable(available);
         setMatchGames(games);
         setGamesEnabled(settings.gamesEnabled ?? true);
         setMatchNoticeFull(!seen);
-        setMatchOptInValue(optIn);
       })
       .catch(() => {
         if (alive) {
@@ -516,7 +511,8 @@ export default function ChatRoomScreen() {
   }, []);
 
   // The owner has no geofence reading (the gate skips them), so they don't join Match.
-  const matchActive = matchAvailable && gamesEnabled && matchOptInValue;
+  // ONE switch (users.settings.gamesEnabled) governs every game: Match is on when the venue has it and the person takes part in games.
+  const matchActive = matchAvailable && gamesEnabled;
   useMatchPresence({
     businessId: matchBusinessId,
     roomId: rootRoomId,
@@ -1018,11 +1014,10 @@ export default function ChatRoomScreen() {
     if (!granted) return; // stays on the entry gate; geoGate.gateStatus drives the message shown
     // Incognito is hidden (INCOGNITO_ENABLED): any stored choice counts as off.
     setEnteredIncognito(INCOGNITO_ENABLED ? incognitoState : null);
-    if (matchBusinessId && matchAvailable) {
+    if (matchBusinessId && (matchAvailable || todAvailable)) {
       void markMatchNoticeSeen(matchBusinessId);
-      void setMatchOptIn(matchBusinessId, matchOptInValue);
-      // Switching Match off at the entry notice = leaving the venue's Match (same RPC; idempotent).
-      if (!matchOptInValue || !gamesEnabled) void matchLeaveVenue(matchBusinessId).catch(() => undefined);
+      // Switching "Take part in games" off at the entry notice = leaving the venue's Match (same RPC; idempotent).
+      if (matchAvailable && !gamesEnabled) void matchLeaveVenue(matchBusinessId).catch(() => undefined);
     }
     // Start the venue session (one venue at a time: may ask "Switch to …?"). Owners don't have one.
     if (!isOwner && matchBusinessId) {
@@ -1031,12 +1026,12 @@ export default function ChatRoomScreen() {
         businessName: business?.name ?? '',
         roomId: rootRoomId,
         tableLabel: route.params.tableLabel,
-        matchActive: matchAvailable && gamesEnabled && matchOptInValue,
+        matchActive: matchAvailable && gamesEnabled,
       });
       if (!started) return; // declined to switch: stay at the gate
     }
     setEntryVisible(false);
-  }, [incognitoState, t, geoGate, initialLoading, matchBusinessId, matchAvailable, matchOptInValue, gamesEnabled, isOwner, venue, business?.name, rootRoomId, route.params.tableLabel]);
+  }, [incognitoState, t, geoGate, initialLoading, matchBusinessId, matchAvailable, todAvailable, gamesEnabled, isOwner, venue, business?.name, rootRoomId, route.params.tableLabel]);
 
   // "Not now" / back: never return into the order flow (it would loop with the order screens).
   const handleBack = useCallback(() => {
@@ -1724,16 +1719,13 @@ export default function ChatRoomScreen() {
                     {t('chatRoom.geoWhy', { business: business?.name ?? t('chatRoom.chatRoomFallback') })}
                   </Text>
 
-                  {/* Match entry notice — only where the owner enabled Match (fase D1) */}
-                  {matchAvailable && (
+                  {/* Games entry notice — where the venue has ANY game on (Match and/or Truth or Dare) */}
+                  {(matchAvailable || todAvailable) && (
                     <MatchEntryNotice
                       businessName={business?.name ?? t('chatRoom.chatRoomFallback')}
                       full={matchNoticeFull}
-                      games={matchGames}
                       gamesEnabled={gamesEnabled}
                       onGamesEnabledChange={handleGamesEnabledChange}
-                      matchOptIn={matchOptInValue}
-                      onMatchOptInChange={setMatchOptInValue}
                       language={matchLanguage}
                     />
                   )}
@@ -1766,7 +1758,7 @@ export default function ChatRoomScreen() {
                   ]}
                 >
                   <Text style={[gateStyles.enterBtnLabel, { color: palette.onBrand }]}>
-                    {matchAvailable ? t('entry.enter', { ns: 'match' }) : t('chatRoom.enterRoom')}
+                    {matchAvailable || todAvailable ? t('entry.enter', { ns: 'match' }) : t('chatRoom.enterRoom')}
                   </Text>
                 </Pressable>
               )}
