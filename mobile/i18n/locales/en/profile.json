@@ -94,7 +94,8 @@
     "publish": "Post",
     "places": "Places",
     "bioMore": "more",
-    "bioLess": "less"
+    "bioLess": "less",
+    "viewAvatarA11y": "View profile photo"
   },
   "empty": {
     "ownPostsTitle": "Share your first photo",

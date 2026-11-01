@@ -20,7 +20,7 @@ import { Image, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'reac
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import {
-  IconArrowLeft, IconCircleCheckFilled, IconDots, IconMapPin, IconMessage, IconPlus, IconSettings, IconShare3, IconX,
+  IconArrowLeft, IconCamera, IconCircleCheckFilled, IconDots, IconMapPin, IconMessage, IconPlus, IconSettings, IconShare3, IconX,
 } from '@tabler/icons-react-native';
 
 import { Skeleton, SkeletonGroup } from '../common/Skeleton';
@@ -72,6 +72,10 @@ export interface ProfileHeaderProps extends ProfileChromeProps {
   /** Own profile: follow requests waiting for an answer (a dot on "Edit profile" while > 0). */
   pendingRequests: number;
   onEditProfile: () => void;
+  /** Tapping the avatar (only when there is a photo) opens it full screen. */
+  onOpenAvatar?: () => void;
+  /** My own profile: the camera on the avatar changes the photo (the same flow as the chat's "Change photo"). Not given → no camera. */
+  onChangeAvatar?: () => void;
   /** Own profile in the Profile tab: the "+ Post" capsule (what the floating button did). Not given → no capsule. */
   onPublish?: () => void;
   onDismissCompletion: () => void;
@@ -208,7 +212,7 @@ export function ProfileCompactBar(props: ProfileChromeProps & { displayName: str
 export default function ProfileHeader(props: ProfileHeaderProps) {
   const {
     isOwnProfile, displayName, username, avatarUrl, bio, city, isVerified, relation, followBusy, completion, completionVisible, pendingRequests,
-    onEditProfile, onPublish, onDismissCompletion, onFollow, onUnfollow, onCancelRequest, onUnblock, onMessage, theme, topInset,
+    onEditProfile, onOpenAvatar, onChangeAvatar, onPublish, onDismissCompletion, onFollow, onUnfollow, onCancelRequest, onUnblock, onMessage, theme, topInset,
   } = props;
   const { t } = useTranslation('profile');
   const c = useThemeColors();
@@ -246,12 +250,21 @@ export default function ProfileHeader(props: ProfileHeaderProps) {
       <View style={[styles.sheet, { backgroundColor: c.bgBase }]}>
         <View style={[styles.avatarBorder, { backgroundColor: c.bgBase }]}>
           {avatarUrl ? (
-            <Image source={{ uri: avatarUrl }} style={styles.avatar} resizeMode="cover" accessibilityLabel={t('header.avatarA11y', { name })} />
+            <Pressable testID="profile-avatar" onPress={onOpenAvatar} accessibilityRole="imagebutton" accessibilityLabel={t('header.viewAvatarA11y')}>
+              <Image source={{ uri: avatarUrl }} style={styles.avatar} resizeMode="cover" accessible={false} />
+            </Pressable>
           ) : (
-            <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: c.bgSurface }]}>
+            <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: c.bgSurface }]} accessibilityLabel={t('header.avatarA11y', { name })}>
               <Text style={[styles.avatarInitials, { color: c.textPrimary }]}>{initials}</Text>
             </View>
           )}
+          {isOwnProfile && onChangeAvatar ? (
+            <View style={styles.avatarCamera}>
+              <GlassIconButton tone="sheet" size={28} label={t('edit.changeAvatarPhotoA11y')} onPress={onChangeAvatar} testID="profile-change-avatar">
+                <IconCamera size={15} color={c.textPrimary} strokeWidth={2} />
+              </GlassIconButton>
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.nameBlock}>
@@ -362,6 +375,8 @@ const styles = StyleSheet.create({
   },
   avatar: { width: AVATAR_SIZE - AVATAR_BORDER * 2, height: AVATAR_SIZE - AVATAR_BORDER * 2, borderRadius: (AVATAR_SIZE - AVATAR_BORDER * 2) / 2 },
   avatarFallback: { alignItems: 'center', justifyContent: 'center' },
+  // The camera sits on the avatar's lower-right rim (the 45° point of the 144 pt ring).
+  avatarCamera: { position: 'absolute', right: 6, bottom: 6 },
   avatarInitials: { fontSize: 44, fontWeight: '800' },
   // Everything under the avatar is centred: name, @username, bio, city, capsules.
   nameBlock: { marginHorizontal: SIDE_MARGIN, marginTop: NAME_TOP, minHeight: 70, alignItems: 'center' },

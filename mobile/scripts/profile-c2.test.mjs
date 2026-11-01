@@ -78,3 +78,35 @@ test('the skeleton follows the new geometry: same constants, centred lines, caps
   assert.match(skeleton, /styles\.nameBlock/, 'the same centred name block');
   assert.match(header, /skeletonCapsule: \{ flex: 1, maxWidth: CAPSULE_MAX_WIDTH \}/);
 });
+
+// ── Step 2: tap the avatar to see it, the camera to change it ──────────────────
+
+test('the avatar is an image button labelled "Ver foto de perfil" (i18n), only when there is a photo; without a photo it does nothing', () => {
+  assert.match(header, /<Pressable testID="profile-avatar" onPress=\{onOpenAvatar\} accessibilityRole="imagebutton" accessibilityLabel=\{t\('header\.viewAvatarA11y'\)\}>/);
+  const photoBranch = header.slice(header.indexOf('{avatarUrl ? ('), header.indexOf(') : (', header.indexOf('{avatarUrl ? (')));
+  assert.match(photoBranch, /profile-avatar/);
+  const fallbackBranch = header.slice(header.indexOf(') : (', header.indexOf('{avatarUrl ? (')), header.indexOf('profile-change-avatar') - 200);
+  assert.doesNotMatch(fallbackBranch, /onPress/, 'the initials fallback has no handler');
+  assert.equal(JSON.parse(read('i18n/locales/en/profile.json')).header.viewAvatarA11y, 'View profile photo');
+  assert.equal(JSON.parse(read('i18n/locales/es/profile.json')).header.viewAvatarA11y, 'Ver foto de perfil');
+});
+
+test('own profile only: a 28 pt glass camera (tone sheet) on the avatar rim; one tap sees, the camera changes (it is NOT inside the avatar Pressable)', () => {
+  assert.match(header, /isOwnProfile && onChangeAvatar \? \(/);
+  assert.match(header, /<GlassIconButton tone="sheet" size=\{28\}[^>]*testID="profile-change-avatar"/);
+  assert.match(header, /avatarCamera: \{ position: 'absolute', right: 6, bottom: 6 \}/);
+  const pressable = header.slice(header.indexOf('<Pressable testID="profile-avatar"'), header.indexOf('</Pressable>', header.indexOf('<Pressable testID="profile-avatar"')));
+  assert.doesNotMatch(pressable, /profile-change-avatar/);
+  const button = read('components/profile/GlassIconButton.tsx');
+  assert.match(button, /tone\?: 'cover' \| 'bar' \| 'sheet'/);
+  assert.match(button, /hitSlop=\{slop\}/);
+});
+
+test('ProfileScreen opens the viewer from the avatar and changes the photo with the shared changeMyAvatar (no picker logic duplicated)', () => {
+  const screen = read('screens/profile/ProfileScreen.tsx');
+  assert.match(screen, /import \{ changeMyAvatar \} from '\.\.\/\.\.\/services\/avatar'/);
+  assert.match(screen, /onOpenAvatar=\{\(\) => setAvatarViewerOpen\(true\)\}/);
+  assert.match(screen, /onChangeAvatar=\{isOwnProfile \? \(\) => void changeAvatar\(\) : undefined\}/);
+  assert.match(screen, /<ImageViewerModal visible=\{avatarViewerOpen\}/);
+  assert.doesNotMatch(screen, /pickPhotoFromLibrary|launchImageLibrary/);
+});
