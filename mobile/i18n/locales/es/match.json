@@ -7,9 +7,17 @@
         "title": "Solo te ven quienes están aquí",
         "body": "Únicamente las personas dentro de este local que entraron al chat."
       },
+      "adults": {
+        "title": "Solo mayores de 18",
+        "body": "JChat es solo para adultos. Fotos y textos se revisan antes de publicarse."
+      },
       "erased": {
         "title": "Match se borra al salir",
         "body": "Likes, matches y chats desaparecen, salvo con quien se sigan mutuamente."
+      },
+      "block": {
+        "title": "Bloquea o reporta a quien quieras",
+        "body": "Desde su perfil o cualquier mensaje. Nadie sabe que lo hiciste."
       },
       "screenshots": {
         "title": "Las capturas existen",
@@ -17,13 +25,11 @@
       },
       "help": {
         "title": "¿Algo no está bien?",
-        "body": "Pide ayuda al personal del local desde la app, sin que nadie más lo vea."
+        "body": "Pide ayuda al personal del local desde la app, sin que nadie más lo vea. En una emergencia, llama al 911."
       }
     },
-    "gamesTitle": "Juegos",
     "gamesGlobal": "Participar en juegos",
-    "gamesGlobalHint": "Apágalo para desaparecer de todos los juegos en todos los locales.",
-    "gameSwitchHint": "Aparecer en {{game}} mientras estés aquí.",
+    "gamesGlobalHint": "Match y Truth or Dare en este local. Cámbialo cuando quieras en Ajustes.",
     "seeGuide": "Ver guía de seguridad",
     "hideGuide": "Ocultar guía de seguridad",
     "guideTitle": "Guía rápida de seguridad",
@@ -63,7 +69,8 @@
     "legalPrefix": "Al entrar aceptas nuestros",
     "legalAnd": "y",
     "notNow": "Ahora no",
-    "enter": "Entrar al chat"
+    "enter": "Entrar al chat",
+    "langA11y": "Idioma de esta hoja"
   },
   "games": {
     "button": "Juegos",
@@ -176,19 +183,104 @@
       "newPeople": "Avisarme cuando entre gente nueva",
       "newPeopleHint": "Una notificación genérica cuando entra gente nueva a Match en un local donde ya viste todas las tarjetas.",
       "saveError": "No se pudo guardar el ajuste. Inténtalo de nuevo."
+    },
+    "v2": {
+      "progress": "{{done}} de {{total}}",
+      "progressA11y": "Perfil: {{done}} de {{total}} pasos",
+      "gender": {
+        "title": "Soy",
+        "woman": "Mujer",
+        "man": "Hombre",
+        "nonbinary": "No binario"
+      },
+      "seeking": {
+        "title": "Me interesa conocer",
+        "women": "Mujeres",
+        "men": "Hombres",
+        "all": "Todos"
+      },
+      "ageTitle": "Edad que quieres ver",
+      "main": "Principal",
+      "tip": "Consejo: una foto donde se vea bien tu cara, sin gafas de sol.",
+      "shortcutTitle": "Usar mi foto de perfil",
+      "shortcutSub": "La forma más rápida de empezar",
+      "shortcutA11y": "Usar mi foto de perfil. La forma más rápida de empezar.",
+      "pickInterests": "+ Elige hasta {{max}} intereses",
+      "editInterests": "Editar intereses",
+      "privacy": "Tu sexo y lo que buscas solo se usan para mostrarte a las personas adecuadas.",
+      "confirm": "Confirmar perfil",
+      "missingTitle": "Falta:",
+      "missing": {
+        "gender": "Soy",
+        "seeking": "Me interesa conocer",
+        "photo": "una foto"
+      },
+      "prefsSaveError": "No se pudo guardar. Inténtalo de nuevo.",
+      "changeLimit": "Ya cambiaste esto varias veces hoy. Podrás cambiarlo de nuevo mañana.",
+      "reviewing": {
+        "title": "Revisando tus fotos",
+        "sub": "Suele tardar unos segundos. Te avisamos en cuanto aparezcas.",
+        "note": "Si tarda más de 10 minutos, lo revisa una persona del equipo de JChat.",
+        "back": "Volver al chat"
+      },
+      "rejected": {
+        "title": "Cambia tu foto para aparecer",
+        "sub": "Tu foto no cumple las normas de la comunidad. Sube otra en la que se te vea bien la cara.",
+        "upload": "Subir otra foto",
+        "notNow": "Ahora no"
+      },
+      "list": {
+        "profile": "Perfil completo",
+        "photos": "Fotos aprobadas",
+        "venue": "Dentro de {{venue}}",
+        "games": "Juegos activados",
+        "done": "Listo",
+        "reviewing": "En revisión",
+        "rejected": "Rechazada",
+        "missing": "Falta",
+        "off": "Desactivados",
+        "outside": "Fuera de un local"
+      },
+      "complete": {
+        "banner": "Perfil completo",
+        "bannerVenue": "Visible en Match en {{venue}}",
+        "bannerNoVenue": "Aparecerás en Match cuando entres a un local.",
+        "photosApproved_one": "{{count}} foto aprobada",
+        "photosApproved_other": "{{count}} fotos aprobadas",
+        "preview": "Ver cómo me ven",
+        "goMatch": "Ir a Match",
+        "rowGender": "Soy",
+        "rowSeeking": "Me interesa",
+        "rowAge": "Edad",
+        "rowPhotos": "Fotos",
+        "photosOf": "{{count}} de {{max}}",
+        "rowInterests": "Intereses",
+        "none": "Sin elegir",
+        "ageValue": "{{min}}–{{max}}"
+      },
+      "previewScreen": {
+        "tag": "Visible en Match · {{venue}}",
+        "edit": "Editar",
+        "goMatch": "Ir a Match"
+      },
+      "deck": {
+        "createTitle": "Crea tu perfil de Match",
+        "createBody": "Tarda menos de un minuto. Solo te verán personas dentro de este local.",
+        "create": "Crear perfil",
+        "reviewingTitle": "Tu foto está en revisión",
+        "reviewingBody": "Suele tardar unos segundos."
+      }
     }
   },
   "interests": {
     "title": "Tus intereses",
-    "intro": "Elige al menos {{min}} cosas que te gusten. Ayudan a mostrarte personas con las que tienes algo en común.",
-    "pickMore_one": "Elige {{count}} más",
-    "pickMore_other": "Elige {{count}} más",
-    "selected_one": "{{count}} elegido",
-    "selected_other": "{{count}} elegidos",
+    "intro": "Elige hasta {{max}} cosas que te gusten. Ayudan a mostrarte personas con las que tienes algo en común.",
     "save": "Guardar",
     "skip": "Omitir por ahora",
     "loadError": "No se pudieron cargar los intereses. Inténtalo de nuevo.",
-    "saveError": "No se pudieron guardar tus intereses. Inténtalo de nuevo."
+    "saveError": "No se pudieron guardar tus intereses. Inténtalo de nuevo.",
+    "counter": "{{count}} de {{max}}",
+    "limit": "Puedes elegir hasta {{max}} intereses."
   },
   "deck": {
     "like": "ME GUSTA",

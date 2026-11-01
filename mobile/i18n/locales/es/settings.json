@@ -53,7 +53,15 @@
     "safetyCommunity": "Seguridad y comunidad",
     "contactUs": "Contacto",
     "myReservations": "Mis reservas",
-    "myReservationsSub": "Tus reservas, y cancela las próximas"
+    "myReservationsSub": "Tus reservas, y cancela las próximas",
+    "sectionGames": "Juegos",
+    "gamesTitle": "Participar en juegos",
+    "gamesSub": "Match y Truth or Dare en todos los locales.",
+    "gamesA11y": "Participar en juegos",
+    "matchProfile": "Mi perfil de Match",
+    "matchProfileComplete": "Completo",
+    "matchProfileReviewing": "En revisión",
+    "matchProfileIncomplete": "Incompleto"
   },
   "changePassword": {
     "currentPassword": "Contraseña actual",

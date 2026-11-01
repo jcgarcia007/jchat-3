@@ -7,9 +7,17 @@
         "title": "Only people here can see you",
         "body": "Only the people inside this venue who joined the chat."
       },
+      "adults": {
+        "title": "18+ only",
+        "body": "JChat is for adults only. Photos and text are reviewed before they are posted."
+      },
       "erased": {
         "title": "Match is erased when you leave",
-        "body": "Likes, matches and chats disappear, except with whoever you follow each other."
+        "body": "Likes, matches and chats disappear, except with people you both follow."
+      },
+      "block": {
+        "title": "Block or report anyone",
+        "body": "From their profile or any message. Nobody knows you did it."
       },
       "screenshots": {
         "title": "Screenshots exist",
@@ -17,13 +25,11 @@
       },
       "help": {
         "title": "Something not right?",
-        "body": "Ask the venue staff for help from the app, without anyone else seeing it."
+        "body": "Ask the venue staff for help from the app, without anyone else seeing it. In an emergency, call 911."
       }
     },
-    "gamesTitle": "Games",
     "gamesGlobal": "Take part in games",
-    "gamesGlobalHint": "Turn this off to disappear from every game in every venue.",
-    "gameSwitchHint": "Appear in {{game}} while you are here.",
+    "gamesGlobalHint": "Match and Truth or Dare at this venue. Change it anytime in Settings.",
     "seeGuide": "See safety guide",
     "hideGuide": "Hide safety guide",
     "guideTitle": "Quick safety guide",
@@ -63,7 +69,8 @@
     "legalPrefix": "By entering you accept our",
     "legalAnd": "and",
     "notNow": "Not now",
-    "enter": "Enter the chat"
+    "enter": "Enter the chat",
+    "langA11y": "Language of this sheet"
   },
   "games": {
     "button": "Games",
@@ -176,19 +183,104 @@
       "newPeople": "Tell me when new people arrive",
       "newPeopleHint": "A generic notification when new people join Match at a venue where you have run out of cards.",
       "saveError": "Couldn't save the setting. Try again."
+    },
+    "v2": {
+      "progress": "{{done}} of {{total}}",
+      "progressA11y": "Profile: {{done}} of {{total}} steps",
+      "gender": {
+        "title": "I am",
+        "woman": "Woman",
+        "man": "Man",
+        "nonbinary": "Non-binary"
+      },
+      "seeking": {
+        "title": "I'm interested in meeting",
+        "women": "Women",
+        "men": "Men",
+        "all": "Everyone"
+      },
+      "ageTitle": "Ages you want to see",
+      "main": "Main",
+      "tip": "Tip: a photo where your face is clearly visible, no sunglasses.",
+      "shortcutTitle": "Use my profile photo",
+      "shortcutSub": "The fastest way to start",
+      "shortcutA11y": "Use my profile photo. The fastest way to start.",
+      "pickInterests": "+ Pick up to {{max}} interests",
+      "editInterests": "Edit interests",
+      "privacy": "Your gender and what you're looking for are only used to show you the right people.",
+      "confirm": "Confirm profile",
+      "missingTitle": "Missing:",
+      "missing": {
+        "gender": "I am",
+        "seeking": "I'm interested in meeting",
+        "photo": "a photo"
+      },
+      "prefsSaveError": "Couldn't save. Try again.",
+      "changeLimit": "You've changed this several times today. You can change it again tomorrow.",
+      "reviewing": {
+        "title": "Reviewing your photos",
+        "sub": "It usually takes a few seconds. We'll let you know as soon as you appear.",
+        "note": "If it takes more than 10 minutes, a JChat team member will review it.",
+        "back": "Back to chat"
+      },
+      "rejected": {
+        "title": "Change your photo to appear",
+        "sub": "Your photo doesn't meet the community rules. Upload another one where your face is clearly visible.",
+        "upload": "Upload another photo",
+        "notNow": "Not now"
+      },
+      "list": {
+        "profile": "Profile complete",
+        "photos": "Photos approved",
+        "venue": "Inside {{venue}}",
+        "games": "Games on",
+        "done": "Done",
+        "reviewing": "In review",
+        "rejected": "Rejected",
+        "missing": "Missing",
+        "off": "Off",
+        "outside": "Not at a venue"
+      },
+      "complete": {
+        "banner": "Profile complete",
+        "bannerVenue": "Visible in Match at {{venue}}",
+        "bannerNoVenue": "You'll appear in Match when you enter a venue.",
+        "photosApproved_one": "{{count}} approved photo",
+        "photosApproved_other": "{{count}} approved photos",
+        "preview": "See how others see me",
+        "goMatch": "Go to Match",
+        "rowGender": "I am",
+        "rowSeeking": "Interested in",
+        "rowAge": "Age",
+        "rowPhotos": "Photos",
+        "photosOf": "{{count}} of {{max}}",
+        "rowInterests": "Interests",
+        "none": "Not set",
+        "ageValue": "{{min}}–{{max}}"
+      },
+      "previewScreen": {
+        "tag": "Visible in Match · {{venue}}",
+        "edit": "Edit",
+        "goMatch": "Go to Match"
+      },
+      "deck": {
+        "createTitle": "Create your Match profile",
+        "createBody": "It takes less than a minute. Only people inside this venue will see you.",
+        "create": "Create profile",
+        "reviewingTitle": "Your photo is in review",
+        "reviewingBody": "It usually takes a few seconds."
+      }
     }
   },
   "interests": {
     "title": "Your interests",
-    "intro": "Pick at least {{min}} things you like. They help show you people you have things in common with.",
-    "pickMore_one": "Pick {{count}} more",
-    "pickMore_other": "Pick {{count}} more",
-    "selected_one": "{{count}} selected",
-    "selected_other": "{{count}} selected",
+    "intro": "Pick up to {{max}} things you like. They help show you people you have things in common with.",
     "save": "Save",
     "skip": "Skip for now",
     "loadError": "Couldn't load the interests. Try again.",
-    "saveError": "Couldn't save your interests. Try again."
+    "saveError": "Couldn't save your interests. Try again.",
+    "counter": "{{count}} of {{max}}",
+    "limit": "You can pick up to {{max}} interests."
   },
   "deck": {
     "like": "LIKE",

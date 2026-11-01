@@ -49,7 +49,10 @@
       "giftDeclined": "{{name}} no aceptó tu regalo",
       "giftExpired": "Tu regalo para {{name}} venció",
       "giftPaid": "Tu regalo ya está pagado y va en camino",
-      "giftGeneric": "Novedad en tu regalo"
+      "giftGeneric": "Novedad en tu regalo",
+      "matchPhotoApprovedHere": "Ya apareces en Match en {{business}}",
+      "matchPhotoApproved": "Tu foto de Match fue aprobada",
+      "matchPhotoRejected": "Tu foto no cumple las normas. Sube otra para aparecer."
     },
     "pinnedOrderTitle": "Pedido #{{n}} · {{status}}",
     "pinnedOrderSub": "{{business}} · toca para ver",

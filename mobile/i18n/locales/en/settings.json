@@ -53,7 +53,15 @@
     "safetyCommunity": "Safety & community",
     "contactUs": "Contact us",
     "myReservations": "My reservations",
-    "myReservationsSub": "Your bookings, and cancel the ones coming up"
+    "myReservationsSub": "Your bookings, and cancel the ones coming up",
+    "sectionGames": "Games",
+    "gamesTitle": "Take part in games",
+    "gamesSub": "Match and Truth or Dare at every venue.",
+    "gamesA11y": "Take part in games",
+    "matchProfile": "My Match profile",
+    "matchProfileComplete": "Complete",
+    "matchProfileReviewing": "In review",
+    "matchProfileIncomplete": "Incomplete"
   },
   "changePassword": {
     "currentPassword": "Current password",

@@ -49,7 +49,10 @@
       "giftDeclined": "{{name}} didn't accept your gift",
       "giftExpired": "Your gift for {{name}} expired",
       "giftPaid": "Your gift is paid and on its way",
-      "giftGeneric": "Update on your gift"
+      "giftGeneric": "Update on your gift",
+      "matchPhotoApprovedHere": "You're now in Match at {{business}}",
+      "matchPhotoApproved": "Your Match photo was approved",
+      "matchPhotoRejected": "Your photo doesn't meet the rules. Upload another one to appear."
     },
     "pinnedOrderTitle": "Order #{{n}} · {{status}}",
     "pinnedOrderSub": "{{business}} · tap to view",

@@ -103,7 +103,10 @@
     "showAnyway": "Ver de todos modos",
     "report": "Reportar",
     "rejected": "Esta foto se retiró porque incumple nuestras normas.",
-    "unavailable": "Esta foto no está disponible."
+    "unavailable": "Esta foto no está disponible.",
+    "senderReviewing": "En revisión",
+    "receiverReviewingTitle": "Revisando foto…",
+    "receiverReviewingHint": "Se mostrará en cuanto se apruebe."
   },
   "imageViewer": {
     "close": "Cerrar imagen",

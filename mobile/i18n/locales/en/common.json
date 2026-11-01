@@ -103,7 +103,10 @@
     "showAnyway": "View anyway",
     "report": "Report",
     "rejected": "This photo was removed because it breaks our rules.",
-    "unavailable": "This photo isn't available."
+    "unavailable": "This photo isn't available.",
+    "senderReviewing": "In review",
+    "receiverReviewingTitle": "Reviewing photo…",
+    "receiverReviewingHint": "It will show as soon as it's approved."
   },
   "imageViewer": {
     "close": "Close image",
