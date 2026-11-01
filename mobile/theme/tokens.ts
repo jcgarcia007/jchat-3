@@ -45,6 +45,8 @@ export const palette = {
   bgBaseLight: '#f9f9fb',
   bgSurfaceLight: '#ffffff',
   bgElevatedLight: '#f2f2f7',
+  /** Skeleton bones in light mode: a neutral grey at 1.37:1 on bgSurfaceLight and 1.30:1 on bgBaseLight (bgElevatedLight is only 1.12:1 / 1.06:1, nearly invisible). Dark mode keeps bgElevated. */
+  skeletonLight: '#dcdce2',
   borderSubtleLight: '#e5e5ea',
   textPrimaryLight: '#1d1d1f',
   textSecondaryLight: '#55555a',

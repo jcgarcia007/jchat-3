@@ -53,6 +53,8 @@ export const darkColors = {
   bgBase: palette.bgBase,
   bgSurface: palette.bgSurface,
   bgElevated: palette.bgElevated,
+  /** Skeleton bones (components/common/Skeleton.tsx): the same value as bgElevated in dark mode. */
+  skeleton: palette.bgElevated,
   bgOverlay: palette.bgOverlay,
   borderSubtle: palette.borderSubtle,
   textPrimary: palette.textPrimary,
@@ -88,6 +90,8 @@ export const lightColors: ThemeColors = {
   bgBase: palette.bgBaseLight,
   bgSurface: palette.bgSurfaceLight,
   bgElevated: palette.bgElevatedLight,
+  /** Skeleton bones: a neutral grey with 1.3 to 1.4:1 against bgSurface (bgElevated is almost invisible in light mode). */
+  skeleton: palette.skeletonLight,
   // Section 1 defines no light overlay; reuse the light elevated surface.
   bgOverlay: palette.bgElevatedLight,
   borderSubtle: palette.borderSubtleLight,

@@ -1,7 +1,7 @@
 /**
  * Skeleton screens: grey "bones" that pulse softly while the FIRST load of a screen has no data yet.
  *
- *  - `Skeleton`          one bone (a View in `bgElevated`; round with `circle`). Put bones inside a `SkeletonGroup`.
+ *  - `Skeleton`          one bone (a View in the theme's `skeleton` colour; round with `circle`). Put bones inside a `SkeletonGroup`.
  *  - `SkeletonGroup`     owns the pulse (ONE shared Animated.Value for every bone on the screen, so they beat together and it costs little) and is the
  *                        only thing a screen reader sees: one `progressbar` announcing "Loading…" once; the bones are hidden from it.
  *  - `useDelayedLoading` true only when loading has lasted >= 200 ms in a row, so a fast load never flashes a skeleton.
@@ -94,7 +94,7 @@ export function Skeleton({ width, height, radius = 6, circle = false, style }: S
       aria-hidden
       style={[
         {
-          backgroundColor: colors.bgElevated,
+          backgroundColor: colors.skeleton,
           borderRadius: circle ? height / 2 : radius,
           height,
           opacity,

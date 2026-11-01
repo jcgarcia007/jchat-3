@@ -93,8 +93,9 @@ test('the hook it relies on is web-safe too (only react and react-native)', () =
   assert.deepEqual(hookImports.sort(), ['react', 'react-native']);
 });
 
-test('colours come from the theme (bgElevated) and the pulse numbers are the approved ones; no hex literals', () => {
-  assert.match(source, /backgroundColor: colors\.bgElevated/);
+test('colours come from the theme (the skeleton token) and the pulse numbers are the approved ones; no hex literals', () => {
+  assert.match(source, /backgroundColor: colors\.skeleton,/);
+  assert.doesNotMatch(source, /bgElevated/, 'the bones use the dedicated skeleton token');
   assert.match(source, /SKELETON_PULSE_MS = 1200/);
   assert.match(source, /SKELETON_MIN_OPACITY = 0\.45/);
   assert.match(source, /SKELETON_DELAY_MS = 200/);
@@ -235,4 +236,23 @@ test('the profile grid cell size is floored to 0.01 so three cells always fit on
     const cell = Math.floor(((width - 2 * 2) / 3) * 100) / 100;
     assert.ok(3 * cell + 2 * 2 <= width, `${width}: ${3 * cell + 4} must not exceed it`);
   }
+});
+
+// ── The skeleton colour is visible enough ──────────────────────────────────────
+
+test('skeleton token: light mode 1.3-1.4:1 on bgSurface (not the 1.12:1 of bgElevated), dark mode is bgElevated', () => {
+  const tokens = read('theme/tokens.ts');
+  const colors = read('theme/colors.ts');
+  const hex = (name) => tokens.match(new RegExp(`\\b${name}: '(#[0-9a-fA-F]{6})'`))[1];
+  const lum = (h) => {
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const contrast = (a, b) => { const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05); };
+  const bone = hex('skeletonLight');
+  assert.ok(contrast(bone, hex('bgSurfaceLight')) >= 1.3 && contrast(bone, hex('bgSurfaceLight')) <= 1.4, `on bgSurface: ${contrast(bone, hex('bgSurfaceLight')).toFixed(2)}`);
+  assert.ok(contrast(bone, hex('bgBaseLight')) >= 1.25, `on bgBase: ${contrast(bone, hex('bgBaseLight')).toFixed(2)}`);
+  assert.ok(contrast(bone, hex('bgSurfaceLight')) > contrast(hex('bgElevatedLight'), hex('bgSurfaceLight')) + 0.15, 'clearly more visible than bgElevated');
+  assert.match(colors, /skeleton: palette\.bgElevated,/, 'dark: the same value as bgElevated');
+  assert.match(colors, /skeleton: palette\.skeletonLight,/);
 });
