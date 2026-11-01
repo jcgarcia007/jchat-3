@@ -1,8 +1,8 @@
 /**
  * JChat 3.0 — VenueDock
  *
- * One Liquid Glass card (the tab bar's own material: GlassSurface 'bar') docked 8 pt ABOVE the tab bar — on the web, which has no tab bar, at the
- * bottom of the page. Two rows, plus a thin third one when there are orders:
+ * One Liquid Glass card (the tab bar's own material: GlassSurface 'bar') docked 8 pt above the tab bar's centre button (which rises 30 pt over the
+ * bar's top edge, so the card never covers it) — on the web, which has no tab bar, at the bottom of the page. Two rows, plus a thin third one when there are orders:
  *   1. a green "live" dot · the venue's name · a red badge with the unread chat messages · "{n} people" on the right
  *   2. [Volver al chat] (brand, fills the row) · [Salir] (glass, danger text) — Salir asks first (utils/confirmLeaveVenue), then leaveVenue
  *   3. only with orders in progress: "Pedido #N · {estado}" [Ver] / "N pedidos en curso" [Ver]; swipe it left to move the orders to Notifications
@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { IconReceipt } from '@tabler/icons-react-native';
 
 import { GlassSurface } from '../profile/GlassSurface';
-import { BAR_HEIGHT } from '../navigation/notchGeometry';
+import { BAR_HEIGHT, BUTTON_SIZE, CENTER_Y } from '../navigation/notchGeometry';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { useVenueSession } from '../../context/VenueSessionContext';
@@ -40,6 +40,8 @@ const GAP = 8;
 const SIDE_MARGIN = 16;
 /** The tab bar floats 26 pt above the safe area (components/navigation/NotchTabBar.tsx). */
 const TAB_BAR_LIFT = 26;
+/** The centre button (Ofertas) rises above the bar's top edge by this much: the card is lifted over it, so it never covers the button. */
+const BUTTON_RISE = BUTTON_SIZE / 2 - CENTER_Y;
 const CARD_RADIUS = 18;
 const BUTTON_HEIGHT = 30;
 const LEAVE_WIDTH = 60;
@@ -112,9 +114,9 @@ export function VenueDock({ placement, onOpenChat, onOpenOrder, onOpenOrders }: 
   const orderText = single
     ? t('venueSession.order', { n: single.order_number, status: tPos(`tracking.status.${single.status}`, { defaultValue: single.status }) })
     : t('venueSession.orders', { count: orders.length });
-  const bottom = IS_WEB ? insets.bottom + GAP : TAB_BAR_LIFT + insets.bottom + BAR_HEIGHT + GAP;
+  const bottom = IS_WEB ? insets.bottom + GAP : TAB_BAR_LIFT + insets.bottom + BAR_HEIGHT + BUTTON_RISE + GAP;
   // Card height + the gap above the tab bar (on the web also the margin to the page edge, since no tab bar fills it).
-  const reserve = (height: number) => Math.ceil(height) + GAP + (IS_WEB ? insets.bottom + GAP : 0);
+  const reserve = (height: number) => Math.ceil(height) + GAP + (IS_WEB ? insets.bottom + GAP : BUTTON_RISE);
 
   return (
     <View testID="venue-dock" pointerEvents="box-none" style={[styles.wrap, { bottom }]}>

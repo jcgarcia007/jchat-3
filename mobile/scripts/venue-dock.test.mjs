@@ -14,10 +14,12 @@ test('the card is a GlassSurface bar (the tab bar\'s material) with radius 18, p
   assert.match(dock, /const SIDE_MARGIN = 16;/);
 });
 
-test('it sits 8 pt above the tab bar (on the web, 8 pt above the bottom edge)', () => {
+test('it sits 8 pt above the tab bar\'s rising centre button (on the web, 8 pt above the bottom edge)', () => {
   assert.match(dock, /const GAP = 8;/);
   assert.match(dock, /const TAB_BAR_LIFT = 26;/);
-  assert.match(dock, /IS_WEB \? insets\.bottom \+ GAP : TAB_BAR_LIFT \+ insets\.bottom \+ BAR_HEIGHT \+ GAP/);
+  assert.match(dock, /const BUTTON_RISE = BUTTON_SIZE \/ 2 - CENTER_Y;/);
+  assert.match(dock, /IS_WEB \? insets\.bottom \+ GAP : TAB_BAR_LIFT \+ insets\.bottom \+ BAR_HEIGHT \+ BUTTON_RISE \+ GAP/);
+  assert.match(dock, /\(IS_WEB \? insets\.bottom \+ GAP : BUTTON_RISE\)/, 'the space it reserves includes the rise');
   assert.match(read('components/navigation/NotchTabBar.tsx'), /bottom: 26 \+ insets\.bottom/);
 });
 
