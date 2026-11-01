@@ -80,6 +80,8 @@ const GET_ANSWERS: Array<[RegExp, unknown]> = [
   [/\/rest\/v1\/tod_settings\b/, []],
   [/\/rest\/v1\/tod_cards\b/, [{ concept_id: 'synthetic-1', category: 'classic', kind: 'truth', body: 'Pregunta sintética de prueba para el giro de la carta', updated_at: '2026-01-01T00:00:00Z' }]],
   [/\/rest\/v1\/match_photos\b/, [{ id: '00000000-0000-4000-8000-0000000000e1', user_id: '00000000-0000-4000-8000-000000000001', path: 'synthetic/me.jpg', sort: 0, status: 'approved', rejection_reason: null, needs_review: false, created_at: '2026-01-01T00:00:00Z' }]],
+  // Match v2: my gender / seeking (a complete profile: with them missing the deck says "Crea tu perfil de Match" instead of showing cards).
+  [/\/rest\/v1\/match_profiles\b/, { gender: 'woman', seeking: 'men' }],
   [/\/rest\/v1\/match_/, []],
 ];
 

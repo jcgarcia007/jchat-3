@@ -136,6 +136,16 @@ export function MatchEntryNotice({ businessName, full, gamesEnabled, onGamesEnab
         <LanguageSelector value={sheetLanguage} onChange={setSheetLanguage} label={t('entry.langA11y')} />
       </View>
 
+      {/* The one switch: Match and Truth or Dare */}
+      <View style={[styles.switchBlock, { borderColor: c.borderSubtle, backgroundColor: c.bgElevated }]}>
+        <SwitchRow
+          label={t('entry.gamesGlobal')}
+          hint={t('entry.gamesGlobalHint')}
+          value={gamesEnabled}
+          onChange={onGamesEnabledChange}
+        />
+      </View>
+
       {/* Key points: always visible */}
       <View style={styles.points}>
         {POINTS.map(({ key, Icon }) => (
@@ -147,16 +157,6 @@ export function MatchEntryNotice({ businessName, full, gamesEnabled, onGamesEnab
             </View>
           </View>
         ))}
-      </View>
-
-      {/* The one switch: Match and Truth or Dare */}
-      <View style={[styles.switchBlock, { borderColor: c.borderSubtle, backgroundColor: c.bgElevated }]}>
-        <SwitchRow
-          label={t('entry.gamesGlobal')}
-          hint={t('entry.gamesGlobalHint')}
-          value={gamesEnabled}
-          onChange={onGamesEnabledChange}
-        />
       </View>
 
       {/* Safety guide */}
