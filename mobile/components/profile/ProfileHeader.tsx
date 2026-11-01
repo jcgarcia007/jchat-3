@@ -3,7 +3,7 @@
  *
  * A full-bleed cover (the profile theme's gradient, up to the top edge of the screen, the status bar included) with two round glass buttons over it
  * (share and settings on my profile; back and ⋯ on someone else's), and over its lower edge a content sheet with rounded top corners. The 92 pt avatar
- * straddles the sheet's edge; the name (26 pt) and @username sit to its right. Under them: the bio (or "+ Add a bio" on my profile), the city (only when
+ * straddles the sheet's edge, CENTRED; the name (26 pt) and @username sit centred under it. Under them: the bio (or "+ Add a bio" on my profile), the city (only when
  * the owner shows it), two capsules on my profile ("Edit profile" in glass, "+ Post" in brand) or Follow / Message on someone else's.
  * There are no counters (posts, followers, following): the lists live in Edit profile ("Your network") and in the ⋯ menu of other profiles.
  *
@@ -20,7 +20,7 @@ import { Image, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'reac
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import {
-  IconArrowLeft, IconCircleCheckFilled, IconDots, IconMapPin, IconMessage, IconPlus, IconSettings, IconShare3, IconX,
+  IconArrowLeft, IconCamera, IconCircleCheckFilled, IconDots, IconMapPin, IconMessage, IconPlus, IconSettings, IconShare3, IconX,
 } from '@tabler/icons-react-native';
 
 import { Skeleton, SkeletonGroup } from '../common/Skeleton';
@@ -30,14 +30,17 @@ import { palette } from '../../theme/tokens';
 import { readableOn, type ProfileTheme } from '../../theme/profileThemes';
 import type { FollowRelation } from '../../hooks/useFollowSystem';
 import { getInitials } from '../../utils/initials';
+import { largeAvatarUrl } from '../../utils/avatarUrls';
 import {
-  AVATAR_BORDER, AVATAR_SIZE, BUTTONS_BELOW_INSET, COMPACT_HEIGHT, COVER_BELOW_INSET, NAME_LEFT, NAME_TOP, SHEET_OVERLAP, SHEET_RADIUS,
+  AVATAR_BORDER, AVATAR_SIZE, BUTTONS_BELOW_INSET, COMPACT_HEIGHT, COVER_BELOW_INSET, NAME_TOP, SHEET_OVERLAP, SHEET_RADIUS,
 } from '../../utils/profileHeaderState';
 import { GlassIconButton } from './GlassIconButton';
 import { GlassSurface } from './GlassSurface';
 
 const BIO_MAX_LINES = 3;
 const SIDE_MARGIN = 16;
+/** The capsules (Edit profile / + Post, Follow / Message) are 44 pt tall and at most this wide, centred. */
+const CAPSULE_MAX_WIDTH = 160;
 
 /** What the round buttons need (cover and compact header). */
 export interface ProfileChromeProps {
@@ -70,6 +73,10 @@ export interface ProfileHeaderProps extends ProfileChromeProps {
   /** Own profile: follow requests waiting for an answer (a dot on "Edit profile" while > 0). */
   pendingRequests: number;
   onEditProfile: () => void;
+  /** Tapping the avatar (only when there is a photo) opens it full screen. */
+  onOpenAvatar?: () => void;
+  /** My own profile: the camera on the avatar changes the photo (the same flow as the chat's "Change photo"). Not given → no camera. */
+  onChangeAvatar?: () => void;
   /** Own profile in the Profile tab: the "+ Post" capsule (what the floating button did). Not given → no capsule. */
   onPublish?: () => void;
   onDismissCompletion: () => void;
@@ -79,6 +86,20 @@ export interface ProfileHeaderProps extends ProfileChromeProps {
   onUnblock: () => void;
   onMessage: () => void;
   theme: ProfileTheme;
+}
+
+/**
+ * The avatar photo: the small one (already in the cache from lists and chats) underneath, the big 1024 px one on top. If the big one does not exist (people
+ * who uploaded before the two versions) its request fails and nothing is drawn over the small one: no flicker, no blank circle.
+ */
+function AvatarPhoto({ uri }: { uri: string }) {
+  const big = largeAvatarUrl(uri);
+  return (
+    <View style={styles.avatar}>
+      <Image source={{ uri }} style={StyleSheet.absoluteFill} resizeMode="cover" accessible={false} />
+      {big ? <Image source={{ uri: big }} style={StyleSheet.absoluteFill} resizeMode="cover" accessible={false} /> : null}
+    </View>
+  );
 }
 
 /** Whether the back arrow shows: my profile only when it is a stacked screen; someone else's unless it is inside the sheet. */
@@ -116,7 +137,7 @@ function CoverButtons({ props, iconColor, loading = false }: { props: ProfileChr
 }
 
 /**
- * The header while the profile is loading for the first time: the SAME container, cover height, sheet, 92 pt avatar ring, name block and capsule
+ * The header while the profile is loading for the first time: the SAME container, cover height, sheet, 144 pt avatar ring, name block and capsule
  * row as the real header (so nothing jumps when the data arrives), with bones instead of the content. The round glass buttons over the cover are the
  * real ones (settings, back…), not bones. The cover is a neutral bone, never a profile theme: the theme is not known yet and would flash the wrong colour.
  * `showBones` false (the first 200 ms of the load) draws the same layout without bones, so a fast load never flashes a skeleton.
@@ -150,11 +171,11 @@ export function ProfileHeaderSkeleton(props: ProfileChromeProps & { showBones: b
         {showBones ? (
           <SkeletonGroup announce={false}>
             <View style={styles.nameBlock}>
-              <Skeleton width="70%" height={15} style={styles.skeletonName} />
-              <Skeleton width="50%" height={11} style={styles.skeletonHandle} />
+              <Skeleton width="60%" height={15} style={styles.skeletonName} />
+              <Skeleton width="40%" height={11} style={styles.skeletonHandle} />
             </View>
             <View style={styles.bioBlock}>
-              <Skeleton width="85%" height={10} />
+              <Skeleton width="70%" height={10} />
             </View>
             <View style={styles.capsules}>
               {Array.from({ length: capsuleCount }).map((_, index) => <Skeleton key={index} height={44} radius={22} style={styles.skeletonCapsule} />)}
@@ -206,7 +227,7 @@ export function ProfileCompactBar(props: ProfileChromeProps & { displayName: str
 export default function ProfileHeader(props: ProfileHeaderProps) {
   const {
     isOwnProfile, displayName, username, avatarUrl, bio, city, isVerified, relation, followBusy, completion, completionVisible, pendingRequests,
-    onEditProfile, onPublish, onDismissCompletion, onFollow, onUnfollow, onCancelRequest, onUnblock, onMessage, theme, topInset,
+    onEditProfile, onOpenAvatar, onChangeAvatar, onPublish, onDismissCompletion, onFollow, onUnfollow, onCancelRequest, onUnblock, onMessage, theme, topInset,
   } = props;
   const { t } = useTranslation('profile');
   const c = useThemeColors();
@@ -244,12 +265,21 @@ export default function ProfileHeader(props: ProfileHeaderProps) {
       <View style={[styles.sheet, { backgroundColor: c.bgBase }]}>
         <View style={[styles.avatarBorder, { backgroundColor: c.bgBase }]}>
           {avatarUrl ? (
-            <Image source={{ uri: avatarUrl }} style={styles.avatar} resizeMode="cover" accessibilityLabel={t('header.avatarA11y', { name })} />
+            <Pressable testID="profile-avatar" onPress={onOpenAvatar} accessibilityRole="imagebutton" accessibilityLabel={t('header.viewAvatarA11y')}>
+              <AvatarPhoto uri={avatarUrl} />
+            </Pressable>
           ) : (
-            <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: c.bgSurface }]}>
+            <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: c.bgSurface }]} accessibilityLabel={t('header.avatarA11y', { name })}>
               <Text style={[styles.avatarInitials, { color: c.textPrimary }]}>{initials}</Text>
             </View>
           )}
+          {isOwnProfile && onChangeAvatar ? (
+            <View style={styles.avatarCamera}>
+              <GlassIconButton tone="sheet" size={28} label={t('edit.changeAvatarPhotoA11y')} onPress={onChangeAvatar} testID="profile-change-avatar">
+                <IconCamera size={15} color={c.textPrimary} strokeWidth={2} />
+              </GlassIconButton>
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.nameBlock}>
@@ -350,35 +380,38 @@ const styles = StyleSheet.create({
   container: { width: '100%' },
   skeletonName: { marginTop: 8 },
   skeletonHandle: { marginTop: 14 },
-  skeletonCapsule: { flex: 1 },
+  skeletonCapsule: { flex: 1, maxWidth: CAPSULE_MAX_WIDTH },
   coverButtons: { position: 'absolute', left: SIDE_MARGIN, right: SIDE_MARGIN, flexDirection: 'row', justifyContent: 'space-between' },
   buttonGroup: { flexDirection: 'row', gap: 8 },
-  // The content sheet overlaps the cover and has rounded top corners; the avatar is centred on its top edge.
+  // The content sheet overlaps the cover and has rounded top corners; the avatar is centred (both ways) on its top edge.
   sheet: { marginTop: -SHEET_OVERLAP, borderTopLeftRadius: SHEET_RADIUS, borderTopRightRadius: SHEET_RADIUS, paddingBottom: 8, minHeight: 120 },
   avatarBorder: {
-    position: 'absolute', left: 20, top: -AVATAR_SIZE / 2, width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2, padding: AVATAR_BORDER,
+    position: 'absolute', left: '50%', marginLeft: -AVATAR_SIZE / 2, top: -AVATAR_SIZE / 2, width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2, padding: AVATAR_BORDER,
   },
-  avatar: { width: AVATAR_SIZE - AVATAR_BORDER * 2, height: AVATAR_SIZE - AVATAR_BORDER * 2, borderRadius: (AVATAR_SIZE - AVATAR_BORDER * 2) / 2 },
+  avatar: { width: AVATAR_SIZE - AVATAR_BORDER * 2, height: AVATAR_SIZE - AVATAR_BORDER * 2, borderRadius: (AVATAR_SIZE - AVATAR_BORDER * 2) / 2, overflow: 'hidden' },
   avatarFallback: { alignItems: 'center', justifyContent: 'center' },
-  avatarInitials: { fontSize: 28, fontWeight: '800' },
-  nameBlock: { marginLeft: NAME_LEFT, marginRight: SIDE_MARGIN, marginTop: NAME_TOP, minHeight: 70 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  displayName: { flexShrink: 1, fontSize: 26, lineHeight: 30, fontWeight: '800', letterSpacing: -0.6 },
-  handle: { marginTop: 2, fontSize: 14, lineHeight: 19 },
-  addBio: { marginTop: 2, fontSize: 13, lineHeight: 18, fontWeight: '700' },
-  bioBlock: { marginTop: 10, marginHorizontal: 20 },
-  bio: { fontSize: 15, lineHeight: 21, textAlign: 'left' },
-  bioMore: { marginTop: 2, fontSize: 14, fontWeight: '700' },
-  cityRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, marginHorizontal: 20 },
+  // The camera sits on the avatar's lower-right rim (the 45° point of the 144 pt ring).
+  avatarCamera: { position: 'absolute', right: 6, bottom: 6 },
+  avatarInitials: { fontSize: 44, fontWeight: '800' },
+  // Everything under the avatar is centred: name, @username, bio, city, capsules.
+  nameBlock: { marginHorizontal: SIDE_MARGIN, marginTop: NAME_TOP, minHeight: 70, alignItems: 'center' },
+  nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  displayName: { flexShrink: 1, fontSize: 26, lineHeight: 30, fontWeight: '800', letterSpacing: -0.6, textAlign: 'center' },
+  handle: { marginTop: 2, fontSize: 14, lineHeight: 19, textAlign: 'center' },
+  addBio: { marginTop: 2, fontSize: 13, lineHeight: 18, fontWeight: '700', textAlign: 'center' },
+  bioBlock: { marginTop: 10, marginHorizontal: 20, alignItems: 'center' },
+  bio: { fontSize: 15, lineHeight: 21, textAlign: 'center' },
+  bioMore: { marginTop: 2, fontSize: 14, fontWeight: '700', textAlign: 'center' },
+  cityRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, marginTop: 8, marginHorizontal: 20 },
   city: { fontSize: 14, lineHeight: 19 },
-  capsules: { flexDirection: 'row', gap: 10, marginHorizontal: 20, marginTop: 14 },
-  capsuleCell: { flex: 1, height: 44 },
+  capsules: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginHorizontal: 20, marginTop: 14 },
+  capsuleCell: { flex: 1, maxWidth: CAPSULE_MAX_WIDTH, height: 44 },
   capsule: { height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 },
   publishCapsule: { borderWidth: 1 },
   capsuleLabel: { fontSize: 15, fontWeight: '700' },
   requestsDot: { position: 'absolute', top: 2, right: 10, width: 11, height: 11, borderRadius: 6, borderWidth: 2 },
-  actionRow: { flexDirection: 'row', gap: 10, marginHorizontal: 20, marginTop: 14 },
-  button: { flex: 1, height: 44, borderRadius: 22, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
+  actionRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginHorizontal: 20, marginTop: 14 },
+  button: { flex: 1, maxWidth: CAPSULE_MAX_WIDTH, height: 44, borderRadius: 22, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
   outlinedButton: { borderWidth: 1 },
   buttonLabel: { fontSize: 15, fontWeight: '700' },
   blockedNotice: { flex: 1, fontSize: 14, lineHeight: 20, paddingVertical: 12, textAlign: 'center' },

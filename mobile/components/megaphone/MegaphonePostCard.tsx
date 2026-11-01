@@ -19,6 +19,7 @@ import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { formatSocialTime } from '../../utils/formatSocialTime';
 import { formatDistance } from '../../utils/distanceUnits';
+import { ImageViewerModal } from '../ImageViewerModal';
 import { Skeleton } from '../common/Skeleton';
 import BusinessAvatar from './BusinessAvatar';
 import { useAppWindow } from '../../utils/appWindow';
@@ -50,6 +51,8 @@ export default function MegaphonePostCard({
   const mediaHeight = Math.round((mediaWidth * 5) / 4);
 
   const [photoIndex, setPhotoIndex] = useState(0);
+  // The photo (index) open full screen; the viewer pages through all the post's photos.
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const [expanded, setExpanded] = useState(false);
 
   const body = item.body ?? '';
@@ -63,13 +66,22 @@ export default function MegaphonePostCard({
     [mediaWidth],
   );
 
-  const renderPhoto = useCallback(({ item: uri }: ListRenderItemInfo<string>) => (
-    <Image
-      resizeMode="cover"
-      source={{ uri }}
-      style={{ backgroundColor: colors.bgElevated, height: mediaHeight, width: mediaWidth }}
-    />
-  ), [colors.bgElevated, mediaHeight, mediaWidth]);
+  const total = item.media_urls.length;
+  const renderPhoto = useCallback(({ item: uri, index }: ListRenderItemInfo<string>) => (
+    <Pressable
+      testID={`offers-photo-${index}`}
+      onPress={() => setViewerIndex(index)}
+      accessibilityRole="imagebutton"
+      accessibilityLabel={translation.t('photoA11y', { index: index + 1, total })}
+    >
+      <Image
+        resizeMode="cover"
+        source={{ uri }}
+        style={{ backgroundColor: colors.bgElevated, height: mediaHeight, width: mediaWidth }}
+        accessible={false}
+      />
+    </Pressable>
+  ), [colors.bgElevated, mediaHeight, mediaWidth, total, translation]);
 
   return (
     <View style={[styles.card, { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }]}>
@@ -170,6 +182,7 @@ export default function MegaphonePostCard({
           <Text style={[styles.enterText, { color: palette.bgSurfaceLight }]}>{translation.t('enter')}</Text>
         </TouchableOpacity>
       </View>
+      {viewerIndex !== null ? <ImageViewerModal visible uris={item.media_urls} initialIndex={viewerIndex} onClose={() => setViewerIndex(null)} /> : null}
     </View>
   );
 }

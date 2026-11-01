@@ -107,7 +107,8 @@
   },
   "imageViewer": {
     "close": "Close image",
-    "error": "The image couldn't be loaded."
+    "error": "The image couldn't be loaded.",
+    "page": "Photo {{current}} of {{total}}"
   },
   "share": {
     "copiedTitle": "Copied",

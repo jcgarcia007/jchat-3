@@ -62,7 +62,7 @@ import type { ProfileTheme } from '../../theme/profileThemes';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { getUserById, getProfileCounts } from '../../services/users';
 import type { UserRow } from '../../services/users';
-import { uploadImage } from '../../services/storage';
+import { uploadAvatarPair } from '../../services/avatar';
 import { listPendingRequests } from '../../services/follows';
 import { YourNetwork, type NetworkTab } from '../../components/profile/YourNetwork';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -89,7 +89,6 @@ const LANGUAGES = [
 type LanguageCode = (typeof LANGUAGES)[number]['code'];
 
 const USERNAME_DEBOUNCE_MS = 500;
-const AVATAR_BUCKET = 'avatars';
 
 // ── Main Screen ──────────────────────────────────────────────────────────────
 
@@ -307,7 +306,7 @@ export default function EditProfileScreen(): React.JSX.Element {
       let finalAvatarUrl = avatarUri;
       const originalAvatar = originalRef.current.avatar_url ?? null;
       if (avatarUri && avatarUri !== originalAvatar) {
-        finalAvatarUrl = await uploadImage(authUser.id, avatarUri, AVATAR_BUCKET);
+        finalAvatarUrl = await uploadAvatarPair(authUser.id, avatarUri);
       }
 
       if (!isSupabaseConfigured) {

@@ -35,6 +35,9 @@ import { canViewProfile, getOwnProfilePrivacy, getPublicProfile } from '../../se
 import { listPendingRequests } from '../../services/follows';
 import type { PublicProfileRow } from '../../services/users';
 import { getUserPosts } from '../../services/posts';
+import { changeMyAvatar } from '../../services/avatar';
+import { largeAvatarUrl } from '../../utils/avatarUrls';
+import { ImageViewerModal } from '../../components/ImageViewerModal';
 import type { PostRow } from '../../services/posts';
 import { getOrCreateConversation, DmGateError } from '../../services/dms';
 import { blockUser } from '../../services/blocks';
@@ -173,6 +176,9 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
   const [error, setError] = useState<string | null>(null);
   const [completionDismissed, setCompletionDismissed] = useState<boolean | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
+  // The avatar full screen (a tap on it), and my own avatar change (the camera on it).
+  const [avatarViewerOpen, setAvatarViewerOpen] = useState(false);
+  const [avatarBusy, setAvatarBusy] = useState(false);
   const [reportVisible, setReportVisible] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
   const hasLoadedRef = useRef(false);
@@ -245,6 +251,18 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
       .catch(() => { if (active) setCompletionDismissed(false); });
     return () => { active = false; };
   }, [isOwnProfile]);
+
+  // The camera on my avatar: the chat's "Change photo" flow (pick → upload → users.avatar_url); the profile reloads quietly to show it.
+  const changeAvatar = useCallback(async () => {
+    if (!authUser?.id || avatarBusy) return;
+    setAvatarBusy(true);
+    try {
+      const url = await changeMyAvatar(authUser.id);
+      if (url) await loadProfile('silent');
+    } finally {
+      setAvatarBusy(false);
+    }
+  }, [authUser?.id, avatarBusy, loadProfile]);
 
   const shareProfile = useCallback(async () => {
     if (!profile) return;
@@ -389,6 +407,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
           completion={{ hasPhoto: Boolean(profile.avatar_url), hasBio: Boolean(profile.bio?.trim()), hasPost: posts.length > 0 }}
           completionVisible={completionDismissed === false} onDismissCompletion={dismissCompletion}
           pendingRequests={pendingRequests} onEditProfile={() => navigation.navigate('EditProfile')}
+          onOpenAvatar={() => setAvatarViewerOpen(true)} onChangeAvatar={isOwnProfile ? () => void changeAvatar() : undefined}
           onPublish={showPublish ? () => navigation.navigate('CreatePost') : undefined}
           onFollow={() => void handleFollow()} onUnfollow={handleUnfollow} onCancelRequest={handleCancelRequest} onUnblock={handleUnblock}
           onMessage={() => void openMessage()} theme={theme}
@@ -418,6 +437,14 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
           <SheetRow icon={<IconX size={20} color={c.textSecondary} />} label={t('actions.cancel')} color={c.textSecondary} borderColor={c.borderSubtle} onPress={() => setMenuVisible(false)} />
         </View>
       </AppModal>
+
+      {/* The big (1024 px) avatar; the small one stands in if it does not exist (older accounts). */}
+      <ImageViewerModal
+        visible={avatarViewerOpen}
+        uris={profile.avatar_url ? [largeAvatarUrl(profile.avatar_url) ?? profile.avatar_url] : undefined}
+        fallbackUris={profile.avatar_url ? [profile.avatar_url] : undefined}
+        onClose={() => setAvatarViewerOpen(false)}
+      />
 
       <ReportReasonSheet
         visible={reportVisible}

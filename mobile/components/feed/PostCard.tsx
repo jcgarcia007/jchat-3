@@ -11,10 +11,11 @@
  * Icons:  @tabler/icons-react-native only.
  */
 
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Image,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -29,6 +30,7 @@ import {
 } from '@tabler/icons-react-native';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
+import { ImageViewerModal } from '../ImageViewerModal';
 import { useThemeColors } from '../../theme/colors';
 import type { PostRow } from '../../services/posts';
 import { buildPostShareMessage } from '../../utils/postShare';
@@ -72,6 +74,8 @@ export default function PostCard({
   onOpenComments,
 }: PostCardProps) {
   const c = useThemeColors();
+  // The photo (index) open full screen; the viewer pages through all the post's photos.
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const { t } = useTranslation('feed');
 
   // Animated heart scale — pulses when liked.
@@ -193,13 +197,20 @@ export default function PostCard({
           accessibilityLabel={t('post.photosA11y')}
         >
           {post.media_urls.map((url, idx) => (
-            <Image
+            <Pressable
               key={`${post.id}-media-${idx}`}
-              source={{ uri: url }}
-              style={[styles.mediaImage, { backgroundColor: c.bgOverlay }]}
-              resizeMode="cover"
+              testID={`feed-photo-${idx}`}
+              onPress={() => setViewerIndex(idx)}
+              accessibilityRole="imagebutton"
               accessibilityLabel={t('post.photoA11y', { index: idx + 1, total: post.media_urls.length })}
-            />
+            >
+              <Image
+                source={{ uri: url }}
+                style={[styles.mediaImage, { backgroundColor: c.bgOverlay }]}
+                resizeMode="cover"
+                accessible={false}
+              />
+            </Pressable>
           ))}
         </ScrollView>
       ) : null}
@@ -258,6 +269,7 @@ export default function PostCard({
           <IconShare size={22} color={c.textSecondary} />
         </TouchableOpacity>
       </View>
+      {viewerIndex !== null ? <ImageViewerModal visible uris={post.media_urls} initialIndex={viewerIndex} onClose={() => setViewerIndex(null)} /> : null}
     </View>
   );
 }

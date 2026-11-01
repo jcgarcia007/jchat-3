@@ -1,5 +1,5 @@
 /**
- * JChat 3.0 — Fullscreen single-image viewer (DMs, venue chat).
+ * JChat 3.0 — Fullscreen image viewer (DMs, venue chat, profile avatar, post photos).
  *
  * Replaces react-native-image-viewing, which has no tap-outside-to-close, caps zoom at 2x and cannot report load errors.
  *
@@ -9,6 +9,10 @@
  *  - single tap OUTSIDE the image rectangle at 1x closes (it waits for the double tap to fail); a tap ON the image does nothing
  *  - drag down at 1x closes: the image follows the finger and the background fades; below the threshold it springs back
  *  - X button (top-left, safe-area aware), loading indicator and a translated error message
+ *  - SEVERAL photos (`uris` + `initialIndex`): a one-finger horizontal drag at 1x pages between them (a strip that follows the finger, pure JS: no native
+ *    pager), dots at the bottom; while a photo is zoomed the drag moves the photo, not the page; changing page puts the zoom back to 1x. A single photo
+ *    (`uri`, or `uris` with one item) behaves exactly as before. `fallbackUris[i]` replaces photo i if it fails to load (e.g. the 256 px avatar when the
+ *    1024 px one does not exist yet).
  *
  * The Modal hosts its own GestureHandlerRootView: gestures do not work inside an Android Modal without one.
  */
@@ -26,6 +30,7 @@ import Animated, {
   useSharedValue,
   withSpring,
   withTiming,
+  type SharedValue,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -33,12 +38,22 @@ import { useTranslation } from 'react-i18next';
 import { IconX } from '@tabler/icons-react-native';
 
 import { palette } from '../theme/tokens';
+import { clampPage, dragOffset, pageAfterRelease, panIntent, viewerImages } from '../utils/imagePager';
 
 const MAX_SCALE = 4;
 const DOUBLE_TAP_SCALE = 2.5;
 const ZOOMED_EPSILON = 1.01;
 const DISMISS_DISTANCE = 120;
 const DISMISS_VELOCITY = 900;
+const PAGE_ANIMATION_MS = 220;
+/** What a one-finger drag does, decided when it starts. */
+const MODE_DISMISS = 0;
+const MODE_PAGE = 1;
+const MODE_ZOOMED = 2;
+/** The finger is down but has not moved enough to tell which one it is (the translation can still be 0 when the pan activates). */
+const MODE_UNDECIDED = 3;
+/** Movement (px) needed before the direction of the drag is judged. */
+const INTENT_DISTANCE = 4;
 
 function clamp(value: number, min: number, max: number): number {
   'worklet';
@@ -51,31 +66,99 @@ function maxOffset(display: number, scale: number, box: number): number {
   return Math.max(0, (display * scale - box) / 2);
 }
 
+type Natural = { w: number; h: number } | null;
+type Status = 'loading' | 'ready' | 'error';
+type Box = { w: number; h: number };
+
+/** The size an image of `natural` pixels takes inside the box with "contain" (0 × 0 until it has loaded). */
+function displaySize(natural: Natural, box: Box): { w: number; h: number } {
+  if (!natural || box.w <= 0 || box.h <= 0) return { w: 0, h: 0 };
+  const fit = Math.min(box.w / natural.w, box.h / natural.h);
+  return { w: natural.w * fit, h: natural.h * fit };
+}
+
+interface ViewerPageProps {
+  page: number;
+  source: string;
+  box: Box;
+  natural: Natural;
+  indexSV: SharedValue<number>;
+  scale: SharedValue<number>;
+  tx: SharedValue<number>;
+  ty: SharedValue<number>;
+  drag: SharedValue<number>;
+  onLoad: (page: number, width: number, height: number) => void;
+  onError: (page: number) => void;
+}
+
+/** One photo of the strip. Only the CURRENT page carries the zoom / pan / drag-to-close transform. */
+function ViewerPage({ page, source, box, natural, indexSV, scale, tx, ty, drag, onLoad, onError }: ViewerPageProps) {
+  const size = displaySize(natural, box);
+  const style = useAnimatedStyle(() => {
+    const active = indexSV.value === page;
+    return {
+      transform: [
+        { translateX: active ? tx.value : 0 },
+        { translateY: active ? ty.value + drag.value : 0 },
+        { scale: active ? scale.value : 1 },
+      ],
+    };
+  });
+  return (
+    <View style={[styles.page, { left: page * box.w, width: box.w, height: box.h }]}>
+      <Animated.View style={[{ width: natural ? size.w : box.w, height: natural ? size.h : box.h }, style]}>
+        <Image
+          source={{ uri: source }}
+          style={styles.fill}
+          contentFit={natural ? 'fill' : 'contain'}
+          onLoad={(e) => onLoad(page, e.source.width, e.source.height)}
+          onError={() => onError(page)}
+        />
+      </Animated.View>
+    </View>
+  );
+}
+
 interface ImageViewerModalProps {
   visible: boolean;
-  /** Image to show (a signed URL for private media). */
-  uri: string | null;
+  /** One image to show (a signed URL for private media): the DMs and the venue chat. Same as `uris={[uri]}`. */
+  uri?: string | null;
+  /** Several photos to page through. Wins over `uri`. */
+  uris?: readonly string[];
+  /** The photo shown first (default 0). */
+  initialIndex?: number;
+  /** `fallbackUris[i]` is shown instead of photo i if it fails to load. */
+  fallbackUris?: readonly (string | null | undefined)[];
   onClose: () => void;
 }
 
-export function ImageViewerModal({ visible, uri, onClose }: ImageViewerModalProps) {
+export function ImageViewerModal({ visible, uri, uris, initialIndex = 0, fallbackUris, onClose }: ImageViewerModalProps) {
   const { t } = useTranslation('common');
   const insets = useSafeAreaInsets();
 
-  const [box, setBox] = useState({ w: 0, h: 0 });
-  const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  // The photos, keyed by their content so a caller that builds a new array on every render does not reset the viewer.
+  const imagesKey = uris && uris.length > 0 ? uris.join('\n') : (uri ?? '');
+  const images = useMemo(() => viewerImages(uris, uri), [imagesKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const count = images.length;
+  const startIndex = clampPage(initialIndex, count);
 
-  // Rendered ("contain") size of the image at 1x.
-  const fit = natural && box.w > 0 && box.h > 0 ? Math.min(box.w / natural.w, box.h / natural.h) : 0;
-  const dispW = natural ? natural.w * fit : 0;
-  const dispH = natural ? natural.h * fit : 0;
+  const [box, setBox] = useState<Box>({ w: 0, h: 0 });
+  const [index, setIndex] = useState(startIndex);
+  const [naturals, setNaturals] = useState<Natural[]>([]);
+  const [statuses, setStatuses] = useState<Status[]>([]);
+  const [fallbackUsed, setFallbackUsed] = useState<boolean[]>([]);
+
+  const activeNatural = naturals[index] ?? null;
+  const active = displaySize(activeNatural, box);
+  const activeStatus: Status = statuses[index] ?? 'loading';
 
   // Gesture state lives on the UI thread.
   const boxW = useSharedValue(0);
   const boxH = useSharedValue(0);
   const imgW = useSharedValue(0);
   const imgH = useSharedValue(0);
+  const indexSV = useSharedValue(startIndex);
+  const strip = useSharedValue(0);
   const scale = useSharedValue(1);
   const tx = useSharedValue(0);
   const ty = useSharedValue(0);
@@ -87,28 +170,42 @@ export function ImageViewerModal({ visible, uri, onClose }: ImageViewerModalProp
   const pinchFocalY = useSharedValue(0);
   const panStartTx = useSharedValue(0);
   const panStartTy = useSharedValue(0);
-  const dismissing = useSharedValue(false);
+  const panMode = useSharedValue(MODE_DISMISS);
 
   useEffect(() => {
     boxW.value = box.w;
     boxH.value = box.h;
-    imgW.value = dispW;
-    imgH.value = dispH;
-  }, [box.w, box.h, dispW, dispH, boxW, boxH, imgW, imgH]);
+    imgW.value = active.w;
+    imgH.value = active.h;
+  }, [box.w, box.h, active.w, active.h, boxW, boxH, imgW, imgH]);
 
-  // A new image (or re-opening) starts at 1x, loading.
+  // A new set of photos (or re-opening) starts at its first photo, at 1x, loading.
   useEffect(() => {
     scale.value = 1;
     tx.value = 0;
     ty.value = 0;
     drag.value = 0;
-    setNatural(null);
-    setStatus('loading');
-  }, [visible, uri, scale, tx, ty, drag]);
+    indexSV.value = startIndex;
+    setIndex(startIndex);
+    setNaturals(images.map(() => null));
+    setStatuses(images.map(() => 'loading'));
+    setFallbackUsed(images.map(() => false));
+  }, [visible, imagesKey, startIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The strip sits on the current page; changing page puts the zoom of the photo left behind back to 1x.
+  useEffect(() => {
+    indexSV.value = index;
+    strip.value = -index * box.w;
+    scale.value = 1;
+    tx.value = 0;
+    ty.value = 0;
+    drag.value = 0;
+  }, [index, box.w, indexSV, strip, scale, tx, ty, drag]);
 
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
   const closeFromGesture = useCallback(() => onCloseRef.current(), []);
+  const commitPage = useCallback((target: number) => setIndex(target), []);
 
   const gesture = useMemo(() => {
     const pinch = Gesture.Pinch()
@@ -139,10 +236,20 @@ export function ImageViewerModal({ visible, uri, onClose }: ImageViewerModalProp
       .onStart(() => {
         panStartTx.value = tx.value;
         panStartTy.value = ty.value;
-        dismissing.value = scale.value <= ZOOMED_EPSILON;
+        // Zoomed: the drag moves the photo. At 1x it is decided on the first real movement (below).
+        panMode.value = scale.value > ZOOMED_EPSILON ? MODE_ZOOMED : MODE_UNDECIDED;
       })
       .onUpdate((e) => {
-        if (dismissing.value) {
+        if (panMode.value === MODE_UNDECIDED) {
+          // At 1x: mostly horizontal → page (more than one photo), otherwise → drag down to close.
+          if (Math.abs(e.translationX) < INTENT_DISTANCE && Math.abs(e.translationY) < INTENT_DISTANCE) return;
+          panMode.value = panIntent(e.translationX, e.translationY, count) === 'page' ? MODE_PAGE : MODE_DISMISS;
+        }
+        if (panMode.value === MODE_PAGE) {
+          strip.value = -indexSV.value * boxW.value + dragOffset(e.translationX, indexSV.value, count);
+          return;
+        }
+        if (panMode.value === MODE_DISMISS) {
           drag.value = e.translationY;
           return;
         }
@@ -152,7 +259,15 @@ export function ImageViewerModal({ visible, uri, onClose }: ImageViewerModalProp
         ty.value = clamp(panStartTy.value + e.translationY, -my, my);
       })
       .onEnd((e) => {
-        if (!dismissing.value) return;
+        if (panMode.value === MODE_PAGE) {
+          const current = indexSV.value;
+          const target = pageAfterRelease(current, e.translationX, e.velocityX, boxW.value, count);
+          strip.value = withTiming(-target * boxW.value, { duration: PAGE_ANIMATION_MS }, (finished) => {
+            if (finished && target !== current) scheduleOnRN(commitPage, target);
+          });
+          return;
+        }
+        if (panMode.value !== MODE_DISMISS) return;
         if (e.translationY > DISMISS_DISTANCE || (e.translationY > 0 && e.velocityY > DISMISS_VELOCITY)) {
           drag.value = withTiming(boxH.value, { duration: 180 }, (finished) => {
             if (finished) scheduleOnRN(closeFromGesture);
@@ -160,6 +275,10 @@ export function ImageViewerModal({ visible, uri, onClose }: ImageViewerModalProp
         } else {
           drag.value = withSpring(0, { damping: 20, stiffness: 220 });
         }
+      })
+      .onFinalize((_e, success) => {
+        // A drag that was cancelled half way (a second finger, the system): the strip goes back to its page.
+        if (!success && panMode.value === MODE_PAGE) strip.value = withTiming(-indexSV.value * boxW.value, { duration: 180 });
       });
 
     const doubleTap = Gesture.Tap()
@@ -183,7 +302,7 @@ export function ImageViewerModal({ visible, uri, onClose }: ImageViewerModalProp
 
     const singleTap = Gesture.Tap().onEnd((e, success) => {
       if (!success || scale.value > ZOOMED_EPSILON) return;
-      // At 1x the image is centred, so its rectangle is the centred imgW × imgH box (0 × 0 until it has loaded).
+      // At 1x the current photo is centred, so its rectangle is the centred imgW × imgH box (0 × 0 until it has loaded).
       const inside =
         Math.abs(e.x - boxW.value / 2) <= imgW.value / 2 && Math.abs(e.y - boxH.value / 2) <= imgH.value / 2;
       if (!inside) scheduleOnRN(closeFromGesture);
@@ -192,22 +311,38 @@ export function ImageViewerModal({ visible, uri, onClose }: ImageViewerModalProp
     // The single tap only fires once the double tap has failed.
     return Gesture.Simultaneous(pinch, pan, Gesture.Exclusive(doubleTap, singleTap));
   }, [
-    boxH, boxW, closeFromGesture, dismissing, drag, imgH, imgW, panStartTx, panStartTy,
-    pinchFocalX, pinchFocalY, pinchStartScale, pinchStartTx, pinchStartTy, scale, tx, ty,
+    boxH, boxW, closeFromGesture, commitPage, count, drag, imgH, imgW, indexSV, panMode, panStartTx, panStartTy,
+    pinchFocalX, pinchFocalY, pinchStartScale, pinchStartTx, pinchStartTy, scale, strip, tx, ty,
   ]);
 
-  const imageStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: tx.value }, { translateY: ty.value + drag.value }, { scale: scale.value }],
-  }));
+  const stripStyle = useAnimatedStyle(() => ({ transform: [{ translateX: strip.value }] }));
   const backdropStyle = useAnimatedStyle(() => ({
     opacity: interpolate(Math.abs(drag.value), [0, Math.max(boxH.value * 0.5, 1)], [1, 0], Extrapolation.CLAMP),
   }));
+
+  const onPageLoad = useCallback((page: number, width: number, height: number) => {
+    setNaturals((previous) => previous.map((value, i) => (i === page ? { w: width, h: height } : value)));
+    setStatuses((previous) => previous.map((value, i) => (i === page ? 'ready' : value)));
+  }, []);
+
+  const fallbackRef = useRef(fallbackUris);
+  fallbackRef.current = fallbackUris;
+  const fallbackUsedRef = useRef(fallbackUsed);
+  fallbackUsedRef.current = fallbackUsed;
+  const onPageError = useCallback((page: number) => {
+    // A smaller stand-in for this photo exists and was not tried yet: use it. Otherwise it is an error.
+    if (fallbackRef.current?.[page] && !fallbackUsedRef.current[page]) {
+      setFallbackUsed((previous) => previous.map((value, i) => (i === page ? true : value)));
+      return;
+    }
+    setStatuses((previous) => previous.map((value, i) => (i === page ? 'error' : value)));
+  }, []);
 
   const closeTop = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) + 8 : insets.top || 50;
 
   return (
     <AppModal
-      visible={visible && uri != null}
+      visible={visible && count > 0}
       transparent
       animationType="fade"
       statusBarTranslucent
@@ -223,34 +358,49 @@ export function ImageViewerModal({ visible, uri, onClose }: ImageViewerModalProp
             collapsable={false}
             onLayout={(e) => setBox({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}
           >
-            {uri != null ? (
-              <Animated.View
-                style={[{ width: natural ? dispW : box.w, height: natural ? dispH : box.h }, imageStyle]}
-              >
-                <Image
-                  source={{ uri }}
-                  style={styles.fill}
-                  contentFit={natural ? 'fill' : 'contain'}
-                  onLoad={(e) => {
-                    setNatural({ w: e.source.width, h: e.source.height });
-                    setStatus('ready');
-                  }}
-                  onError={() => setStatus('error')}
+            <Animated.View style={[styles.strip, { width: box.w * Math.max(count, 1), height: box.h }, stripStyle]}>
+              {images.map((image, page) => (Math.abs(page - index) <= 1 ? (
+                <ViewerPage
+                  key={`${page}:${image}`}
+                  page={page}
+                  source={fallbackUsed[page] && fallbackUris?.[page] ? (fallbackUris[page] as string) : image}
+                  box={box}
+                  natural={naturals[page] ?? null}
+                  indexSV={indexSV}
+                  scale={scale}
+                  tx={tx}
+                  ty={ty}
+                  drag={drag}
+                  onLoad={onPageLoad}
+                  onError={onPageError}
                 />
-              </Animated.View>
-            ) : null}
-            {status === 'loading' ? (
+              ) : null))}
+            </Animated.View>
+            {activeStatus === 'loading' ? (
               <View style={styles.center} pointerEvents="none">
                 <Spinner color={palette.onImage} />
               </View>
             ) : null}
-            {status === 'error' ? (
+            {activeStatus === 'error' ? (
               <View style={styles.center} pointerEvents="none">
                 <Text style={styles.errorText}>{t('imageViewer.error')}</Text>
               </View>
             ) : null}
           </View>
         </GestureDetector>
+        {count > 1 ? (
+          <View
+            testID="image-viewer-dots"
+            style={[styles.dots, { bottom: insets.bottom + 24 }]}
+            pointerEvents="none"
+            accessible
+            accessibilityLabel={t('imageViewer.page', { current: index + 1, total: count })}
+          >
+            {images.map((image, page) => (
+              <View key={`${page}:${image}`} style={[styles.dot, page === index ? styles.dotActive : null]} />
+            ))}
+          </View>
+        ) : null}
         <Pressable
           onPress={onClose}
           hitSlop={10}
@@ -268,9 +418,14 @@ export function ImageViewerModal({ visible, uri, onClose }: ImageViewerModalProp
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   stage: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  strip: { position: 'absolute', left: 0, top: 0 },
+  page: { position: 'absolute', top: 0, alignItems: 'center', justifyContent: 'center' },
   backdrop: { backgroundColor: palette.imageViewerBg },
   center: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', padding: 24 },
   errorText: { color: palette.onImageStrong, fontSize: 15, textAlign: 'center' },
+  dots: { position: 'absolute', left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 7 },
+  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: palette.onImageFaint },
+  dotActive: { backgroundColor: palette.onImage },
   close: {
     position: 'absolute',
     left: 12,

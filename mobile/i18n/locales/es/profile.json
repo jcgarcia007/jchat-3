@@ -94,7 +94,8 @@
     "publish": "Publicar",
     "places": "Lugares",
     "bioMore": "más",
-    "bioLess": "menos"
+    "bioLess": "menos",
+    "viewAvatarA11y": "Ver foto de perfil"
   },
   "empty": {
     "ownPostsTitle": "Comparte tu primera foto",
