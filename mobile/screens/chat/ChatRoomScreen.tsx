@@ -30,6 +30,7 @@ import React, {
   useState,
 } from 'react';
 import {
+  AppState,
   FlatList,
   KeyboardAvoidingView,
   Linking,
@@ -62,6 +63,7 @@ import { MatchQrScanner } from '../../components/match/MatchQrScanner';
 import { matchCheckInWithQr } from '../../services/matchPresence';
 import { fetchVenueAccess } from '../../services/venueAccess';
 import { goBackOrHome } from '../../utils/navFlow';
+import { createEnabledChecker, type EnabledChecker } from '../../utils/todEnabledChecker';
 import { confirmLeaveVenue } from '../../utils/confirmLeaveVenue';
 import { setWebThemeColorOverride } from '../../utils/webThemeColor';
 import { useVenueSession } from '../../context/VenueSessionContext';
@@ -464,12 +466,10 @@ export default function ChatRoomScreen() {
       loadUserSettings(user.id),
       hasSeenMatchNotice(matchBusinessId),
       getMatchOptIn(matchBusinessId),
-      isTodEnabledForBusiness(matchBusinessId), // never throws: false when it cannot be confirmed
     ])
-      .then(([available, games, settings, seen, optIn, todOn]) => {
+      .then(([available, games, settings, seen, optIn]) => {
         if (!alive) return;
         setMatchAvailable(available);
-        setTodAvailable(todOn);
         setMatchGames(games);
         setGamesEnabled(settings.gamesEnabled ?? true);
         setMatchNoticeFull(!seen);
@@ -478,13 +478,37 @@ export default function ChatRoomScreen() {
       .catch(() => {
         if (alive) {
           setMatchAvailable(false); // fail closed: no Match UI if we can't confirm
-          setTodAvailable(false);
         }
       });
     return () => {
       alive = false;
     };
   }, [matchBusinessId, user?.id]);
+
+  // Truth or Dare has its OWN check, apart from the calls above (a failure of Match, the games list or the settings can no longer switch it off). It is
+  // asked when the chat opens, whenever this screen regains focus and when the app returns to the foreground: the owner can switch the game on while
+  // someone is already in the venue. One request at a time; an answer after leaving the screen or changing venue is dropped (utils/todEnabledChecker.ts).
+  // The service answers false when it cannot confirm, so no game UI appears unless the server said yes.
+  const todCheckerRef = useRef<EnabledChecker | null>(null);
+  useEffect(() => {
+    if (!isSupabaseConfigured || !matchBusinessId || !user?.id) return undefined;
+    const checker = createEnabledChecker(isTodEnabledForBusiness, setTodAvailable);
+    todCheckerRef.current = checker;
+    void checker.refresh(matchBusinessId);
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void checker.refresh(matchBusinessId);
+    });
+    return () => {
+      subscription.remove();
+      checker.dispose();
+      todCheckerRef.current = null;
+    };
+  }, [matchBusinessId, user?.id]);
+  useFocusEffect(
+    useCallback(() => {
+      void todCheckerRef.current?.refresh(matchBusinessId);
+    }, [matchBusinessId]),
+  );
 
   const handleGamesEnabledChange = useCallback((value: boolean) => {
     setGamesEnabled(value);
