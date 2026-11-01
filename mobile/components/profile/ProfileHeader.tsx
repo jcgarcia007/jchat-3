@@ -3,7 +3,7 @@
  *
  * A full-bleed cover (the profile theme's gradient, up to the top edge of the screen, the status bar included) with two round glass buttons over it
  * (share and settings on my profile; back and ⋯ on someone else's), and over its lower edge a content sheet with rounded top corners. The 92 pt avatar
- * straddles the sheet's edge; the name (26 pt) and @username sit to its right. Under them: the bio (or "+ Add a bio" on my profile), the city (only when
+ * straddles the sheet's edge, CENTRED; the name (26 pt) and @username sit centred under it. Under them: the bio (or "+ Add a bio" on my profile), the city (only when
  * the owner shows it), two capsules on my profile ("Edit profile" in glass, "+ Post" in brand) or Follow / Message on someone else's.
  * There are no counters (posts, followers, following): the lists live in Edit profile ("Your network") and in the ⋯ menu of other profiles.
  *
@@ -31,13 +31,15 @@ import { readableOn, type ProfileTheme } from '../../theme/profileThemes';
 import type { FollowRelation } from '../../hooks/useFollowSystem';
 import { getInitials } from '../../utils/initials';
 import {
-  AVATAR_BORDER, AVATAR_SIZE, BUTTONS_BELOW_INSET, COMPACT_HEIGHT, COVER_BELOW_INSET, NAME_LEFT, NAME_TOP, SHEET_OVERLAP, SHEET_RADIUS,
+  AVATAR_BORDER, AVATAR_SIZE, BUTTONS_BELOW_INSET, COMPACT_HEIGHT, COVER_BELOW_INSET, NAME_TOP, SHEET_OVERLAP, SHEET_RADIUS,
 } from '../../utils/profileHeaderState';
 import { GlassIconButton } from './GlassIconButton';
 import { GlassSurface } from './GlassSurface';
 
 const BIO_MAX_LINES = 3;
 const SIDE_MARGIN = 16;
+/** The capsules (Edit profile / + Post, Follow / Message) are 44 pt tall and at most this wide, centred. */
+const CAPSULE_MAX_WIDTH = 160;
 
 /** What the round buttons need (cover and compact header). */
 export interface ProfileChromeProps {
@@ -116,7 +118,7 @@ function CoverButtons({ props, iconColor, loading = false }: { props: ProfileChr
 }
 
 /**
- * The header while the profile is loading for the first time: the SAME container, cover height, sheet, 92 pt avatar ring, name block and capsule
+ * The header while the profile is loading for the first time: the SAME container, cover height, sheet, 144 pt avatar ring, name block and capsule
  * row as the real header (so nothing jumps when the data arrives), with bones instead of the content. The round glass buttons over the cover are the
  * real ones (settings, back…), not bones. The cover is a neutral bone, never a profile theme: the theme is not known yet and would flash the wrong colour.
  * `showBones` false (the first 200 ms of the load) draws the same layout without bones, so a fast load never flashes a skeleton.
@@ -150,11 +152,11 @@ export function ProfileHeaderSkeleton(props: ProfileChromeProps & { showBones: b
         {showBones ? (
           <SkeletonGroup announce={false}>
             <View style={styles.nameBlock}>
-              <Skeleton width="70%" height={15} style={styles.skeletonName} />
-              <Skeleton width="50%" height={11} style={styles.skeletonHandle} />
+              <Skeleton width="60%" height={15} style={styles.skeletonName} />
+              <Skeleton width="40%" height={11} style={styles.skeletonHandle} />
             </View>
             <View style={styles.bioBlock}>
-              <Skeleton width="85%" height={10} />
+              <Skeleton width="70%" height={10} />
             </View>
             <View style={styles.capsules}>
               {Array.from({ length: capsuleCount }).map((_, index) => <Skeleton key={index} height={44} radius={22} style={styles.skeletonCapsule} />)}
@@ -350,35 +352,36 @@ const styles = StyleSheet.create({
   container: { width: '100%' },
   skeletonName: { marginTop: 8 },
   skeletonHandle: { marginTop: 14 },
-  skeletonCapsule: { flex: 1 },
+  skeletonCapsule: { flex: 1, maxWidth: CAPSULE_MAX_WIDTH },
   coverButtons: { position: 'absolute', left: SIDE_MARGIN, right: SIDE_MARGIN, flexDirection: 'row', justifyContent: 'space-between' },
   buttonGroup: { flexDirection: 'row', gap: 8 },
-  // The content sheet overlaps the cover and has rounded top corners; the avatar is centred on its top edge.
+  // The content sheet overlaps the cover and has rounded top corners; the avatar is centred (both ways) on its top edge.
   sheet: { marginTop: -SHEET_OVERLAP, borderTopLeftRadius: SHEET_RADIUS, borderTopRightRadius: SHEET_RADIUS, paddingBottom: 8, minHeight: 120 },
   avatarBorder: {
-    position: 'absolute', left: 20, top: -AVATAR_SIZE / 2, width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2, padding: AVATAR_BORDER,
+    position: 'absolute', left: '50%', marginLeft: -AVATAR_SIZE / 2, top: -AVATAR_SIZE / 2, width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2, padding: AVATAR_BORDER,
   },
   avatar: { width: AVATAR_SIZE - AVATAR_BORDER * 2, height: AVATAR_SIZE - AVATAR_BORDER * 2, borderRadius: (AVATAR_SIZE - AVATAR_BORDER * 2) / 2 },
   avatarFallback: { alignItems: 'center', justifyContent: 'center' },
-  avatarInitials: { fontSize: 28, fontWeight: '800' },
-  nameBlock: { marginLeft: NAME_LEFT, marginRight: SIDE_MARGIN, marginTop: NAME_TOP, minHeight: 70 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  displayName: { flexShrink: 1, fontSize: 26, lineHeight: 30, fontWeight: '800', letterSpacing: -0.6 },
-  handle: { marginTop: 2, fontSize: 14, lineHeight: 19 },
-  addBio: { marginTop: 2, fontSize: 13, lineHeight: 18, fontWeight: '700' },
-  bioBlock: { marginTop: 10, marginHorizontal: 20 },
-  bio: { fontSize: 15, lineHeight: 21, textAlign: 'left' },
-  bioMore: { marginTop: 2, fontSize: 14, fontWeight: '700' },
-  cityRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, marginHorizontal: 20 },
+  avatarInitials: { fontSize: 44, fontWeight: '800' },
+  // Everything under the avatar is centred: name, @username, bio, city, capsules.
+  nameBlock: { marginHorizontal: SIDE_MARGIN, marginTop: NAME_TOP, minHeight: 70, alignItems: 'center' },
+  nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  displayName: { flexShrink: 1, fontSize: 26, lineHeight: 30, fontWeight: '800', letterSpacing: -0.6, textAlign: 'center' },
+  handle: { marginTop: 2, fontSize: 14, lineHeight: 19, textAlign: 'center' },
+  addBio: { marginTop: 2, fontSize: 13, lineHeight: 18, fontWeight: '700', textAlign: 'center' },
+  bioBlock: { marginTop: 10, marginHorizontal: 20, alignItems: 'center' },
+  bio: { fontSize: 15, lineHeight: 21, textAlign: 'center' },
+  bioMore: { marginTop: 2, fontSize: 14, fontWeight: '700', textAlign: 'center' },
+  cityRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, marginTop: 8, marginHorizontal: 20 },
   city: { fontSize: 14, lineHeight: 19 },
-  capsules: { flexDirection: 'row', gap: 10, marginHorizontal: 20, marginTop: 14 },
-  capsuleCell: { flex: 1, height: 44 },
+  capsules: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginHorizontal: 20, marginTop: 14 },
+  capsuleCell: { flex: 1, maxWidth: CAPSULE_MAX_WIDTH, height: 44 },
   capsule: { height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 },
   publishCapsule: { borderWidth: 1 },
   capsuleLabel: { fontSize: 15, fontWeight: '700' },
   requestsDot: { position: 'absolute', top: 2, right: 10, width: 11, height: 11, borderRadius: 6, borderWidth: 2 },
-  actionRow: { flexDirection: 'row', gap: 10, marginHorizontal: 20, marginTop: 14 },
-  button: { flex: 1, height: 44, borderRadius: 22, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
+  actionRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginHorizontal: 20, marginTop: 14 },
+  button: { flex: 1, maxWidth: CAPSULE_MAX_WIDTH, height: 44, borderRadius: 22, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
   outlinedButton: { borderWidth: 1 },
   buttonLabel: { fontSize: 15, fontWeight: '700' },
   blockedNotice: { flex: 1, fontSize: 14, lineHeight: 20, paddingVertical: 12, textAlign: 'center' },

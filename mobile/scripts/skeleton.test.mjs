@@ -192,15 +192,15 @@ test('refreshes never show a skeleton: Nearby and Offers drive it from the first
 
 // ── Step 4: Profile ────────────────────────────────────────────────────────────
 
-test('Profile: the header skeleton has the real geometry (cover height, 92 pt avatar ring, name block, bio line, two 44 pt capsules) and no counters', () => {
+test('Profile: the header skeleton has the real geometry (cover height, 144 pt avatar ring, name block, bio line, two 44 pt capsules) and no counters', () => {
   const header = read('components/profile/ProfileHeader.tsx');
   const skeleton = header.slice(header.indexOf('export function ProfileHeaderSkeleton'), header.indexOf('export function ProfileCompactBar'));
   assert.ok(skeleton.length > 500, 'ProfileHeaderSkeleton found');
   assert.match(skeleton, /topInset \+ COVER_BELOW_INSET/);
   assert.match(skeleton, /AVATAR_SIZE - AVATAR_BORDER \* 2/);
-  assert.match(skeleton, /<Skeleton width="70%" height=\{15\}/);
-  assert.match(skeleton, /<Skeleton width="50%" height=\{11\}/);
-  assert.match(skeleton, /<Skeleton width="85%" height=\{10\}/);
+  assert.match(skeleton, /<Skeleton width="60%" height=\{15\}/);
+  assert.match(skeleton, /<Skeleton width="40%" height=\{11\}/);
+  assert.match(skeleton, /<Skeleton width="70%" height=\{10\}/);
   assert.match(skeleton, /height=\{44\} radius=\{22\}/);
   assert.match(skeleton, /styles\.sheet/, 'same sheet container');
   assert.doesNotMatch(skeleton, /Stat\b|followers|following|posts/i, 'no counters');
