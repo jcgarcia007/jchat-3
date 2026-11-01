@@ -14,6 +14,15 @@ import { Platform } from 'react-native';
 import { uriToUploadBody } from './uploadBody';
 import { supabase, isSupabaseConfigured } from './supabase';
 import type { InterestRow, MatchPhoto, MatchPhotoStatus } from './matchTypes';
+import {
+  isMatchGender,
+  isMatchSeeking,
+  isMissingTableError,
+  matchPrefsInsertPayload,
+  matchPrefsUpdatePayload,
+  type MatchGender,
+  type MatchSeeking,
+} from '../utils/matchProfileState';
 
 export const MATCH_PHOTOS_BUCKET = 'match-photos';
 export const MAX_MATCH_PHOTOS = 6;
@@ -186,4 +195,58 @@ export async function saveMyInterests(userId: string, keys: string[]): Promise<v
       .insert(toAdd.map((interest_key) => ({ user_id: userId, interest_key })));
     if (error) throw error;
   }
+}
+
+// ── Gender and what I am looking for (private: table match_profiles, only my own row) ─────────────────────────
+
+export interface MyMatchPrefs {
+  gender: MatchGender | null;
+  seeking: MatchSeeking | null;
+  /** false when the table cannot be read (migration not applied yet): the profile does not ask for these two then. */
+  available: boolean;
+}
+
+export async function fetchMyMatchPrefs(userId: string): Promise<MyMatchPrefs> {
+  if (!isSupabaseConfigured) return { gender: null, seeking: null, available: false };
+  const { data, error } = await supabase.from('match_profiles').select('gender, seeking').eq('user_id', userId).maybeSingle();
+  if (error) {
+    if (isMissingTableError(error)) return { gender: null, seeking: null, available: false };
+    throw error;
+  }
+  const row = data as { gender?: unknown; seeking?: unknown } | null;
+  return {
+    gender: isMatchGender(row?.gender) ? row.gender : null,
+    seeking: isMatchSeeking(row?.seeking) ? row.seeking : null,
+    available: true,
+  };
+}
+
+/**
+ * Saves gender and seeking. The client may only INSERT its own row ({ user_id, gender, seeking }) and UPDATE gender and seeking: any other column makes
+ * the whole write fail. It does not use `upsert`, whose ON CONFLICT … DO UPDATE would also set user_id (no UPDATE grant on it). The server refuses a 4th
+ * change in 24 h with 'match_profile_change_limit' (utils/matchProfileState.isChangeLimitError).
+ */
+export async function saveMyMatchPrefs(userId: string, gender: MatchGender | null, seeking: MatchSeeking | null): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  const update = async () => {
+    const { error } = await supabase.from('match_profiles').update(matchPrefsUpdatePayload(gender, seeking)).eq('user_id', userId);
+    if (error) throw error;
+  };
+  const { data, error: readError } = await supabase.from('match_profiles').select('user_id').eq('user_id', userId).maybeSingle();
+  if (readError) throw readError;
+  if (data) return update();
+  const { error: insertError } = await supabase.from('match_profiles').insert(matchPrefsInsertPayload(userId, gender, seeking));
+  if (insertError) {
+    if ((insertError as { code?: string }).code === '23505') return update(); // saved twice at once: the row exists now
+    throw insertError;
+  }
+}
+
+/** My own year of birth (the owner sees "Name, age" on the complete profile; it is never shown on the card). */
+export async function fetchMyBirthYear(userId: string): Promise<number | null> {
+  if (!isSupabaseConfigured) return null;
+  const { data, error } = await supabase.from('users').select('birth_year').eq('id', userId).maybeSingle();
+  if (error) return null;
+  const year = (data as { birth_year?: unknown } | null)?.birth_year;
+  return typeof year === 'number' ? year : null;
 }

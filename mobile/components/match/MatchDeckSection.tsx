@@ -20,6 +20,8 @@ import { palette } from '../../theme/tokens';
 import { MatchDeck } from './MatchDeck';
 import { MatchPassedList } from './MatchPassedList';
 import { MatchStateView } from './MatchStateView';
+import { useMyMatchProfile } from '../../hooks/useMyMatchProfile';
+import { deckGate } from '../../utils/matchProfileState';
 import {
   getMatchActivity,
   getMatchDeck,
@@ -30,7 +32,7 @@ import {
   matchUndoLast,
 } from '../../services/matchDeck';
 import type { SwipeAction, SwipeResult } from '../../services/matchDeck';
-import { fetchInterests, fetchMyMatchPhotos, interestName, signedPhotoUrls } from '../../services/matchProfile';
+import { fetchInterests, interestName, signedPhotoUrls } from '../../services/matchProfile';
 import type { MatchCard } from '../../services/matchTypes';
 import { loadUserSettings, updateMySettings } from '../../services/userSettings';
 import { ThemedSwitch } from '../common/ThemedSwitch';
@@ -44,7 +46,7 @@ interface MatchDeckSectionProps {
   /** Primary action of the empty states: back to the venue's chat room. */
   onBackToChat: () => void;
   onOpenActivity: () => void;
-  /** Opens "My Match profile" (no approved photo yet). */
+  /** Opens "My Match profile" (no profile yet, a photo in review or a photo refused). */
   onUploadPhoto: () => void;
 }
 
@@ -76,8 +78,9 @@ export function MatchDeckSection({
   const [superLeft, setSuperLeft] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  // null = unknown yet (don't block); false = no approved photo → can't appear in the deck.
-  const [hasApprovedPhoto, setHasApprovedPhoto] = useState<boolean | null>(null);
+  // My profile (gender, seeking, photos): while it is incomplete, in review or refused the deck shows what to do instead of cards.
+  const mine = useMyMatchProfile();
+  const gate = mine.loading || mine.failed ? null : deckGate(mine.summary);
   const [notice, setNotice] = useState<string | null>(null);
   const [notifyNewPeople, setNotifyNewPeople] = useState(false);
   const [deckKey, setDeckKey] = useState(0);
@@ -106,16 +109,12 @@ export function MatchDeckSection({
   const load = useCallback(async () => {
     setLoadError(false);
     try {
-      const [deck, catalog, activity, approved, passedCards] = await Promise.all([
+      const [deck, catalog, activity, passedCards] = await Promise.all([
         getMatchDeck(businessId, 20),
         fetchInterests(),
         getMatchActivity(businessId),
-        user?.id
-          ? fetchMyMatchPhotos(user.id).then((photos) => photos.some((p) => p.status === 'approved')).catch(() => true)
-          : Promise.resolve(true),
         getMatchPassed(businessId).catch(() => [] as MatchCard[]),
       ]);
-      setHasApprovedPhoto(approved);
       const urls = await signedPhotoUrls([...deck, ...passedCards].flatMap((card) => card.photos.slice(0, 1)));
       setCards(deck);
       setPassed(passedCards);
@@ -129,7 +128,7 @@ export function MatchDeckSection({
     } finally {
       setLoading(false);
     }
-  }, [businessId, language, showNotice, t, user?.id]);
+  }, [businessId, language, showNotice, t]);
 
   // First load + the "new people" preference.
   useEffect(() => {
@@ -278,12 +277,34 @@ export function MatchDeckSection({
     );
   }
 
-  if (hasApprovedPhoto === false) {
+  if (gate === 'noProfile') {
     return (
       <MatchStateView
-        title={t('states.noPhotoTitle')}
-        message={t('profile.photos.needApproved')}
-        primary={{ label: t('states.uploadPhoto'), onPress: onUploadPhoto }}
+        title={t('profile.v2.deck.createTitle')}
+        message={t('profile.v2.deck.createBody')}
+        primary={{ label: t('profile.v2.deck.create'), onPress: onUploadPhoto }}
+        secondary={{ label: t('states.backToChat'), onPress: onBackToChat }}
+      />
+    );
+  }
+
+  if (gate === 'reviewing') {
+    return (
+      <MatchStateView
+        title={t('profile.v2.deck.reviewingTitle')}
+        message={t('profile.v2.deck.reviewingBody')}
+        primary={{ label: t('home.myProfile'), onPress: onUploadPhoto }}
+        secondary={{ label: t('states.backToChat'), onPress: onBackToChat }}
+      />
+    );
+  }
+
+  if (gate === 'rejected') {
+    return (
+      <MatchStateView
+        title={t('profile.v2.rejected.title')}
+        message={t('profile.v2.rejected.sub')}
+        primary={{ label: t('profile.v2.rejected.upload'), onPress: onUploadPhoto }}
         secondary={{ label: t('states.backToChat'), onPress: onBackToChat }}
       />
     );

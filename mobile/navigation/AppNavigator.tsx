@@ -174,7 +174,8 @@ export type MainStackParamList = {
   /** Truth or Dare: publish a card (pick a category) in the room the player was in. */
   TodHome: { businessId: string; businessName?: string; roomId: string };
   /** "Mi perfil del deck": my Match card, photos, interests and settings. */
-  MatchMyProfile: undefined;
+  /** `focus: 'result'` (a tap on the photo-approved / photo-rejected notification) opens straight on the result screen. */
+  MatchMyProfile: { focus?: 'result' } | undefined;
   /** Interests quiz/editor. firstTime shows "skip". */
   MatchInterests: { firstTime?: boolean } | undefined;
   /** Another person's Match profile. `card` (optional) paints instantly while the profile refreshes. */
@@ -245,6 +246,7 @@ function navigateNotificationRoute(route: NotificationRoute): void {
   else if (route.screen === 'UserProfile') navigationRef.navigate('UserProfile', route.params);
   else if (route.screen === 'MatchActivity') navigationRef.navigate('MatchActivity', route.params);
   else if (route.screen === 'MatchHome') navigationRef.navigate('MatchHome', route.params);
+  else if (route.screen === 'MatchMyProfile') navigationRef.navigate('MatchMyProfile', route.params);
   else if (route.screen === 'OrderTracking') navigationRef.navigate('OrderTracking', route.params);
   else if (route.screen === 'MyOrders') navigationRef.navigate('MyOrders');
   else navigationRef.navigate('PostDetail', route.params);

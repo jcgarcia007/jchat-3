@@ -25,10 +25,10 @@ import { fetchInterests, fetchMyInterestKeys, interestName, saveMyInterests } fr
 import { markInterestsQuizSkipped } from '../../services/match';
 import type { InterestRow } from '../../services/matchTypes';
 import { showAlert } from '../../utils/dialog';
+import { MAX_MATCH_INTERESTS } from '../../utils/matchProfileState';
 
 type Nav = NativeStackNavigationProp<MainStackParamList, 'MatchInterests'>;
 
-export const MIN_INTERESTS = 3;
 
 export default function MatchInterestsScreen() {
   const c = useThemeColors();
@@ -64,13 +64,14 @@ export default function MatchInterestsScreen() {
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
+      else if (next.size >= MAX_MATCH_INTERESTS) showAlert(t('interests.limit', { max: MAX_MATCH_INTERESTS }));
       else next.add(key);
       return next;
     });
-  }, []);
+  }, [t]);
 
   const handleSave = useCallback(async () => {
-    if (!user?.id || selected.size < MIN_INTERESTS) return;
+    if (!user?.id) return;
     setSaving(true);
     try {
       await saveMyInterests(user.id, [...selected]);
@@ -87,7 +88,6 @@ export default function MatchInterestsScreen() {
     navigation.goBack();
   }, [navigation]);
 
-  const missing = Math.max(0, MIN_INTERESTS - selected.size);
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.bgBase }]}>
@@ -115,7 +115,7 @@ export default function MatchInterestsScreen() {
         <>
           <ScrollView contentContainerStyle={styles.content}>
             <Text style={[styles.intro, { color: c.textSecondary }]}>
-              {t('interests.intro', { min: MIN_INTERESTS })}
+              {t('interests.intro', { max: MAX_MATCH_INTERESTS })}
             </Text>
             <View style={styles.chips}>
               {catalog.map((row) => {
@@ -144,13 +144,13 @@ export default function MatchInterestsScreen() {
 
           <View style={[styles.footer, { borderTopColor: c.borderSubtle, backgroundColor: c.bgSurface }]}>
             <Text style={[styles.counter, { color: c.textSecondary }]}>
-              {missing > 0 ? t('interests.pickMore', { count: missing }) : t('interests.selected', { count: selected.size })}
+              {t('interests.counter', { count: selected.size, max: MAX_MATCH_INTERESTS })}
             </Text>
             <Pressable
               onPress={() => void handleSave()}
-              disabled={missing > 0 || saving}
+              disabled={saving}
               accessibilityRole="button"
-              style={[styles.saveBtn, { backgroundColor: c.brandFill, opacity: missing > 0 || saving ? 0.5 : 1 }]}
+              style={[styles.saveBtn, { backgroundColor: c.brandFill, opacity: saving ? 0.5 : 1 }]}
             >
               {saving ? (
                 <Spinner color={palette.onBrand} />

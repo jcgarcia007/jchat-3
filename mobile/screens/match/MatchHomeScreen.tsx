@@ -9,11 +9,11 @@
  * mounted underneath this screen, so check-ins keep running while Match is open.
  */
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '../../components/common/Spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -27,10 +27,7 @@ import { MatchDeckSection } from '../../components/match/MatchDeckSection';
 import { MatchStateView } from '../../components/match/MatchStateView';
 import { matchCheckInWithQr, useMatchPresenceState } from '../../services/matchPresence';
 import { confirmLeaveVenue } from '../../utils/matchLeave';
-import { useAuth } from '../../context/AuthContext';
 import { useRequireMatchPresence } from '../../hooks/useRequireMatchPresence';
-import { fetchMyInterestKeys } from '../../services/matchProfile';
-import { hasSkippedInterestsQuiz } from '../../services/match';
 
 type Nav = NativeStackNavigationProp<MainStackParamList, 'MatchHome'>;
 
@@ -42,21 +39,8 @@ export default function MatchHomeScreen() {
   const presence = useMatchPresenceState();
   useRequireMatchPresence(params.businessId, 'present');
   const [scannerOpen, setScannerOpen] = useState(false);
-  const { user } = useAuth();
-  const quizOfferedRef = useRef(false);
 
-  // First time in Match without interests → offer the quiz once per visit (unless skipped before).
-  useFocusEffect(
-    useCallback(() => {
-      if (presence.status !== 'active' || !user?.id || quizOfferedRef.current) return;
-      quizOfferedRef.current = true;
-      void Promise.all([fetchMyInterestKeys(user.id), hasSkippedInterestsQuiz()])
-        .then(([keys, skipped]) => {
-          if (keys.length === 0 && !skipped) navigation.navigate('MatchInterests', { firstTime: true });
-        })
-        .catch(() => undefined);
-    }, [presence.status, user?.id, navigation]),
-  );
+  // Interests are optional now (they are picked from "Mi perfil de Match"): no quiz is forced when entering Match.
 
   const handleToken = useCallback((token: string) => {
     setScannerOpen(false);
