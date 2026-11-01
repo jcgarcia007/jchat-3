@@ -16,6 +16,7 @@ import { fileExtension, uriToUploadBody } from './uploadBody';
  * @param localUri — file:// URI returned by expo-image-picker or expo-camera
  * @param bucket   — target bucket id (e.g. 'post-media', 'avatars', 'covers')
  * @param mimeType — the picker's MIME type, when known (web: blob: URIs have no extension to read it from)
+ * @param fileName — the object's name without extension (default: Date.now()); avatars use it to store `<ts>.jpg` and `<ts>@2x.jpg` side by side
  * @returns public URL of the uploaded file, or the original localUri in demo mode
  */
 export async function uploadImage(
@@ -23,6 +24,7 @@ export async function uploadImage(
   localUri: string,
   bucket: string,
   mimeType?: string | null,
+  fileName?: string,
 ): Promise<string> {
   if (!isSupabaseConfigured) return localUri;
 
@@ -33,7 +35,7 @@ export async function uploadImage(
 
   const ext = fileExtension(localUri, mimeType ?? bodyType);
   const contentType = ext === 'png' ? 'image/png' : 'image/jpeg';
-  const path = `${userId}/${Date.now()}.${ext}`;
+  const path = `${userId}/${fileName ?? Date.now()}.${ext}`;
 
   const { error } = await supabase.storage
     .from(bucket)

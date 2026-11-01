@@ -36,6 +36,7 @@ import { listPendingRequests } from '../../services/follows';
 import type { PublicProfileRow } from '../../services/users';
 import { getUserPosts } from '../../services/posts';
 import { changeMyAvatar } from '../../services/avatar';
+import { largeAvatarUrl } from '../../utils/avatarUrls';
 import { ImageViewerModal } from '../../components/ImageViewerModal';
 import type { PostRow } from '../../services/posts';
 import { getOrCreateConversation, DmGateError } from '../../services/dms';
@@ -437,7 +438,13 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
         </View>
       </AppModal>
 
-      <ImageViewerModal visible={avatarViewerOpen} uri={profile.avatar_url} onClose={() => setAvatarViewerOpen(false)} />
+      {/* The big (1024 px) avatar; the small one stands in if it does not exist (older accounts). */}
+      <ImageViewerModal
+        visible={avatarViewerOpen}
+        uris={profile.avatar_url ? [largeAvatarUrl(profile.avatar_url) ?? profile.avatar_url] : undefined}
+        fallbackUris={profile.avatar_url ? [profile.avatar_url] : undefined}
+        onClose={() => setAvatarViewerOpen(false)}
+      />
 
       <ReportReasonSheet
         visible={reportVisible}

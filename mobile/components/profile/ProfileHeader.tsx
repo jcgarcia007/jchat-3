@@ -30,6 +30,7 @@ import { palette } from '../../theme/tokens';
 import { readableOn, type ProfileTheme } from '../../theme/profileThemes';
 import type { FollowRelation } from '../../hooks/useFollowSystem';
 import { getInitials } from '../../utils/initials';
+import { largeAvatarUrl } from '../../utils/avatarUrls';
 import {
   AVATAR_BORDER, AVATAR_SIZE, BUTTONS_BELOW_INSET, COMPACT_HEIGHT, COVER_BELOW_INSET, NAME_TOP, SHEET_OVERLAP, SHEET_RADIUS,
 } from '../../utils/profileHeaderState';
@@ -85,6 +86,20 @@ export interface ProfileHeaderProps extends ProfileChromeProps {
   onUnblock: () => void;
   onMessage: () => void;
   theme: ProfileTheme;
+}
+
+/**
+ * The avatar photo: the small one (already in the cache from lists and chats) underneath, the big 1024 px one on top. If the big one does not exist (people
+ * who uploaded before the two versions) its request fails and nothing is drawn over the small one: no flicker, no blank circle.
+ */
+function AvatarPhoto({ uri }: { uri: string }) {
+  const big = largeAvatarUrl(uri);
+  return (
+    <View style={styles.avatar}>
+      <Image source={{ uri }} style={StyleSheet.absoluteFill} resizeMode="cover" accessible={false} />
+      {big ? <Image source={{ uri: big }} style={StyleSheet.absoluteFill} resizeMode="cover" accessible={false} /> : null}
+    </View>
+  );
 }
 
 /** Whether the back arrow shows: my profile only when it is a stacked screen; someone else's unless it is inside the sheet. */
@@ -251,7 +266,7 @@ export default function ProfileHeader(props: ProfileHeaderProps) {
         <View style={[styles.avatarBorder, { backgroundColor: c.bgBase }]}>
           {avatarUrl ? (
             <Pressable testID="profile-avatar" onPress={onOpenAvatar} accessibilityRole="imagebutton" accessibilityLabel={t('header.viewAvatarA11y')}>
-              <Image source={{ uri: avatarUrl }} style={styles.avatar} resizeMode="cover" accessible={false} />
+              <AvatarPhoto uri={avatarUrl} />
             </Pressable>
           ) : (
             <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: c.bgSurface }]} accessibilityLabel={t('header.avatarA11y', { name })}>
@@ -373,7 +388,7 @@ const styles = StyleSheet.create({
   avatarBorder: {
     position: 'absolute', left: '50%', marginLeft: -AVATAR_SIZE / 2, top: -AVATAR_SIZE / 2, width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2, padding: AVATAR_BORDER,
   },
-  avatar: { width: AVATAR_SIZE - AVATAR_BORDER * 2, height: AVATAR_SIZE - AVATAR_BORDER * 2, borderRadius: (AVATAR_SIZE - AVATAR_BORDER * 2) / 2 },
+  avatar: { width: AVATAR_SIZE - AVATAR_BORDER * 2, height: AVATAR_SIZE - AVATAR_BORDER * 2, borderRadius: (AVATAR_SIZE - AVATAR_BORDER * 2) / 2, overflow: 'hidden' },
   avatarFallback: { alignItems: 'center', justifyContent: 'center' },
   // The camera sits on the avatar's lower-right rim (the 45° point of the 144 pt ring).
   avatarCamera: { position: 'absolute', right: 6, bottom: 6 },

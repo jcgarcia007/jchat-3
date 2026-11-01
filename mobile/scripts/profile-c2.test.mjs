@@ -107,6 +107,6 @@ test('ProfileScreen opens the viewer from the avatar and changes the photo with 
   assert.match(screen, /import \{ changeMyAvatar \} from '\.\.\/\.\.\/services\/avatar'/);
   assert.match(screen, /onOpenAvatar=\{\(\) => setAvatarViewerOpen\(true\)\}/);
   assert.match(screen, /onChangeAvatar=\{isOwnProfile \? \(\) => void changeAvatar\(\) : undefined\}/);
-  assert.match(screen, /<ImageViewerModal visible=\{avatarViewerOpen\}/);
+  assert.match(screen, /<ImageViewerModal\s+visible=\{avatarViewerOpen\}/);
   assert.doesNotMatch(screen, /pickPhotoFromLibrary|launchImageLibrary/);
 });
