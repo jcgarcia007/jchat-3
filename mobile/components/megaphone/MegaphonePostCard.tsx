@@ -48,7 +48,7 @@ export default function MegaphonePostCard({
   const socialTranslation = useTranslation('social');
   const { width: screenWidth } = useAppWindow();
   const mediaWidth = screenWidth - LIST_HORIZONTAL_PADDING;
-  const mediaHeight = Math.round((mediaWidth * 5) / 4);
+  const mediaHeight = Math.round((mediaWidth * 3) / 4);
 
   const [photoIndex, setPhotoIndex] = useState(0);
   // The photo (index) open full screen; the viewer pages through all the post's photos.
@@ -192,7 +192,7 @@ export function MegaphonePostCardSkeleton() {
   const colors = useThemeColors();
   const { width: screenWidth } = useAppWindow();
   const mediaWidth = screenWidth - LIST_HORIZONTAL_PADDING;
-  const mediaHeight = Math.round((mediaWidth * 5) / 4);
+  const mediaHeight = Math.round((mediaWidth * 3) / 4);
   return (
     <View style={[styles.card, { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }]}>
       <View style={styles.header}>
