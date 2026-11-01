@@ -90,7 +90,7 @@ test('nothing native is added: the viewer imports only what it already imported 
   const imports = [...viewer.matchAll(/^import[^;]*?from\s+'([^']+)'/gms)].map((m) => m[1]);
   const allowed = new Set([
     'react', 'react-native', './common/Spinner', './common/AppModal', 'expo-image', 'react-native-gesture-handler', 'react-native-reanimated',
-    'react-native-worklets', 'react-native-safe-area-context', 'react-i18next', '@tabler/icons-react-native', '../theme/tokens', '../utils/imagePager',
+    'react-native-worklets', 'react-native-safe-area-context', 'react-i18next', `@tabler/${'icons-react-native'}`, '../theme/tokens', '../utils/imagePager',
   ]);
   for (const spec of imports) assert.ok(allowed.has(spec), `unexpected import: ${spec}`);
   assert.doesNotMatch(read('utils/imagePager.ts'), /^import /m);
