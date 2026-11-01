@@ -107,7 +107,8 @@
   },
   "imageViewer": {
     "close": "Cerrar imagen",
-    "error": "No se pudo cargar la imagen."
+    "error": "No se pudo cargar la imagen.",
+    "page": "Foto {{current}} de {{total}}"
   },
   "share": {
     "copiedTitle": "Copiado",

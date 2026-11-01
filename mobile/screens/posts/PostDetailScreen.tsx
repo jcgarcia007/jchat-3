@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { Spinner } from '../../components/common/Spinner';
+import { ImageViewerModal } from '../../components/ImageViewerModal';
 import { AppModal } from '../../components/common/AppModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -82,6 +83,8 @@ export default function PostDetailScreen(): React.JSX.Element {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
+  // The photo (index) open full screen; the viewer pages through all the post's photos.
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const [reportVisible, setReportVisible] = useState(false);
 
   const load = useCallback(async () => {
@@ -198,7 +201,11 @@ export default function PostDetailScreen(): React.JSX.Element {
 
           {post.media_urls.length > 0 ? (
             <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} accessibilityLabel={t('post.photosA11y')}>
-              {post.media_urls.map((url, index) => <Image key={url} source={{ uri: url }} style={[styles.photo, { backgroundColor: c.bgSurface }]} resizeMode="cover" accessibilityLabel={t('post.photoA11y', { index: index + 1, total: post.media_urls.length })} />)}
+              {post.media_urls.map((url, index) => (
+                <Pressable key={url} testID={`post-photo-${index}`} onPress={() => setViewerIndex(index)} accessibilityRole="imagebutton" accessibilityLabel={t('post.photoA11y', { index: index + 1, total: post.media_urls.length })}>
+                  <Image source={{ uri: url }} style={[styles.photo, { backgroundColor: c.bgSurface }]} resizeMode="cover" accessible={false} />
+                </Pressable>
+              ))}
             </ScrollView>
           ) : null}
 
@@ -231,6 +238,8 @@ export default function PostDetailScreen(): React.JSX.Element {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      {viewerIndex !== null && post ? <ImageViewerModal visible uris={post.media_urls} initialIndex={viewerIndex} onClose={() => setViewerIndex(null)} /> : null}
 
       <AppModal visible={menuVisible} transparent animationType="slide" onRequestClose={() => setMenuVisible(false)}>
         <Pressable accessible={false} style={[styles.backdrop, { backgroundColor: c.scrim }]} onPress={() => setMenuVisible(false)} />
