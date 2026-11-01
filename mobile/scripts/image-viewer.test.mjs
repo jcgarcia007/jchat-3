@@ -60,8 +60,9 @@ test('the viewer holds `uris`, or the single `uri` the DMs and the chat pass; no
 const viewer = read('components/ImageViewerModal.tsx');
 
 test('paging happens only at 1x: while a photo is zoomed the drag moves the photo; changing page resets the zoom to 1x', () => {
-  assert.match(viewer, /if \(scale\.value > ZOOMED_EPSILON\) panMode\.value = MODE_ZOOMED;/);
-  assert.match(viewer, /else panMode\.value = panIntent\(e\.translationX, e\.translationY, count\) === 'page' \? MODE_PAGE : MODE_DISMISS;/);
+  assert.match(viewer, /panMode\.value = scale\.value > ZOOMED_EPSILON \? MODE_ZOOMED : MODE_UNDECIDED;/);
+  assert.match(viewer, /panMode\.value = panIntent\(e\.translationX, e\.translationY, count\) === 'page' \? MODE_PAGE : MODE_DISMISS;/);
+  assert.match(viewer, /if \(Math\.abs\(e\.translationX\) < INTENT_DISTANCE && Math\.abs\(e\.translationY\) < INTENT_DISTANCE\) return;/, 'the direction is judged on the first real movement');
   const effect = viewer.slice(viewer.indexOf('// The strip sits on the current page'), viewer.indexOf('const onCloseRef'));
   assert.match(effect, /scale\.value = 1;/);
   assert.match(effect, /\[index, box\.w,/, 'it runs whenever the page changes');

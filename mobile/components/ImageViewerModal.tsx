@@ -50,6 +50,10 @@ const PAGE_ANIMATION_MS = 220;
 const MODE_DISMISS = 0;
 const MODE_PAGE = 1;
 const MODE_ZOOMED = 2;
+/** The finger is down but has not moved enough to tell which one it is (the translation can still be 0 when the pan activates). */
+const MODE_UNDECIDED = 3;
+/** Movement (px) needed before the direction of the drag is judged. */
+const INTENT_DISTANCE = 4;
 
 function clamp(value: number, min: number, max: number): number {
   'worklet';
@@ -229,14 +233,18 @@ export function ImageViewerModal({ visible, uri, uris, initialIndex = 0, fallbac
     const pan = Gesture.Pan()
       .maxPointers(1)
       .minDistance(6)
-      .onStart((e) => {
+      .onStart(() => {
         panStartTx.value = tx.value;
         panStartTy.value = ty.value;
-        // Zoomed: the drag moves the photo. At 1x: mostly horizontal → page (more than one photo), otherwise → drag down to close.
-        if (scale.value > ZOOMED_EPSILON) panMode.value = MODE_ZOOMED;
-        else panMode.value = panIntent(e.translationX, e.translationY, count) === 'page' ? MODE_PAGE : MODE_DISMISS;
+        // Zoomed: the drag moves the photo. At 1x it is decided on the first real movement (below).
+        panMode.value = scale.value > ZOOMED_EPSILON ? MODE_ZOOMED : MODE_UNDECIDED;
       })
       .onUpdate((e) => {
+        if (panMode.value === MODE_UNDECIDED) {
+          // At 1x: mostly horizontal → page (more than one photo), otherwise → drag down to close.
+          if (Math.abs(e.translationX) < INTENT_DISTANCE && Math.abs(e.translationY) < INTENT_DISTANCE) return;
+          panMode.value = panIntent(e.translationX, e.translationY, count) === 'page' ? MODE_PAGE : MODE_DISMISS;
+        }
         if (panMode.value === MODE_PAGE) {
           strip.value = -indexSV.value * boxW.value + dragOffset(e.translationX, indexSV.value, count);
           return;
