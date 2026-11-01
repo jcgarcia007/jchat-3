@@ -5,7 +5,8 @@
  *
  * Responsibilities:
  *   - Horizontal scroll of quick-filter chips (All · Bars · Cafes · Food · Events · Open now).
- *   - Search bar — emits query text via onSearch; MapScreen handles results rendering.
+ *   - Search bar — keeps the typed text in `filters.searchQuery`; MapScreen turns it into the results list (`belowSearch`, floating under the bar).
+ *     The text does NOT filter the pins. While the field is focused or holds text, a Cancelar button clears it and closes the keyboard.
  *   - Results count badge — "{N} places near you".
  *   - Advanced filter sheet — slides up from bottom via RN Modal + Animated.
  *       • Distance: segmented selector (1 / 2 / 5 / 10 km) — no slider lib needed.
@@ -20,6 +21,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Keyboard,
   Animated,
   Pressable,
   ScrollView,
@@ -97,6 +99,10 @@ export interface FilterPanelProps {
   hasLocation?: boolean;
   /** Real categories present on the map (one chip each). */
   categories: CategoryOption[];
+  /** The results list: floats right under the search bar, over the chips and the map. */
+  belowSearch?: React.ReactNode;
+  /** The search field got focus (the screen reopens a list that was closed with a tap outside). */
+  onSearchFocus?: () => void;
 }
 
 // ── Static data ───────────────────────────────────────────────────────────────
@@ -124,14 +130,13 @@ function hasActiveFilters(f: MapFilters, hasLocation: boolean): boolean {
     f.openNow !== defaultFilters.openNow ||
     (hasLocation && f.distanceKm !== defaultFilters.distanceKm) ||
     f.minRating !== defaultFilters.minRating ||
-    f.minActiveUsers !== defaultFilters.minActiveUsers ||
-    f.searchQuery.trim() !== ''
+    f.minActiveUsers !== defaultFilters.minActiveUsers
   );
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function FilterPanel({ filters, onChange, resultCount, hasLocation = true, categories }: FilterPanelProps) {
+export default function FilterPanel({ filters, onChange, resultCount, hasLocation = true, categories, belowSearch, onSearchFocus }: FilterPanelProps) {
   const { t } = useTranslation('map');
   // Radius labels follow the region: kilometres, or miles for everyone else.
   const inKilometers = usesKilometers();
@@ -142,6 +147,7 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
   };
   const c = useThemeColors();
   const [sheetVisible, setSheetVisible] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
 
   // Local draft state for the advanced sheet — applied on "Apply"
   const [draft, setDraft] = useState<MapFilters>(filters);
@@ -192,6 +198,12 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
     onChange({ ...filters, searchQuery: text });
   }, [filters, onChange]);
 
+  /** Cancelar: empties the field and closes the keyboard (the screen closes the list because the text is empty). */
+  const handleSearchCancel = useCallback(() => {
+    onChange({ ...filters, searchQuery: '' });
+    Keyboard.dismiss();
+  }, [filters, onChange]);
+
   // ── Reset ─────────────────────────────────────────────────────────────────
 
   const handleReset = useCallback(() => {
@@ -238,7 +250,8 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
   return (
     <View style={styles.root}>
 
-      {/* ── Search bar ───────────────────────────────────────────────────────── */}
+      {/* ── Search bar (+ the results list floating right under it) ──────────── */}
+      <View style={styles.searchWrap}>
       <View style={[styles.searchRow, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
         <IconSearch size={16} color={c.textTertiary} style={styles.searchIcon} />
         <TextInput
@@ -247,11 +260,25 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
           placeholderTextColor={c.textTertiary}
           value={filters.searchQuery}
           onChangeText={handleSearchChange}
+          onFocus={() => { setSearchFocused(true); onSearchFocus?.(); }}
+          onBlur={() => setSearchFocused(false)}
           returnKeyType="search"
           clearButtonMode="while-editing"
           autoCorrect={false}
           autoCapitalize="none"
         />
+
+        {searchFocused || filters.searchQuery !== '' ? (
+          <Pressable
+            testID="map-search-cancel"
+            onPress={handleSearchCancel}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={t('filterPanel.searchCancel')}
+          >
+            <Text style={[styles.searchCancel, { color: c.textSecondary }]}>{t('filterPanel.searchCancel')}</Text>
+          </Pressable>
+        ) : null}
 
         {/* Advanced filters toggle */}
         <Pressable
@@ -268,6 +295,8 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
         >
           <IconAdjustmentsHorizontal size={15} color={active ? palette.bgSurfaceLight : c.textSecondary} />
         </Pressable>
+      </View>
+      {belowSearch ? <View style={styles.searchResults}>{belowSearch}</View> : null}
       </View>
 
       {/* ── Chip row ─────────────────────────────────────────────────────────── */}
@@ -497,9 +526,14 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
 // No hardcoded hex — all color values come from c.* theme tokens or palette.*
 
 const styles = StyleSheet.create({
+  // zIndex: the results list (and the chips) float over the zoom controls that follow the panel.
   root: {
     gap: 8,
+    zIndex: 20,
   },
+  searchWrap: { zIndex: 30 },
+  searchResults: { position: 'absolute', top: 48, left: 0, right: 0, zIndex: 40 },
+  searchCancel: { fontSize: 13, fontWeight: '600' },
 
   // Search bar
   searchRow: {

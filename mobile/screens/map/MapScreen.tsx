@@ -20,6 +20,8 @@ import {
   TouchableOpacity,
   Platform,
   AppState,
+  Keyboard,
+  Pressable,
 } from 'react-native';
 import { Spinner } from '../../components/common/Spinner';
 import { AppModal } from '../../components/common/AppModal';
@@ -36,6 +38,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import JChatMap, { type MapStyleVariant } from '../../components/map/JChatMap';
 import BusinessPin from '../../components/map/BusinessPin';
 import FilterPanel, { defaultFilters, type MapFilters } from '../../components/map/FilterPanel';
+import MapSearchResults from '../../components/map/MapSearchResults';
+import { searchBusinesses, SEARCH_DEBOUNCE_MS } from '../../utils/mapSearch';
 import BusinessPreviewCard from '../../components/map/BusinessPreviewCard';
 import { getOpenStatus, isOpenNow, type HoursMap } from '../../utils/hours';
 import { haversineMeters } from '../../services/geofence';
@@ -321,11 +325,29 @@ export default function MapScreen() {
         }
         if (filters.minActiveUsers > 0 && b.activeCount < filters.minActiveUsers) return false;
         if (filters.minRating > 0 && (b.rating ?? 0) < filters.minRating) return false;
-        if (filters.searchQuery && !b.name.toLowerCase().includes(filters.searchQuery.toLowerCase())) return false;
         return true;
       }),
     [businessesNow, filters, userCoords],
   );
+
+  // ── Search ───────────────────────────────────────────────────────────────────────
+  // The typed text (kept by the FilterPanel in filters.searchQuery) does NOT filter the pins: after 150 ms it becomes a list under the search bar,
+  // over the businesses already loaded (name or category, utils/mapSearch.ts). `searchOpen` closes the list (tap outside, a chosen row, Cancelar)
+  // without touching the text; typing or focusing the field opens it again.
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  useEffect(() => {
+    if (filters.searchQuery.trim() === '') {
+      setDebouncedQuery('');
+      setSearchOpen(false);
+      return undefined;
+    }
+    setSearchOpen(true);
+    const timer = setTimeout(() => setDebouncedQuery(filters.searchQuery), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [filters.searchQuery]);
+  const searchResults = useMemo(() => searchBusinesses(businessesNow, debouncedQuery), [businessesNow, debouncedQuery]);
+  const showSearchList = searchOpen && debouncedQuery.trim() !== '' && filters.searchQuery.trim() !== '';
 
   // Pill or dot for each pin (utils/pinCollision.ts). Recomputed when the map stops moving (onRegionChangeComplete),
   // when the venues or the user's position change, never on every frame.
@@ -357,6 +379,24 @@ export default function MapScreen() {
       inside_radius: typeof radius === 'number' && radius > 0 ? distance_m <= radius : null,
     };
   }, [selected, userCoords]);
+
+  const searchDistanceLabel = useCallback(
+    (business: MapBusiness): string | undefined => {
+      if (!userCoords) return undefined;
+      return formatMeters(haversineMeters(userCoords.lat, userCoords.lng, business.lat, business.lng), usesKilometers());
+    },
+    [userCoords],
+  );
+
+  /** A row of the search list: close the keyboard and the list, centre the map on the business and open its card (the same as tapping its pin). */
+  const selectSearchResult = useCallback((business: MapBusiness) => {
+    Keyboard.dismiss();
+    setSearchOpen(false);
+    const target = { latitude: business.lat, longitude: business.lng, ...DEFAULT_DELTA };
+    setRegion(target);
+    mapRef.current?.animateToRegion(target, 350);
+    setSelected(business);
+  }, []);
 
   // Recenter: a denied permission is never re-requested (the system would ignore it) — go to Settings.
   const recenterToUser = useCallback(async () => {
@@ -494,8 +534,35 @@ export default function MapScreen() {
           </TouchableOpacity>
         )}
 
+        {/* A tap anywhere outside the search list closes it (under the panel, over the map). */}
+        {showSearchList ? (
+          <Pressable
+            testID="map-search-backdrop"
+            accessible={false}
+            style={StyleSheet.absoluteFill}
+            onPress={() => { Keyboard.dismiss(); setSearchOpen(false); }}
+          />
+        ) : null}
+
         {/* Filters (chips + advanced + search) — Task 4.6 */}
-        <FilterPanel filters={filters} onChange={setFilters} resultCount={filtered.length} hasLocation={userCoords !== null} categories={categoryOptions} />
+        <FilterPanel
+          filters={filters}
+          onChange={setFilters}
+          resultCount={filtered.length}
+          hasLocation={userCoords !== null}
+          categories={categoryOptions}
+          onSearchFocus={() => { if (filters.searchQuery.trim() !== '') setSearchOpen(true); }}
+          belowSearch={
+            showSearchList ? (
+              <MapSearchResults
+                query={debouncedQuery}
+                results={searchResults}
+                distanceLabel={searchDistanceLabel}
+                onSelect={selectSearchResult}
+              />
+            ) : null
+          }
+        />
 
         {/* Zoom controls — in-flow, right-aligned, sits just below FilterPanel */}
         <View style={styles.zoomRow} pointerEvents="box-none">

@@ -94,6 +94,9 @@
     "apply": "Aplicar",
     "distanceAll": "Cualquiera",
     "distanceMiles": "{{count}} mi",
-    "distanceNeedsLocation": "Activa la ubicación para filtrar por distancia."
+    "distanceNeedsLocation": "Activa la ubicación para filtrar por distancia.",
+    "searchNoResults": "Sin resultados para «{{query}}»",
+    "searchCancel": "Cancelar",
+    "searchResultsA11y": "Resultados de la búsqueda"
   }
 }
