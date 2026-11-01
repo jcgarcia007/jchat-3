@@ -322,7 +322,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
     });
   }, [actionBusy, blocked, handleUnblock, navigation, profile, relationBusy, t, targetId]);
 
-  const topInset = inSheet ? 4 : insets.top + (route.name === 'Profile' ? homeBarInset : 0);
+  const topInset = inSheet ? 4 : insets.top;
   if (initialLoading) {
     // Same container as the real screen (a ScrollView with the same bottom padding): only the content differs, so nothing jumps. The round glass buttons
     // are the real ones; the profile's own menu and share have nothing to act on yet.
@@ -330,7 +330,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
       isOwnProfile, showBack: route.name === 'UserProfile', hideBack: inSheet, topInset,
       onBack: () => navigation.goBack(), onOpenMenu: () => undefined, onShare: () => undefined, onSettings: () => navigation.navigate('Settings'),
     };
-    const loadingBottom = route.name === 'Profile' ? TAB_BAR_LIFT + insets.bottom + BAR_HEIGHT + 24 : 24 + insets.bottom;
+    const loadingBottom = route.name === 'Profile' ? TAB_BAR_LIFT + insets.bottom + BAR_HEIGHT + 24 + homeBarInset : 24 + insets.bottom;
     return (
       <View style={[styles.root, { backgroundColor: c.bgBase }]}>
         {inSheet ? null : <StatusBar barStyle={colorScheme === 'light' ? 'dark-content' : 'light-content'} translucent backgroundColor="transparent" />}
@@ -358,7 +358,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
   // "+ Post" (the capsule that replaced the floating button) belongs to the own profile in the Profile tab.
   const showPublish = isOwnProfile && route.name === 'Profile';
   // The content passes behind the tab bar (the Profile tab) or just needs a margin at the bottom.
-  const bottomPadding = route.name === 'Profile' ? TAB_BAR_LIFT + insets.bottom + BAR_HEIGHT + 24 : 24 + insets.bottom;
+  const bottomPadding = route.name === 'Profile' ? TAB_BAR_LIFT + insets.bottom + BAR_HEIGHT + 24 + homeBarInset : 24 + insets.bottom;
   // The status bar sits over the cover (light or dark icons, whichever the theme's cover needs); over the compact header it follows the system.
   const coverNeedsLightIcons = readableOn(theme.coverGradient[0]) === palette.onBrand;
   const statusBarStyle = compact ? (colorScheme === 'light' ? 'dark-content' : 'light-content') : coverNeedsLightIcons ? 'light-content' : 'dark-content';

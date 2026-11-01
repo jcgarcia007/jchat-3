@@ -40,7 +40,6 @@ import {
 } from 'react-native';
 import { Spinner } from '../../components/common/Spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useHomeBarInset } from '../../components/venue/HomeBarInset';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -317,9 +316,6 @@ export default function DMChatScreen() {
     const hide = Keyboard.addListener('keyboardDidHide', () => setAndroidKeyboardHeight(0));
     return () => { show.remove(); hide.remove(); };
   }, []);
-  // The venue bar ("Estás en {negocio} · Volver al chat") floats over the TOP of this screen when the chat is
-  // pinned: the header starts below it, so the composer at the bottom is never covered.
-  const homeBarInset = useHomeBarInset();
   const navigation = useNavigation<ChatNav>();
   const route = useRoute<ChatRoute>();
   const { user } = useAuth();
@@ -722,7 +718,7 @@ export default function DMChatScreen() {
           {
             backgroundColor: c.bgSurface,
             borderBottomColor: c.borderSubtle,
-            paddingTop: insets.top + 8 + homeBarInset,
+            paddingTop: insets.top + 8,
           },
         ]}
       >

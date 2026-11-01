@@ -22,7 +22,7 @@ test('web start: Welcome, no tab bar, no venue bar, no Map chunk', async ({ page
 
   await expect(page.getByText(/Comenzar|Get started/i).first()).toBeVisible();
   await expect(page.getByTestId('tab-bar')).toHaveCount(0);
-  await expect(page.getByTestId('venue-home-bar')).toHaveCount(0);
+  await expect(page.getByTestId('venue-dock')).toHaveCount(0);
   await expect(page.getByTestId('web-no-venue')).toHaveCount(0); // signed-in root: not for anonymous visitors
   expect(requested.filter((url) => /MapScreen/.test(url)), 'the Map must never load on the web').toEqual([]);
 

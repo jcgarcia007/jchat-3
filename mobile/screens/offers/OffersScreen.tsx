@@ -248,7 +248,7 @@ export default function OffersScreen() {
   ), [enterBusiness, openComments, toggleLike]);
 
   return (
-    <View style={[styles.root, { backgroundColor: colors.bgBase, paddingTop: insets.top + homeBarInset }]}>
+    <View style={[styles.root, { backgroundColor: colors.bgBase, paddingTop: insets.top }]}>
       <View style={[styles.header, { borderBottomColor: colors.borderSubtle }]}>
         <Pressable
           accessibilityLabel={commonTranslation.t('back')}
@@ -295,7 +295,7 @@ export default function OffersScreen() {
       ) : (
         <Animated.View needsOffscreenAlphaCompositing style={[styles.contentArea, { opacity: contentOpacity }]}>
         <FlatList
-          contentContainerStyle={[styles.list, items.length === 0 && styles.emptyList, { paddingBottom: 26 + insets.bottom + (isWeb ? 0 : BAR_HEIGHT + 16) }]}
+          contentContainerStyle={[styles.list, items.length === 0 && styles.emptyList, { paddingBottom: 26 + insets.bottom + (isWeb ? 0 : BAR_HEIGHT + 16) + homeBarInset }]}
           data={items}
           ListHeaderComponent={isWeb && !hasLocation ? (
             <View testID="web-offers-location" style={[styles.locationHint, { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }]}>

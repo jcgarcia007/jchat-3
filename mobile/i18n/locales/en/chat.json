@@ -364,7 +364,14 @@
     "viewA11y": "View my order",
     "movedToNotifications": "Moved to notifications",
     "undo": "Undo",
-    "moveToNotifications": "Move to notifications"
+    "moveToNotifications": "Move to notifications",
+    "dockBack": "Back to chat",
+    "dockLeave": "Leave",
+    "dockLeaveA11y": "Leave {{business}}",
+    "people_one": "{{count}} person",
+    "people_other": "{{count}} people",
+    "unreadA11y_one": "{{count}} unread message",
+    "unreadA11y_other": "{{count}} unread messages"
   },
   "notificationsSheet": {
     "title": "Notifications",

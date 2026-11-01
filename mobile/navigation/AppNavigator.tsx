@@ -37,7 +37,7 @@ import RootTabs from './rootTabs';
 import { MessagesScreen as WebMessagesScreen, OffersScreen as WebOffersScreen } from './lazyScreens';
 import { navigationRef } from './navigationRef';
 import { InviteToastHost } from '../components/web/InviteToastHost';
-import { HomeStatusBar } from '../components/venue/HomeStatusBar';
+import { VenueDock } from '../components/venue/VenueDock';
 import { venueBarPlacement } from './venueBarPlacement';
 import { HomeBarInsetProvider } from '../components/venue/HomeBarInset';
 import { OrdersBarProvider } from '../context/OrdersBarContext';
@@ -467,10 +467,9 @@ export default function AppNavigator() {
     {/* Web only (renders null on devices): the small "Abrir en JChat" notices of the invite moments; off while
         INVITE_TO_APP_ENABLED is false. */}
     <InviteToastHost />
-    {/* Venue session + order in progress: one bar above the tab bar (tab screens only). Not on the web: it has
-        no tabs, and "Volver al chat" is the QR. */}
-    {notificationsEnabled && Platform.OS !== 'web' ? (
-      <HomeStatusBar
+    {/* Venue session + order in progress: one glass card above the tab bar (the five tab screens; on the web, the home, Messages and Offers). */}
+    {notificationsEnabled ? (
+      <VenueDock
         placement={venueBarPlacement(currentRoute)}
         onOpenChat={openVenueChat}
         onOpenOrder={(orderId) => navigationRef.isReady() && navigationRef.navigate('OrderTracking', { orderId })}

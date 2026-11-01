@@ -25,6 +25,7 @@ import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { useUnreadBadge } from '../../hooks/useUnreadBadge';
 import { INVITE_TO_APP_ENABLED } from '../../constants/appLinks';
 import { OpenInAppBanner } from '../../components/web/OpenInAppBanner';
+import { useHomeBarInset } from '../../components/venue/HomeBarInset';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { supabase } from '../../services/supabase';
@@ -45,6 +46,7 @@ interface EntryOffer {
 export default function WebNoVenueScreen(): React.ReactElement {
   const c = useThemeColors();
   const insets = useSafeAreaInsets();
+  const homeBarInset = useHomeBarInset(); // the VenueDock is pinned to the bottom of the page when there is a venue or an order
   const { t } = useTranslation('common');
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const route = useRoute<RouteProp<{ Tabs: { leftBusinessName?: string } | undefined }, 'Tabs'>>();
@@ -125,7 +127,7 @@ export default function WebNoVenueScreen(): React.ReactElement {
   const downloadStyle = offer ? styles.secondary : styles.primary;
 
   return (
-    <View testID="web-no-venue" style={[styles.root, { backgroundColor: c.bgBase, paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }]}>
+    <View testID="web-no-venue" style={[styles.root, { backgroundColor: c.bgBase, paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 + homeBarInset }]}>
       <View style={styles.content}>
         {venueLabel ? (
           <Text testID="web-venue-name" accessibilityRole="header" style={[styles.venueName, { color: c.textSecondary }]}>

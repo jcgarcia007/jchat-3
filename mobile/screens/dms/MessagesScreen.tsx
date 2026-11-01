@@ -172,8 +172,8 @@ export default function MessagesScreen() {
         {
           backgroundColor: colors.bgBase,
           // Devices reserve the floating tab bar; the web has none.
-          paddingBottom: (isWeb ? 24 : 102) + insets.bottom,
-          paddingTop: insets.top + homeBarInset,
+          paddingBottom: (isWeb ? 24 : 102) + insets.bottom + homeBarInset,
+          paddingTop: insets.top,
         },
       ]}
     >

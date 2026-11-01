@@ -364,7 +364,14 @@
     "viewA11y": "Ver mi pedido",
     "movedToNotifications": "Movido a notificaciones",
     "undo": "Deshacer",
-    "moveToNotifications": "Mover a notificaciones"
+    "moveToNotifications": "Mover a notificaciones",
+    "dockBack": "Volver al chat",
+    "dockLeave": "Salir",
+    "dockLeaveA11y": "Salir de {{business}}",
+    "people_one": "{{count}} persona",
+    "people_other": "{{count}} personas",
+    "unreadA11y_one": "{{count}} mensaje sin leer",
+    "unreadA11y_other": "{{count}} mensajes sin leer"
   },
   "notificationsSheet": {
     "title": "Notificaciones",

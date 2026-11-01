@@ -1,19 +1,19 @@
 /**
- * JChat 3.0 — where the HomeStatusBar ("Estás en {local} · Volver" and "N pedidos en curso") shows (pure: runs in
- * Node tests).
+ * JChat 3.0 — where the VenueDock (the "Estás en {local}" card and the orders in progress) shows (pure: runs in Node tests).
  *
- *   'tabs'     — the Map tab: the venue session and the orders in progress.
- *   'detached' — an open DM conversation (DMChat): only the venue session.
- *   'hidden'   — everywhere else: Profile, Messages (the list), Nearby, Offers, the DM inbox, the chat itself…
+ *   'dock'   — the screens that have the tab bar (Map, Nearby, Offers, Messages, Profile) and, on the web, which has no tabs, the screens that
+ *              play their part: the signed-in home (`Tabs` = WebNoVenueScreen), WebMessages and WebOffers. The card sits right above the tab bar
+ *              (on the web, at the bottom of the page).
+ *   'hidden' — everywhere else: the venue chat itself, an open DM (DMChat), the DM inbox, a post, someone else's profile stacked over a tab,
+ *              settings, payments, orders, menus, Match…
  *
- * The orders segment follows the same rule: it is part of the same bar, so it is only on the Map.
- * `routeName` is the focused LEAF route (navigationRef.getCurrentRoute() already resolves nested stacks).
+ * `routeName` is the focused LEAF route (navigationRef.getCurrentRoute() already resolves nested stacks). Names are exact, never prefixes.
  */
 
-export type VenueBarPlacement = 'tabs' | 'detached' | 'hidden';
+export type VenueBarPlacement = 'dock' | 'hidden';
+
+const DOCK_ROUTES: ReadonlySet<string> = new Set(['Map', 'Nearby', 'Offers', 'Messages', 'Profile', 'Tabs', 'WebMessages', 'WebOffers']);
 
 export function venueBarPlacement(routeName: string | null): VenueBarPlacement {
-  if (routeName === 'Map') return 'tabs';
-  if (routeName === 'DMChat') return 'detached';
-  return 'hidden';
+  return routeName !== null && DOCK_ROUTES.has(routeName) ? 'dock' : 'hidden';
 }

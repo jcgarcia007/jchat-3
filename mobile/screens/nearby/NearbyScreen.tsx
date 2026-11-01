@@ -56,7 +56,7 @@ export default function NearbyScreen() {
           styles.header,
           {
             borderBottomColor: colors.borderSubtle,
-            paddingTop: insets.top + 12 + homeBarInset,
+            paddingTop: insets.top + 12,
           },
         ]}
       >
@@ -78,7 +78,7 @@ export default function NearbyScreen() {
       </View>
       <ArrivalFade loading={nearby.loading} style={styles.listArea}>
       <FlatList
-        contentContainerStyle={[styles.list, { paddingBottom: 102 + insets.bottom }]}
+        contentContainerStyle={[styles.list, { paddingBottom: 102 + insets.bottom + homeBarInset }]}
         data={nearby.filtered}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
