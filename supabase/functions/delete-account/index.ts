@@ -14,6 +14,16 @@
  * Security (P0-3): the user id is ALWAYS taken from the verified JWT, never
  * from the request body — otherwise any caller could delete another account.
  *
+ * Errors answer with a CODED reason (never the raw error text): the body is { error: <code>, code: <code> } and the app shows
+ * "We couldn't delete your account. Write to us at <contact> (code: <code>)". Codes:
+ *   401 missing_auth · 401 invalid_session · 405 method_not_allowed
+ *   409 owner_has_business   — the caller owns a business (nothing was deleted)
+ *   500 server_misconfigured · owner_check_failed · cleanup_failed
+ *   500 fk_violation         — the database refused the delete (a foreign key / NOT NULL stops the cascade; see migration 255)
+ *   500 delete_failed        — the auth admin API failed for another reason
+ *   500 unexpected
+ * Old name of the 409 code: "owns_business" (the clients accept both while the app update rolls out).
+ *
  * Deploy:
  *   supabase functions deploy delete-account
  *
@@ -24,6 +34,7 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.44.4";
+import { classifyDeleteError } from "../_shared/deleteAccountErrors.ts";
 import { getPublishableKey, getSecretKey } from "../_shared/supabaseAdmin.ts";
 
 const CORS_HEADERS = {
@@ -39,19 +50,24 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
+/** An error answer: a short code only (the details stay in the function logs). */
+function failure(code: string, status = 500): Response {
+  return jsonResponse({ error: code, code }, status);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: CORS_HEADERS });
   }
   if (req.method !== "POST") {
-    return jsonResponse({ error: "Method not allowed" }, 405);
+    return failure("method_not_allowed", 405);
   }
 
   try {
     // 1. Auth — identify the caller from the JWT (never from the body).
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return jsonResponse({ error: "Missing or invalid Authorization header" }, 401);
+      return failure("missing_auth", 401);
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -59,7 +75,7 @@ Deno.serve(async (req) => {
     const serviceKey = getSecretKey();
     if (!supabaseUrl || !anonKey || !serviceKey) {
       console.error("[delete-account] SUPABASE_URL / publishable key / secret key not set");
-      return jsonResponse({ error: "Internal server error" }, 500);
+      return failure("server_misconfigured");
     }
 
     const userClient = createClient(supabaseUrl, anonKey, {
@@ -67,7 +83,7 @@ Deno.serve(async (req) => {
     });
     const { data: { user }, error: userErr } = await userClient.auth.getUser();
     if (userErr || !user) {
-      return jsonResponse({ error: "Invalid session" }, 401);
+      return failure("invalid_session", 401);
     }
     const userId = user.id;
 
@@ -86,10 +102,10 @@ Deno.serve(async (req) => {
       .limit(1);
     if (ownedErr) {
       console.error("[delete-account] owner check failed", ownedErr);
-      return jsonResponse({ error: "Internal server error" }, 500);
+      return failure("owner_check_failed");
     }
     if ((owned ?? []).length > 0) {
-      return jsonResponse({ error: "owns_business" }, 409);
+      return failure("owner_has_business", 409);
     }
 
     // 3. Clear NO ACTION references that would block the cascade.
@@ -101,7 +117,7 @@ Deno.serve(async (req) => {
       .eq("requested_by", userId);
     if (reqDelErr) {
       console.error("[delete-account] radius_increase_requests delete failed", reqDelErr);
-      return jsonResponse({ error: "Failed to clear related requests" }, 500);
+      return failure("cleanup_failed");
     }
 
     const { error: reqUpdErr } = await admin
@@ -110,19 +126,20 @@ Deno.serve(async (req) => {
       .eq("reviewed_by", userId);
     if (reqUpdErr) {
       console.error("[delete-account] radius_increase_requests reviewer unlink failed", reqUpdErr);
-      return jsonResponse({ error: "Failed to unlink reviewed requests" }, 500);
+      return failure("cleanup_failed");
     }
 
     // 4. Hard delete auth.users → cascades public.users and all personal content.
     const { error: delErr } = await admin.auth.admin.deleteUser(userId);
     if (delErr) {
-      console.error("[delete-account] deleteUser failed", delErr);
-      return jsonResponse({ error: delErr.message }, 500);
+      const code = classifyDeleteError(delErr.message);
+      console.error(`[delete-account] deleteUser failed (${code})`, delErr);
+      return failure(code);
     }
 
     return jsonResponse({ success: true }, 200);
   } catch (e) {
     console.error("[delete-account] unexpected error", e);
-    return jsonResponse({ error: String(e) }, 500);
+    return failure("unexpected");
   }
 });

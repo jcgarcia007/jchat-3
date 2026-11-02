@@ -67,7 +67,8 @@ import { useThemeColors } from '../../theme/colors';
 import { applyAppearance, type AppearancePreference } from '../../theme/appearance';
 import { useAuth } from '../../context/AuthContext';
 import { isSupabaseConfigured } from '../../services/supabase';
-import { deleteMyAccountDetailed } from '../../services/account';
+import { ACCOUNT_SUPPORT_EMAIL } from '../../constants/contact';
+import { deleteMyAccountWithCode } from '../../services/account';
 import {
   canUseBiometrics,
   isBiometricEnabled,
@@ -395,19 +396,20 @@ export default function SettingsScreen() {
   // Calls the `delete-account` Edge Function, which verifies the caller's JWT
   // server-side and hard-deletes auth.users (cascades all personal data).
   const performDeleteAccount = useCallback(async () => {
+    const failed = (code: string) => showAlert(t('alerts.deleteErrorTitle'), t('alerts.deleteErrorMessage', { contact: ACCOUNT_SUPPORT_EMAIL, code }));
     if (!isSupabaseConfigured) {
-      showAlert(t('alerts.deleteErrorTitle'), t('alerts.deleteErrorMessage'));
+      failed('not_configured');
       return;
     }
     try {
-      const result = await deleteMyAccountDetailed();
+      const { result, code } = await deleteMyAccountWithCode();
       if (result === 'owns_business') {
         // Nothing was deleted: the owner has to close or transfer the business first.
         showAlert(t('alerts.deleteOwnerTitle'), t('alerts.deleteOwnerMessage'));
         return;
       }
       if (result !== 'ok') {
-        showAlert(t('alerts.deleteErrorTitle'), t('alerts.deleteErrorMessage'));
+        failed(code ?? 'unknown');
         return;
       }
 
@@ -421,7 +423,7 @@ export default function SettingsScreen() {
         },
       ]);
     } catch {
-      showAlert(t('alerts.deleteErrorTitle'), t('alerts.deleteErrorMessage'));
+      failed('unexpected');
     }
   }, [signOut, t]);
 

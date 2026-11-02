@@ -26,8 +26,10 @@ export async function deleteMyAccountDetailed(): Promise<DeleteAccountResult> {
     });
     if (res.ok) return "ok";
     if (res.status === 409) {
-      const body = (await res.json().catch(() => null)) as { error?: string } | null;
-      if (body?.error === "owns_business") return "owns_business";
+      const body = (await res.json().catch(() => null)) as { error?: string; code?: string } | null;
+      // "owns_business" is the old name of the code; the function now sends "owner_has_business" (both accepted while it rolls out).
+      const code = body?.code ?? body?.error;
+      if (code === "owner_has_business" || code === "owns_business") return "owns_business";
     }
     return "error";
   } catch {
