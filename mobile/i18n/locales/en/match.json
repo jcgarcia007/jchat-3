@@ -145,6 +145,7 @@
       "fromGallery": "Choose from gallery",
       "fromCamera": "Take a photo",
       "useProfilePhoto": "Use my profile photo",
+      "copyProfilePhoto": "Use my profile photo",
       "status": {
         "pending": "In review",
         "approved": "Approved",

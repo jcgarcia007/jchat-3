@@ -133,3 +133,16 @@ export function ageFromBirthYear(birthYear: number | null | undefined, now: Date
   const age = now.getFullYear() - birthYear;
   return age >= 18 && age <= 120 ? age : null;
 }
+
+/** While a photo is in review the screens look again every PHOTO_POLL_MS, for at most PHOTO_POLL_MAX_MS from when the review began. */
+export const PHOTO_POLL_MS = 5000;
+export const PHOTO_POLL_MAX_MS = 2 * 60 * 1000;
+
+export function shouldPollPhotos(pendingCount: number, elapsedMs: number): boolean {
+  return pendingCount > 0 && elapsedMs >= 0 && elapsedMs < PHOTO_POLL_MAX_MS;
+}
+
+/** The accessibility text of the progress ("Perfil: n de 4 pasos"): every view builds it from the same summary as the progress bar. */
+export function progressCounts(summary: { done: number; total: number }): { done: number; total: number } {
+  return { done: summary.done, total: summary.total };
+}

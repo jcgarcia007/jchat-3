@@ -29,6 +29,7 @@ import {
 } from 'react-native';
 import { IconMask } from '@tabler/icons-react-native';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { ThemedSwitch } from '../common/ThemedSwitch';
@@ -58,6 +59,8 @@ export interface IncognitoState {
 }
 
 export interface IncognitoToggleProps {
+  /** Fixed-language t (the entry sheet's own language); defaults to the global one. */
+  t?: TFunction;
   /** Current state. */
   value: IncognitoState;
   /** Called with the next full state whenever the toggle or nickname changes. */
@@ -83,9 +86,10 @@ export function isIncognitoValid(state: IncognitoState): boolean {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function IncognitoToggle({ value, onChange, error }: IncognitoToggleProps) {
+export function IncognitoToggle({ value, onChange, error, t: tProp }: IncognitoToggleProps) {
   const c = useThemeColors();
-  const { t } = useTranslation('chat');
+  const { t: globalT } = useTranslation('chat');
+  const t = tProp ?? globalT;
 
   const handleToggle = useCallback(
     (next: boolean) => {

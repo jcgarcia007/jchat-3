@@ -145,6 +145,7 @@
       "fromGallery": "Elegir de la galería",
       "fromCamera": "Hacer una foto",
       "useProfilePhoto": "Usar mi foto de perfil",
+      "copyProfilePhoto": "Usar mi foto de perfil",
       "status": {
         "pending": "En revisión",
         "approved": "Aprobada",

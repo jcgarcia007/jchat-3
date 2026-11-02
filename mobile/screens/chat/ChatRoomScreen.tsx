@@ -58,7 +58,7 @@ import { useGeofenceGate, formatDistanceM } from './useGeofenceGate';
 import { getChatPermissions, EMPTY_PERMISSIONS, getBusinessRoleMap } from '../../services/permissions';
 import type { ChatPermissions, ChatRole } from '../../services/permissions';
 import { uploadImage } from '../../services/storage';
-import { MatchEntryNotice } from '../../components/match/MatchEntryNotice';
+import { LanguageSelector, MatchEntryNotice } from '../../components/match/MatchEntryNotice';
 import { MatchQrScanner } from '../../components/match/MatchQrScanner';
 import { matchCheckInWithQr } from '../../services/matchPresence';
 import { fetchVenueAccess } from '../../services/venueAccess';
@@ -275,6 +275,11 @@ export default function ChatRoomScreen() {
   const { t: tPos } = useTranslation('pos');
 
   const matchLanguage: 'en' | 'es' = i18n.language?.startsWith('es') ? 'es' : 'en';
+  // Entry sheet language: starts in the app's language, changes ONLY the sheet's texts (never i18n.language).
+  const [sheetLang, setSheetLang] = useState<'en' | 'es'>(matchLanguage);
+  const gt = useMemo(() => i18n.getFixedT(sheetLang, 'chat'), [i18n, sheetLang]);
+  const gtMatch = useMemo(() => i18n.getFixedT(sheetLang, 'match'), [i18n, sheetLang]);
+  const gtCommon = useMemo(() => i18n.getFixedT(sheetLang, 'common'), [i18n, sheetLang]);
 
   const rootRoomId = route.params.id;
 
@@ -1678,6 +1683,7 @@ export default function ChatRoomScreen() {
 
   // ── Pre-entry incognito gate modal ─────────────────────────────────────────
 
+  const gamesNotice = matchAvailable || todAvailable;
   if (entryVisible) {
     return (
       <SafeAreaView style={[gateStyles.safeArea, { backgroundColor: themeColors.bgBase }]}>
@@ -1696,43 +1702,51 @@ export default function ChatRoomScreen() {
               {!gateRefused && (
                 // Title, subtitle, notice and incognito scroll together (large text); Enter / Cancel stay pinned below.
                 <ScrollView style={gateStyles.gateScroll} contentContainerStyle={gateStyles.gateScrollContent} showsVerticalScrollIndicator={false}>
-                  {/* Business name / room title */}
-                  {business?.icon_url ? (
-                    // The owner's uploaded icon next to the name (the emoji stays inline in the title when there is none).
-                    <View style={gateStyles.roomTitleRow}>
-                      <BusinessIcon iconUrl={business.icon_url} emoji={business.icon_emoji} size={36} radius={10} />
-                      <Text style={[gateStyles.roomTitle, { color: themeColors.textPrimary, flexShrink: 1 }]}>
-                        {business.name ?? t('chatRoom.chatRoomFallback')}
+                  {/* Business name / room title; the sheet's ES | EN selector sits top-right of this row */}
+                  <View style={gateStyles.titleWrap}>
+                    {business?.icon_url ? (
+                      // The owner's uploaded icon next to the name (the emoji stays inline in the title when there is none).
+                      <View style={[gateStyles.roomTitleRow, gamesNotice && gateStyles.titleWithSelector]}>
+                        <BusinessIcon iconUrl={business.icon_url} emoji={business.icon_emoji} size={36} radius={10} />
+                        <Text style={[gateStyles.roomTitle, { color: themeColors.textPrimary, flexShrink: 1 }]}>
+                          {business.name ?? gt('chatRoom.chatRoomFallback')}
+                        </Text>
+                      </View>
+                    ) : (
+                      <Text style={[gateStyles.roomTitle, { color: themeColors.textPrimary }, gamesNotice && gateStyles.titleWithSelector]}>
+                        {business?.icon_emoji ?? '🏪'}{' '}
+                        {business?.name ?? gt('chatRoom.chatRoomFallback')}
                       </Text>
-                    </View>
-                  ) : (
-                    <Text style={[gateStyles.roomTitle, { color: themeColors.textPrimary }]}>
-                      {business?.icon_emoji ?? '🏪'}{' '}
-                      {business?.name ?? t('chatRoom.chatRoomFallback')}
-                    </Text>
-                  )}
+                    )}
+                    {gamesNotice && (
+                      <View style={gateStyles.langSlot}>
+                        <LanguageSelector value={sheetLang} onChange={setSheetLang} label={gtMatch('entry.langA11y')} />
+                      </View>
+                    )}
+                  </View>
                   <Text style={[gateStyles.roomSub, { color: themeColors.textSecondary }]}>
-                    {t('chatRoom.gateSubtitle')}
+                    {gt('chatRoom.gateSubtitle')}
                   </Text>
                   {/* Why the location is asked (read BEFORE tapping Enter, which triggers the permission prompt). */}
                   <Text testID="chat-geo-why" style={[gateStyles.geoWhy, { color: themeColors.textSecondary }]}>
-                    {t('chatRoom.geoWhy', { business: business?.name ?? t('chatRoom.chatRoomFallback') })}
+                    {gt('chatRoom.geoWhy', { business: business?.name ?? gt('chatRoom.chatRoomFallback') })}
                   </Text>
 
                   {/* Games entry notice — where the venue has ANY game on (Match and/or Truth or Dare) */}
                   {(matchAvailable || todAvailable) && (
                     <MatchEntryNotice
-                      businessName={business?.name ?? t('chatRoom.chatRoomFallback')}
+                      businessName={business?.name ?? gt('chatRoom.chatRoomFallback')}
                       full={matchNoticeFull}
                       gamesEnabled={gamesEnabled}
                       onGamesEnabledChange={handleGamesEnabledChange}
-                      language={matchLanguage}
+                      language={sheetLang}
                     />
                   )}
 
                   {/* IncognitoToggle */}
                   {INCOGNITO_ENABLED && (
                     <IncognitoToggle
+                      t={gt}
                       value={incognitoState}
                       onChange={setIncognitoState}
                       error={incognitoError}
@@ -1750,7 +1764,7 @@ export default function ChatRoomScreen() {
                   onPress={handleEnter}
                   disabled={initialLoading}
                   accessibilityRole="button"
-                  accessibilityLabel={t('chatRoom.enterRoomA11y')}
+                  accessibilityLabel={gt('chatRoom.enterRoomA11y')}
                   style={({ pressed }) => [
                     gateStyles.enterBtn,
                     { backgroundColor: themeColors.brandFill, opacity: initialLoading ? 0.6 : 1 },
@@ -1758,7 +1772,7 @@ export default function ChatRoomScreen() {
                   ]}
                 >
                   <Text style={[gateStyles.enterBtnLabel, { color: palette.onBrand }]}>
-                    {matchAvailable || todAvailable ? t('entry.enter', { ns: 'match' }) : t('chatRoom.enterRoom')}
+                    {matchAvailable || todAvailable ? gtMatch('entry.enter') : gt('chatRoom.enterRoom')}
                   </Text>
                 </Pressable>
               )}
@@ -1767,7 +1781,7 @@ export default function ChatRoomScreen() {
                 <View style={gateStyles.geoStatus}>
                   <Spinner size="small" color={themeColors.brandText} />
                   <Text style={[gateStyles.geoStatusText, { color: themeColors.textSecondary }]}>
-                    {t('chatRoom.geoVerifying')}
+                    {gt('chatRoom.geoVerifying')}
                   </Text>
                 </View>
               )}
@@ -1779,21 +1793,21 @@ export default function ChatRoomScreen() {
                   </View>
                   <Text style={[gateStyles.outsideTitle, { color: themeColors.textPrimary }]}>
                     {noReading
-                      ? t('chatRoom.geoNoReadingTitle')
-                      : t('chatRoom.geoOutsideTitle', { business: business?.name ?? t('chatRoom.chatRoomFallback') })}
+                      ? gt('chatRoom.geoNoReadingTitle')
+                      : gt('chatRoom.geoOutsideTitle', { business: business?.name ?? gt('chatRoom.chatRoomFallback') })}
                   </Text>
                   <Text style={[gateStyles.outsideBody, { color: themeColors.textSecondary }]}>
                     {geoGate.gateStatus === 'permission_denied'
-                      ? t('chatRoom.geoWhy', { business: business?.name ?? t('chatRoom.chatRoomFallback') })
+                      ? gt('chatRoom.geoWhy', { business: business?.name ?? gt('chatRoom.chatRoomFallback') })
                       : geoGate.gateStatus === 'outside_radius'
-                        ? t('chatRoom.geoOutsideRadius', { distance: formatDistanceM(geoGate.outsideDistanceM ?? 0) })
+                        ? gt('chatRoom.geoOutsideRadius', { distance: formatDistanceM(geoGate.outsideDistanceM ?? 0) })
                         : noReading
-                          ? t('chatRoom.geoNoReadingBody')
-                          : t('chatRoom.geoUnavailable')}
+                          ? gt('chatRoom.geoNoReadingBody')
+                          : gt('chatRoom.geoUnavailable')}
                   </Text>
                   {Platform.OS === 'web' && geoGate.gateStatus === 'permission_denied' ? (
                     <Text style={[gateStyles.outsideBody, { color: themeColors.textSecondary }]}>
-                      {t('geo.webPermissionHint')}
+                      {gt('geo.webPermissionHint')}
                     </Text>
                   ) : null}
                   <View style={gateStyles.outsideButtons}>
@@ -1804,7 +1818,7 @@ export default function ChatRoomScreen() {
                       style={({ pressed }) => [gateStyles.outsideBtn, { backgroundColor: themeColors.brandFill, opacity: pressed ? 0.82 : 1 }]}
                     >
                       <Text style={[gateStyles.outsideBtnLabel, { color: palette.onBrand }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-                        {geoGate.gateStatus === 'permission_denied' ? t('chatRoom.geoAllowLocation') : t('chatRoom.geoRetry')}
+                        {geoGate.gateStatus === 'permission_denied' ? gt('chatRoom.geoAllowLocation') : gt('chatRoom.geoRetry')}
                       </Text>
                     </Pressable>
                     {menuAvailable ? (
@@ -1815,7 +1829,7 @@ export default function ChatRoomScreen() {
                       style={({ pressed }) => [gateStyles.outsideBtn, { borderWidth: 1, borderColor: themeColors.borderSubtle, opacity: pressed ? 0.82 : 1 }]}
                     >
                       <Text style={[gateStyles.outsideBtnLabel, { color: themeColors.textPrimary }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-                        {outsidePickup ? t('chatRoom.geoMenuAndPickup') : t('chatRoom.geoViewMenu')}
+                        {outsidePickup ? gt('chatRoom.geoMenuAndPickup') : gt('chatRoom.geoViewMenu')}
                       </Text>
                     </Pressable>
                     ) : null}
@@ -1832,7 +1846,7 @@ export default function ChatRoomScreen() {
                 style={gateStyles.cancelWrap}
               >
                 <Text style={[gateStyles.cancelText, { color: themeColors.textSecondary }]}>
-                  {matchAvailable || gateRefused ? t('entry.notNow', { ns: 'match' }) : t('actions.cancel', { ns: 'common' })}
+                  {matchAvailable || gateRefused ? gtMatch('entry.notNow') : gtCommon('actions.cancel')}
                 </Text>
               </Pressable>
             </View>
@@ -2233,6 +2247,10 @@ const gateStyles = StyleSheet.create({
   },
   gateScroll: { flexShrink: 1 },
   roomTitleRow: { alignItems: 'center', flexDirection: 'row', gap: 10, justifyContent: 'center' },
+  titleWrap: { justifyContent: 'center', minHeight: 44 },
+  // Room for the selector (44 pt wide x2) so a long name never runs under it.
+  titleWithSelector: { marginHorizontal: 100 },
+  langSlot: { position: 'absolute', right: 0, top: 0 },
   gateScrollContent: { gap: 16 },
   roomTitle: {
     fontSize: 20,

@@ -6,7 +6,7 @@
  *  - Later visits (short): the switch + a "See safety guide" toggle.
  * ONE switch: "Take part in games" (users.settings.gamesEnabled), for Match and Truth or Dare at every venue; it can also be changed in Settings.
  * Turning it off leaves the venue's Match on entry (match_leave_venue).
- * The ES / EN selector next to the title changes ONLY the texts of this sheet (it starts in the app's language and never changes the app's language).
+ * The ES / EN selector (top-right of the venue-name row, in ChatRoomScreen) changes ONLY the texts of the sheet; this block receives its language.
  * Presentational: state and persistence live in ChatRoomScreen.
  */
 
@@ -49,7 +49,7 @@ interface MatchEntryNoticeProps {
   full: boolean;
   gamesEnabled: boolean;
   onGamesEnabledChange: (value: boolean) => void;
-  /** The app's language: where the sheet's own selector starts. */
+  /** The sheet's language (chosen with the selector; starts as the app's language). */
   language: SheetLanguage;
 }
 
@@ -89,7 +89,7 @@ function SwitchRow({ label, hint, value, disabled, onChange }: SwitchRowProps) {
 }
 
 /** ES | EN selector: two small buttons, the active one filled. */
-function LanguageSelector({ value, onChange, label }: { value: SheetLanguage; onChange: (next: SheetLanguage) => void; label: string }) {
+export function LanguageSelector({ value, onChange, label }: { value: SheetLanguage; onChange: (next: SheetLanguage) => void; label: string }) {
   const c = useThemeColors();
   return (
     <View accessibilityRole="radiogroup" accessibilityLabel={label} style={[styles.langBox, { borderColor: c.borderSubtle }]}>
@@ -103,8 +103,7 @@ function LanguageSelector({ value, onChange, label }: { value: SheetLanguage; on
             accessibilityRole="radio"
             accessibilityState={{ selected: active }}
             accessibilityLabel={code === 'es' ? 'Español' : 'English'}
-            hitSlop={{ top: 8, bottom: 8 }}
-            style={[styles.langBtn, active && { backgroundColor: c.brandFill }]}
+                        style={[styles.langBtn, active && { backgroundColor: c.brandFill }]}
           >
             <Text style={[styles.langText, { color: active ? palette.onBrand : c.textSecondary }]}>{code.toUpperCase()}</Text>
           </Pressable>
@@ -117,9 +116,8 @@ function LanguageSelector({ value, onChange, label }: { value: SheetLanguage; on
 export function MatchEntryNotice({ businessName, full, gamesEnabled, onGamesEnabledChange, language }: MatchEntryNoticeProps) {
   const c = useThemeColors();
   const { i18n } = useTranslation();
-  const [sheetLanguage, setSheetLanguage] = useState<SheetLanguage>(language);
-  // Fixed to the sheet's own language: switching it never touches i18n.language (the app keeps its language).
-  const t = useMemo(() => i18n.getFixedT(sheetLanguage, 'match'), [i18n, sheetLanguage]);
+  // Fixed to the sheet's language (chosen by the selector in ChatRoomScreen's title row): never touches i18n.language.
+  const t = useMemo(() => i18n.getFixedT(language, 'match'), [i18n, language]);
   const [guideOpen, setGuideOpen] = useState(full);
 
   return (
@@ -129,12 +127,9 @@ export function MatchEntryNotice({ businessName, full, gamesEnabled, onGamesEnab
       showsVerticalScrollIndicator={false}
       nestedScrollEnabled
     >
-      <View style={styles.titleRow}>
-        <Text style={[styles.title, { color: c.textPrimary }]} accessibilityRole="header" numberOfLines={2}>
-          {full ? t('entry.title') : t('entry.shortTitle', { business: businessName })}
-        </Text>
-        <LanguageSelector value={sheetLanguage} onChange={setSheetLanguage} label={t('entry.langA11y')} />
-      </View>
+      <Text style={[styles.title, { color: c.textPrimary }]} accessibilityRole="header" numberOfLines={2}>
+        {full ? t('entry.title') : t('entry.shortTitle', { business: businessName })}
+      </Text>
 
       {/* The one switch: Match and Truth or Dare */}
       <View style={[styles.switchBlock, { borderColor: c.borderSubtle, backgroundColor: c.bgElevated }]}>
@@ -223,10 +218,9 @@ export function MatchEntryNotice({ businessName, full, gamesEnabled, onGamesEnab
 const styles = StyleSheet.create({
   scroll: { flexShrink: 1 },
   content: { gap: 14, paddingBottom: 4 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  title: { flex: 1, fontSize: 17, fontWeight: '700' },
+  title: { fontSize: 17, fontWeight: '700' },
   langBox: { flexDirection: 'row', borderWidth: 1, borderRadius: 999, overflow: 'hidden' },
-  langBtn: { minWidth: 40, minHeight: 32, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
+  langBtn: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
   langText: { fontSize: 12, fontWeight: '800' },
   points: { gap: 10 },
   pointRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },

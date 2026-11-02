@@ -9,7 +9,7 @@
  * Gender and seeking live in match_profiles (private, only my row); they are never shown on the card.
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '../../components/common/Spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -57,6 +57,7 @@ import {
   canConfirmMatchProfile,
   isChangeLimitError,
   missingForConfirm,
+  progressCounts,
   type MatchGender,
   type MatchSeeking,
 } from '../../utils/matchProfileState';
@@ -69,7 +70,6 @@ const COLUMNS = 3;
 const GAP = 8;
 const SIDE_PADDING = 20;
 /** While a photo is in review the result screen asks again every few seconds ("suele tardar unos segundos"). */
-const REVIEW_POLL_MS = 8000;
 
 type View_ = 'edit' | 'result' | 'complete' | 'preview';
 
@@ -110,6 +110,9 @@ export default function MatchMyProfileScreen() {
       ? summary.state === 'complete' ? 'complete' : 'result'
       : !editing && summary.state === 'complete' ? 'complete' : 'edit';
 
+  // ONE source for the progress text (bar, a11y label in every view): the summary.
+  const progressA11y = t('profile.v2.progressA11y', progressCounts(summary));
+
   const loadExtras = useCallback(async () => {
     if (!user?.id) return;
     try {
@@ -139,13 +142,6 @@ export default function MatchMyProfileScreen() {
       void loadExtras();
     }, [loadExtras]),
   );
-
-  // A photo in review: look again every few seconds while the result screen is open.
-  useEffect(() => {
-    if (view !== 'result' || summary.state !== 'reviewing') return undefined;
-    const timer = setInterval(() => void reload(), REVIEW_POLL_MS);
-    return () => clearInterval(timer);
-  }, [view, summary.state, reload]);
 
   const previewCard: MatchCardData | null = useMemo(
     () =>
@@ -392,7 +388,11 @@ export default function MatchMyProfileScreen() {
       <SafeAreaView style={[styles.safe, { backgroundColor: c.bgBase }]}>
         {header}
         <ScrollView contentContainerStyle={styles.content}>
-          <View style={[styles.tag, { backgroundColor: palette.successTint }]}>
+          <View
+            style={[styles.tag, { backgroundColor: palette.successTint }]}
+            accessible
+            accessibilityLabel={`${t('profile.v2.previewScreen.tag', { venue: venueName ?? t('profile.v2.list.outside') })}. ${progressA11y}`}
+          >
             <Text style={[styles.tagText, { color: c.success }]}>
               {t('profile.v2.previewScreen.tag', { venue: venueName ?? t('profile.v2.list.outside') })}
             </Text>
@@ -487,7 +487,12 @@ export default function MatchMyProfileScreen() {
       <SafeAreaView style={[styles.safe, { backgroundColor: c.bgBase }]}>
         {header}
         <ScrollView contentContainerStyle={styles.content}>
-          <View style={[styles.banner, { backgroundColor: palette.successTint, borderColor: c.success }]} accessibilityRole="summary">
+          <View
+            style={[styles.banner, { backgroundColor: palette.successTint, borderColor: c.success }]}
+            accessibilityRole="summary"
+            accessible
+            accessibilityLabel={`${t('profile.v2.complete.banner')} · ${venueName ? t('profile.v2.complete.bannerVenue', { venue: venueName }) : t('profile.v2.complete.bannerNoVenue')}. ${progressA11y}`}
+          >
             <IconCheck size={20} color={c.success} />
             <Text style={[styles.bannerText, { color: c.success }]}>
               {t('profile.v2.complete.banner')} · {venueName ? t('profile.v2.complete.bannerVenue', { venue: venueName }) : t('profile.v2.complete.bannerNoVenue')}
@@ -558,7 +563,7 @@ export default function MatchMyProfileScreen() {
     <SafeAreaView style={[styles.safe, { backgroundColor: c.bgBase }]}>
       {header}
       <ScrollView contentContainerStyle={styles.content}>
-        <View accessible accessibilityLabel={t('profile.v2.progressA11y', { done: summary.done, total: summary.total })}>
+        <View accessible accessibilityLabel={progressA11y}>
           <Text style={[styles.progressText, { color: c.textSecondary }]}>{t('profile.v2.progress', { done: summary.done, total: summary.total })}</Text>
           <View style={[styles.track, { backgroundColor: c.bgElevated }]}>
             <View style={[styles.fill, { backgroundColor: c.brand, width: `${(summary.done / summary.total) * 100}%` }]} />

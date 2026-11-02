@@ -123,9 +123,11 @@ test('six key points in the agreed order, each with its icon', () => {
 });
 
 test('the sheet has its own ES/EN selector: it uses a fixed translator and never changes the app language', () => {
-  assert.match(notice, /i18n\.getFixedT\(sheetLanguage, 'match'\)/);
-  assert.match(notice, /useState<SheetLanguage>\(language\)/);
+  // The selector now lives in ChatRoomScreen's venue-name row; the sheet language is state there and the notice receives it.
+  assert.match(notice, /i18n\.getFixedT\(language, 'match'\)/);
+  assert.match(chat, /useState<'en' \| 'es'>\(matchLanguage\)/);
   assert.doesNotMatch(notice, /changeLanguage/);
+  assert.doesNotMatch(chat, /changeLanguage\(sheetLang/);
   assert.match(notice, /testID=\{`entry-lang-\$\{code\}`\}/);
 });
 
@@ -190,7 +192,7 @@ test('the four views and what each one says', () => {
     assert.ok(screen.includes(key), key);
   }
   assert.match(screen, /params\?\.focus === 'result'/, 'a tap on the verdict notification opens on the result');
-  assert.match(screen, /REVIEW_POLL_MS/);
+  assert.match(read('hooks/useMyMatchProfile.ts'), /shouldPollPhotos/, 'a photo in review is looked at again by itself');
   const es = json('es', 'match').profile.v2;
   assert.equal(es.reviewing.title, 'Revisando tus fotos');
   assert.equal(es.reviewing.sub, 'Suele tardar unos segundos. Te avisamos en cuanto aparezcas.');
