@@ -94,6 +94,7 @@ import {
 } from '../../services/userSettings';
 import { confirm, showAlert } from '../../utils/dialog';
 import { ThemedSwitch } from '../../components/common/ThemedSwitch';
+import { Spinner } from '../../components/common/Spinner';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -267,6 +268,8 @@ export default function SettingsScreen() {
   const [biometricAvailable, setBiometricAvailable] = useState(true);
   // POS Work Mode — show item only when user has at least one pos_access business.
   const [hasPosAccess, setHasPosAccess] = useState(false);
+  // B2-11: the delete call can take ~30 s; while it runs a blocking overlay shows "Deleting your account…" and nothing else can be tapped.
+  const [deleting, setDeleting] = useState(false);
 
   // ── Load settings from Supabase on mount ──────────────────────────────────
   useEffect(() => {
@@ -396,13 +399,19 @@ export default function SettingsScreen() {
   // Calls the `delete-account` Edge Function, which verifies the caller's JWT
   // server-side and hard-deletes auth.users (cascades all personal data).
   const performDeleteAccount = useCallback(async () => {
-    const failed = (code: string) => showAlert(t('alerts.deleteErrorTitle'), t('alerts.deleteErrorMessage', { contact: ACCOUNT_SUPPORT_EMAIL, code }));
+    const failed = (code: string) =>
+      showAlert(
+        t('alerts.deleteErrorTitle'),
+        t(code === 'storage_purge_failed' ? 'alerts.deleteStorageErrorMessage' : 'alerts.deleteErrorMessage', { contact: ACCOUNT_SUPPORT_EMAIL, code }),
+      );
     if (!isSupabaseConfigured) {
       failed('not_configured');
       return;
     }
+    setDeleting(true);
     try {
       const { result, code } = await deleteMyAccountWithCode();
+      setDeleting(false);
       if (result === 'owns_business') {
         // Nothing was deleted: the owner has to close or transfer the business first.
         showAlert(t('alerts.deleteOwnerTitle'), t('alerts.deleteOwnerMessage'));
@@ -423,6 +432,7 @@ export default function SettingsScreen() {
         },
       ]);
     } catch {
+      setDeleting(false);
       failed('unexpected');
     }
   }, [signOut, t]);
@@ -882,11 +892,20 @@ export default function SettingsScreen() {
           icon={<IconTrash size={20} color={c.dangerText} strokeWidth={2} />}
           label={t('main.deleteAccount')}
           sublabel={t('main.deleteAccountSub')}
-          onPress={handleDeleteAccount}
+          onPress={deleting ? undefined : handleDeleteAccount}
           destructive
           testID="settings-delete-account"
         />
       </ScrollView>
+
+      {deleting ? (
+        <View style={[styles.deletingOverlay, { backgroundColor: c.scrim }]} accessibilityViewIsModal testID="settings-deleting">
+          <Spinner size="large" color={palette.onImage} accessibilityLabel={t('alerts.deleting')} />
+          <Text style={[styles.deletingText, { color: palette.onImage }]} accessibilityLiveRegion="polite">
+            {t('alerts.deleting')}
+          </Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -903,6 +922,17 @@ const H_PAD = 16;
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+  },
+
+  deletingOverlay: {
+    ...StyleSheet.absoluteFill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  deletingText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 
   header: {

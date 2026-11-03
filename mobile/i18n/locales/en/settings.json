@@ -103,6 +103,8 @@
     "deleteSuccessMessage": "Your account and all your data have been permanently deleted.",
     "deleteErrorTitle": "Deletion failed",
     "deleteErrorMessage": "We couldn't delete your account. Write to us at {{contact}} and include this code: {{code}}.",
+    "deleteStorageErrorMessage": "We couldn't delete your files. Try again or write to us at {{contact}} with this code: {{code}}.",
+    "deleting": "Deleting your account…",
     "biometricUnavailableTitle": "Biometrics unavailable",
     "biometricUnavailableMessage": "Set up Face ID or Touch ID in your device settings first.",
     "deleteOwnerTitle": "You own a business",

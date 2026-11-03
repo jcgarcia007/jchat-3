@@ -103,6 +103,8 @@
     "deleteSuccessMessage": "Tu cuenta y todos tus datos se han eliminado permanentemente.",
     "deleteErrorTitle": "Error al eliminar",
     "deleteErrorMessage": "No pudimos borrar tu cuenta. Escríbenos a {{contact}} e incluye este código: {{code}}.",
+    "deleteStorageErrorMessage": "No pudimos borrar tus archivos. Inténtalo de nuevo o escríbenos a {{contact}} con este código: {{code}}.",
+    "deleting": "Borrando tu cuenta…",
     "biometricUnavailableTitle": "Biometría no disponible",
     "biometricUnavailableMessage": "Primero configura Face ID o Touch ID en los ajustes de tu dispositivo.",
     "deleteOwnerTitle": "Eres dueño de un negocio",

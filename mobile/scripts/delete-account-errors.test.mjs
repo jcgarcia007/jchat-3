@@ -42,9 +42,9 @@ test('nothing but a short snake_case code is ever shown (sentences, HTML, stacks
 
 test('Settings shows "Write to us at <contact> … <code>" for every failure but the owner one, with the real contact', () => {
   const screen = read('screens/settings/SettingsScreen.tsx');
-  assert.match(screen, /const failed = \(code: string\) => showAlert\(t\('alerts\.deleteErrorTitle'\), t\('alerts\.deleteErrorMessage', \{ contact: ACCOUNT_SUPPORT_EMAIL, code \}\)\)/);
+  assert.match(screen, /const failed = \(code: string\) =>\s+showAlert\(\s+t\('alerts\.deleteErrorTitle'\),\s+t\(code === 'storage_purge_failed' \? 'alerts\.deleteStorageErrorMessage' : 'alerts\.deleteErrorMessage', \{ contact: ACCOUNT_SUPPORT_EMAIL, code \}\),/);
   assert.match(screen, /deleteMyAccountWithCode\(\)/);
-  assert.equal(read('constants/contact.ts').includes("ACCOUNT_SUPPORT_EMAIL = 'safety@jchat.cloud'"), true);
+  assert.equal(read('constants/contact.ts').includes("ACCOUNT_SUPPORT_EMAIL = 'soporte@jchat.cloud'"), true, 'the delete error points to support, not to the safety mailbox');
   for (const lang of ['en', 'es']) {
     const msg = json(lang, 'settings').alerts.deleteErrorMessage;
     assert.ok(msg.includes('{{contact}}') && msg.includes('{{code}}'), `${lang}: has the contact and the code`);
@@ -55,9 +55,32 @@ test('Settings shows "Write to us at <contact> … <code>" for every failure but
 test('the Edge Function answers coded errors only (no raw error text) and the web client accepts the new owner code', () => {
   const fn = readRepo('supabase/functions/delete-account/index.ts');
   assert.doesNotMatch(fn, /error: (delErr\.message|String\(e\))/, 'no raw error text to the client');
-  for (const code of ['owner_has_business', 'fk_violation', 'delete_failed', 'cleanup_failed', 'invalid_session', 'unexpected']) {
+  for (const code of ['owner_has_business', 'fk_violation', 'delete_failed', 'cleanup_failed', 'invalid_session', 'unexpected', 'storage_purge_failed']) {
     assert.ok(fn.includes(code), `${code} is a code of the function`);
   }
   assert.match(fn, /classifyDeleteError\(delErr\.message\)/);
   assert.match(readRepo('web/lib/account.ts'), /owner_has_business/);
+});
+
+test('storage_purge_failed has its own es/en message with the contact and the code, and the app tells it apart', () => {
+  for (const lang of ['en', 'es']) {
+    const msg = json(lang, 'settings').alerts.deleteStorageErrorMessage;
+    assert.ok(msg.includes('{{contact}}') && msg.includes('{{code}}'), `${lang}: has the contact and the code`);
+  }
+  assert.match(json('es', 'settings').alerts.deleteStorageErrorMessage, /^No pudimos borrar tus archivos\. Inténtalo de nuevo o escríbenos a /);
+  assert.match(json('en', 'settings').alerts.deleteStorageErrorMessage, /^We couldn't delete your files\. Try again or write to us at /);
+  assert.match(read('screens/settings/SettingsScreen.tsx'), /code === 'storage_purge_failed' \? 'alerts\.deleteStorageErrorMessage'/);
+  assert.equal(deleteOutcomeFromResponse(500, false, { code: 'storage_purge_failed' }).code, 'storage_purge_failed');
+});
+
+test('B2-11: while the account is being deleted a blocking overlay says "Borrando tu cuenta…" and the delete row does nothing', () => {
+  const screen = read('screens/settings/SettingsScreen.tsx');
+  assert.match(screen, /const \[deleting, setDeleting\] = useState\(false\)/);
+  assert.match(screen, /setDeleting\(true\);\n\s+try \{\n\s+const \{ result, code \} = await deleteMyAccountWithCode\(\);\n\s+setDeleting\(false\);/);
+  assert.match(screen, /onPress=\{deleting \? undefined : handleDeleteAccount\}/);
+  assert.match(screen, /testID="settings-deleting"/);
+  assert.match(screen, /accessibilityViewIsModal/);
+  assert.equal(json('es', 'settings').alerts.deleting, 'Borrando tu cuenta…');
+  assert.equal(json('en', 'settings').alerts.deleting, 'Deleting your account…');
+  assert.doesNotMatch(screen.slice(screen.indexOf('settings-deleting') - 200, screen.indexOf('settings-deleting') + 500), /#[0-9a-fA-F]{6}\b/, 'tokens, no hex');
 });
