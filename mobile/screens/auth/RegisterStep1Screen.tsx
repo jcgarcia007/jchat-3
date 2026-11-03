@@ -17,7 +17,8 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import { hasActiveAgeRejection } from '../../services/ageRejection';
 import type { RouteProp } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -97,6 +98,21 @@ export default function RegisterStep1Screen() {
   const route = useRoute<RegisterStep1Route>();
   const { t } = useTranslation('auth');
   const fontsReady = useLoginFonts();
+
+  // B2-13: after an age rejection this device can not reopen the sign-up for 24 h (the form is left and the same neutral dialog shows).
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      void hasActiveAgeRejection().then((blocked) => {
+        if (!blocked || cancelled) return;
+        showAlert(t('register.alerts.ageTitle'), t('register.alerts.ageMessage'));
+        if (navigation.canGoBack()) navigation.goBack();
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, [navigation, t]),
+  );
 
   // Form state
   const [name, setName] = useState('');

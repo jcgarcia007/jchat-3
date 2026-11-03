@@ -34,6 +34,7 @@ import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { toUserMessage } from '../../utils/errors';
 import { useAuth } from '../../context/AuthContext';
 import { confirmAge } from '../../services/age';
+import { hasActiveAgeRejection, recordAgeRejection } from '../../services/ageRejection';
 import { deleteMyAccount } from '../../services/account';
 import { useCaptcha, captchaErrorI18nKeys } from '../../services/captcha';
 import type { AuthStackParamList } from '../../navigation/AppNavigator';
@@ -234,11 +235,16 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
     setTermsTouched(true);
 
     // ── Client-side validation ────────────────────────────────────────────
+    if (await hasActiveAgeRejection()) {
+      showAlert(t('register.alerts.ageTitle'), t('register.alerts.ageMessage'));
+      return;
+    }
     if (!dob) {
       showAlert(t('register.dobLabel'), t('register.dobPlaceholder'));
       return;
     }
     if (!isAtLeast18(dob)) {
+      await recordAgeRejection(); // B2-13: remembered on this device for 24 h (only the time, never the age)
       showAlert(
         t('register.alerts.ageTitle'),
         t('register.alerts.ageMessage'),
@@ -383,6 +389,7 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
       if (dob) {
         const ageResult = await confirmAge(dob);
         if (ageResult === 'underage') {
+          await recordAgeRejection();
           await deleteMyAccount();
           await signOut().catch(() => null);
           showAlert(t('register.alerts.ageTitle'), t('register.alerts.ageMessage'));

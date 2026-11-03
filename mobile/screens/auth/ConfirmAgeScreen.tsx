@@ -38,6 +38,7 @@ import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
 import { useAuth } from '../../context/AuthContext';
 import { confirmAge } from '../../services/age';
+import { recordAgeRejection } from '../../services/ageRejection';
 import { deleteMyAccount } from '../../services/account';
 import { confirm, showAlert } from '../../utils/dialog';
 import { fieldOrder, parseBirthDate, splitPastedDate, type DateParts, type FieldOrder } from '../../utils/birthDate';
@@ -144,6 +145,7 @@ export default function ConfirmAgeScreen() {
     }
     if (result === 'underage') {
       // Existing delete-account flow, then sign out. Neutral message: no age stated.
+      await recordAgeRejection(); // B2-13: this device can not reopen the sign-up for 24 h
       await deleteMyAccount();
       await signOut().catch(() => null);
       setBusy(false);

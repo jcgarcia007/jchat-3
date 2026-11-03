@@ -9,6 +9,7 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useRegistrationEntry } from '../../hooks/useRegistrationEntry';
 import { useTranslation } from 'react-i18next';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { IconArrowLeft, IconEye, IconEyeOff } from '@tabler/icons-react-native';
@@ -32,6 +33,7 @@ const PHOTO_FRACTION = 0.3;
 
 export default function LoginEmailScreen() {
   const navigation = useNavigation<Nav>();
+  const openRegistration = useRegistrationEntry(() => navigation.navigate('RegisterStep1'));
   const { t } = useTranslation('auth');
   const fontsReady = useLoginFonts();
   // hCaptcha (D-38): token pedido en el submit; `CaptchaGate` se monta abajo.
@@ -187,7 +189,7 @@ export default function LoginEmailScreen() {
       <View style={styles.newHere}>
         <Text style={styles.newHereText}>{t('ticket.newHere')} </Text>
         <Pressable
-          onPress={() => navigation.navigate('RegisterStep1')}
+          onPress={openRegistration}
           hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
           accessibilityRole="button"
           accessibilityLabel={t('ticket.createAccount')}

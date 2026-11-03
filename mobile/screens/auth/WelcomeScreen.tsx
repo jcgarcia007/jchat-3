@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import { useRegistrationEntry } from '../../hooks/useRegistrationEntry';
 import { useTranslation } from 'react-i18next';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { IconBrandPagekit } from '@tabler/icons-react-native';
@@ -47,6 +48,7 @@ const BUTTON_HEIGHT = 44;
 
 export default function WelcomeScreen() {
   const navigation = useNavigation<WelcomeNav>();
+  const openRegistration = useRegistrationEntry(() => navigation.navigate('RegisterStep1'));
   const { t } = useTranslation('auth');
   const insets = useSafeAreaInsets();
 
@@ -102,7 +104,7 @@ export default function WelcomeScreen() {
         {/* Primary — Get started */}
         <TouchableOpacity
           style={[styles.button, styles.primaryButton]}
-          onPress={() => navigation.navigate('RegisterStep1')}
+          onPress={openRegistration}
           activeOpacity={0.85}
           accessibilityRole="button"
           accessibilityLabel={t('welcome.getStarted')}

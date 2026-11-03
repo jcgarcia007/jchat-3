@@ -3,7 +3,8 @@
  *
  * The full birth date is only ever sent to the `confirm_age` RPC (migration 185),
  * which verifies 18+ and stores ONLY the birth year + confirmation timestamp.
- * It is never persisted client-side (no AsyncStorage, no auth metadata).
+ * It is never persisted client-side (no auth metadata); the only thing kept on the device is the TIME of an age rejection, for 24 h
+ * (services/ageRejection.ts, audit B2-13): never the date or the age.
  */
 
 import { supabase } from './supabase';
