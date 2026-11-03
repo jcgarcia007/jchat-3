@@ -1,92 +1,92 @@
 import { assertEquals, assertRejects } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import {
-  buildPurgePlan,
-  chunk,
-  listAllObjects,
-  purgePlan,
-  type StorageApi,
-  type StorageEntry,
-} from "./deleteAccountStorage.ts";
+import { chunk, planFromRows, purgeUserObjects, type PurgeAdmin, type StorageObjectRow } from "./deleteAccountStorage.ts";
 
 const UID = "3ddf4a2e-1111-4222-8333-444455556666";
-const OTHER = "99999999-aaaa-4bbb-8ccc-dddddddddddd";
-const CONV = "c0c0c0c0-1111-4222-8333-444455556666";
-const ROOM = "r0r0r0r0".replace(/r/g, "a") + "-1111-4222-8333-444455556666";
 
-/** A fake bucket tree: path → entries. A key like "u" lists the folder "u". */
-function fakeStorage(tree: Record<string, Record<string, StorageEntry[]>>, opts: { failRemoveIn?: string; missing?: string[] } = {}) {
-  const removed: Record<string, string[]> = {};
-  const storage: StorageApi = {
-    from(bucket: string) {
-      return {
-        list(path, { limit, offset }) {
-          if (opts.missing?.includes(bucket)) return Promise.resolve({ data: null, error: { message: "Bucket not found" } });
-          const entries = tree[bucket]?.[path] ?? [];
-          return Promise.resolve({ data: entries.slice(offset, offset + limit), error: null });
-        },
-        remove(paths) {
-          if (opts.failRemoveIn === bucket) return Promise.resolve({ error: { message: "boom" } });
-          (removed[bucket] ??= []).push(...paths);
-          return Promise.resolve({ error: null });
-        },
-      };
+/** A fake admin: the RPC answers (at most `cap` rows per call) from an in-memory set, remove() deletes from it and records the batches. */
+function fakeAdmin(initial: StorageObjectRow[], opts: { cap?: number; rpcError?: string; removeError?: string; neverRemove?: boolean } = {}) {
+  const store = new Map(initial.map((r) => [`${r.bucket_id}\u0000${r.name}`, r]));
+  const batches: { bucket: string; size: number }[] = [];
+  let rpcCalls = 0;
+  const admin: PurgeAdmin = {
+    rpc(fn, args) {
+      rpcCalls += 1;
+      assertEquals(fn, "storage_user_object_paths");
+      assertEquals(args, { p_user: UID });
+      if (opts.rpcError) return Promise.resolve({ data: null, error: { message: opts.rpcError } });
+      return Promise.resolve({ data: [...store.values()].slice(0, opts.cap ?? 1000), error: null });
+    },
+    storage: {
+      from(bucket: string) {
+        return {
+          remove(paths: string[]) {
+            if (opts.removeError) return Promise.resolve({ error: { message: opts.removeError } });
+            batches.push({ bucket, size: paths.length });
+            if (!opts.neverRemove) for (const p of paths) store.delete(`${bucket}\u0000${p}`);
+            return Promise.resolve({ error: null });
+          },
+        };
+      },
     },
   };
-  return { storage, removed };
+  return { admin, batches, left: () => store.size, rpcCalls: () => rpcCalls };
 }
 
-Deno.test("plan: every user-folder bucket gets <uid>/, dm-media gets <conversation>/<uid>/ per conversation, menu-photos never", () => {
-  const plan = buildPurgePlan(UID, { conversationIds: [CONV, CONV, "not-a-uuid"] });
-  const folders = plan.folders.map((f) => `${f.bucket}:${f.prefix}`);
-  for (const bucket of ["avatars", "covers", "profile-media", "post-media", "match-photos", "story-media", "verification-selfies"]) {
-    assertEquals(folders.includes(`${bucket}:${UID}`), true, bucket);
-  }
-  assertEquals(folders.filter((f) => f.startsWith("dm-media:")), [`dm-media:${CONV}/${UID}`]);
-  assertEquals(folders.some((f) => f.startsWith("menu-photos")), false);
+const rows = (bucket: string, n: number, prefix = UID): StorageObjectRow[] => Array.from({ length: n }, (_, i) => ({ bucket_id: bucket, name: `${prefix}/f${i}.jpg` }));
+
+Deno.test("objects in 3 buckets: batches of 100 per bucket, the count, and a last RPC round that comes back empty", async () => {
+  const fake = fakeAdmin([...rows("avatars", 250), ...rows("dm-media", 3, `c0c0/${UID}`), ...rows("voice-notes", 2, `room/r1/${UID}`)]);
+  const removed = await purgeUserObjects(fake.admin, UID);
+  assertEquals(removed, 255);
+  assertEquals(fake.batches.filter((b) => b.bucket === "avatars").map((b) => b.size), [100, 100, 50]);
+  assertEquals(fake.batches.filter((b) => b.bucket === "dm-media").map((b) => b.size), [3]);
+  assertEquals(fake.batches.filter((b) => b.bucket === "voice-notes").map((b) => b.size), [2]);
+  assertEquals(fake.left(), 0);
+  assertEquals(fake.rpcCalls(), 2, "one round with everything, one empty round that ends the loop");
 });
 
-Deno.test("plan: only the person's own voice paths survive (other uid, other bucket layout, traversal)", () => {
-  const own = `room/${ROOM}/${UID}/a.m4a`;
-  const plan = buildPurgePlan(UID, {
-    voiceRoomPaths: [own, own, `room/${ROOM}/${OTHER}/b.m4a`, `room/${ROOM}/${UID}/../x.m4a`, `other/${ROOM}/${UID}/c.m4a`, `room/${ROOM}/${UID}/d/e.m4a`],
-  });
-  assertEquals(plan.objects, [{ bucket: "voice-notes", path: own }]);
+Deno.test("an API cap on the RPC answer is handled: it asks again until nothing is left", async () => {
+  const fake = fakeAdmin([...rows("post-media", 130), ...rows("covers", 130)], { cap: 120 });
+  assertEquals(await purgeUserObjects(fake.admin, UID), 260);
+  assertEquals(fake.left(), 0);
+  assertEquals(fake.rpcCalls() > 2, true);
 });
 
-Deno.test("plan: a malformed uid is refused", () => {
-  assertEquals((() => { try { buildPurgePlan("../etc"); return "built"; } catch (e) { return (e as Error).message; } })(), "invalid_uid");
+Deno.test("nothing to delete: 0 removed, no Storage call", async () => {
+  const fake = fakeAdmin([]);
+  assertEquals(await purgeUserObjects(fake.admin, UID), 0);
+  assertEquals(fake.batches.length, 0);
+});
+
+Deno.test("menu-photos, unknown buckets, empty names, '..' and duplicates are never deleted", () => {
+  const plan = planFromRows([
+    { bucket_id: "menu-photos", name: `biz/${UID}/x.png` },
+    { bucket_id: "secrets", name: `${UID}/x.png` },
+    { bucket_id: "avatars", name: "" },
+    { bucket_id: "avatars", name: `${UID}/../other/x.png` },
+    { bucket_id: "avatars", name: `${UID}/ok.png` },
+    { bucket_id: "avatars", name: `${UID}/ok.png` },
+    // deno-lint-ignore no-explicit-any
+    { bucket_id: 5, name: "x" } as any,
+  ]);
+  assertEquals(plan.objects, [{ bucket: "avatars", path: `${UID}/ok.png` }]);
+});
+
+Deno.test("if the RPC fails the purge throws (the function answers storage_purge_failed and deletes nothing)", async () => {
+  const fake = fakeAdmin([], { rpcError: "function does not exist" });
+  await assertRejects(() => purgeUserObjects(fake.admin, UID), Error, "storage_user_object_paths");
+});
+
+Deno.test("if a Storage delete fails the purge throws", async () => {
+  const fake = fakeAdmin(rows("avatars", 2), { removeError: "boom" });
+  await assertRejects(() => purgeUserObjects(fake.admin, UID), Error, "remove avatars");
+});
+
+Deno.test("objects that keep coming back never loop forever", async () => {
+  const fake = fakeAdmin(rows("avatars", 2), { neverRemove: true });
+  await assertRejects(() => purgeUserObjects(fake.admin, UID), Error, "did not converge");
 });
 
 Deno.test("chunk splits in 100s", () => {
-  assertEquals(chunk([1, 2, 3, 4, 5], 2), [[1, 2], [3, 4], [5]]);
   assertEquals(chunk(Array.from({ length: 250 }, (_, i) => i)).map((c) => c.length), [100, 100, 50]);
-});
-
-Deno.test("listing is recursive and paged", async () => {
-  const many = Array.from({ length: 150 }, (_, i) => ({ name: `f${i}.png`, id: `id${i}` }));
-  const { storage } = fakeStorage({ covers: { [UID]: [{ name: "biz", id: null }], [`${UID}/biz`]: [{ name: "cover", id: null }], [`${UID}/biz/cover`]: many } });
-  const paths = await listAllObjects(storage, "covers", UID);
-  assertEquals(paths.length, 150);
-  assertEquals(paths.includes(`${UID}/biz/cover/f149.png`), true);
-});
-
-Deno.test("purge removes only what the plan lists, in batches, and a missing bucket is not an error", async () => {
-  const { storage, removed } = fakeStorage(
-    {
-      avatars: { [UID]: [{ name: "1.jpg", id: "a" }, { name: "2.jpg", id: "b" }] },
-      "dm-media": { [`${CONV}/${UID}`]: [{ name: "v.m4a", id: "c" }] },
-    },
-    { missing: ["story-media"] },
-  );
-  const plan = buildPurgePlan(UID, { conversationIds: [CONV], voiceRoomPaths: [`room/${ROOM}/${UID}/n.m4a`] });
-  const count = await purgePlan(storage, plan);
-  assertEquals(count, 4);
-  assertEquals(removed["avatars"], [`${UID}/1.jpg`, `${UID}/2.jpg`]);
-  assertEquals(removed["dm-media"], [`${CONV}/${UID}/v.m4a`]);
-  assertEquals(removed["voice-notes"], [`room/${ROOM}/${UID}/n.m4a`]);
-});
-
-Deno.test("a Storage error makes the purge throw (the function then answers storage_purge_failed and deletes nothing)", async () => {
-  const { storage } = fakeStorage({ avatars: { [UID]: [{ name: "1.jpg", id: "a" }] } }, { failRemoveIn: "avatars" });
-  await assertRejects(() => purgePlan(storage, buildPurgePlan(UID)), Error, "remove avatars");
 });

@@ -1,16 +1,14 @@
 /**
- * JChat 3.0 — delete-account: which Storage objects belong to a person (pure, import-free so a Node test can drive it).
+ * JChat 3.0 — delete-account: remove a person's Storage objects (import-free, so a Node test and a Deno test can drive it).
  *
- * delete-account purges these BEFORE it deletes auth.users: deleting the user cascades the database rows but never the files, and
- * every file is personal data (photos, voice notes). Layout of the buckets (production, 2026-11):
- *   avatars, covers, profile-media, post-media, match-photos, story-media, verification-selfies → <uid>/…            (any depth)
- *   dm-media                                                                                    → <conversation_id>/<uid>/…
- *   voice-notes                                                                                 → room/<room_id>/<uid>/<file>.m4a
- *   menu-photos                                                                                 → <business_id>/…   (the venue's, NEVER purged here)
- * A business owner cannot reach this code (owner_has_business, 409), so a business folder is never in the plan.
+ * Which objects are the person's is decided by the DATABASE, from storage.objects itself (RPC storage_user_object_paths, migration 258):
+ * deriving paths from messages / dm_messages does not work (messages.media_url is NULL in production while voice-notes holds files).
+ * This module only deletes what that RPC returns, in batches, and refuses anything outside the buckets below (menu-photos belongs to a
+ * venue, never to a person).
  */
 
-export const USER_FOLDER_BUCKETS = [
+/** Buckets that hold a person's files. The RPC never returns anything else; this is a second lock. */
+export const PERSON_BUCKETS = [
   "avatars",
   "covers",
   "profile-media",
@@ -18,53 +16,26 @@ export const USER_FOLDER_BUCKETS = [
   "match-photos",
   "story-media",
   "verification-selfies",
+  "dm-media",
+  "voice-notes",
 ] as const;
-export const DM_BUCKET = "dm-media";
-export const VOICE_BUCKET = "voice-notes";
 
-/** Storage `remove` accepts many paths; 100 per call keeps each request small. */
+/** Storage `remove` takes many paths; 100 per call keeps each request small. */
 export const REMOVE_BATCH = 100;
-/** Folder depth guard for the recursive listing (covers/<uid>/<business>/cover/<file> is 4). */
-export const MAX_DEPTH = 8;
+/** The RPC answer can be capped by the API (max rows): after removing a page we ask again until it is empty, at most this many times. */
+export const MAX_ROUNDS = 200;
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-export function isUuid(value: unknown): value is string {
-  return typeof value === "string" && UUID.test(value);
+export interface StorageObjectRow {
+  bucket_id: string;
+  name: string;
 }
 
-export interface PurgeFolder {
-  bucket: string;
-  prefix: string;
-}
 export interface PurgeObject {
   bucket: string;
   path: string;
 }
 export interface PurgePlan {
-  /** Folders to list recursively and empty. */
-  folders: PurgeFolder[];
-  /** Objects whose exact path is already known (voice notes found through the messages table). */
   objects: PurgeObject[];
-}
-
-/**
- * The folders and objects of ONE user. Everything is built from the verified uid, and every id that comes from the database is
- * checked to be a uuid (a malformed value is dropped, never turned into a path).
- *  - conversationIds: the conversations where the user sent something (dm_messages.sender_id).
- *  - voiceRoomPaths:  messages.media_url of the user's room voice notes ('room/<room>/<uid>/<file>.m4a').
- */
-export function buildPurgePlan(uid: string, opts: { conversationIds?: string[]; voiceRoomPaths?: string[] } = {}): PurgePlan {
-  if (!isUuid(uid)) throw new Error("invalid_uid");
-  const folders: PurgeFolder[] = USER_FOLDER_BUCKETS.map((bucket) => ({ bucket, prefix: uid }));
-
-  const conversations = [...new Set((opts.conversationIds ?? []).filter(isUuid))];
-  for (const conversation of conversations) folders.push({ bucket: DM_BUCKET, prefix: `${conversation}/${uid}` });
-
-  const own = new RegExp(`^room/${UUID.source.slice(1, -1)}/${uid}/[^/]+$`, "i");
-  const voice = [...new Set((opts.voiceRoomPaths ?? []).filter((p) => typeof p === "string" && own.test(p)))];
-  const objects: PurgeObject[] = voice.map((path) => ({ bucket: VOICE_BUCKET, path }));
-  return { folders, objects };
 }
 
 export function chunk<T>(items: T[], size: number = REMOVE_BATCH): T[][] {
@@ -73,68 +44,66 @@ export function chunk<T>(items: T[], size: number = REMOVE_BATCH): T[][] {
   return out;
 }
 
-/** The slice of the Storage client the purge uses (the Supabase client satisfies it; a test passes a fake). */
-export interface StorageEntry {
-  name: string;
-  /** null for a folder. */
-  id: string | null;
+/** The RPC rows → the objects to delete: only person buckets, non-empty names without traversal, no duplicates. */
+export function planFromRows(rows: StorageObjectRow[] | null | undefined): PurgePlan {
+  const allowed = new Set<string>(PERSON_BUCKETS);
+  const seen = new Set<string>();
+  const objects: PurgeObject[] = [];
+  for (const row of rows ?? []) {
+    if (!row || typeof row.bucket_id !== "string" || typeof row.name !== "string") continue;
+    if (!allowed.has(row.bucket_id) || row.name === "" || row.name.split("/").includes("..")) continue;
+    const key = `${row.bucket_id}\u0000${row.name}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    objects.push({ bucket: row.bucket_id, path: row.name });
+  }
+  return { objects };
 }
+
+/** The slice of the Storage client the purge uses (the Supabase client satisfies it; a test passes a fake). */
 export interface StorageBucketApi {
-  list(path: string, options: { limit: number; offset: number }): Promise<{ data: StorageEntry[] | null; error: { message: string } | null }>;
   remove(paths: string[]): Promise<{ error: { message: string } | null }>;
 }
 export interface StorageApi {
   from(bucket: string): StorageBucketApi;
 }
 
-/** A bucket that is not there has nothing to purge (story-media is in the code but not in production). */
-export function isBucketMissing(message: string | undefined): boolean {
-  return /bucket not found|not found/i.test(message ?? "");
-}
-
-/** Every object path under `prefix`, recursively. Throws on a Storage error (except a missing bucket → []). */
-export async function listAllObjects(storage: StorageApi, bucket: string, prefix: string): Promise<string[]> {
-  const found: string[] = [];
-  const pending: { path: string; depth: number }[] = [{ path: prefix, depth: 0 }];
-  while (pending.length > 0) {
-    const { path, depth } = pending.pop()!;
-    if (depth > MAX_DEPTH) continue;
-    for (let offset = 0; ; offset += REMOVE_BATCH) {
-      const { data, error } = await storage.from(bucket).list(path, { limit: REMOVE_BATCH, offset });
-      if (error) {
-        if (isBucketMissing(error.message)) return found;
-        throw new Error(`list ${bucket}/${path}: ${error.message}`);
-      }
-      const entries = data ?? [];
-      for (const entry of entries) {
-        if (entry.id === null) pending.push({ path: `${path}/${entry.name}`, depth: depth + 1 });
-        else found.push(`${path}/${entry.name}`);
-      }
-      if (entries.length < REMOVE_BATCH) break;
-    }
-  }
-  return found;
-}
-
-/** Deletes everything in the plan; returns how many objects were removed. Throws (so the caller answers storage_purge_failed) on any error. */
+/** Deletes every object of the plan, per bucket, in batches of 100. Returns how many were removed; throws on a Storage error. */
 export async function purgePlan(storage: StorageApi, plan: PurgePlan): Promise<number> {
-  const byBucket = new Map<string, Set<string>>();
-  const add = (bucket: string, path: string) => {
-    if (!byBucket.has(bucket)) byBucket.set(bucket, new Set());
-    byBucket.get(bucket)!.add(path);
-  };
-  for (const folder of plan.folders) {
-    for (const path of await listAllObjects(storage, folder.bucket, folder.prefix)) add(folder.bucket, path);
+  const byBucket = new Map<string, string[]>();
+  for (const { bucket, path } of plan.objects) {
+    if (!byBucket.has(bucket)) byBucket.set(bucket, []);
+    byBucket.get(bucket)!.push(path);
   }
-  for (const object of plan.objects) add(object.bucket, object.path);
-
   let removed = 0;
   for (const [bucket, paths] of byBucket) {
-    for (const batch of chunk([...paths])) {
+    for (const batch of chunk(paths)) {
       const { error } = await storage.from(bucket).remove(batch);
       if (error) throw new Error(`remove ${bucket}: ${error.message}`);
       removed += batch.length;
     }
   }
   return removed;
+}
+
+/** The slice of the admin client the purge uses: the RPC and Storage. */
+export interface PurgeAdmin {
+  rpc(fn: string, args: Record<string, unknown>): PromiseLike<{ data: StorageObjectRow[] | null; error: { message: string } | null }>;
+  storage: StorageApi;
+}
+
+/**
+ * Asks the database for the person's objects and deletes them, repeating while it still returns some (the API may cap one answer).
+ * Throws when the RPC or a delete fails, or when objects keep coming back after MAX_ROUNDS (they are not really going away).
+ */
+export async function purgeUserObjects(admin: PurgeAdmin, userId: string): Promise<number> {
+  let total = 0;
+  for (let round = 0; round < MAX_ROUNDS; round += 1) {
+    const { data, error } = await admin.rpc("storage_user_object_paths", { p_user: userId });
+    if (error) throw new Error(`storage_user_object_paths: ${error.message}`);
+    const plan = planFromRows(data);
+    if (plan.objects.length === 0) return total;
+    total += await purgePlan(admin.storage, plan);
+  }
+  throw new Error("storage purge did not converge");
 }

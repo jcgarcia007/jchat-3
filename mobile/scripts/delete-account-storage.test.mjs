@@ -1,4 +1,5 @@
-// Delete account purges the person's Storage objects BEFORE deleting the user (audit C-3 / B2-1).
+// Delete account purges the person's Storage objects BEFORE deleting the user (audit C-3 / B2-1). The list comes from storage.objects
+// (RPC storage_user_object_paths, migration 258), never from the app's tables.
 // Run from mobile/:  node --test scripts/delete-account-storage.test.mjs
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -12,82 +13,89 @@ const load = (p) => {
   new Function('module', 'exports', js)(mod, mod.exports);
   return mod.exports;
 };
-const { buildPurgePlan, chunk, listAllObjects, purgePlan, USER_FOLDER_BUCKETS } = load('supabase/functions/_shared/deleteAccountStorage.ts');
+const { PERSON_BUCKETS, chunk, planFromRows, purgeUserObjects } = load('supabase/functions/_shared/deleteAccountStorage.ts');
 
 const UID = '3ddf4a2e-1111-4222-8333-444455556666';
-const OTHER = '99999999-aaaa-4bbb-8ccc-dddddddddddd';
-const CONV = 'c0c0c0c0-1111-4222-8333-444455556666';
-const ROOM = 'aaaaaaaa-1111-4222-8333-444455556666';
+const rows = (bucket, n, prefix = UID) => Array.from({ length: n }, (_, i) => ({ bucket_id: bucket, name: `${prefix}/f${i}.jpg` }));
 
-test('plan per bucket from a uid: <uid>/ in the user buckets, <conversation>/<uid>/ in dm-media, never menu-photos', () => {
-  const plan = buildPurgePlan(UID, { conversationIds: [CONV, CONV, 'nope'] });
-  const folders = plan.folders.map((f) => `${f.bucket}:${f.prefix}`);
-  assert.deepEqual(
-    folders,
-    [...USER_FOLDER_BUCKETS.map((b) => `${b}:${UID}`), `dm-media:${CONV}/${UID}`],
-  );
-  assert.deepEqual([...USER_FOLDER_BUCKETS], ['avatars', 'covers', 'profile-media', 'post-media', 'match-photos', 'story-media', 'verification-selfies']);
-  assert.equal(folders.some((f) => f.startsWith('menu-photos')), false);
-});
-
-test('voice notes: only room/<room>/<uid>/<file> of THIS person; other uid, traversal and nested paths are dropped', () => {
-  const own = `room/${ROOM}/${UID}/a.m4a`;
-  const plan = buildPurgePlan(UID, { voiceRoomPaths: [own, own, `room/${ROOM}/${OTHER}/b.m4a`, `room/${ROOM}/${UID}/../x.m4a`, `x/${ROOM}/${UID}/c.m4a`, `room/${ROOM}/${UID}/d/e.m4a`] });
-  assert.deepEqual(plan.objects, [{ bucket: 'voice-notes', path: own }]);
-});
-
-test('a malformed uid never becomes a path', () => {
-  assert.throws(() => buildPurgePlan('../other'), /invalid_uid/);
-  assert.throws(() => buildPurgePlan(''), /invalid_uid/);
-});
-
-test('chunking is 100 per remove call', () => {
-  assert.deepEqual(chunk(Array.from({ length: 250 }, (_, i) => i)).map((c) => c.length), [100, 100, 50]);
-});
-
-function fake(tree, { failRemove = null, missing = [] } = {}) {
-  const removed = {};
+function fake(initial, { cap = 1000, rpcError = null, removeError = null } = {}) {
+  const store = new Map(initial.map((r) => [`${r.bucket_id}\0${r.name}`, r]));
+  const batches = [];
+  let calls = 0;
   return {
-    removed,
-    storage: {
-      from: (bucket) => ({
-        list: async (path, { limit, offset }) => (missing.includes(bucket) ? { data: null, error: { message: 'Bucket not found' } } : { data: (tree[bucket]?.[path] ?? []).slice(offset, offset + limit), error: null }),
-        remove: async (paths) => {
-          if (failRemove === bucket) return { error: { message: 'boom' } };
-          (removed[bucket] ??= []).push(...paths);
-          return { error: null };
-        },
-      }),
+    batches,
+    left: () => store.size,
+    calls: () => calls,
+    admin: {
+      rpc: async (fn, args) => {
+        calls += 1;
+        assert.equal(fn, 'storage_user_object_paths');
+        assert.deepEqual(args, { p_user: UID });
+        return rpcError ? { data: null, error: { message: rpcError } } : { data: [...store.values()].slice(0, cap), error: null };
+      },
+      storage: {
+        from: (bucket) => ({
+          remove: async (paths) => {
+            if (removeError) return { error: { message: removeError } };
+            batches.push({ bucket, size: paths.length });
+            for (const p of paths) store.delete(`${bucket}\0${p}`);
+            return { error: null };
+          },
+        }),
+      },
     },
   };
 }
 
-test('listing recurses through folders and pages of 100', async () => {
-  const many = Array.from({ length: 150 }, (_, i) => ({ name: `f${i}.png`, id: `i${i}` }));
-  const { storage } = fake({ covers: { [UID]: [{ name: 'biz', id: null }], [`${UID}/biz`]: [{ name: 'cover', id: null }], [`${UID}/biz/cover`]: many } });
-  const paths = await listAllObjects(storage, 'covers', UID);
-  assert.equal(paths.length, 150);
+test('objects in 3 buckets: batches of 100 per bucket, the count, nothing left', async () => {
+  const f = fake([...rows('avatars', 250), ...rows('dm-media', 3, `conv/${UID}`), ...rows('voice-notes', 2, `room/r1/${UID}`)]);
+  assert.equal(await purgeUserObjects(f.admin, UID), 255);
+  assert.deepEqual(f.batches.filter((b) => b.bucket === 'avatars').map((b) => b.size), [100, 100, 50]);
+  assert.equal(f.left(), 0);
 });
 
-test('purge removes what the plan finds (a missing bucket is skipped) and a Storage error makes it throw', async () => {
-  const ok = fake({ avatars: { [UID]: [{ name: '1.jpg', id: 'a' }] }, 'dm-media': { [`${CONV}/${UID}`]: [{ name: 'v.m4a', id: 'b' }] } }, { missing: ['story-media'] });
-  const count = await purgePlan(ok.storage, buildPurgePlan(UID, { conversationIds: [CONV], voiceRoomPaths: [`room/${ROOM}/${UID}/n.m4a`] }));
-  assert.equal(count, 3);
-  assert.deepEqual(ok.removed['voice-notes'], [`room/${ROOM}/${UID}/n.m4a`]);
-  const bad = fake({ avatars: { [UID]: [{ name: '1.jpg', id: 'a' }] } }, { failRemove: 'avatars' });
-  await assert.rejects(() => purgePlan(bad.storage, buildPurgePlan(UID)), /remove avatars/);
+test('an API cap on the answer is handled by asking again', async () => {
+  const f = fake([...rows('post-media', 130), ...rows('covers', 130)], { cap: 120 });
+  assert.equal(await purgeUserObjects(f.admin, UID), 260);
+  assert.equal(f.left(), 0);
+  assert.ok(f.calls() > 2);
 });
 
-test('delete-account: the purge runs BEFORE auth.users is deleted and a failure stops everything (storage_purge_failed)', () => {
+test('menu-photos, unknown buckets, empty names and traversal are never deleted', () => {
+  const plan = planFromRows([
+    { bucket_id: 'menu-photos', name: `biz/${UID}/x.png` },
+    { bucket_id: 'secrets', name: `${UID}/x.png` },
+    { bucket_id: 'avatars', name: '' },
+    { bucket_id: 'avatars', name: `${UID}/../other/x.png` },
+    { bucket_id: 'avatars', name: `${UID}/ok.png` },
+  ]);
+  assert.deepEqual(plan.objects, [{ bucket: 'avatars', path: `${UID}/ok.png` }]);
+  assert.equal(PERSON_BUCKETS.includes('menu-photos'), false);
+  assert.deepEqual([...PERSON_BUCKETS].sort(), ['avatars', 'covers', 'dm-media', 'match-photos', 'post-media', 'profile-media', 'story-media', 'verification-selfies', 'voice-notes']);
+});
+
+test('an RPC error or a Storage error makes the purge throw; chunking is 100', async () => {
+  await assert.rejects(() => purgeUserObjects(fake([], { rpcError: 'no such function' }).admin, UID), /storage_user_object_paths/);
+  await assert.rejects(() => purgeUserObjects(fake(rows('avatars', 1), { removeError: 'boom' }).admin, UID), /remove avatars/);
+  assert.deepEqual(chunk(Array.from({ length: 250 }, (_, i) => i)).map((c) => c.length), [100, 100, 50]);
+});
+
+test('delete-account: the purge runs BEFORE auth.users is deleted, uses the RPC and a failure stops everything (storage_purge_failed)', () => {
   const fn = readRepo('supabase/functions/delete-account/index.ts');
-  const purge = fn.indexOf('await purgeUserStorage(admin, userId)');
+  const purge = fn.indexOf('await purgeUserObjects(admin as unknown as PurgeAdmin, userId)');
   const del = fn.indexOf('admin.auth.admin.deleteUser(userId)');
   assert.ok(purge > 0 && del > purge, 'purge first, then deleteUser');
   assert.match(fn.slice(purge, del), /return failure\("storage_purge_failed"\)/);
+  assert.doesNotMatch(fn, /from\("dm_messages"\)|from\("messages"\)\s*\n?\s*\.select\("media_url"\)/, 'no longer derives paths from the app tables');
   assert.doesNotMatch(fn, /SET NULL\) anonymise themselves/, 'the stale comment about SET NULL messages is gone');
   assert.match(fn, /ON DELETE CASCADE too: a deleted account's messages disappear for everyone/);
-  assert.match(fn, /\.eq\("sender_id", userId\)/);
-  assert.match(fn, /\.like\("media_url", "room\/%"\)/);
+});
+
+test('the shared module calls the RPC with the uid and nothing else reads the app tables', () => {
+  const mod = readRepo('supabase/functions/_shared/deleteAccountStorage.ts');
+  const code = mod.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').filter((l) => !l.trim().startsWith('//')).join('\n');
+  assert.match(code, /admin\.rpc\("storage_user_object_paths", \{ p_user: userId \}\)/);
+  assert.doesNotMatch(code, /dm_messages|media_url/, 'only storage.objects (through the RPC) tells which files are the person\'s');
 });
 
 test('the one-off cleanup script is dry-run by default and only deletes with --apply', () => {
