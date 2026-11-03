@@ -2,11 +2,16 @@
  * JChat 3.0 — Delete Account Edge Function (M6)
  * Runtime: Deno (Supabase Edge Functions)
  *
- * Hard-deletes the CALLER's account. Deleting the row in auth.users cascades
- * (ON DELETE CASCADE) into public.users and every piece of personal content
- * (posts, comments, follows, blocks, DMs, businesses, notifications,
- * room_members, loyalty, reservations, reviews, stories, …). SET NULL columns
- * (messages, orders, gifts, offers, logs) anonymise themselves.
+ * Hard-deletes the CALLER's account. First it purges the person's Storage objects (photos, voice notes: deleting the user never
+ * removes files), then deleting the row in auth.users cascades (ON DELETE CASCADE) into public.users and every piece of
+ * personal content (posts, comments, follows, blocks, DMs, businesses, notifications, room_members, loyalty, reservations,
+ * reviews, stories, …). Since migration 255 the chat messages (messages.user_id), pinned_messages.pinned_by and
+ * disputes.opened_by are ON DELETE CASCADE too: a deleted account's messages disappear for everyone (decision 2026-11).
+ * Only gifts.from_user / to_user are SET NULL (the gift stays, without the person); orders, offers and logs keep their rows
+ * without the person's identity (SET NULL on nullable columns).
+ *
+ * Stripe: users.stripe_customer_id / stripe_subscription_id are NOT touched here (cancelling the subscription and the customer
+ * belongs to the business-owner deletion flow, not yet built; see the audit, B2-3).
  *
  * radius_increase_requests references the user with NO ACTION FKs, so those
  * rows must be cleared BEFORE the delete or the cascade fails.
@@ -19,6 +24,7 @@
  *   401 missing_auth · 401 invalid_session · 405 method_not_allowed
  *   409 owner_has_business   — the caller owns a business (nothing was deleted)
  *   500 server_misconfigured · owner_check_failed · cleanup_failed
+ *   500 storage_purge_failed — the person's files could not be removed; NOTHING else was deleted, the person can try again
  *   500 fk_violation         — the database refused the delete (a foreign key / NOT NULL stops the cascade; see migration 255)
  *   500 delete_failed        — the auth admin API failed for another reason
  *   500 unexpected
@@ -33,8 +39,9 @@
  *   SB_SECRET_KEY — service role key (admin API; auth.users delete)
  */
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.44.4";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.44.4";
 import { classifyDeleteError } from "../_shared/deleteAccountErrors.ts";
+import { buildPurgePlan, purgePlan, type StorageApi } from "../_shared/deleteAccountStorage.ts";
 import { getPublishableKey, getSecretKey } from "../_shared/supabaseAdmin.ts";
 
 const CORS_HEADERS = {
@@ -53,6 +60,27 @@ function jsonResponse(body: unknown, status = 200): Response {
 /** An error answer: a short code only (the details stay in the function logs). */
 function failure(code: string, status = 500): Response {
   return jsonResponse({ error: code, code }, status);
+}
+
+/** Reads the paths the database knows, builds the plan from the verified uid and deletes the objects. Throws on any error. */
+async function purgeUserStorage(admin: SupabaseClient, userId: string): Promise<number> {
+  const PAGE = 1000;
+  const conversationIds: string[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await admin.from("dm_messages").select("conversation_id").eq("sender_id", userId).range(from, from + PAGE - 1);
+    if (error) throw new Error(`dm_messages: ${error.message}`);
+    for (const row of data ?? []) conversationIds.push((row as { conversation_id: string }).conversation_id);
+    if ((data ?? []).length < PAGE) break;
+  }
+  const voiceRoomPaths: string[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await admin.from("messages").select("media_url").eq("user_id", userId).like("media_url", "room/%").range(from, from + PAGE - 1);
+    if (error) throw new Error(`messages: ${error.message}`);
+    for (const row of data ?? []) voiceRoomPaths.push((row as { media_url: string }).media_url);
+    if ((data ?? []).length < PAGE) break;
+  }
+  const plan = buildPurgePlan(userId, { conversationIds, voiceRoomPaths });
+  return await purgePlan(admin.storage as unknown as StorageApi, plan);
 }
 
 Deno.serve(async (req) => {
@@ -127,6 +155,17 @@ Deno.serve(async (req) => {
     if (reqUpdErr) {
       console.error("[delete-account] radius_increase_requests reviewer unlink failed", reqUpdErr);
       return failure("cleanup_failed");
+    }
+
+    // 3b. Purge Storage BEFORE the cascade: the rows that tell us where some files are (voice-note paths in messages, the
+    //     conversations of dm-media) disappear with the user. If this fails nothing else has been deleted: answer and let the
+    //     person retry (the files already removed are simply gone; the account is intact).
+    try {
+      const removed = await purgeUserStorage(admin, userId);
+      console.log(`[delete-account] storage purged (${removed} objects)`);
+    } catch (purgeErr) {
+      console.error("[delete-account] storage purge failed", purgeErr);
+      return failure("storage_purge_failed");
     }
 
     // 4. Hard delete auth.users → cascades public.users and all personal content.

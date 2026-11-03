@@ -6,6 +6,9 @@
  */
 export type DeleteFailureCode = "fk_violation" | "delete_failed";
 
+/** Answered by the function itself (not by classifyDeleteError): the Storage purge failed and nothing else was deleted. */
+export const STORAGE_PURGE_FAILED = "storage_purge_failed";
+
 export function classifyDeleteError(message: string | undefined): DeleteFailureCode {
   const m = (message ?? "").toLowerCase();
   if (m.includes("database error deleting user") || m.includes("foreign key") || m.includes("violates") || m.includes("23503") || m.includes("23502")) {
