@@ -355,7 +355,7 @@
     "switchConfirm": "Switch",
     "leave": "Leave the venue",
     "leaveConfirmTitle": "Leave {{business}}?",
-    "leaveConfirmBody": "You will lose the whole conversation of the venue. To come back you will have to scan the QR or be inside the venue.",
+    "leaveConfirmBody": "You will lose the whole conversation of the venue, and you will leave Match too (what you did in Match here is deleted). To come back you will have to scan the QR or be inside the venue.",
     "leaveCancel": "Cancel",
     "order": "Order #{{n}} · {{status}}",
     "orders_one": "{{count}} order in progress",

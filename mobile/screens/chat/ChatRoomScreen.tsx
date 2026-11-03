@@ -60,7 +60,7 @@ import type { ChatPermissions, ChatRole } from '../../services/permissions';
 import { uploadImage } from '../../services/storage';
 import { LanguageSelector, MatchEntryNotice } from '../../components/match/MatchEntryNotice';
 import { MatchQrScanner } from '../../components/match/MatchQrScanner';
-import { matchCheckInWithQr } from '../../services/matchPresence';
+import { joinMatchVenue, joinMatchWithQr } from '../../services/matchPresence';
 import { fetchVenueAccess } from '../../services/venueAccess';
 import { goBackOrHome } from '../../utils/navFlow';
 import { createEnabledChecker, type EnabledChecker } from '../../utils/todEnabledChecker';
@@ -554,18 +554,21 @@ export default function ChatRoomScreen() {
     (key: string) => {
       if (!matchBusinessId) return;
       if (key === 'match') {
+        // The explicit entry to Match (migration 256): the ONLY place besides the venue QR that enrols the person. The heartbeat never does.
+        // joinMatchVenue sets the presence to 'checking' synchronously, so Match opens on "verifying" and not on "idle".
+        void joinMatchVenue(matchBusinessId, rootRoomId);
         navigation.navigate('MatchHome', { businessId: matchBusinessId, businessName: business?.name });
       } else if (key === 'truth_or_dare') {
         // The card is published in the room the player is looking at right now.
         navigation.navigate('TodHome', { businessId: matchBusinessId, businessName: business?.name, roomId: activeRoomId });
       }
     },
-    [navigation, matchBusinessId, business?.name, activeRoomId],
+    [navigation, matchBusinessId, rootRoomId, business?.name, activeRoomId],
   );
 
   const handleQrToken = useCallback((token: string) => {
     setQrScannerVisible(false);
-    void matchCheckInWithQr(token);
+    void joinMatchWithQr(token); // the QR is an explicit entry to Match
   }, []);
 
   // 🔔 notifications sheet + ⋯ options sheet (replace the old native Alert).

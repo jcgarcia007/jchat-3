@@ -28,6 +28,7 @@ import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { MatchCard } from '../../components/match/MatchCard';
 import { useMyMatchProfile } from '../../hooks/useMyMatchProfile';
+import { joinMatchVenue } from '../../services/matchPresence';
 import { getPublicProfile } from '../../services/users';
 import type { PublicProfileRow } from '../../services/users';
 import {
@@ -309,8 +310,11 @@ export default function MatchMyProfileScreen() {
 
   // ── Navigation helpers ───────────────────────────────────────────────────────
 
+  // "Go to Match" is an explicit entry: it enrols the person (match_join_venue) like Games → Match does.
   const goToMatch = useCallback(() => {
-    if (session) navigation.navigate('MatchHome', { businessId: session.businessId, businessName: session.businessName });
+    if (!session) return;
+    void joinMatchVenue(session.businessId, session.roomId);
+    navigation.navigate('MatchHome', { businessId: session.businessId, businessName: session.businessName });
   }, [navigation, session]);
 
   const backToChat = useCallback(() => {

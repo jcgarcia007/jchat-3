@@ -22,6 +22,9 @@ export type MatchDenyReason =
   | 'location_required'
   | 'no_geofence'
   | 'outside_radius'
+  | 'not_in_venue'
+  /** The heartbeat of a person who has not entered Match (or left it): nothing is written (migration 256). */
+  | 'not_joined'
   | 'impossible_travel';
 
 export interface MatchCheckInResult {
@@ -71,9 +74,8 @@ export async function fetchGames(): Promise<GameRow[]> {
   return (data ?? []) as GameRow[];
 }
 
-/** Check-in / heartbeat. Geo needs 2 readings ≥ 5 min apart; a valid QR token activates instantly. */
-export async function matchCheckIn(params: CheckInParams): Promise<MatchCheckInResult> {
-  const { data, error } = await supabase.rpc('match_check_in', {
+async function callPresenceRpc(fn: 'match_check_in' | 'match_join_venue', params: CheckInParams): Promise<MatchCheckInResult> {
+  const { data, error } = await supabase.rpc(fn, {
     p_business_id: params.businessId,
     p_lat: params.lat ?? null,
     p_lng: params.lng ?? null,
@@ -86,6 +88,22 @@ export async function matchCheckIn(params: CheckInParams): Promise<MatchCheckInR
     ...result,
     status: result.status === 'active' || result.status === 'pending' ? result.status : 'denied',
   };
+}
+
+/**
+ * Heartbeat: renews the presence of a person who already joined Match. It NEVER enrols anyone: without an opt-in the server answers
+ * { status: 'denied', reason: 'not_joined' } and writes nothing (migration 256). Geo activates with the chat's GPS reading; a valid QR token instantly.
+ */
+export async function matchCheckIn(params: CheckInParams): Promise<MatchCheckInResult> {
+  return callPresenceRpc('match_check_in', params);
+}
+
+/**
+ * The explicit entry to Match (Games → Match, or the venue QR): validates, renews the presence and creates the opt-in. The ONLY call that
+ * enrols a person (migration 256); the heartbeat and the venue session never call it.
+ */
+export async function matchJoinVenue(params: CheckInParams): Promise<MatchCheckInResult> {
+  return callPresenceRpc('match_join_venue', params);
 }
 
 /** Deletes everything of mine at this venue (presence, swipes, likes, matches, ephemeral chats). */

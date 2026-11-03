@@ -2,7 +2,7 @@
  * JChat 3.0 — Venue QR token parsing (Match check-in).
  *
  * The venue's printed QR encodes `https://<host>/c/{rooms.qr_token}`. Match sends that token
- * to match_check_in (p_qr_token); the server validates it against the venue's active rooms.
+ * to match_join_venue (p_qr_token, the explicit entry to Match; migration 256); the server validates it against the venue's active rooms.
  * A bare token is accepted too. Anything else → null.
  */
 

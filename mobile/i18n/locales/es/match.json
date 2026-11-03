@@ -109,12 +109,12 @@
     "invalid": "Eso no parece un QR de local."
   },
   "leave": {
-    "button": "Salir del local",
-    "title": "¿Salir de {{business}}?",
-    "body": "Se borrará todo lo que hiciste en Match aquí (likes, matches y chats). Las personas que sigues se quedan.",
-    "confirm": "Salir",
+    "button": "Salir de Match",
+    "title": "¿Salir de Match en {{business}}?",
+    "body": "Se borrará todo lo que hiciste en Match aquí (likes, matches y chats). Las personas que sigues se quedan, y sigues en el chat del local.",
+    "confirm": "Salir de Match",
     "cancel": "Quedarme",
-    "error": "No se pudo salir ahora mismo. Inténtalo de nuevo."
+    "error": "No se pudo salir de Match ahora mismo. Inténtalo de nuevo."
   },
   "home": {
     "title": "Match",

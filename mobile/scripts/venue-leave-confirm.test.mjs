@@ -23,7 +23,7 @@ test('the texts exist in en and es with the same keys', () => {
   const es = json('es');
   assert.deepEqual(Object.keys(en).sort(), Object.keys(es).sort());
   assert.equal(es.leaveConfirmTitle, '¿Salir de {{business}}?');
-  assert.equal(es.leaveConfirmBody, 'Se perderá toda la conversación del local. Para volver tendrás que escanear el QR o estar dentro del local.');
+  assert.equal(es.leaveConfirmBody, 'Se perderá toda la conversación del local y también saldrás de Match (se borra lo que hiciste en él). Para volver tendrás que escanear el QR o estar dentro del local.');
   assert.equal(es.leave, 'Salir del local');
   assert.equal(es.leaveCancel, 'Cancelar');
   assert.match(en.leaveConfirmTitle, /\{\{business\}\}/);

@@ -109,12 +109,12 @@
     "invalid": "That doesn't look like a venue QR code."
   },
   "leave": {
-    "button": "Leave the venue",
-    "title": "Leave {{business}}?",
-    "body": "Everything you did in Match here (likes, matches and chats) will be deleted. Followed people stay.",
-    "confirm": "Leave",
+    "button": "Leave Match",
+    "title": "Leave Match at {{business}}?",
+    "body": "Everything you did in Match here (likes, matches and chats) will be deleted. Followed people stay, and you stay in the venue's chat.",
+    "confirm": "Leave Match",
     "cancel": "Stay",
-    "error": "Couldn't leave right now. Try again."
+    "error": "Couldn't leave Match right now. Try again."
   },
   "home": {
     "title": "Match",

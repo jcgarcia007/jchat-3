@@ -4,7 +4,8 @@
  * Runs match_check_in for the venue every time the geofence gate produces a GPS reading
  * (entry + 5-min heartbeat): ONE GPS read per heartbeat, shared with the geofence check.
  * Results go to the shared presence store (services/matchPresence) so every Match screen
- * can show/require presence; a scanned venue QR activates instantly (matchCheckInWithQr).
+ * can show/require presence. It only RENEWS the presence of someone who already entered Match: the entry is explicit
+ * (Games → Match or a scanned venue QR → joinMatchVenue), so a GPS reading never brings back a person who left (audit B5-1).
  *
  * Mounted by the chat screen only: while it stays mounted (Match screens sit on top of it in
  * the stack) the heartbeat keeps running; unmounting resets the store. The server expires

@@ -8,6 +8,8 @@
  *  - mode 'active':  presence must be 'active' (profiles, activity, "it's a match").
  *  - mode 'present': any live check-in state is fine (Match home shows verifying/denied itself);
  *    only 'idle' (no heartbeat at all) or another venue is rejected.
+ *  - 'not_joined' (both modes): the person is at the venue but is not in Match (never entered, or left it): Match is entered only
+ *    with an explicit tap (Games → Match / the venue QR), so a Match screen that finds this state goes back to the tabs.
  *
  * The server enforces this too (not_present / not_in_same_venue); this is the friendly UX layer.
  */
@@ -25,13 +27,15 @@ export function useRequireMatchPresence(businessId: string, mode: 'active' | 'pr
   const leftRef = useRef(false);
 
   const sameVenue = presence.businessId === businessId;
-  const ok = sameVenue && (mode === 'active' ? presence.status === 'active' : presence.status !== 'idle');
+  const notJoined = sameVenue && presence.status === 'not_joined';
+  const ok = sameVenue && !notJoined && (mode === 'active' ? presence.status === 'active' : presence.status !== 'idle');
 
   useEffect(() => {
     if (ok || leftRef.current) return;
     leftRef.current = true;
     showAlert(t('presence.requiredTitle'), t('presence.required'));
-    if (navigation.canGoBack()) navigation.goBack();
+    if (notJoined) (navigation as unknown as { navigate: (name: string) => void }).navigate('Tabs');
+    else if (navigation.canGoBack()) navigation.goBack();
     else (navigation as unknown as { navigate: (name: string) => void }).navigate('Tabs');
-  }, [ok, navigation, t]);
+  }, [ok, notJoined, navigation, t]);
 }

@@ -25,7 +25,7 @@ import { palette } from '../../theme/tokens';
 import { MatchQrScanner } from '../../components/match/MatchQrScanner';
 import { MatchDeckSection } from '../../components/match/MatchDeckSection';
 import { MatchStateView } from '../../components/match/MatchStateView';
-import { matchCheckInWithQr, useMatchPresenceState } from '../../services/matchPresence';
+import { joinMatchWithQr, useMatchPresenceState } from '../../services/matchPresence';
 import { confirmLeaveVenue } from '../../utils/matchLeave';
 import { useRequireMatchPresence } from '../../hooks/useRequireMatchPresence';
 
@@ -44,15 +44,15 @@ export default function MatchHomeScreen() {
 
   const handleToken = useCallback((token: string) => {
     setScannerOpen(false);
-    void matchCheckInWithQr(token);
+    void joinMatchWithQr(token); // the QR is an explicit entry
   }, []);
 
   const handleLeave = useCallback(() => {
     confirmLeaveVenue({
       businessId: params.businessId,
       businessName: params.businessName ?? '',
-      // Leaving the venue also leaves its chat: back to the tabs.
-      onLeft: () => navigation.navigate('Tabs'),
+      // Leaving Match leaves Match only (audit B5-5): the venue's chat sits right below this screen, so go back to it.
+      onLeft: () => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Tabs')),
     });
   }, [navigation, params.businessId, params.businessName]);
 

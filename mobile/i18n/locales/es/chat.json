@@ -355,7 +355,7 @@
     "switchConfirm": "Cambiar",
     "leave": "Salir del local",
     "leaveConfirmTitle": "¿Salir de {{business}}?",
-    "leaveConfirmBody": "Se perderá toda la conversación del local. Para volver tendrás que escanear el QR o estar dentro del local.",
+    "leaveConfirmBody": "Se perderá toda la conversación del local y también saldrás de Match (se borra lo que hiciste en él). Para volver tendrás que escanear el QR o estar dentro del local.",
     "leaveCancel": "Cancelar",
     "order": "Pedido #{{n}} · {{status}}",
     "orders_one": "{{count}} pedido en curso",
