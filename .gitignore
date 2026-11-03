@@ -83,3 +83,6 @@ release-evidence/*/raw/
 # overnight suite: web export pointed at the LOCAL Supabase, and k6 / migration results (never committed)
 dist-web-local/
 loadtest/results/
+
+# Auditoría de tiendas: capturas (no se versionan)
+docs/audits/store-readiness-2026-11/screenshots/
