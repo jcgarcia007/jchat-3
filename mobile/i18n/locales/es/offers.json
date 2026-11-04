@@ -20,5 +20,7 @@
   "webLocationHint": "Permite tu ubicación para ver ofertas cerca de ti",
   "webAllowLocation": "Permitir ubicación",
   "webEnterNeedsQr": "Escanea el QR del local para entrar al chat",
-  "photoA11y": "Foto {{index}} de {{total}}"
+  "photoA11y": "Foto {{index}} de {{total}}",
+  "closedNow": "Cerrado ahora",
+  "closedNowA11y": "Cerrado ahora. Puedes ver el local; los pedidos se abren cuando abra."
 }

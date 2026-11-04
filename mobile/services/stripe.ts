@@ -402,6 +402,10 @@ export async function initAndPresentPaymentSheet(
       if (err.code === 'MODIFIERS_INVALID') {
         return { ok: false, code: 'ModifiersInvalid', message: toUserMessage(err) };
       }
+      // 409 venue_closed = the venue is closed right now: nothing was created in Stripe, so the sheet never opens (errors:app.venue_closed).
+      if (err.code === 'venue_closed') {
+        return { ok: false, code: 'VenueClosed', message: toUserMessage(err) };
+      }
       // 409 = el negocio no puede cobrar aún (gates de Connect); 4xx = validación.
       return {
         ok: false,

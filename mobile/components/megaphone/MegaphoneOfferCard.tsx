@@ -1,10 +1,12 @@
 import React, { useMemo } from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { IconClock } from '@tabler/icons-react-native';
 
 import { useVenueSession } from '../../context/VenueSessionContext';
 import type { MegaphoneItem } from '../../services/megaphone';
 import { canEnterOffer } from '../../utils/offerEntry';
+import { getOpenStatus } from '../../utils/hours';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { formatDistance } from '../../utils/distanceUnits';
@@ -25,6 +27,8 @@ export default function MegaphoneOfferCard({ item, onEnter, opening = false }: M
   // D-13: on the web, "Entrar" needs an active session at this venue (devices: always enabled).
   const canEnter = canEnterOffer({ platform: Platform.OS, activeBusinessId: session?.businessId, offerBusinessId: item.business_id });
   const translation = useTranslation('offers');
+  // Closed now (B7-4): the venue can still be opened from the offer, but its orders wait for it to open. Unknown hours say nothing.
+  const closedNow = getOpenStatus(item.business_hours, new Date(), item.business_timezone ?? null) === 'closed';
   const dateFormatter = useMemo(
     () => new Intl.DateTimeFormat(translation.i18n.language, { dateStyle: 'medium' }),
     [translation.i18n.language],
@@ -80,6 +84,12 @@ export default function MegaphoneOfferCard({ item, onEnter, opening = false }: M
       >
         {opening ? <Spinner size="small" color={palette.bgSurfaceLight} /> : <Text style={[styles.enterText, { color: canEnter ? palette.bgSurfaceLight : colors.textSecondary }]}>{translation.t('enter')}</Text>}
       </TouchableOpacity>
+      {closedNow ? (
+        <View style={styles.closedNote} accessible accessibilityRole="text" accessibilityLabel={translation.t('closedNowA11y')}>
+          <IconClock size={14} color={colors.warningText} strokeWidth={2} />
+          <Text style={[styles.closedNoteText, { color: colors.warningText }]}>{translation.t('closedNow')}</Text>
+        </View>
+      ) : null}
       {!canEnter ? (
         <Text style={[styles.enterHint, { color: colors.textSecondary }]}>{translation.t('webEnterNeedsQr')}</Text>
       ) : null}
@@ -122,4 +132,6 @@ const styles = StyleSheet.create({
   enterButton: { alignItems: 'center', borderRadius: 14, marginTop: 2, paddingVertical: 12 },
   enterText: { fontSize: 15, fontWeight: '800' },
   enterHint: { fontSize: 12, textAlign: 'center' },
+  closedNote: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  closedNoteText: { fontSize: 13, fontWeight: '600', flexShrink: 1 },
 });

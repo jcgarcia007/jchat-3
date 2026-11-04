@@ -30,6 +30,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import {
   IconCalendarEvent,
   IconChevronDown,
+  IconClock,
   IconChevronUp,
   IconMapPin,
   IconMessage,
@@ -52,6 +53,7 @@ import {
   formatDayRange,
   getOpenStatus,
   opensAtLabel,
+  todayIndexIn,
   weekdayName,
   type DayHours,
   type DayKey,
@@ -94,6 +96,8 @@ export interface BusinessPreviewCardProps {
     logo_url?: string | null;
     cover_url: string | null;
     hours: HoursMap | null;
+    /** businesses.timezone (IANA): the hours are read in the VENUE's zone, not the phone's. null/blank = America/New_York. */
+    timezone?: string | null;
     address: string;
     lat: number;
     lng: number;
@@ -157,22 +161,22 @@ export default function BusinessPreviewCard({
   const c = useThemeColors();
 
   // ── Status chip ────────────────────────────────────────────────────────────
-  const status = useMemo(() => getOpenStatus(business.hours), [business.hours]);
+  const status = useMemo(() => getOpenStatus(business.hours, new Date(), business.timezone ?? null), [business.hours, business.timezone]);
   const open = status === 'open';
   const statusText = useMemo(() => {
     if (status === 'open') {
-      const until = closesAtLabel(business.hours, i18n.language);
+      const until = closesAtLabel(business.hours, i18n.language, new Date(), business.timezone ?? null);
       return until ? t('businessPreviewCard.openUntil', { time: until }) : t('businessPreviewCard.openBadge');
     }
     if (status === 'closed') {
-      const next = opensAtLabel(business.hours, i18n.language);
+      const next = opensAtLabel(business.hours, i18n.language, new Date(), business.timezone ?? null);
       if (!next) return t('businessPreviewCard.closedBadge');
       if (next.when === 'today') return t('businessPreviewCard.closedOpensAt', { time: next.time });
       if (next.when === 'tomorrow') return t('businessPreviewCard.closedOpensTomorrow', { time: next.time });
       return t('businessPreviewCard.closedOpensOn', { day: weekdayName(next.dayIndex, i18n.language), time: next.time });
     }
     return t('businessPreviewCard.hoursUnavailable');
-  }, [status, business.hours, i18n.language, t]);
+  }, [status, business.hours, business.timezone, i18n.language, t]);
 
   // ── Cover, logo, name row ──────────────────────────────────────────────────
   const fill = initialsColor(business.id);
@@ -213,7 +217,7 @@ export default function BusinessPreviewCard({
   const dayLabels = useMemo(() => getDayLabels(i18n.language), [i18n.language]);
 
   // Today's day index (0 = Sun … 6 = Sat)
-  const todayIndex = new Date().getDay();
+  const todayIndex = todayIndexIn(new Date(), business.timezone ?? null) ?? new Date().getDay();
 
   // Ordered hours entries for the hours grid (7 days)
   const hoursEntries = useMemo((): Array<{ label: string; dayKey: DayKey; hours: DayHours | undefined; isToday: boolean }> => {
@@ -332,6 +336,14 @@ export default function BusinessPreviewCard({
               </Text>
             </TouchableOpacity>
           </View>
+
+          {/* Closed now (B7-4): the chat can be entered, but orders wait for the venue to open (the server rejects them with venue_closed). */}
+          {status === 'closed' ? (
+            <View style={styles.closedNote} accessible accessibilityRole="text" accessibilityLabel={t('businessPreviewCard.closedNowA11y')}>
+              <IconClock size={14} color={c.warningText} strokeWidth={2} />
+              <Text style={[styles.closedNoteText, { color: c.warningText }]}>{t('businessPreviewCard.closedNow')}</Text>
+            </View>
+          ) : null}
 
           <View style={styles.buttonRow}>
             <TouchableOpacity
@@ -757,6 +769,17 @@ const styles = StyleSheet.create({
   buttonRow: {
     flexDirection: 'row',
     gap: 8,
+  },
+  closedNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 2,
+  },
+  closedNoteText: {
+    fontSize: 13,
+    fontWeight: '600',
+    flexShrink: 1,
   },
   btnMain: {
     height: 50,

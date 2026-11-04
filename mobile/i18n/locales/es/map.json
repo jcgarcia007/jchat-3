@@ -64,7 +64,9 @@
     "hoursToggleA11y": "Horario de atención",
     "outsideRadiusNotice": "Estás a {{distance}}. Solo puedes entrar al chat cuando estés dentro del local.",
     "outsideRadiusNoticeNoDistance": "Estás fuera del local. Solo puedes entrar al chat cuando estés dentro.",
-    "enterChatBlockedA11y": "Entrar al chat, no disponible: estás fuera del local"
+    "enterChatBlockedA11y": "Entrar al chat, no disponible: estás fuera del local",
+    "closedNow": "Cerrado ahora",
+    "closedNowA11y": "Cerrado ahora. Puedes entrar al chat; los pedidos se abren cuando el local abra."
   },
   "filterPanel": {
     "categoryAll": "Todas",

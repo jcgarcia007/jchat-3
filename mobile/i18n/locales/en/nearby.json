@@ -12,5 +12,7 @@
   "noResultsTitle": "No results found",
   "noVenuesSubtitle": "Check back soon — more venues are joining JChat.",
   "noResultsSubtitle": "Try a different search or clear the filter.",
-  "hoursUnavailable": "Hours unavailable"
+  "hoursUnavailable": "Hours unavailable",
+  "closedNow": "Closed now",
+  "closedNowA11y": "Closed now. You can enter the chat; orders open when the venue opens."
 }

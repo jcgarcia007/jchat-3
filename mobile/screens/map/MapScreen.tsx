@@ -75,6 +75,8 @@ interface MapBusiness {
   address: string;
   cover_url: string | null;
   hours: HoursMap | null;
+  /** businesses.timezone (IANA): the hours are read in the venue's zone. null/missing = America/New_York. */
+  timezone?: string | null;
   rating?: number;
   review_count?: number;
   slug?: string | null;
@@ -298,7 +300,7 @@ export default function MapScreen() {
     () =>
       businessesNow.filter((b) => {
         if (!categoryMatches(b.category, filters.category)) return false;
-        if (filters.openNow && !isOpenNow(b.hours)) return false;
+        if (filters.openNow && !isOpenNow(b.hours, new Date(), b.timezone)) return false;
         // Radius: real distance from the user; without a position it is not applied.
         if (userCoords && filters.distanceKm !== 'all') {
           const meters = haversineMeters(userCoords.lat, userCoords.lng, b.lat, b.lng);
@@ -341,7 +343,7 @@ export default function MapScreen() {
       lat: b.lat,
       lng: b.lng,
       count: b.activeCount,
-      closed: getOpenStatus(b.hours) === 'closed',
+      closed: getOpenStatus(b.hours, new Date(), b.timezone) === 'closed',
       logo: PIN_SHOWS_LOGO && !!(b.logo_url || b.icon_url),
     }));
     return resolvePinModes(pins, { region: shown, width: viewSize.width, height: viewSize.height }, userCoords);
@@ -472,7 +474,7 @@ export default function MapScreen() {
               icon_url: b.icon_url,
               category: b.category,
               status: b.status,
-              closed: getOpenStatus(b.hours) === 'closed', // grey pin while closed ('unknown' hours are not "closed")
+              closed: getOpenStatus(b.hours, new Date(), b.timezone) === 'closed', // grey pin while closed ('unknown' hours are not "closed")
               activeCount: b.activeCount,
             }}
             onPress={() => setSelected(b)}

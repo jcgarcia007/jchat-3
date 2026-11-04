@@ -54,7 +54,8 @@
     "CONNECT_FAILED": "No se pudo conectar con la impresora.",
     "WRITE_FAILED": "Falló la impresión. Inténtalo de nuevo.",
     "VOICE_UPLOAD_FAILED": "No pudimos enviar el mensaje de voz. Inténtalo de nuevo.",
-    "VOICE_UNAVAILABLE": "Este mensaje de voz no está disponible."
+    "VOICE_UNAVAILABLE": "Este mensaje de voz no está disponible.",
+    "venue_closed": "Este local está cerrado; podrás pedir cuando abra."
   },
   "stripe": {
     "Canceled": "Pago cancelado.",

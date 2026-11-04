@@ -25,6 +25,9 @@ export interface MegaphoneItem {
   like_count: number | null;
   comment_count: number | null;
   liked_by_me: boolean | null;
+  /** The venue's weekly hours and zone (businesses.hours / timezone), read once per page; used only for the "Closed now" label. */
+  business_hours?: unknown;
+  business_timezone?: string | null;
 }
 
 export interface FetchMegaphoneParams {
@@ -62,12 +65,33 @@ export async function fetchMegaphoneFeed(params: FetchMegaphoneParams): Promise<
   });
   if (error) throw error;
 
-  return ((data ?? []) as MegaphoneRow[]).map((row) => ({
+  const rows = (data ?? []) as MegaphoneRow[];
+  const venues = await fetchVenueHours(rows.map((row) => row.business_id));
+  return rows.map((row) => ({
     ...row,
     media_urls: row.media_urls ?? [],
     like_count: toCount(row.like_count),
     comment_count: toCount(row.comment_count),
+    business_hours: venues.get(row.business_id)?.hours ?? null,
+    business_timezone: venues.get(row.business_id)?.timezone ?? null,
   }));
+}
+
+/** The weekly hours and zone of some businesses, by id (one read). Never throws: a failed read just means no "Closed now" label. */
+async function fetchVenueHours(businessIds: string[]): Promise<Map<string, { hours: unknown; timezone: string | null }>> {
+  const result = new Map<string, { hours: unknown; timezone: string | null }>();
+  const ids = [...new Set(businessIds)];
+  if (ids.length === 0) return result;
+  try {
+    const { data, error } = await supabase.from('businesses').select('id, hours, timezone').in('id', ids);
+    if (error) throw error;
+    for (const row of (data ?? []) as { id: string; hours: unknown; timezone: string | null }[]) {
+      result.set(row.id, { hours: row.hours ?? null, timezone: row.timezone ?? null });
+    }
+  } catch (error) {
+    console.warn('[megaphone] venue hours read failed:', error);
+  }
+  return result;
 }
 
 /**

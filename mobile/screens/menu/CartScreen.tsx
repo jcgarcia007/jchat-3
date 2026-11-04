@@ -67,6 +67,8 @@ import type { CartLine, OrderType } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { formatCents } from '../../utils/currency';
+import { AppError, toUserMessage } from '../../utils/errors';
+import { useVenueClosed } from '../../hooks/useVenueClosed';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { getInitials } from '../../utils/initials';
 import { confirm, showAlert } from '../../utils/dialog';
@@ -183,6 +185,9 @@ export default function CartScreen() {
   } = useCart();
 
   // ── Local state ─────────────────────────────────────────────────────────────
+
+  // Closed now: the venue can be browsed, but it takes no orders until it opens (the server also answers venue_closed).
+  const venueClosed = useVenueClosed(businessId);
 
   // Gift recipient picker state
   const [roomUsers, setRoomUsers] = useState<RoomUser[]>([]);
@@ -306,12 +311,12 @@ export default function CartScreen() {
   }, [setGiftRecipient]);
 
   const handleProceedToCheckout = useCallback(() => {
-    if (!canCheckout) return;
+    if (!canCheckout || venueClosed) return;
     // Checkout is registered in AppNavigator (Task 3.5).
     // Use CommonActions.navigate so the route name isn't checked against
     // the current stack's ParamList — avoids TS error before the screen exists.
     navigation.dispatch(CommonActions.navigate({ name: 'Checkout' }));
-  }, [canCheckout, navigation]);
+  }, [canCheckout, venueClosed, navigation]);
 
   // ── Render: cart line item ───────────────────────────────────────────────────
 
@@ -677,25 +682,31 @@ export default function CartScreen() {
             </Text>
           ) : null}
 
+          {venueClosed ? (
+            <Text style={[styles.checkoutHint, { color: c.warningText }]} accessibilityRole="alert">
+              {toUserMessage(new AppError('venue_closed'))}
+            </Text>
+          ) : null}
+
           {lines.some((l) => l.item.id_required) ? <IdRequiredNotice /> : null}
           <Pressable
             onPress={handleProceedToCheckout}
-            disabled={!canCheckout}
+            disabled={!canCheckout || venueClosed}
             style={({ pressed }) => [
               styles.checkoutButton,
               {
-                backgroundColor: canCheckout ? palette.brandFill : c.bgElevated,
+                backgroundColor: canCheckout && !venueClosed ? palette.brandFill : c.bgElevated,
                 opacity: pressed ? 0.85 : 1,
               },
             ]}
             accessibilityRole="button"
-            accessibilityLabel={canCheckout ? t('cart.proceedCheckoutA11y', { amount: formatCents(subtotalCents) }) : t('cart.selectOrderType')}
-            accessibilityState={{ disabled: !canCheckout }}
+            accessibilityLabel={venueClosed ? toUserMessage(new AppError('venue_closed')) : canCheckout ? t('cart.proceedCheckoutA11y', { amount: formatCents(subtotalCents) }) : t('cart.selectOrderType')}
+            accessibilityState={{ disabled: !canCheckout || venueClosed }}
           >
             <Text
               style={[
                 styles.checkoutButtonText,
-                { color: canCheckout ? palette.bgSurfaceLight : c.textTertiary },
+                { color: canCheckout && !venueClosed ? palette.bgSurfaceLight : c.textTertiary },
               ]}
             >
               {canCheckout ? t('cart.proceedCheckout', { amount: formatCents(subtotalCents) }) : t('cart.selectOrderType')}

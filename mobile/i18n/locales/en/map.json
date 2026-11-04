@@ -64,7 +64,9 @@
     "hoursToggleA11y": "Opening hours",
     "outsideRadiusNotice": "You are {{distance}} away. You can only enter the chat when you are inside the venue.",
     "outsideRadiusNoticeNoDistance": "You are outside the venue. You can only enter the chat when you are inside it.",
-    "enterChatBlockedA11y": "Enter chat, unavailable: you are outside the venue"
+    "enterChatBlockedA11y": "Enter chat, unavailable: you are outside the venue",
+    "closedNow": "Closed now",
+    "closedNowA11y": "Closed now. You can enter the chat; orders open when the venue opens."
   },
   "filterPanel": {
     "categoryAll": "All",

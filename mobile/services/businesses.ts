@@ -10,7 +10,7 @@ import type { HoursMap } from '../utils/hours';
 
 /** The columns the card needs. The Map and Offers read exactly these. */
 export const BUSINESS_CARD_COLUMNS =
-  'id, name, category, icon_emoji, icon_url, logo_url, lat, lng, status, address, cover_url, hours, slug, description, geofence_radius_m';
+  'id, name, category, icon_emoji, icon_url, logo_url, lat, lng, status, address, cover_url, hours, timezone, slug, description, geofence_radius_m';
 
 export interface CardBusiness {
   id: string;
@@ -25,6 +25,8 @@ export interface CardBusiness {
   address: string;
   cover_url: string | null;
   hours: HoursMap | null;
+  /** businesses.timezone (IANA): the zone the hours are read in. Blank/null = America/New_York, like the server. */
+  timezone: string | null;
   slug: string | null;
   description: string | null;
   geofence_radius_m: number | null;
@@ -46,6 +48,7 @@ export function toCardBusiness(row: Partial<CardBusiness> & { id?: string }): Ca
     address: row.address ?? '',
     cover_url: row.cover_url ?? null,
     hours: row.hours ?? null,
+    timezone: row.timezone ?? null,
     slug: row.slug ?? null,
     description: row.description ?? null,
     geofence_radius_m: typeof row.geofence_radius_m === 'number' ? row.geofence_radius_m : null,

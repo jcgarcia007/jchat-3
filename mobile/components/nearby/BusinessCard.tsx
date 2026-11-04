@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { IconMapPin, IconMessage, IconUsers } from '@tabler/icons-react-native';
+import { IconClock, IconMapPin, IconMessage, IconUsers } from '@tabler/icons-react-native';
 
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
@@ -19,7 +19,7 @@ export default function BusinessCard({ item, onEnter }: BusinessCardProps) {
   const colors = useThemeColors();
   const nearbyTranslation = useTranslation('nearby');
   const mapTranslation = useTranslation('map');
-  const status = getOpenStatus(item.hours);
+  const status = getOpenStatus(item.hours, new Date(), item.timezone ?? null);
 
   return (
     <View style={[styles.card, { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }]}>
@@ -76,6 +76,12 @@ export default function BusinessCard({ item, onEnter }: BusinessCardProps) {
             </Text>
           </TouchableOpacity>
         </View>
+        {status === 'closed' ? (
+          <View style={styles.closedNote} accessible accessibilityRole="text" accessibilityLabel={nearbyTranslation.t('closedNowA11y')}>
+            <IconClock size={13} color={colors.warningText} strokeWidth={2} />
+            <Text style={[styles.closedNoteText, { color: colors.warningText }]}>{nearbyTranslation.t('closedNow')}</Text>
+          </View>
+        ) : null}
       </View>
     </View>
   );
@@ -128,6 +134,8 @@ const styles = StyleSheet.create({
   stats: { flex: 1, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
   stat: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   statText: { fontSize: 11 },
+  closedNote: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6 },
+  closedNoteText: { fontSize: 12, fontWeight: '600', flexShrink: 1 },
   enter: { minHeight: 34, borderRadius: 17, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
   enterText: { fontSize: 12, fontWeight: '800' },
 });
