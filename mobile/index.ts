@@ -2,6 +2,9 @@
 // (PKCE needs crypto.subtle / getRandomValues / TextEncoder, see polyfills/installWebCrypto.ts).
 import './polyfills/webcrypto';
 
+// DT-1: default font-scale cap for every Text / TextInput; must run before any screen module renders.
+import './polyfills/textScaleCap';
+
 import { registerRootComponent } from 'expo';
 
 import App from './App';
