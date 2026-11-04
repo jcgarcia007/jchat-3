@@ -27,6 +27,7 @@ import { IconLock } from '@tabler/icons-react-native';
 import { useTranslation } from 'react-i18next';
 import { ensureTextContrast } from '../../utils/ensureTextContrast';
 import type { ChatTheme } from '../../theme/chatThemes';
+import { LABEL_TEXT_CAP } from '../../theme/textScale';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -113,7 +114,7 @@ export function SubRoomTabs({
               {locked && (
                 <IconLock size={11} color={isActive ? activeText : theme.tabInactive} />
               )}
-              <Text
+              <Text maxFontSizeMultiplier={LABEL_TEXT_CAP}
                 style={[
                   tabStyles.label,
                   { color: isActive ? activeText : theme.tabInactive },

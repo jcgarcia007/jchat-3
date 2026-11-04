@@ -1,0 +1,62 @@
+{
+  "minHeightSelectors": {
+    "screens/settings/PosOrderScreen.tsx": [
+      "cartNoteInput",
+      "submitBtn",
+      "modAddBtn"
+    ],
+    "components/map/FilterPanel.tsx": [
+      "searchRow",
+      "advancedBtn",
+      "segmentedBtn",
+      "footerResetBtn",
+      "footerApplyBtn"
+    ],
+    "components/map/BusinessPreviewCard.tsx": [
+      "btnMain"
+    ],
+    "screens/settings/PosTableHub.tsx": [
+      "orderActionBtn",
+      "actionBtn",
+      "draftBtn"
+    ],
+    "screens/checkout/CheckoutScreen.tsx": [
+      "qtyBadge"
+    ],
+    "screens/auth/RegisterStep1Screen.tsx": [
+      "input",
+      "primary",
+      "social"
+    ],
+    "components/chat/ChatTopBar.tsx": [
+      "badge"
+    ],
+    "screens/reservations/ReservationScreen.tsx": [
+      "stepperValue"
+    ],
+    "screens/onboarding/OnboardingScreen.tsx": [
+      "ctaButton"
+    ],
+    "screens/auth/LoginScreen.tsx": [
+      "primary",
+      "social"
+    ],
+    "components/venue/VenueDock.tsx": [
+      "backButton",
+      "leaveButton",
+      "viewButton"
+    ]
+  },
+  "labelCapFiles": [
+    "components/venue/VenueDock.tsx",
+    "components/chat/ChatTopBar.tsx",
+    "components/chat/SubRoomTabs.tsx",
+    "components/nearby/CategoryChip.tsx",
+    "components/map/FilterPanel.tsx",
+    "components/auth/TicketHeader.tsx",
+    "screens/auth/LoginScreen.tsx",
+    "screens/auth/LoginEmailScreen.tsx",
+    "screens/auth/RegisterStep1Screen.tsx",
+    "components/nearby/BusinessCard.tsx"
+  ]
+}

@@ -7,17 +7,18 @@ import { IconStarFilled } from '@tabler/icons-react-native';
 
 import { ticket } from '../../theme/ticket';
 import { loginFont } from '../../theme/loginFonts';
+import { LABEL_TEXT_CAP } from '../../theme/textScale';
 
 export function TicketHeader() {
   const { t } = useTranslation('auth');
   return (
     <View style={styles.row}>
       <View style={styles.logo} accessible accessibilityRole="image" accessibilityLabel="JChat">
-        <Text style={styles.logoJ}>J</Text>
+        <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.logoJ}>J</Text>
         <IconStarFilled size={12} color={ticket.brandAccent} style={styles.star} />
-        <Text style={styles.wordmark}>JChat</Text>
+        <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.wordmark}>JChat</Text>
       </View>
-      <Text style={styles.label} accessibilityElementsHidden importantForAccessibility="no">
+      <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.label} accessibilityElementsHidden importantForAccessibility="no">
         {t('ticket.label')}
       </Text>
     </View>
@@ -25,7 +26,7 @@ export function TicketHeader() {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },
+  row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', rowGap: 6, columnGap: 12, marginBottom: 18 },
   logo: { flexDirection: 'row', alignItems: 'center' },
   logoJ: { fontFamily: loginFont.title, fontSize: 30, lineHeight: 34, color: ticket.brandAccent },
   star: { marginLeft: 1, marginTop: -10 },

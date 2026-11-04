@@ -1178,7 +1178,7 @@ const styles = StyleSheet.create({
   },
   qtyBadge: {
     width: 26,
-    height: 26,
+    minHeight: 26,
     borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',

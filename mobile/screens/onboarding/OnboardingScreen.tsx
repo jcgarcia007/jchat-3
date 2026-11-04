@@ -422,7 +422,7 @@ const styles = StyleSheet.create({
   /** Shared button shape — used for both solid and gradient variants */
   ctaButton: {
     width: 280,
-    height: 52,
+    minHeight: 52,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',

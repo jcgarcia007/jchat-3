@@ -782,7 +782,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   btnMain: {
-    height: 50,
+    minHeight: 50,
     borderRadius: 14,
     flexDirection: 'row',
     alignItems: 'center',

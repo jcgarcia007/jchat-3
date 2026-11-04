@@ -33,7 +33,7 @@ test('row 1: live dot (success token), name, unread badge (danger, only when > 0
 });
 
 test('row 2: "Volver al chat" (brand, flex 1, 30 pt, hitSlop to 44) and "Salir" (glass, danger text, 60 x 30)', () => {
-  assert.match(dock, /backButton: \{ flex: 1, height: BUTTON_HEIGHT/);
+  assert.match(dock, /backButton: \{ flex: 1, minHeight: BUTTON_HEIGHT/);
   assert.match(dock, /const BUTTON_HEIGHT = 30;/);
   assert.match(dock, /const LEAVE_WIDTH = 60;/);
   assert.match(dock, /backgroundColor: palette\.brandFill/);

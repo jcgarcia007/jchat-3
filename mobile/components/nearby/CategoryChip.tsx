@@ -3,6 +3,7 @@ import { StyleSheet, Text, TouchableOpacity } from 'react-native';
 
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
+import { LABEL_TEXT_CAP } from '../../theme/textScale';
 
 interface CategoryChipProps {
   active: boolean;
@@ -26,7 +27,7 @@ export default function CategoryChip({ active, label, onPress }: CategoryChipPro
         },
       ]}
     >
-      <Text style={[styles.label, { color: active ? palette.bgSurfaceLight : colors.textSecondary }]}>
+      <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[styles.label, { color: active ? palette.bgSurfaceLight : colors.textSecondary }]}>
         {label}
       </Text>
     </TouchableOpacity>

@@ -847,7 +847,7 @@ const styles = StyleSheet.create({
   },
   stepperValue: {
     minWidth: 48,
-    height: 36,
+    minHeight: 36,
     borderTopWidth: 1,
     borderBottomWidth: 1,
     borderLeftWidth: 0,

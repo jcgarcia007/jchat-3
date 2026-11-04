@@ -23,6 +23,7 @@ import ConversationList from '../../components/dms/ConversationList';
 import SwipeToDelete from '../../components/common/SwipeToDelete';
 import { ArrivalFade, Skeleton, SkeletonGroup, useDelayedLoading } from '../../components/common/Skeleton';
 import { useNotifications } from '../../hooks/useNotifications';
+import { LABEL_TEXT_CAP } from '../../theme/textScale';
 import {
   NOTIFICATION_ICONS,
   openNotificationRoute,
@@ -189,12 +190,12 @@ export default function MessagesScreen() {
           >
             <IconArrowLeft size={24} color={colors.textPrimary} strokeWidth={2} />
           </Pressable>
-          <Text style={[styles.title, styles.webTitle, { color: colors.textPrimary }]}>
+          <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} numberOfLines={1} adjustsFontSizeToFit style={[styles.title, styles.webTitle, { color: colors.textPrimary }]}>
             {translation.t(notificationsFirst ? 'messages.notificationsTitle' : 'inbox.title')}
           </Text>
         </View>
       ) : (
-        <Text style={[styles.title, { color: colors.textPrimary }]}>{translation.t('inbox.title')}</Text>
+        <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} numberOfLines={1} adjustsFontSizeToFit style={[styles.title, { color: colors.textPrimary }]}>{translation.t('inbox.title')}</Text>
       )}
 
       <View

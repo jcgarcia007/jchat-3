@@ -26,6 +26,7 @@ import { EntryVenueCard } from '../../components/auth/EntryVenueCard';
 import { TicketPerforation } from '../../components/auth/TicketPerforation';
 import { TicketTitle } from '../../components/auth/TicketReveal';
 import { showAlert } from '../../utils/dialog';
+import { LABEL_TEXT_CAP } from '../../theme/textScale';
 
 type Nav = NativeStackNavigationProp<AuthStackParamList, 'LoginEmail'>;
 
@@ -118,7 +119,7 @@ export default function LoginEmailScreen() {
       <EntryVenueCard variant="ticket" />
       <TicketTitle text={t('ticket.emailTitle')} />
 
-      <Text style={styles.fieldLabel}>{t('ticket.emailLabel')}</Text>
+      <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.fieldLabel}>{t('ticket.emailLabel')}</Text>
       <TextInput
         style={styles.input}
         value={email}
@@ -134,7 +135,7 @@ export default function LoginEmailScreen() {
         accessibilityLabel={t('login.emailA11y')}
       />
 
-      <Text style={styles.fieldLabel}>{t('ticket.passwordLabel')}</Text>
+      <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.fieldLabel}>{t('ticket.passwordLabel')}</Text>
       <View style={styles.passwordRow}>
         <TextInput
           style={[styles.input, styles.passwordInput]}
@@ -170,7 +171,7 @@ export default function LoginEmailScreen() {
         accessibilityRole="button"
         accessibilityLabel={t('ticket.forgot')}
       >
-        <Text style={styles.link}>{t('ticket.forgot')}</Text>
+        <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.link}>{t('ticket.forgot')}</Text>
       </Pressable>
 
       <Pressable
@@ -181,20 +182,20 @@ export default function LoginEmailScreen() {
         accessibilityState={{ disabled: loading, busy: loading }}
         accessibilityLabel={t('ticket.signIn')}
       >
-        <Text style={styles.primaryText}>{loading ? t('ticket.signingIn') : t('ticket.signIn')}</Text>
+        <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.primaryText}>{loading ? t('ticket.signingIn') : t('ticket.signIn')}</Text>
       </Pressable>
 
       <TicketPerforation />
 
       <View style={styles.newHere}>
-        <Text style={styles.newHereText}>{t('ticket.newHere')} </Text>
+        <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.newHereText}>{t('ticket.newHere')} </Text>
         <Pressable
           onPress={openRegistration}
           hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
           accessibilityRole="button"
           accessibilityLabel={t('ticket.createAccount')}
         >
-          <Text style={styles.link}>{t('ticket.createAccount')}</Text>
+          <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.link}>{t('ticket.createAccount')}</Text>
         </Pressable>
       </View>
     </TicketShell>

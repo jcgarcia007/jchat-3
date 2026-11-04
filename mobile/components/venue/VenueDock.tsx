@@ -31,6 +31,7 @@ import { useAppWindow } from '../../utils/appWindow';
 import { useReportHomeBarInset } from './HomeBarInset';
 
 import type { VenueBarPlacement } from '../../navigation/venueBarPlacement';
+import { LABEL_TEXT_CAP } from '../../theme/textScale';
 
 export type VenueDockPlacement = VenueBarPlacement;
 
@@ -122,11 +123,11 @@ export function VenueDock({ placement, onOpenChat, onOpenOrder, onOpenOrders }: 
     <View testID="venue-dock" pointerEvents="box-none" style={[styles.wrap, { bottom }]}>
       {toast ? (
         <View accessibilityLiveRegion="polite" style={[styles.toast, { backgroundColor: c.bgElevated, borderColor: c.borderSubtle }]}>
-          <Text style={[styles.toastText, { color: c.textPrimary }]} numberOfLines={1}>
+          <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[styles.toastText, { color: c.textPrimary }]} numberOfLines={1}>
             {t('venueSession.movedToNotifications')}
           </Text>
           <Pressable onPress={undo} accessibilityRole="button" accessibilityLabel={t('venueSession.undo')} hitSlop={8} style={styles.toastUndo}>
-            <Text style={[styles.toastUndoLabel, { color: c.brandText }]}>{t('venueSession.undo')}</Text>
+            <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[styles.toastUndoLabel, { color: c.brandText }]}>{t('venueSession.undo')}</Text>
           </Pressable>
         </View>
       ) : null}
@@ -137,17 +138,17 @@ export function VenueDock({ placement, onOpenChat, onOpenOrder, onOpenOrders }: 
               <View role="group" aria-label={t('venueSession.here', { business: session.businessName })}>
                 <View style={styles.row1}>
                   <View style={[styles.liveDot, { backgroundColor: palette.success }]} />
-                  <Text testID="venue-dock-name" style={[styles.name, { color: c.textPrimary }]} numberOfLines={1}>
+                  <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} testID="venue-dock-name" style={[styles.name, { color: c.textPrimary }]} numberOfLines={1}>
                     {session.businessName}
                   </Text>
                   {unreadMessages > 0 ? (
                     <View testID="venue-dock-unread" accessibilityLabel={t('venueSession.unreadA11y', { count: unreadMessages })} style={[styles.badge, { backgroundColor: palette.danger }]}>
-                      <Text style={[styles.badgeText, { color: palette.onBrand }]}>{unreadMessages > 99 ? '99+' : unreadMessages}</Text>
+                      <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[styles.badgeText, { color: palette.onBrand }]}>{unreadMessages > 99 ? '99+' : unreadMessages}</Text>
                     </View>
                   ) : null}
                   <View style={styles.spacer} />
                   {people !== null ? (
-                    <Text testID="venue-dock-people" style={[styles.people, { color: c.textSecondary }]} numberOfLines={1}>
+                    <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} testID="venue-dock-people" style={[styles.people, { color: c.textSecondary }]} numberOfLines={1}>
                       {t('venueSession.people', { count: people })}
                     </Text>
                   ) : null}
@@ -161,7 +162,7 @@ export function VenueDock({ placement, onOpenChat, onOpenOrder, onOpenOrders }: 
                     accessibilityLabel={t('venueSession.backA11y', { business: session.businessName })}
                     style={({ pressed }) => [styles.backButton, { backgroundColor: palette.brandFill, opacity: pressed ? 0.85 : 1 }]}
                   >
-                    <Text style={[styles.backLabel, { color: palette.onBrand }]} numberOfLines={1}>{t('venueSession.dockBack')}</Text>
+                    <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[styles.backLabel, { color: palette.onBrand }]} numberOfLines={1}>{t('venueSession.dockBack')}</Text>
                   </Pressable>
                   <Pressable
                     testID="venue-dock-leave"
@@ -171,7 +172,7 @@ export function VenueDock({ placement, onOpenChat, onOpenOrder, onOpenOrders }: 
                     accessibilityLabel={t('venueSession.dockLeaveA11y', { business: session.businessName })}
                     style={({ pressed }) => [styles.leaveButton, { backgroundColor: c.glassButtonFill, borderColor: c.glassButtonBorder, opacity: pressed ? 0.7 : 1 }]}
                   >
-                    <Text style={[styles.leaveLabel, { color: c.dangerText }]} numberOfLines={1}>{t('venueSession.dockLeave')}</Text>
+                    <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[styles.leaveLabel, { color: c.dangerText }]} numberOfLines={1}>{t('venueSession.dockLeave')}</Text>
                   </Pressable>
                 </View>
               </View>
@@ -181,7 +182,7 @@ export function VenueDock({ placement, onOpenChat, onOpenOrder, onOpenOrders }: 
                 <SwipeAway onSwiped={moveOrdersToNotifications} reduceMotion={reduceMotion}>
                   <View testID="venue-dock-orders" style={styles.ordersRow}>
                     <IconReceipt size={18} color={palette.brand} strokeWidth={2} />
-                    <Text style={[styles.ordersText, { color: c.textPrimary }]} numberOfLines={1}>{orderText}</Text>
+                    <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[styles.ordersText, { color: c.textPrimary }]} numberOfLines={1}>{orderText}</Text>
                     <Pressable
                       onPress={() => (single ? onOpenOrder(single.id) : onOpenOrders())}
                       hitSlop={{ top: 7, bottom: 7, left: 4, right: 4 }}
@@ -191,7 +192,7 @@ export function VenueDock({ placement, onOpenChat, onOpenOrder, onOpenOrders }: 
                       onAccessibilityAction={() => moveOrdersToNotifications()}
                       style={({ pressed }) => [styles.viewButton, { backgroundColor: palette.brandFill, opacity: pressed ? 0.85 : 1 }]}
                     >
-                      <Text style={[styles.backLabel, { color: palette.onBrand }]}>{t('venueSession.view')}</Text>
+                      <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[styles.backLabel, { color: palette.onBrand }]}>{t('venueSession.view')}</Text>
                     </Pressable>
                   </View>
                 </SwipeAway>
@@ -338,15 +339,15 @@ const styles = StyleSheet.create({
   spacer: { flex: 1 },
   people: { fontSize: 12, fontWeight: '600' },
   row2: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 7 },
-  backButton: { flex: 1, height: BUTTON_HEIGHT, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  backButton: { flex: 1, minHeight: BUTTON_HEIGHT, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   backLabel: { fontSize: 13, fontWeight: '700' },
-  leaveButton: { width: LEAVE_WIDTH, height: BUTTON_HEIGHT, borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
+  leaveButton: { width: LEAVE_WIDTH, minHeight: BUTTON_HEIGHT, borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
   leaveLabel: { fontSize: 13, fontWeight: '700' },
   ordersDivided: { marginTop: 7, paddingTop: 7, borderTopWidth: StyleSheet.hairlineWidth },
   swipeClip: { overflow: 'hidden' },
   ordersRow: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: BUTTON_HEIGHT },
   ordersText: { flex: 1, fontSize: 13, fontWeight: '600' },
-  viewButton: { height: BUTTON_HEIGHT, minWidth: 56, paddingHorizontal: 14, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  viewButton: { minHeight: BUTTON_HEIGHT, minWidth: 56, paddingHorizontal: 14, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   toast: {
     minHeight: 44,
     flexDirection: 'row',

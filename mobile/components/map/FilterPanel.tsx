@@ -45,6 +45,7 @@ import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { usesKilometers } from '../../utils/distanceUnits';
 import type { CategoryOption } from '../../utils/categories';
+import { LABEL_TEXT_CAP } from '../../theme/textScale';
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
@@ -276,7 +277,7 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
             accessibilityRole="button"
             accessibilityLabel={t('filterPanel.searchCancel')}
           >
-            <Text style={[styles.searchCancel, { color: c.textSecondary }]}>{t('filterPanel.searchCancel')}</Text>
+            <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[styles.searchCancel, { color: c.textSecondary }]}>{t('filterPanel.searchCancel')}</Text>
           </Pressable>
         ) : null}
 
@@ -330,7 +331,7 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
               accessibilityLabel={chip.label}
             >
               {chip.icon}
-              <Text style={[styles.chipLabel, { color: isActive ? palette.bgSurfaceLight : c.textSecondary }]}>
+              <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[styles.chipLabel, { color: isActive ? palette.bgSurfaceLight : c.textSecondary }]}>
                 {chip.label}
               </Text>
             </TouchableOpacity>
@@ -342,7 +343,7 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
       {(resultCount != null || active) && (
         <View style={styles.metaRow}>
           {resultCount != null && (
-            <Text style={[styles.resultCount, { color: c.textSecondary }]}>
+            <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[styles.resultCount, { color: c.textSecondary }]}>
               {t('filterPanel.resultsCount', { count: resultCount })}
             </Text>
           )}
@@ -354,7 +355,7 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
               accessibilityLabel={t('filterPanel.resetFiltersA11y')}
             >
               <IconX size={11} color={c.textSecondary} />
-              <Text style={[styles.resetLabel, { color: c.textSecondary }]}>
+              <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[styles.resetLabel, { color: c.textSecondary }]}>
                 {t('filterPanel.reset')}
               </Text>
             </TouchableOpacity>
@@ -394,7 +395,7 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
 
           {/* Header */}
           <View style={styles.sheetHeader}>
-            <Text style={[styles.sheetTitle, { color: c.textPrimary }]}>
+            <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[styles.sheetTitle, { color: c.textPrimary }]}>
               {t('filterPanel.sheetTitle')}
             </Text>
             <Pressable
@@ -415,7 +416,7 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
 
             {/* ── Distance ──────────────────────────────────────────────────── */}
             <View style={styles.section}>
-              <Text style={[styles.sectionLabel, { color: c.textSecondary }]}>
+              <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[styles.sectionLabel, { color: c.textSecondary }]}>
                 {t('filterPanel.distanceSectionLabel')}
               </Text>
               <View style={styles.segmentedRow}>
@@ -439,7 +440,7 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
                       accessibilityLabel={distanceLabel(km)}
                       aria-checked={sel}
                     >
-                      <Text style={[styles.segmentedLabel, { color: sel ? palette.bgSurfaceLight : c.textPrimary }]}>
+                      <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[styles.segmentedLabel, { color: sel ? palette.bgSurfaceLight : c.textPrimary }]}>
                         {distanceLabel(km)}
                       </Text>
                     </TouchableOpacity>
@@ -447,7 +448,7 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
                 })}
               </View>
               {!hasLocation ? (
-                <Text style={[styles.sectionLabel, { color: c.textTertiary, marginTop: 8, textTransform: 'none' }]}>
+                <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[styles.sectionLabel, { color: c.textTertiary, marginTop: 8, textTransform: 'none' }]}>
                   {t('filterPanel.distanceNeedsLocation')}
                 </Text>
               ) : null}
@@ -461,7 +462,7 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
             <View style={[styles.section, styles.openNowRow]}>
               <View style={styles.openNowLeft}>
                 <IconClock size={16} color={palette.success} />
-                <Text style={[styles.openNowLabel, { color: c.textPrimary }]}>
+                <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[styles.openNowLabel, { color: c.textPrimary }]}>
                   {t('filterPanel.openNowOnly')}
                 </Text>
               </View>
@@ -500,7 +501,7 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
               accessibilityRole="button"
               accessibilityLabel={t('filterPanel.resetAllFiltersA11y')}
             >
-              <Text style={[styles.footerResetLabel, { color: c.textSecondary }]}>
+              <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[styles.footerResetLabel, { color: c.textSecondary }]}>
                 {t('filterPanel.resetAll')}
               </Text>
             </TouchableOpacity>
@@ -511,7 +512,7 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
               accessibilityRole="button"
               accessibilityLabel={t('filterPanel.applyFiltersA11y')}
             >
-              <Text style={styles.footerApplyLabel}>
+              <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.footerApplyLabel}>
                 {t('filterPanel.apply')}
               </Text>
             </TouchableOpacity>
@@ -542,7 +543,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 0.5,
     paddingHorizontal: 10,
-    height: 44,
+    minHeight: 44,
     gap: 6,
   },
   searchIcon: {
@@ -555,7 +556,7 @@ const styles = StyleSheet.create({
   },
   advancedBtn: {
     width: 32,
-    height: 32,
+    minHeight: 32,
     borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
@@ -677,7 +678,7 @@ const styles = StyleSheet.create({
   },
   segmentedBtn: {
     flex: 1,
-    height: 38,
+    minHeight: 38,
     borderRadius: 10,
     borderWidth: 0.5,
     alignItems: 'center',
@@ -729,7 +730,7 @@ const styles = StyleSheet.create({
   },
   footerResetBtn: {
     flex: 1,
-    height: 46,
+    minHeight: 46,
     borderRadius: 12,
     borderWidth: 0.5,
     alignItems: 'center',
@@ -741,7 +742,7 @@ const styles = StyleSheet.create({
   },
   footerApplyBtn: {
     flex: 2,
-    height: 46,
+    minHeight: 46,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',

@@ -48,6 +48,7 @@ import { palette } from '../../theme/tokens';
 import type { UserAnchor } from './MessageBubble';
 import { getInitials } from '../../utils/initials';
 import { BusinessIcon } from '../common/BusinessIcon';
+import { LABEL_TEXT_CAP } from '../../theme/textScale';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -138,7 +139,7 @@ function UserAvatar({ user, theme, onPressUser }: UserAvatarProps) {
         />
       ) : (
         <View style={[avatarStyles.img, avatarStyles.fallback, { backgroundColor: theme.bubbleInBg, borderColor: theme.border }]}>
-          <Text style={[avatarStyles.initial, { color: theme.bubbleInText }]}>
+          <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[avatarStyles.initial, { color: theme.bubbleInText }]}>
             {getInitials(displayName)}
           </Text>
         </View>
@@ -207,10 +208,10 @@ export function ChatTopBar({
         <View style={topBarStyles.titleArea}>
           <BusinessIcon iconUrl={business.icon_url} emoji={business.icon_emoji} size={28} radius={8} emojiStyle={topBarStyles.emoji} />
           <View style={topBarStyles.titleText}>
-            <Text style={[topBarStyles.businessName, { color: theme.bubbleInText }]} numberOfLines={1}>
+            <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[topBarStyles.businessName, { color: theme.bubbleInText }]} numberOfLines={1}>
               {business.name}
             </Text>
-            <Text style={[topBarStyles.activeCount, { color: theme.tabInactive }]}>
+            <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[topBarStyles.activeCount, { color: theme.tabInactive }]}>
               {t('topBar.peopleHere', { count: activeCount })}
             </Text>
           </View>
@@ -247,7 +248,7 @@ export function ChatTopBar({
             <IconBell size={22} color={theme.tabActive} />
             {unreadCount > 0 ? (
               <View style={[topBarStyles.badge, { backgroundColor: palette.danger }]}>
-                <Text style={[topBarStyles.badgeText, { color: palette.onBrand }]}>
+                <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[topBarStyles.badgeText, { color: palette.onBrand }]}>
                   {unreadCount > 9 ? '9+' : String(unreadCount)}
                 </Text>
               </View>
@@ -382,7 +383,7 @@ const topBarStyles = StyleSheet.create({
     top: 3,
     right: 0,
     minWidth: 18,
-    height: 18,
+    minHeight: 18,
     borderRadius: 9,
     paddingHorizontal: 4,
     alignItems: 'center',

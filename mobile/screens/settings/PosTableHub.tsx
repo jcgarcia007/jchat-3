@@ -1795,7 +1795,7 @@ const styles = StyleSheet.create({
   draftControls: { flexDirection: 'row', gap: 4 },
   draftBtn: {
     width: 26,
-    height: 26,
+    minHeight: 26,
     borderRadius: 13,
     borderWidth: 1,
     alignItems: 'center',
@@ -1822,7 +1822,7 @@ const styles = StyleSheet.create({
   },
   orderActionBtn: {
     flex: 1,
-    height: 38,
+    minHeight: 38,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1845,7 +1845,7 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     flex: 1,
-    height: 46,
+    minHeight: 46,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',

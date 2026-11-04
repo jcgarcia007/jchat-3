@@ -43,6 +43,7 @@ import { EntryVenueCard } from '../../components/auth/EntryVenueCard';
 import { TicketPerforation } from '../../components/auth/TicketPerforation';
 import { TicketTitle } from '../../components/auth/TicketReveal';
 import { TicketStep } from '../../components/auth/TicketStep';
+import { LABEL_TEXT_CAP } from '../../theme/textScale';
 
 type RegisterStep1Nav = NativeStackNavigationProp<AuthStackParamList, 'RegisterStep1'>;
 type RegisterStep1Route = RouteProp<AuthStackParamList, 'RegisterStep1'>;
@@ -268,12 +269,12 @@ export default function RegisterStep1Screen() {
       <EntryVenueCard variant="ticket" />
       <TicketStep step={1} />
       <TicketTitle text={t('register.step1Title')} />
-      <Text style={styles.subtitle}>{t('register.step1Subtitle')}</Text>
+      <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.subtitle}>{t('register.step1Subtitle')}</Text>
 
       {/* ── Form ───────────────────────────────────────────────────── */}
 
       {/* Full name */}
-      <Text style={styles.fieldLabel}>{t('register.nameLabel')}</Text>
+      <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.fieldLabel}>{t('register.nameLabel')}</Text>
       <TextInput
         style={[styles.input, errors.name ? styles.inputError : null]}
         placeholder={t('register.namePlaceholder')}
@@ -286,10 +287,10 @@ export default function RegisterStep1Screen() {
         onBlur={() => markTouched('name')}
         accessibilityLabel={t('register.nameA11y')}
       />
-      {errors.name ? <Text style={styles.errorText}>{t(errors.name)}</Text> : null}
+      {errors.name ? <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.errorText}>{t(errors.name)}</Text> : null}
 
       {/* Email */}
-      <Text style={styles.fieldLabel}>{t('register.emailLabel')}</Text>
+      <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.fieldLabel}>{t('register.emailLabel')}</Text>
       <TextInput
         style={[styles.input, errors.email ? styles.inputError : null]}
         placeholder={t('register.emailPlaceholder')}
@@ -305,10 +306,10 @@ export default function RegisterStep1Screen() {
         onBlur={() => markTouched('email')}
         accessibilityLabel={t('register.emailA11y')}
       />
-      {errors.email ? <Text style={styles.errorText}>{t(errors.email)}</Text> : null}
+      {errors.email ? <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.errorText}>{t(errors.email)}</Text> : null}
 
       {/* Password */}
-      <Text style={styles.fieldLabel}>{t('register.passwordLabel')}</Text>
+      <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.fieldLabel}>{t('register.passwordLabel')}</Text>
       <View style={styles.passwordRow}>
         <TextInput
           ref={passwordInputRef}
@@ -365,16 +366,16 @@ export default function RegisterStep1Screen() {
                 ) : (
                   <IconCircle size={14} color={ticket.ticketInkMuted} strokeWidth={1.75} />
                 )}
-                <Text style={[styles.ruleText, met && styles.ruleTextMet]}>{label}</Text>
+                <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[styles.ruleText, met && styles.ruleTextMet]}>{label}</Text>
               </View>
             );
           })}
         </View>
       ) : null}
-      {errors.password ? <Text style={styles.errorText}>{t(errors.password)}</Text> : null}
+      {errors.password ? <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.errorText}>{t(errors.password)}</Text> : null}
 
       {/* Confirm password */}
-      <Text style={styles.fieldLabel}>{t('register.confirmLabel')}</Text>
+      <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.fieldLabel}>{t('register.confirmLabel')}</Text>
       <View style={styles.passwordRow}>
         <TextInput
           style={[styles.input, styles.passwordInput, errors.confirmPassword ? styles.inputError : null]}
@@ -407,7 +408,7 @@ export default function RegisterStep1Screen() {
           )}
         </Pressable>
       </View>
-      {errors.confirmPassword ? <Text style={styles.errorText}>{t(errors.confirmPassword)}</Text> : null}
+      {errors.confirmPassword ? <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.errorText}>{t(errors.confirmPassword)}</Text> : null}
 
       {/* ── Continue button ────────────────────────────────────────── */}
       <Pressable
@@ -421,14 +422,14 @@ export default function RegisterStep1Screen() {
         {checking ? (
           <Spinner color={ticket.ticketButtonText} />
         ) : (
-          <Text style={styles.primaryText}>{t('register.continue')}</Text>
+          <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.primaryText}>{t('register.continue')}</Text>
         )}
       </Pressable>
 
       <TicketPerforation />
 
       {/* ── Social signup (after the form) ─────────────────────────── */}
-      <Text style={styles.socialTitle}>{t('register.dividerSocial')}</Text>
+      <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.socialTitle}>{t('register.dividerSocial')}</Text>
       <View style={styles.socialRow}>
         {/* iOS: the official native Apple button (guideline 4.8 + HIG); Android / web keep the text button. */}
         <AppleAuthSlot
@@ -444,7 +445,7 @@ export default function RegisterStep1Screen() {
               accessibilityRole="button"
               accessibilityLabel={t('register.appleA11y')}
             >
-              <Text style={styles.socialText}>{t('ticket.apple')}</Text>
+              <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.socialText}>{t('ticket.apple')}</Text>
             </Pressable>
           }
         />
@@ -454,20 +455,20 @@ export default function RegisterStep1Screen() {
           accessibilityRole="button"
           accessibilityLabel={t('register.googleA11y')}
         >
-          <Text style={styles.socialText}>{t('ticket.google')}</Text>
+          <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.socialText}>{t('ticket.google')}</Text>
         </Pressable>
       </View>
 
       {/* ── Already have an account ───────────────────────────────── */}
       <View style={styles.haveAccount}>
-        <Text style={styles.haveAccountText}>{t('register.haveAccount')}</Text>
+        <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.haveAccountText}>{t('register.haveAccount')}</Text>
         <Pressable
           onPress={() => navigation.navigate('Login')}
           hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
           accessibilityRole="link"
           accessibilityLabel={t('register.login')}
         >
-          <Text style={styles.link}>{t('register.login')}</Text>
+          <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.link}>{t('register.login')}</Text>
         </Pressable>
       </View>
     </TicketShell>
@@ -504,7 +505,7 @@ const styles = StyleSheet.create({
     color: ticket.ticketInkMuted,
   },
   input: {
-    height: 52,
+    minHeight: 52,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: ticket.ticketFieldBorder,
@@ -524,7 +525,7 @@ const styles = StyleSheet.create({
   ruleText: { fontFamily: loginFont.text, fontSize: 12, color: ticket.ticketInkMuted },
   ruleTextMet: { fontFamily: loginFont.textSemi, color: ticket.ticketInk },
   primary: {
-    height: 54,
+    minHeight: 54,
     borderRadius: 14,
     marginTop: 22,
     alignItems: 'center',
@@ -544,7 +545,7 @@ const styles = StyleSheet.create({
   socialRow: { flexDirection: 'row', gap: 10, marginTop: 12 },
   social: {
     flex: 1,
-    height: 50,
+    minHeight: 50,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: ticket.ticketFieldBorder,

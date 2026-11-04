@@ -19,6 +19,7 @@
 
 import React, { useCallback, useRef, useState } from 'react';
 import {
+  PixelRatio,
   Platform,
   Pressable,
   StyleSheet,
@@ -46,6 +47,7 @@ import { pickPhotoFromLibrary } from '../../services/photoPicker';
 import { checkMessage } from '../../utils/messageFilter';
 import { showAlert } from '../../utils/dialog';
 import { useComposerBottomPadding } from '../../hooks/useComposerBottomPadding';
+import { CONTENT_TEXT_CAP } from '../../theme/textScale';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -90,6 +92,7 @@ export function ChatInput({
   const [attachmentOpen, setAttachmentOpen] = useState(false);
   const [recordingVoice, setRecordingVoice] = useState(false);
   const inputRef = useRef<TextInput>(null);
+  const fontScale = Math.min(PixelRatio.getFontScale(), CONTENT_TEXT_CAP);
   // Web only (native: nothing): the box starts as tall as the round buttons (iconBtn: 44) and grows to maxHeight with the text.
   const fit = useComposerFit(inputRef, text, { minHeight: 44, maxHeight: 120, lineHeight: 20, borderWidth: 1 });
   // Closed keyboard: the bar (and its background) clears the home indicator; open keyboard: 8.
@@ -276,6 +279,8 @@ export function ChatInput({
           style={[
             barStyles.input,
             { backgroundColor: theme.inputBg, color: theme.bubbleInText, borderColor: theme.border },
+            // DT-1: the fixed 20 / 120 follow the (capped) system font scale so a large font is not clipped.
+            Platform.OS === 'web' ? null : { lineHeight: Math.round(20 * fontScale), maxHeight: Math.round(120 * fontScale) },
             fit.style,
           ]}
           {...fit.inputProps}

@@ -9,6 +9,7 @@ import { type NearbyBusiness } from '../../services/nearby';
 import { getOpenStatus } from '../../utils/hours';
 import { BusinessIcon } from '../common/BusinessIcon';
 import { Skeleton } from '../common/Skeleton';
+import { LABEL_TEXT_CAP } from '../../theme/textScale';
 
 interface BusinessCardProps {
   item: NearbyBusiness;
@@ -28,16 +29,16 @@ export default function BusinessCard({ item, onEnter }: BusinessCardProps) {
       </View>
       <View style={styles.content}>
         <View style={styles.titleRow}>
-          <Text numberOfLines={1} style={[styles.name, { color: colors.textPrimary }]}>
+          <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} numberOfLines={1} style={[styles.name, { color: colors.textPrimary }]}>
             {item.name}
           </Text>
           <View style={[styles.badge, { backgroundColor: colors.bgElevated }]}>
-            <Text style={[styles.badgeText, { color: status === 'open' ? colors.success : status === 'closed' ? colors.dangerText : colors.textSecondary }]}>
+            <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[styles.badgeText, { color: status === 'open' ? colors.success : status === 'closed' ? colors.dangerText : colors.textSecondary }]}>
               {nearbyTranslation.t(status === 'open' ? 'openBadge' : status === 'closed' ? 'closedBadge' : 'hoursUnavailable')}
             </Text>
           </View>
         </View>
-        <Text numberOfLines={1} style={[styles.category, { color: colors.textSecondary }]}>
+        <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} numberOfLines={1} style={[styles.category, { color: colors.textSecondary }]}>
           {item.category}
         </Text>
         <View style={styles.bottomRow}>
@@ -45,13 +46,13 @@ export default function BusinessCard({ item, onEnter }: BusinessCardProps) {
             {item.distanceLabel ? (
               <View style={styles.stat}>
                 <IconMapPin size={12} color={colors.textTertiary} strokeWidth={2} />
-                <Text style={[styles.statText, { color: colors.textTertiary }]}>{item.distanceLabel}</Text>
+                <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[styles.statText, { color: colors.textTertiary }]}>{item.distanceLabel}</Text>
               </View>
             ) : null}
             {item.room_count > 0 ? (
               <View style={styles.stat}>
                 <IconMessage size={12} color={colors.textTertiary} strokeWidth={2} />
-                <Text style={[styles.statText, { color: colors.textTertiary }]}>
+                <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[styles.statText, { color: colors.textTertiary }]}>
                   {nearbyTranslation.t('roomCount', { count: item.room_count })}
                 </Text>
               </View>
@@ -59,7 +60,7 @@ export default function BusinessCard({ item, onEnter }: BusinessCardProps) {
             {item.active_users != null ? (
               <View style={styles.stat}>
                 <IconUsers size={12} color={colors.textTertiary} strokeWidth={2} />
-                <Text style={[styles.statText, { color: colors.textTertiary }]}>
+                <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[styles.statText, { color: colors.textTertiary }]}>
                   {nearbyTranslation.t('activeUsersCount', { count: item.active_users })}
                 </Text>
               </View>
@@ -71,7 +72,7 @@ export default function BusinessCard({ item, onEnter }: BusinessCardProps) {
             onPress={() => onEnter(item)}
             style={[styles.enter, { backgroundColor: colors.brandFill }]}
           >
-            <Text style={[styles.enterText, { color: palette.bgSurfaceLight }]}>
+            <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[styles.enterText, { color: palette.bgSurfaceLight }]}>
               {mapTranslation.t('nearbyEnter')}
             </Text>
           </TouchableOpacity>
@@ -79,7 +80,7 @@ export default function BusinessCard({ item, onEnter }: BusinessCardProps) {
         {status === 'closed' ? (
           <View style={styles.closedNote} accessible accessibilityRole="text" accessibilityLabel={nearbyTranslation.t('closedNowA11y')}>
             <IconClock size={13} color={colors.warningText} strokeWidth={2} />
-            <Text style={[styles.closedNoteText, { color: colors.warningText }]}>{nearbyTranslation.t('closedNow')}</Text>
+            <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[styles.closedNoteText, { color: colors.warningText }]}>{nearbyTranslation.t('closedNow')}</Text>
           </View>
         ) : null}
       </View>

@@ -29,6 +29,7 @@ import { TicketTitle, useTicketCascade } from '../../components/auth/TicketRevea
 import { showAlert } from '../../utils/dialog';
 import { readAuthCode } from '../../utils/authUrl';
 import { AppleAuthSlot } from '../../components/auth/AppleAuthSlot';
+import { LABEL_TEXT_CAP } from '../../theme/textScale';
 
 type LoginNav = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
@@ -112,7 +113,7 @@ export default function LoginScreen() {
         <TicketTitle text={t('ticket.title')} reveal={cascade.reveal} />
       </Animated.View>
       <Animated.View style={cascade.blockStyle(2)}>
-        <Text style={styles.subtitle}>{t('ticket.subtitle')}</Text>
+        <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.subtitle}>{t('ticket.subtitle')}</Text>
       </Animated.View>
 
       <Animated.View style={cascade.blockStyle(3)}>
@@ -123,7 +124,7 @@ export default function LoginScreen() {
         accessibilityLabel={t('ticket.continueEmail')}
       >
         <IconMail size={22} color={ticket.ticketButtonText} strokeWidth={1.75} />
-        <Text style={styles.primaryText}>{t('ticket.continueEmail')}</Text>
+        <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.primaryText}>{t('ticket.continueEmail')}</Text>
         <IconArrowRight size={22} color={ticket.ticketButtonText} strokeWidth={1.75} />
       </Pressable>
       </Animated.View>
@@ -146,7 +147,7 @@ export default function LoginScreen() {
               accessibilityRole="button"
               accessibilityLabel={t('login.appleA11y')}
             >
-              <Text style={styles.socialText}>{t('ticket.apple')}</Text>
+              <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.socialText}>{t('ticket.apple')}</Text>
             </Pressable>
           }
         />
@@ -157,7 +158,7 @@ export default function LoginScreen() {
           accessibilityRole="button"
           accessibilityLabel={t('login.googleA11y')}
         >
-          <Text style={styles.socialText}>{t('ticket.google')}</Text>
+          <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.socialText}>{t('ticket.google')}</Text>
         </Pressable>
       </Animated.View>
 
@@ -169,14 +170,14 @@ export default function LoginScreen() {
       <TicketPerforation />
 
       <View style={styles.newHere}>
-        <Text style={styles.newHereText}>{t('ticket.newHere')} </Text>
+        <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.newHereText}>{t('ticket.newHere')} </Text>
         <Pressable
           onPress={openRegistration}
           hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
           accessibilityRole="button"
           accessibilityLabel={t('ticket.createAccount')}
         >
-          <Text style={styles.link}>{t('ticket.createAccount')}</Text>
+          <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.link}>{t('ticket.createAccount')}</Text>
         </Pressable>
       </View>
       </Animated.View>
@@ -194,7 +195,7 @@ const styles = StyleSheet.create({
     color: ticket.ticketInkMuted,
   },
   primary: {
-    height: 56,
+    minHeight: 56,
     borderRadius: 14,
     paddingHorizontal: 18,
     flexDirection: 'row',
@@ -206,7 +207,7 @@ const styles = StyleSheet.create({
   socialRow: { flexDirection: 'row', gap: 10, marginTop: 12 },
   social: {
     flex: 1,
-    height: 50,
+    minHeight: 50,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: ticket.ticketFieldBorder,
