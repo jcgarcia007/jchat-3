@@ -252,6 +252,12 @@ function LoginForm() {
           />
         </div>
 
+        <div style={{ textAlign: "right", margin: "-12px 0 16px" }}>
+          <a href="/forgot-password" style={{ color: "var(--color-brand)", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
+            {t("forgot")}
+          </a>
+        </div>
+
         <button
           type="submit"
           className="auth-primary"

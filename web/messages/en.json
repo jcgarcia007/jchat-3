@@ -3764,7 +3764,8 @@
       "submitting": "Signing in…",
       "google": "Continue with Google",
       "noAccount": "Don't have an account?",
-      "signUp": "Sign up"
+      "signUp": "Sign up",
+      "forgot": "Forgot your password?"
     },
     "register": {
       "brandSubtitle": "Business dashboard",
@@ -4062,5 +4063,42 @@
     "doneTitle": "Your account has been deleted",
     "doneBody": "Your account and personal data were deleted and we signed you out. Thanks for trying JChat.",
     "goHome": "Back to home"
+  },
+  "passwordRecovery": {
+    "forgotTitle": "Reset your password",
+    "forgotSubtitle": "Enter your email and we'll send you a 6-digit code.",
+    "emailLabel": "Email",
+    "emailPlaceholder": "you@example.com",
+    "sendCode": "Send code",
+    "sending": "Sending…",
+    "sentGeneric": "If an account exists for that email, we sent a 6-digit code. It can take a minute to arrive; check your spam folder too.",
+    "haveCode": "I have my code",
+    "resendIn": "You can request another code in {seconds} s.",
+    "resendNow": "Send another code",
+    "invalidEmail": "Please enter a valid email address.",
+    "rateLimited": "Please wait a moment before requesting another code.",
+    "captchaFailed": "We couldn't verify you're human. Please try again.",
+    "genericError": "We couldn't send the code right now. Please try again in a moment.",
+    "backToLogin": "Back to sign in",
+    "resetTitle": "Set a new password",
+    "resetSubtitle": "Enter the 6-digit code we emailed you and choose a new password.",
+    "codeLabel": "6-digit code",
+    "codePlaceholder": "000000",
+    "newLabel": "New password",
+    "newPlaceholder": "At least 8 characters",
+    "confirmLabel": "Confirm new password",
+    "confirmPlaceholder": "Repeat password",
+    "savePassword": "Save password",
+    "saving": "Saving…",
+    "tooShort": "Password must be at least 8 characters.",
+    "mismatch": "Passwords do not match.",
+    "codeInvalid": "The code is incorrect or has expired.",
+    "locked": "Too many wrong codes. Try again in {minutes} min, or request a new code.",
+    "updateError": "We couldn't save your new password. Please try again.",
+    "needCode": "Enter the 6-digit code.",
+    "newCode": "Request a new code",
+    "successTitle": "Password updated",
+    "successBody": "Your password was changed and your other sessions were signed out. You are signed in on this device.",
+    "continue": "Continue"
   }
 }

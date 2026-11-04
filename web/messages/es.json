@@ -3764,7 +3764,8 @@
       "submitting": "Iniciando sesión…",
       "google": "Continuar con Google",
       "noAccount": "¿No tienes una cuenta?",
-      "signUp": "Regístrate"
+      "signUp": "Regístrate",
+      "forgot": "¿Olvidaste tu contraseña?"
     },
     "register": {
       "brandSubtitle": "Panel de negocios",
@@ -4062,5 +4063,42 @@
     "doneTitle": "Tu cuenta fue eliminada",
     "doneBody": "Tu cuenta y tus datos personales se eliminaron y cerramos tu sesión. Gracias por probar JChat.",
     "goHome": "Volver al inicio"
+  },
+  "passwordRecovery": {
+    "forgotTitle": "Restablece tu contraseña",
+    "forgotSubtitle": "Escribe tu correo y te enviaremos un código de 6 dígitos.",
+    "emailLabel": "Correo electrónico",
+    "emailPlaceholder": "tu@ejemplo.com",
+    "sendCode": "Enviar código",
+    "sending": "Enviando…",
+    "sentGeneric": "Si existe una cuenta con ese correo, te enviamos un código de 6 dígitos. Puede tardar un minuto; revisa también el correo no deseado.",
+    "haveCode": "Ya tengo mi código",
+    "resendIn": "Podrás pedir otro código en {seconds} s.",
+    "resendNow": "Enviar otro código",
+    "invalidEmail": "Escribe un correo electrónico válido.",
+    "rateLimited": "Espera un momento antes de pedir otro código.",
+    "captchaFailed": "No pudimos verificar que eres una persona. Inténtalo de nuevo.",
+    "genericError": "No pudimos enviar el código ahora. Inténtalo de nuevo en un momento.",
+    "backToLogin": "Volver a iniciar sesión",
+    "resetTitle": "Elige una contraseña nueva",
+    "resetSubtitle": "Escribe el código de 6 dígitos que te enviamos por correo y elige una contraseña nueva.",
+    "codeLabel": "Código de 6 dígitos",
+    "codePlaceholder": "000000",
+    "newLabel": "Contraseña nueva",
+    "newPlaceholder": "Al menos 8 caracteres",
+    "confirmLabel": "Confirma la contraseña nueva",
+    "confirmPlaceholder": "Repite la contraseña",
+    "savePassword": "Guardar contraseña",
+    "saving": "Guardando…",
+    "tooShort": "La contraseña debe tener al menos 8 caracteres.",
+    "mismatch": "Las contraseñas no coinciden.",
+    "codeInvalid": "El código es incorrecto o ha caducado.",
+    "locked": "Demasiados códigos incorrectos. Inténtalo de nuevo en {minutes} min, o pide un código nuevo.",
+    "updateError": "No pudimos guardar tu contraseña nueva. Inténtalo de nuevo.",
+    "needCode": "Escribe el código de 6 dígitos.",
+    "newCode": "Pedir un código nuevo",
+    "successTitle": "Contraseña actualizada",
+    "successBody": "Cambiamos tu contraseña y cerramos tus otras sesiones. Tienes la sesión iniciada en este dispositivo.",
+    "continue": "Continuar"
   }
 }
