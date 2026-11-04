@@ -32,7 +32,7 @@ import Stripe from "npm:stripe@16.2.0";
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.44.4";
 import { createAdminClient, getPublishableKey } from "../_shared/supabaseAdmin.ts";
 import { businessChargeGate, buildConnectPiParams } from "../_shared/connect.ts";
-import { finiteCoord, venueOrderCheck, venueOrderGate } from "../_shared/venue.ts";
+import { finiteCoord, venueIsClosed, venueOrderCheck, venueOrderGate } from "../_shared/venue.ts";
 import {
   priceLinesFromDb,
   computeTaxCents,
@@ -255,6 +255,8 @@ async function handleQuoteOrder(body: Record<string, unknown>, userClient: UserC
   // Golden rule: reject early (same codes as create_paid_order) so nobody sees a price they can't pay.
   const gate = await venueOrderGate(userClient, payload.business_id, payload.order_type, finiteCoord(payload.lat), finiteCoord(payload.lng));
   if (gate) return jsonResponse({ error: gate.message, code: gate.code }, 403);
+  // Closed venue (migration 257): the app may enter the chat, but it cannot order. Before pricing, so nobody sees a price they can't pay.
+  if (await venueIsClosed(getAdminClient(), payload.business_id)) return jsonResponse({ error: "venue_closed", code: "venue_closed" }, 409);
   const q = await buildQuote(getAdminClient(), payload);
   if (q instanceof Response) return q;
 
@@ -298,6 +300,8 @@ async function handleCreatePaymentIntent(body: Record<string, unknown>, authUser
   const venueLng = finiteCoord(payload.lng);
   const { gate, inside: insideVenue } = await venueOrderCheck(userClient, payload.business_id, payload.order_type, venueLat, venueLng);
   if (gate) return jsonResponse({ error: gate.message, code: gate.code }, 403);
+  // Closed venue (migration 257): 409 before anything is created in Stripe.
+  if (await venueIsClosed(getAdminClient(), payload.business_id)) return jsonResponse({ error: "venue_closed", code: "venue_closed" }, 409);
 
   const { business_id, room_id, order_type, gift_recipient_id, promo_code, special_instructions, table_label } = payload;
   // Sanitize free-text table label (never trust the client; Stripe metadata is length-capped).

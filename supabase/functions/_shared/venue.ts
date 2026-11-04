@@ -70,3 +70,18 @@ export async function venueOrderCheck(
     inside,
   };
 }
+
+/**
+ * Closed-venue rule (migration 257): a venue that is CLOSED right now does not take orders. The verdict is the database's
+ * (business_is_open_now: the venue's hours read in the venue's time zone). true = closed → answer 409 venue_closed BEFORE creating
+ * anything in Stripe. false = open OR unknown (NULL: no hours, odd hours, unknown zone): nothing is blocked. If the check itself
+ * errors it fails OPEN (logged): unlike the golden rule, a missing hours verdict must not stop a venue from selling.
+ */
+export async function venueIsClosed(client: RpcClient, businessId: string): Promise<boolean> {
+  const { data, error } = await client.rpc("business_is_open_now", { p_business_id: businessId });
+  if (error) {
+    console.error("[venue] business_is_open_now failed:", error.message);
+    return false;
+  }
+  return data === false;
+}
