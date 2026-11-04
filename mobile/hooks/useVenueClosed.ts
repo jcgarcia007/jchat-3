@@ -7,11 +7,11 @@
 import { useEffect, useState } from 'react';
 
 import { isSupabaseConfigured, supabase } from '../services/supabase';
-import { getOpenStatus } from '../utils/hours';
+import { venueBlocksCheckout } from '../utils/checkoutGate';
 
 const RECHECK_MS = 60_000;
 
-export function useVenueClosed(businessId: string | null | undefined): boolean {
+export function useVenueClosed(businessId: string | null | undefined, serverCode?: string | null): boolean {
   const [venue, setVenue] = useState<{ hours: unknown; timezone: string | null } | null>(null);
   const [closed, setClosed] = useState(false);
 
@@ -40,14 +40,15 @@ export function useVenueClosed(businessId: string | null | undefined): boolean {
 
   useEffect(() => {
     if (!venue) {
-      setClosed(false);
+      // Hours not read (yet / failed): only the server's own answer can block.
+      setClosed(venueBlocksCheckout({ hours: null, timezone: null, now: new Date(), serverCode }));
       return undefined;
     }
-    const evaluate = () => setClosed(getOpenStatus(venue.hours, new Date(), venue.timezone) === 'closed');
+    const evaluate = () => setClosed(venueBlocksCheckout({ hours: venue.hours, timezone: venue.timezone, now: new Date(), serverCode }));
     evaluate();
     const timer = setInterval(evaluate, RECHECK_MS);
     return () => clearInterval(timer);
-  }, [venue]);
+  }, [venue, serverCode]);
 
   return closed;
 }

@@ -70,7 +70,9 @@ import { getOrderByPaymentIntent } from '../../services/orders';
 import type { PaidOrderSummary } from '../../services/orders';
 import { formatCents } from '../../utils/currency';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
-import { toUserMessage } from '../../utils/errors';
+import { AppError, toUserMessage } from '../../utils/errors';
+import { useVenueClosed } from '../../hooks/useVenueClosed';
+import { VENUE_CLOSED_CODE } from '../../utils/checkoutGate';
 import { resetToTabsThen } from '../../utils/navFlow';
 import { confirm, showAlert } from '../../utils/dialog';
 
@@ -358,6 +360,9 @@ export default function CheckoutScreen() {
   const [quoteState, setQuoteState] = useState<QuoteState>({ status: 'loading', quote: null });
   /** Bumped to force a new quote (Retry, or after the server said the total changed). */
   const [quoteNonce, setQuoteNonce] = useState(0);
+  // Closed now (B9-3): the venue's clock OR the server's 409 venue_closed (quote / payment) blocks the order; the notice replaces the pay flow.
+  const [serverClosedCode, setServerClosedCode] = useState<string | null>(null);
+  const venueClosed = useVenueClosed(businessId, serverClosedCode);
 
   // Synchronous guards: state updates are too late to stop a fast double tap, and effects
   // must ignore answers that belong to an older cart.
@@ -444,7 +449,7 @@ export default function CheckoutScreen() {
   // ── Quote: on entry and whenever the cart or the tip changes (debounced) ─────
 
   useEffect(() => {
-    if (!businessId || lines.length === 0) return;
+    if (!businessId || lines.length === 0 || venueClosed) return;
     const quoteId = ++quoteSeqRef.current;
     const stale = () => quoteId !== quoteSeqRef.current || !mountedRef.current;
     setQuoteState((previous) => (previous.status === 'venue' ? { status: 'loading', quote: null } : { status: 'loading', quote: previous.quote }));
@@ -469,6 +474,10 @@ export default function CheckoutScreen() {
         } catch (error: unknown) {
           if (stale()) return;
           console.warn('[checkout] quote failed:', error);
+          if ((error as { code?: unknown } | null)?.code === VENUE_CLOSED_CODE) {
+            setServerClosedCode(VENUE_CLOSED_CODE);
+            return;
+          }
           if (isVenueRefusal(error)) {
             // The quote's own gate refused: re-read what is allowed to know if pick-up exists.
             const access = await fetchVenueAccess(businessId, await readVenueCoords()).catch(() => null);
@@ -484,7 +493,7 @@ export default function CheckoutScreen() {
     return () => clearTimeout(timer);
     // buildRequest already depends on every input of the request; itemsKey/nonce re-trigger it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [businessId, lines.length, itemsKey, tipCents, orderType, giftRecipientId, tableLabel, roomId, quoteNonce]);
+  }, [businessId, lines.length, itemsKey, tipCents, orderType, giftRecipientId, tableLabel, roomId, quoteNonce, venueClosed]);
 
   // Business name for the golden-rule copy ("To order you need to be at {business}").
   const [businessName, setBusinessName] = useState('');
@@ -622,6 +631,12 @@ export default function CheckoutScreen() {
 
       if (!result.ok) {
         if (result.code === 'Canceled') return; // user closed the sheet — not an error
+        if (result.code === 'VenueClosed') {
+          // 409 venue_closed: nothing was created in Stripe; show the closed notice, never an error sheet.
+          attemptRef.current = null;
+          setServerClosedCode(VENUE_CLOSED_CODE);
+          return;
+        }
         if (isVenueRefusal({ code: result.code, message: result.message })) {
           // Golden rule at payment time: nothing was charged; show the venue state instead of an error.
           attemptRef.current = null;
@@ -746,7 +761,7 @@ export default function CheckoutScreen() {
     ? quote.lines.map((l, idx) => ({ key: `${l.menu_item_id}:${idx}`, qty: l.qty, name: l.name, cents: l.line_cents }))
     : lines.map((l) => ({ key: l.lineId, qty: l.qty, name: l.item.name, cents: l.unitPriceCents * l.qty }));
   const venueBlocked = quoteState.status === 'venue';
-  const payDisabled = processing || quoteState.status !== 'ready';
+  const payDisabled = processing || venueClosed || quoteState.status !== 'ready';
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
@@ -953,7 +968,23 @@ export default function CheckoutScreen() {
               </View>
             ) : null}
 
-            {quoteState.status === 'venue' ? (
+            {venueClosed ? (
+              <View style={styles.quoteErrorBox} accessibilityRole="alert">
+                <Text style={[styles.quoteErrorText, { color: c.textPrimary, fontWeight: '700' }]}>
+                  {toUserMessage(new AppError('venue_closed'))}
+                </Text>
+                <Pressable
+                  onPress={handleBack}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('shared.goBack')}
+                  style={({ pressed }) => [styles.quoteRetryBtn, { backgroundColor: c.bgElevated, opacity: pressed ? 0.85 : 1 }]}
+                >
+                  <Text style={[styles.quoteRetryText, { color: c.textPrimary }]}>{t('shared.goBack')}</Text>
+                </Pressable>
+              </View>
+            ) : null}
+
+            {!venueClosed && quoteState.status === 'venue' ? (
               <View style={styles.quoteErrorBox} accessibilityRole="alert">
                 <Text style={[styles.quoteErrorText, { color: c.textPrimary, fontWeight: '700' }]}>
                   {t('checkout.venueTitle', { business: businessName || t('checkout.venueFallback') })}
