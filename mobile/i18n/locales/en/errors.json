@@ -55,7 +55,8 @@
     "WRITE_FAILED": "The print job failed. Please try again.",
     "VOICE_UPLOAD_FAILED": "We couldn't send the voice message. Please try again.",
     "VOICE_UNAVAILABLE": "This voice message isn't available.",
-    "venue_closed": "This venue is closed; you can order when it opens."
+    "venue_closed": "This venue is closed; you can order when it opens.",
+    "message_not_allowed": "That text isn't allowed. Please review it and try again."
   },
   "stripe": {
     "Canceled": "Payment cancelled.",

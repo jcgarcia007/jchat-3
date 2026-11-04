@@ -847,6 +847,7 @@
     "chatRoomsChangeThemeError": "Failed to change theme.",
     "chatRoomsLoadError": "Failed to load chat rooms.",
     "chatRoomsCreateError": "Failed to create room.",
+    "chatRoomsTextNotAllowed": "That text isn't allowed. Please review it and try again.",
     "chatRoomsNameRequired": "Room name is required.",
     "chatRoomsEmptyState": "No chat rooms yet. Create one above, or register a business to get a main room.",
     "chatRoomsColRoom": "Room",

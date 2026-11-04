@@ -847,6 +847,7 @@
     "chatRoomsChangeThemeError": "No se pudo cambiar el tema.",
     "chatRoomsLoadError": "No se pudieron cargar las salas de chat.",
     "chatRoomsCreateError": "No se pudo crear la sala.",
+    "chatRoomsTextNotAllowed": "Ese texto no está permitido. Revísalo e inténtalo de nuevo.",
     "chatRoomsNameRequired": "El nombre de la sala es obligatorio.",
     "chatRoomsEmptyState": "Aún no hay salas de chat. Crea una arriba, o registra un negocio para obtener una sala principal.",
     "chatRoomsColRoom": "Sala",
