@@ -5,7 +5,10 @@
  * "all day" is 00:00–23:59. The data comes from the database, so NOTHING here trusts it:
  * a missing/odd entry gives status 'unknown' (shown as "Horario no disponible"), never a crash.
  *
- * Uses the device's local clock (a business time zone does not exist in the schema).
+ * The clock is the BUSINESS's (businesses.timezone, IANA; the server's business_is_open_now reads it the same way): pass `timeZone`.
+ *   - a zone string  → the wall clock in that zone (blank → 'America/New_York', like the server)
+ *   - undefined       → the device's local clock (callers that have no zone to give; kept for them)
+ *   - a zone Intl does not know → the status is 'unknown' (the server answers NULL there): never a crash, never "closed".
  */
 
 export type DayKey = 'sun' | 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat';
@@ -25,6 +28,47 @@ export type OpenStatus = 'open' | 'closed' | 'unknown';
 export const DAY_ORDER: DayKey[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
 const MINUTES_PER_DAY = 24 * 60;
+
+/** The zone used when a business has none (the server does the same; every venue is there today). */
+export const DEFAULT_TIME_ZONE = 'America/New_York';
+
+/** A wall-clock reading: Date.getDay()-style weekday (0 = Sunday) and minutes since midnight. */
+interface Clock {
+  day: number;
+  minutes: number;
+}
+
+const WEEKDAY_INDEX: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+const formatters = new Map<string, Intl.DateTimeFormat>();
+
+/**
+ * The wall clock at `now` in `timeZone`; the device's own clock when `timeZone` is undefined. Null when the zone is unknown to Intl
+ * (the caller treats the hours as unknown). Uses Intl only (no library); formatters are cached per zone.
+ */
+function clockIn(now: Date, timeZone?: string | null): Clock | null {
+  if (timeZone === undefined) return { day: now.getDay(), minutes: now.getHours() * 60 + now.getMinutes() };
+  const zone = typeof timeZone === 'string' && timeZone.trim() !== '' ? timeZone.trim() : DEFAULT_TIME_ZONE;
+  try {
+    let formatter = formatters.get(zone);
+    if (!formatter) {
+      formatter = new Intl.DateTimeFormat('en-US', { timeZone: zone, weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+      formatters.set(zone, formatter);
+    }
+    let weekday = '';
+    let hour = NaN;
+    let minute = NaN;
+    for (const part of formatter.formatToParts(now)) {
+      if (part.type === 'weekday') weekday = part.value;
+      else if (part.type === 'hour') hour = Number(part.value);
+      else if (part.type === 'minute') minute = Number(part.value);
+    }
+    const day = WEEKDAY_INDEX[weekday];
+    if (day === undefined || !Number.isFinite(hour) || !Number.isFinite(minute)) return null;
+    return { day, minutes: (hour % 24) * 60 + minute };
+  } catch {
+    return null;
+  }
+}
 
 /** "HH:MM" → minutes since midnight, or null when it is not a valid time ("24:00" counts as 1440). */
 export function parseTimeToMinutes(value: unknown): number | null {
@@ -59,12 +103,14 @@ function isAllDay(range: { open: number; close: number }): boolean {
   return range.open === 0 && range.close >= MINUTES_PER_DAY - 1;
 }
 
-export function getOpenStatus(hours: unknown, now: Date = new Date()): OpenStatus {
+export function getOpenStatus(hours: unknown, now: Date = new Date(), timeZone?: string | null): OpenStatus {
   if (!hours || typeof hours !== 'object') return 'unknown';
+  const clock = clockIn(now, timeZone);
+  if (!clock) return 'unknown';
   const map = hours as Record<string, unknown>;
-  const today = parseDay(map[DAY_ORDER[now.getDay()]]);
-  const yesterday = parseDay(map[DAY_ORDER[(now.getDay() + 6) % 7]]);
-  const minutes = now.getHours() * 60 + now.getMinutes();
+  const today = parseDay(map[DAY_ORDER[clock.day]]);
+  const yesterday = parseDay(map[DAY_ORDER[(clock.day + 6) % 7]]);
+  const minutes = clock.minutes;
 
   // Yesterday's overnight shift (e.g. Fri 22:00–02:00) still covers the early hours of today.
   if (yesterday.kind === 'range' && yesterday.close < yesterday.open && minutes < yesterday.close) {
@@ -81,8 +127,8 @@ export function getOpenStatus(hours: unknown, now: Date = new Date()): OpenStatu
   return minutes >= today.open ? 'open' : 'closed';
 }
 
-export function isOpenNow(hours: unknown, now: Date = new Date()): boolean {
-  return getOpenStatus(hours, now) === 'open';
+export function isOpenNow(hours: unknown, now: Date = new Date(), timeZone?: string | null): boolean {
+  return getOpenStatus(hours, now, timeZone) === 'open';
 }
 
 /** "09:00" → "9:00 AM" / "9:00" following the locale. Null when the value is not a valid time. */
@@ -125,12 +171,14 @@ export function weekdayName(dayIndex: number, locale: string): string {
  * read, or when it is open all day. Handles the cut after midnight: 20:00–02:00 closes at 2:00 the next morning,
  * and at 1:00 that morning it still reads the shift that started yesterday.
  */
-export function closesAtLabel(hours: unknown, _locale: string, now: Date = new Date()): string | null {
-  if (getOpenStatus(hours, now) !== 'open') return null;
+export function closesAtLabel(hours: unknown, _locale: string, now: Date = new Date(), timeZone?: string | null): string | null {
+  if (getOpenStatus(hours, now, timeZone) !== 'open') return null;
+  const clock = clockIn(now, timeZone);
+  if (!clock) return null;
   const map = hours as Record<string, unknown>;
-  const today = parseDay(map[DAY_ORDER[now.getDay()]]);
-  const yesterday = parseDay(map[DAY_ORDER[(now.getDay() + 6) % 7]]);
-  const minutes = now.getHours() * 60 + now.getMinutes();
+  const today = parseDay(map[DAY_ORDER[clock.day]]);
+  const yesterday = parseDay(map[DAY_ORDER[(clock.day + 6) % 7]]);
+  const minutes = clock.minutes;
   if (yesterday.kind === 'range' && yesterday.close < yesterday.open && minutes < yesterday.close) {
     return format12h(yesterday.close);
   }
@@ -152,12 +200,14 @@ export interface OpensAt {
  * another weekday up to a week ahead). Null when it is open, when the hours can't be read ('unknown' is not
  * "closed") or when no day has an opening time.
  */
-export function opensAtLabel(hours: unknown, _locale: string, now: Date = new Date()): OpensAt | null {
-  if (getOpenStatus(hours, now) !== 'closed') return null;
+export function opensAtLabel(hours: unknown, _locale: string, now: Date = new Date(), timeZone?: string | null): OpensAt | null {
+  if (getOpenStatus(hours, now, timeZone) !== 'closed') return null;
+  const clock = clockIn(now, timeZone);
+  if (!clock) return null;
   const map = hours as Record<string, unknown>;
-  const minutes = now.getHours() * 60 + now.getMinutes();
+  const minutes = clock.minutes;
   for (let offset = 0; offset <= 7; offset += 1) {
-    const dayIndex = (now.getDay() + offset) % 7;
+    const dayIndex = (clock.day + offset) % 7;
     const day = parseDay(map[DAY_ORDER[dayIndex]]);
     if (day.kind !== 'range') continue;
     if (offset === 0 && day.open <= minutes) continue; // today's opening already passed
@@ -177,4 +227,9 @@ export function formatDayRange(entry: unknown, _locale: string): { kind: 'closed
   const open = format12h(entry && (entry as DayHours).open);
   const close = format12h(entry && (entry as DayHours).close);
   return open && close ? { kind: 'range', text: `${open} – ${close}` } : { kind: 'unknown' };
+}
+
+/** Date.getDay()-style index (0 = Sunday) of "today" in the business's zone (the device's own day when no zone is given); null if the zone is unknown. */
+export function todayIndexIn(now: Date = new Date(), timeZone?: string | null): number | null {
+  return clockIn(now, timeZone)?.day ?? null;
 }
