@@ -1419,8 +1419,10 @@ export type Database = {
           held_at: string | null
           id: string
           items: Json
+          last_payment_error: string | null
           note: string | null
           order_id: string | null
+          payment_failures: number
           responded_at: string | null
           status: string
           stripe_pi_id: string | null
@@ -1441,8 +1443,10 @@ export type Database = {
           held_at?: string | null
           id?: string
           items: Json
+          last_payment_error?: string | null
           note?: string | null
           order_id?: string | null
+          payment_failures?: number
           responded_at?: string | null
           status?: string
           stripe_pi_id?: string | null
@@ -1463,8 +1467,10 @@ export type Database = {
           held_at?: string | null
           id?: string
           items?: Json
+          last_payment_error?: string | null
           note?: string | null
           order_id?: string | null
+          payment_failures?: number
           responded_at?: string | null
           status?: string
           stripe_pi_id?: string | null
@@ -1532,31 +1538,31 @@ export type Database = {
         Row: {
           amount_cents: number
           created_at: string
-          from_user: string
+          from_user: string | null
           id: string
           message: string | null
           room_id: string | null
-          to_user: string
+          to_user: string | null
           type: string
         }
         Insert: {
           amount_cents?: number
           created_at?: string
-          from_user: string
+          from_user?: string | null
           id?: string
           message?: string | null
           room_id?: string | null
-          to_user: string
+          to_user?: string | null
           type: string
         }
         Update: {
           amount_cents?: number
           created_at?: string
-          from_user?: string
+          from_user?: string | null
           id?: string
           message?: string | null
           room_id?: string | null
-          to_user?: string
+          to_user?: string | null
           type?: string
         }
         Relationships: [
@@ -2281,6 +2287,48 @@ export type Database = {
           },
         ]
       }
+      match_profiles: {
+        Row: {
+          change_log: string[]
+          created_at: string
+          gender: string | null
+          seeking: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          change_log?: string[]
+          created_at?: string
+          gender?: string | null
+          seeking?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          change_log?: string[]
+          created_at?: string
+          gender?: string | null
+          seeking?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       match_relikes: {
         Row: {
           business_id: string
@@ -2439,6 +2487,21 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      match_v2_flags: {
+        Row: {
+          enforce_profile_from: string | null
+          id: boolean
+        }
+        Insert: {
+          enforce_profile_from?: string | null
+          id?: boolean
+        }
+        Update: {
+          enforce_profile_from?: string | null
+          id?: boolean
+        }
+        Relationships: []
       }
       matches: {
         Row: {
@@ -3480,6 +3543,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      photo_moderation_log: {
+        Row: {
+          alerted_at: string | null
+          attempts: number
+          kind: string
+          last_attempt_at: string | null
+          notified_at: string | null
+          ref_id: string
+        }
+        Insert: {
+          alerted_at?: string | null
+          attempts?: number
+          kind: string
+          last_attempt_at?: string | null
+          notified_at?: string | null
+          ref_id: string
+        }
+        Update: {
+          alerted_at?: string | null
+          attempts?: number
+          kind?: string
+          last_attempt_at?: string | null
+          notified_at?: string | null
+          ref_id?: string
+        }
+        Relationships: []
       }
       pinned_messages: {
         Row: {
@@ -5015,6 +5105,8 @@ export type Database = {
         Row: {
           created_at: string
           expires_at: string
+          hidden_at: string | null
+          hidden_by: string | null
           id: string
           media_url: string
           text_overlay: string | null
@@ -5023,6 +5115,8 @@ export type Database = {
         Insert: {
           created_at?: string
           expires_at?: string
+          hidden_at?: string | null
+          hidden_by?: string | null
           id?: string
           media_url: string
           text_overlay?: string | null
@@ -5031,12 +5125,28 @@ export type Database = {
         Update: {
           created_at?: string
           expires_at?: string
+          hidden_at?: string | null
+          hidden_by?: string | null
           id?: string
           media_url?: string
           text_overlay?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "stories_hidden_by_fkey"
+            columns: ["hidden_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stories_hidden_by_fkey"
+            columns: ["hidden_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "stories_user_id_fkey"
             columns: ["user_id"]
@@ -6284,6 +6394,12 @@ export type Database = {
         Returns: undefined
       }
       block_user: { Args: { p_target: string }; Returns: undefined }
+      business_hours_day: { Args: { p_entry: Json }; Returns: number[] }
+      business_hours_minutes: { Args: { p_time: string }; Returns: number }
+      business_is_open_now: {
+        Args: { p_at?: string; p_business_id: string }
+        Returns: boolean
+      }
       can_access_room: { Args: { _room_id: string }; Returns: boolean }
       can_employee_see_table: { Args: { p_table_id: string }; Returns: boolean }
       can_publish_business_post: {
@@ -6454,6 +6570,10 @@ export type Database = {
       gift_offer_mark_paid: {
         Args: { p_order_id: string; p_stripe_pi_id: string }
         Returns: undefined
+      }
+      gift_offer_register_payment_failure: {
+        Args: { p_error?: string; p_stripe_pi_id: string }
+        Returns: Json
       }
       gift_offer_respond: {
         Args: {
@@ -6645,6 +6765,10 @@ export type Database = {
         Args: { p_business_id: string }
         Returns: boolean
       }
+      match_fits: {
+        Args: { p_gender: string; p_seeking: string }
+        Returns: boolean
+      }
       match_get_activity: { Args: { p_business_id: string }; Returns: Json }
       match_get_deck: {
         Args: { p_business_id: string; p_limit?: number }
@@ -6655,12 +6779,38 @@ export type Database = {
         Args: { p_business_id: string; p_user_id: string }
         Returns: Json
       }
+      match_join_venue: {
+        Args: {
+          p_business_id: string
+          p_lat?: number
+          p_lng?: number
+          p_mocked?: boolean
+          p_qr_token?: string
+        }
+        Returns: Json
+      }
       match_kick: {
         Args: { p_business_id: string; p_reason?: string; p_user_id: string }
         Returns: undefined
       }
       match_leave_venue: { Args: { p_business_id: string }; Returns: undefined }
+      match_orientation_ok: {
+        Args: { p_a: string; p_b: string }
+        Returns: boolean
+      }
       match_photo_retry_moderation: { Args: never; Returns: number }
+      match_presence_core: {
+        Args: {
+          p_business_id: string
+          p_lat: number
+          p_lng: number
+          p_mocked: boolean
+          p_qr_token: string
+          p_require_optin: boolean
+        }
+        Returns: Json
+      }
+      match_profile_enforced: { Args: never; Returns: boolean }
       match_relike: {
         Args: { p_business_id: string; p_user_id: string }
         Returns: Json
@@ -6770,6 +6920,7 @@ export type Database = {
       owns_business: { Args: { p_business: string }; Returns: boolean }
       owns_business_of_table: { Args: { p_table_id: string }; Returns: boolean }
       owns_room_business: { Args: { p_room: string }; Returns: boolean }
+      photo_moderation_alert: { Args: never; Returns: number }
       pos_apply_external_payment: {
         Args: {
           p_business_id: string
@@ -7286,6 +7437,13 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      storage_user_object_paths: {
+        Args: { p_user: string }
+        Returns: {
+          bucket_id: string
+          name: string
+        }[]
+      }
       tab_amount_due: { Args: { p_tab_id: string }; Returns: Json }
       tod_accept_terms: { Args: { p_version?: string }; Returns: undefined }
       tod_applaud: { Args: { p_draw_id: string }; Returns: Json }
@@ -7389,6 +7547,10 @@ export type Database = {
         Args: { p_business_id: string; p_user_id: string }
         Returns: boolean
       }
+      venue_present_users: {
+        Args: { p_business_id: string; p_user_ids: string[] }
+        Returns: string[]
+      }
       venue_session_end: {
         Args: { p_business_id: string; p_reason?: string }
         Returns: undefined
@@ -7400,6 +7562,12 @@ export type Database = {
       venue_session_resume: {
         Args: { p_business_id: string }
         Returns: boolean
+      }
+      venue_table_labels: {
+        Args: { p_business_id: string }
+        Returns: {
+          label: string
+        }[]
       }
       verify_room_password: {
         Args: { password: string; room_id: string }
@@ -7423,12 +7591,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -7452,11 +7620,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -7477,11 +7645,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -7502,11 +7670,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -7519,11 +7687,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never) = never,
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -7533,7 +7701,11 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },
 } as const
+
