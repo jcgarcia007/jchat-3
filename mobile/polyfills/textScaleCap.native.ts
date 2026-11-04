@@ -12,10 +12,19 @@ import { CONTENT_TEXT_CAP } from '../theme/textScale';
 
 type Capped<P> = P & { maxFontSizeMultiplier?: number };
 
+const SKIPPED_STATICS = new Set(['length', 'name', 'prototype', '$$typeof', 'render', 'displayName', 'arguments', 'caller']);
+
 function withCap<P extends object>(Base: React.ComponentType<P>, name: string): React.ComponentType<P> {
   const Wrapped = (props: Capped<P>) =>
     React.createElement(Base, { ...props, maxFontSizeMultiplier: props.maxFontSizeMultiplier ?? CONTENT_TEXT_CAP } as P);
   Wrapped.displayName = name;
+  // Keep the statics of RN's own component (TextInput.State.currentlyFocusedInput, propTypes, ...): keyboard and gesture libraries read them.
+  // Copied with their descriptors so getters stay getters; the function's own bookkeeping properties are skipped.
+  for (const key of Object.getOwnPropertyNames(Base)) {
+    if (SKIPPED_STATICS.has(key)) continue;
+    const descriptor = Object.getOwnPropertyDescriptor(Base, key);
+    if (descriptor) Object.defineProperty(Wrapped, key, descriptor);
+  }
   return Wrapped as unknown as React.ComponentType<P>;
 }
 

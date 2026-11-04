@@ -27,6 +27,10 @@ test('(a) the global cap exists and is installed before any screen', () => {
   assert.match(polyfill, /defineProperty\(RN, 'Text'/);
   assert.match(polyfill, /defineProperty\(RN, 'TextInput'/);
   assert.doesNotMatch(polyfill, /allowFontScaling/);
+  // statics of the base component (TextInput.State, ...) are copied onto the wrapper
+  assert.match(polyfill, /for \(const key of Object\.getOwnPropertyNames\(Base\)\)/);
+  assert.match(polyfill, /SKIPPED_STATICS = new Set\(\['length', 'name', 'prototype', '\$\$typeof', 'render'/);
+  assert.match(polyfill, /Object\.defineProperty\(Wrapped, key, descriptor\)/);
   const entry = read('index.ts');
   const capAt = entry.indexOf("import './polyfills/textScaleCap'");
   assert.ok(capAt > 0, 'index.ts imports the cap');
