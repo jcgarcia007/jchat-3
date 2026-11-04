@@ -191,7 +191,7 @@ export function TermsEN() {
       <h2 id="contact-terms" style={H2}>18. Contact</h2>
       <p style={P}>
         Otunity Labs LLC · 6000 Palm Trace Landings Dr APT 312, Davie, FL 33314, USA ·{" "}
-        <a href="mailto:jgarcia@otunitylabs.com" style={LINK}>jgarcia@otunitylabs.com</a>
+        <a href="mailto:soporte@jchat.cloud" style={LINK}>soporte@jchat.cloud</a>
       </p>
     </>
   );

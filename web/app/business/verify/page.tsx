@@ -150,7 +150,7 @@ export default function BusinessVerifyPage() {
 
         <p style={{ textAlign: "center", fontSize: "12px", color: "var(--text-tertiary)", marginTop: "20px" }}>
           {tr("questions")}{" "}
-          <a href="mailto:support@jchat.app" style={{ color: "var(--color-brand)", textDecoration: "none" }}>
+          <a href="mailto:soporte@jchat.cloud" style={{ color: "var(--color-brand)", textDecoration: "none" }}>
             {tr("contactSupport")}
           </a>
         </p>

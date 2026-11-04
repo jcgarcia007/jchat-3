@@ -1501,7 +1501,7 @@ function BusinessRegisterWizard() {
               }}
             >
               <a
-                href="mailto:support@jchat.cloud?subject=Custom plan request"
+                href="mailto:soporte@jchat.cloud?subject=Custom plan request"
                 style={{ ...S.primaryBtn, textDecoration: "none" }}
               >
                 <IconMail size={18} />
@@ -1720,10 +1720,10 @@ function BusinessRegisterWizard() {
           Your listing will be reviewed before going live.{" "}
           Questions? Contact{" "}
           <a
-            href="mailto:support@jchat.app"
+            href="mailto:soporte@jchat.cloud"
             style={{ color: "var(--color-brand)", textDecoration: "none" }}
           >
-            support@jchat.app
+            soporte@jchat.cloud
           </a>
         </p>
       </div>

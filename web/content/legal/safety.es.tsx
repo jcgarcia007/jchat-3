@@ -28,7 +28,7 @@ export function SafetyES() {
       </ul>
       <p style={P}>Las cuentas que incumplen estas normas se suspenden o eliminan. Los casos graves pueden reportarse a las autoridades.</p>
 
-      <h2 style={H2}>Seguridad infantil (CSAE)</h2>
+      <h2 id="csae" style={H2}>Seguridad infantil (CSAE)</h2>
       <p style={P}>
         JChat es solo para personas de 18 años o más: verificamos la edad al registrarse y eliminamos las cuentas que resulten ser
         de un menor. El material de abuso y explotación sexual infantil (CSAM) y cualquier conducta que ponga en peligro a

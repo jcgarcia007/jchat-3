@@ -150,7 +150,7 @@ export function PrivacyES() {
         <strong>Ajustes → Eliminar cuenta</strong>, o en la web en{" "}
         <a href="/account/delete" style={LINK}>jchat.cloud/account/delete</a>. La eliminación es inmediata e irreversible. Si no puedes
         acceder a la app, escríbenos a{" "}
-        <a href="mailto:jgarcia@otunitylabs.com" style={LINK}>jgarcia@otunitylabs.com</a> desde el correo
+        <a href="mailto:soporte@jchat.cloud" style={LINK}>soporte@jchat.cloud</a> desde el correo
         de tu cuenta y la eliminaremos.
       </p>
       <p style={P}>
@@ -204,7 +204,7 @@ export function PrivacyES() {
       <h2 id="contact" style={H2}>14. Contacto</h2>
       <p style={P}>
         Otunity Labs LLC · 6000 Palm Trace Landings Dr APT 312, Davie, FL 33314, EE. UU. ·{" "}
-        <a href="mailto:jgarcia@otunitylabs.com" style={LINK}>jgarcia@otunitylabs.com</a>
+        <a href="mailto:soporte@jchat.cloud" style={LINK}>soporte@jchat.cloud</a>
       </p>
     </>
   );

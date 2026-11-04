@@ -16,7 +16,7 @@ export function SupportEN() {
 
       <p style={P}>
         Need help? Email{" "}
-        <a href="mailto:jgarcia@otunitylabs.com" style={LINK}>jgarcia@otunitylabs.com</a>. We answer within
+        <a href="mailto:soporte@jchat.cloud" style={LINK}>soporte@jchat.cloud</a>. We answer within
         1–2 business days. Include the email on your account and, for order issues, the receipt code.
       </p>
 

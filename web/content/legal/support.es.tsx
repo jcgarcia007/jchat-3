@@ -16,7 +16,7 @@ export function SupportES() {
 
       <p style={P}>
         ¿Necesitas ayuda? Escribe a{" "}
-        <a href="mailto:jgarcia@otunitylabs.com" style={LINK}>jgarcia@otunitylabs.com</a>. Respondemos en
+        <a href="mailto:soporte@jchat.cloud" style={LINK}>soporte@jchat.cloud</a>. Respondemos en
         1–2 días hábiles. Incluye el correo de tu cuenta y, para problemas con pedidos, el código del
         recibo.
       </p>

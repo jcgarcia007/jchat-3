@@ -28,7 +28,7 @@ export function SafetyEN() {
       </ul>
       <p style={P}>Accounts that break these rules are suspended or deleted. Serious cases may be reported to the authorities.</p>
 
-      <h2 style={H2}>Child safety (CSAE)</h2>
+      <h2 id="csae" style={H2}>Child safety (CSAE)</h2>
       <p style={P}>
         JChat is only for people aged 18 or older: we check age at sign-up and delete accounts that turn out to belong to
         a minor. Child sexual abuse and exploitation material (CSAM) and any behaviour that endangers children are
