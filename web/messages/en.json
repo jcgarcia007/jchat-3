@@ -4100,5 +4100,11 @@
     "successTitle": "Password updated",
     "successBody": "Your password was changed and your other sessions were signed out. You are signed in on this device.",
     "continue": "Continue"
+  },
+  "dashboardNotice": {
+    "title": "The dashboard is for venue owners and staff",
+    "body": "This account isn't linked to a venue yet. If you own or run a venue, register it to use the dashboard. If you are a member, you can keep using JChat in the app.",
+    "register": "Register my business",
+    "back": "Go back"
   }
 }

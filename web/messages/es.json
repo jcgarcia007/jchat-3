@@ -4100,5 +4100,11 @@
     "successTitle": "Contraseña actualizada",
     "successBody": "Cambiamos tu contraseña y cerramos tus otras sesiones. Tienes la sesión iniciada en este dispositivo.",
     "continue": "Continuar"
+  },
+  "dashboardNotice": {
+    "title": "El panel es para dueños y personal de un local",
+    "body": "Esta cuenta todavía no está asociada a ningún local. Si eres dueño o administras un local, regístralo para usar el panel. Si eres miembro, sigue usando JChat en la app.",
+    "register": "Registrar mi negocio",
+    "back": "Volver"
   }
 }

@@ -9,6 +9,7 @@ import {
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
 import { requireAgeConfirmed } from "@/lib/age";
+import NoBusinessNotice from "./NoBusinessNotice";
 
 export const metadata: Metadata = {
   title: "JChat Dashboard",
@@ -46,6 +47,16 @@ export default async function DashboardLayout({
     const { data: isAdmin } = await supabase.rpc("is_platform_admin");
 
     if (!isAdmin) {
+      // A plain member (owns no venue and is not accepted staff of one) is told what the dashboard is for instead of being
+      // bounced to the upgrade flow (B11-7). A failed read (count = null) keeps the existing behavior below.
+      const [owned, staff] = await Promise.all([
+        supabase.from("businesses").select("id", { count: "exact", head: true }).eq("owner_id", user.id),
+        supabase.from("employees").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("status", "accepted"),
+      ]);
+      if (owned.count === 0 && staff.count === 0) {
+        return <NoBusinessNotice />;
+      }
+
       // Plan gate: only paying/trialing business or pro accounts may access the
       // dashboard. Anyone else is sent to register with the upgrade prompt.
       const { data: profile } = await supabase
