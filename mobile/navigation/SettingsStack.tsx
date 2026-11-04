@@ -29,7 +29,7 @@ export type SettingsStackParamList = {
   MyOrders: undefined;
   MyReservations: undefined;
   /** Entry point for the entire POS flow. Renders PosNavigator (nested stack + StripeTerminalProvider). */
-  PosRoot: { businessId: string; businessName: string; employeeId: string; plan: string | null };
+  PosRoot: { businessId: string; businessName: string; employeeId: string | null; plan: string | null };
 };
 
 const Stack = createNativeStackNavigator<SettingsStackParamList>();

@@ -17,7 +17,8 @@ import { supabase, isSupabaseConfigured } from './supabase';
 export interface PosMyBusinessesRow {
   business_id: string;
   business_name: string;
-  employee_id: string;
+  /** NULL for the owner of the venue when they are not an employee (migration 260: role 'owner'). */
+  employee_id: string | null;
   role: string;
   has_pin: boolean;
   /** Subscription plan of the business ('pro', 'basic', etc.). Used to gate Pro features in the POS. */

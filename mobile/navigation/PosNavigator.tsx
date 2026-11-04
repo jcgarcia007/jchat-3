@@ -52,7 +52,7 @@ import type { SettingsStackParamList } from './SettingsStack';
  * for their navigation / route types.
  */
 export type PosStackParamList = {
-  PosHome: { businessId: string; businessName: string; employeeId: string; plan: string | null };
+  PosHome: { businessId: string; businessName: string; employeeId: string | null; plan: string | null };
   /** Today's receipts log — employee sees own; owner sees all (Fase 4B). */
   PosReceipts: { businessId: string };
   /** Table hub — opened when tapping a table in PosHome (C7). */
