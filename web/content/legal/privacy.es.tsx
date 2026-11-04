@@ -115,12 +115,21 @@ export function PrivacyES() {
       <h2 id="who-we-share" style={H2}>4. Con quién compartimos la información</h2>
       <p style={P}>
         No vendemos tu información personal. Solo la compartimos con proveedores que la procesan para
-        nosotros bajo contrato y en la medida necesaria: <strong>Supabase</strong> (base de datos,
-        autenticación y archivos, alojados en Estados Unidos), <strong>Stripe</strong> (procesamiento de
-        pagos, pagos a negocios y lectores de tarjeta), <strong>Google</strong> (Maps en Android, Firebase
-        Cloud Messaging para notificaciones), <strong>Apple</strong> (notificaciones push, Apple Maps en
-        iOS), <strong>hCaptcha</strong> (protección contra bots), <strong>Expo</strong> (compilación y
-        actualizaciones de la app) y <strong>Vercel</strong> (alojamiento web). Los dueños que usan el
+        nosotros bajo contrato y en la medida necesaria:
+      </p>
+      {/* BORRADOR PARA REVISIÓN LEGAL (A6, 2026-11): la lista de proveedores y los plazos de conservación de abajo son decisiones de Juan y NO los ha revisado un abogado. */}
+      <ul style={UL}>
+        <li><strong>Supabase</strong> — base de datos, autenticación y archivos, alojados en Estados Unidos.</li>
+        <li><strong>Stripe</strong> — procesamiento de pagos, pagos a negocios y lectores de tarjeta. Nunca vemos ni guardamos el número de tu tarjeta.</li>
+        <li><strong>Google Cloud Vision</strong> — revisión de seguridad de las fotos que envías en Match y en mensajes directos: los bytes de la foto se envían a Google para detectar contenido que incumple nuestras reglas.</li>
+        <li><strong>Google Maps</strong> y <strong>Firebase Cloud Messaging</strong> (Google) — mapas en Android y notificaciones push. <strong>Apple</strong> — notificaciones push y Apple Maps en iOS.</li>
+        <li><strong>Expo</strong> — notificaciones push (el título y el texto de una notificación pasan por el servicio push de Expo antes de llegar a tu teléfono) y compilación y actualizaciones de la app.</li>
+        <li><strong>Sentry</strong> — diagnósticos técnicos (informes de errores y cierres inesperados) sin datos personales.</li>
+        <li><strong>hCaptcha</strong> — protección contra bots al iniciar sesión, registrarte o recuperar la contraseña.</li>
+        <li><strong>Vercel</strong> — alojamiento web.</li>
+      </ul>
+      <p style={P}>
+        Los dueños que usan el
         asistente de menús con IA envían su propio contenido de menú a un proveedor de IA (Anthropic /
         Claude); no se envían datos de miembros. Cuando pides en un local, el local recibe los detalles de
         tu pedido (y, en reservas, el nombre y contacto que indiques). También podemos divulgar información
@@ -137,11 +146,17 @@ export function PrivacyES() {
 
       <h2 id="data-retention" style={H2}>6. Conservación</h2>
       <p style={P}>
-        Conservamos tu información mientras tu cuenta esté activa. Los registros de pedidos y pagos se
-        conservan según exigen la contabilidad y la normativa fiscal (en general, hasta 7 años). Los
-        identificadores de pedidos de invitado se conservan un tiempo limitado por seguridad. Al eliminar tu
-        cuenta, borramos definitivamente tu perfil, contenido y datos personales, salvo los registros que la
-        ley nos obliga a conservar.
+        Conservamos tu información mientras tu cuenta esté activa. Cuando eliminas tu cuenta borramos{" "}
+        <strong>al momento</strong> tu perfil, fotos, mensajes, perfil de Match y publicaciones. Algunos
+        registros se conservan después, durante estos plazos:
+      </p>
+      <ul style={UL}>
+        <li><strong>Pedidos y pagos:</strong> 7 años, sin tus datos personales, por obligaciones fiscales y contables.</li>
+        <li><strong>Registros de seguridad:</strong> 90 días.</li>
+        <li><strong>Reportes de moderación:</strong> 1 año.</li>
+      </ul>
+      <p style={P}>
+        Los identificadores de pedidos de invitados se conservan un tiempo limitado por seguridad.
       </p>
 
       <h2 id="delete-account" style={H2}>7. Eliminar tu cuenta</h2>

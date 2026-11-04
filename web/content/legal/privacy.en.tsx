@@ -114,12 +114,21 @@ export function PrivacyEN() {
       <h2 id="who-we-share" style={H2}>4. Who we share information with</h2>
       <p style={P}>
         We do not sell your personal information. We share it only with service providers who process it for
-        us under contract, and only as needed: <strong>Supabase</strong> (database, authentication and file
-        storage, hosted in the United States), <strong>Stripe</strong> (payment processing, business payouts
-        and card readers), <strong>Google</strong> (Maps on Android, Firebase Cloud Messaging for
-        notifications), <strong>Apple</strong> (push notifications, Apple Maps on iOS),{" "}
-        <strong>hCaptcha</strong> (bot protection), <strong>Expo</strong> (app builds and updates) and{" "}
-        <strong>Vercel</strong> (website hosting). Venue owners who use the optional AI menu assistant send
+        us under contract, and only as needed:
+      </p>
+      {/* DRAFT FOR LEGAL REVIEW (A6, 2026-11): the provider list and the retention periods below are Juan's decisions and have NOT been reviewed by a lawyer. */}
+      <ul style={UL}>
+        <li><strong>Supabase</strong> — database, authentication and file storage, hosted in the United States.</li>
+        <li><strong>Stripe</strong> — payment processing, business payouts and card readers. We never see or store your card number.</li>
+        <li><strong>Google Cloud Vision</strong> — safety review of photos you send in Match and in direct messages: the bytes of the photo are sent to Google to detect content that breaks our rules.</li>
+        <li><strong>Google Maps</strong> and <strong>Firebase Cloud Messaging</strong> (Google) — maps on Android and push notifications. <strong>Apple</strong> — push notifications and Apple Maps on iOS.</li>
+        <li><strong>Expo</strong> — push notifications (the title and text of a notification pass through Expo's push service on their way to your phone) and app builds and updates.</li>
+        <li><strong>Sentry</strong> — technical diagnostics (crash and error reports) without personal data.</li>
+        <li><strong>hCaptcha</strong> — protection against bots when you sign in, sign up or recover a password.</li>
+        <li><strong>Vercel</strong> — website hosting.</li>
+      </ul>
+      <p style={P}>
+        Venue owners who use the optional AI menu assistant send
         their own menu content to an AI provider (Anthropic / Claude); no member data is sent. When you order
         at a venue, the venue receives your order details (and, for reservations, the name and contact you
         provide). We may also disclose information if required by law or to protect the rights and safety of
@@ -135,10 +144,17 @@ export function PrivacyEN() {
 
       <h2 id="data-retention" style={H2}>6. Data retention</h2>
       <p style={P}>
-        We keep your information while your account is active. Order and payment records are kept as required
-        for accounting and tax purposes (generally up to 7 years). Guest ordering identifiers are kept for a
-        limited period for security. When you delete your account we permanently delete your profile, content
-        and personal data, except records we are legally required to keep.
+        We keep your information while your account is active. When you delete your account we delete{" "}
+        <strong>right away</strong> your profile, photos, messages, Match profile and posts. Some records
+        are kept after that, for these periods:
+      </p>
+      <ul style={UL}>
+        <li><strong>Orders and payments:</strong> 7 years, without your personal data, for tax and accounting obligations.</li>
+        <li><strong>Security logs:</strong> 90 days.</li>
+        <li><strong>Moderation reports:</strong> 1 year.</li>
+      </ul>
+      <p style={P}>
+        Guest ordering identifiers are kept for a limited period for security.
       </p>
 
       <h2 id="delete-account" style={H2}>7. Deleting your account</h2>
