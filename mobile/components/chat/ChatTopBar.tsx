@@ -48,6 +48,7 @@ import { palette } from '../../theme/tokens';
 import type { UserAnchor } from './MessageBubble';
 import { getInitials } from '../../utils/initials';
 import { BusinessIcon } from '../common/BusinessIcon';
+import { useKeyboardOpen } from '../../hooks/useKeyboardOpen';
 import { typeCap, typeStyle } from '../../theme/typography';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -188,6 +189,8 @@ export function ChatTopBar({
 }: ChatTopBarProps) {
   const { t } = useTranslation('chat');
   const insets = useSafeAreaInsets();
+  // With the keyboard up the avatar strip steps aside: the message list keeps the room (large fonts left it a sliver).
+  const keyboardOpen = useKeyboardOpen();
 
   return (
     <View style={[topBarStyles.wrapper, { backgroundColor: theme.topBg, paddingTop: insets.top }]}>
@@ -287,7 +290,7 @@ export function ChatTopBar({
       {children}
 
       {/* ── User avatars row ─────────────────────────────────────────────── */}
-      {usersInRoom.length > 0 && (
+      {usersInRoom.length > 0 && !keyboardOpen && (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}

@@ -36,3 +36,15 @@ test('Login and Register scroll inside TicketShell, which pads the end of the sc
     assert.match(read(`../screens/auth/${f}.tsx`), /<TicketShell/, f);
   }
 });
+
+test('B6 matrix fixes: a status-bar baseline, the entry sheet clears the nav bar, the chat gives room back with the keyboard up, the compact profile bar has an opaque status strip', () => {
+  const app = read('../App.tsx');
+  assert.match(app, /<StatusBar barStyle=\{colorScheme === 'light' \? 'dark-content' : 'light-content'\} \/>/);
+  const chat = read('../screens/chat/ChatRoomScreen.tsx');
+  assert.match(chat, /paddingBottom: Math\.max\(48, gateInsets\.bottom \+ 24\)/);
+  const top = read('../components/chat/ChatTopBar.tsx');
+  assert.match(top, /usersInRoom\.length > 0 && !keyboardOpen/);
+  assert.match(top, /useKeyboardOpen\(\)/);
+  const profile = read('../screens/profile/ProfileScreen.tsx');
+  assert.match(profile, /height: insets\.top, backgroundColor: c\.bgBase/);
+});

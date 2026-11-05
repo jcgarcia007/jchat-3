@@ -48,7 +48,7 @@ import { AppModal } from '../../components/common/AppModal';
 import { BusinessIcon } from '../../components/common/BusinessIcon';
 import { IconMapPin } from '@tabler/icons-react-native';
 import { useTranslation } from 'react-i18next';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -433,6 +433,7 @@ export default function ChatRoomScreen() {
     resetToMapTab(business?.name); // always the Map, whatever is open over the room (a DM, a profile, the menu, the games…)
   }, [t, business, venue]);
 
+  const gateInsets = useSafeAreaInsets(); // the entry sheet clears the system navigation bar (3-button bar)
   const geoGate = useGeofenceGate({
     roomId: rootRoomId,
     isOwner,
@@ -1723,7 +1724,7 @@ export default function ChatRoomScreen() {
           statusBarTranslucent
         >
           <View style={gateStyles.overlay}>
-            <View style={[gateStyles.sheet, { backgroundColor: themeColors.bgSurface, borderTopColor: themeColors.borderSubtle }]}>
+            <View style={[gateStyles.sheet, { backgroundColor: themeColors.bgSurface, borderTopColor: themeColors.borderSubtle, paddingBottom: Math.max(48, gateInsets.bottom + 24) }]}>
               {/* Drag handle */}
               <View style={[gateStyles.handle, { backgroundColor: themeColors.borderSubtle }]} />
 

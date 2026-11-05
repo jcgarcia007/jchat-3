@@ -417,6 +417,10 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
       </Animated.View>
 
       {compact ? (
+        // The scrolled content must not show through the status-bar area behind the compact bar's glass buttons.
+        <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: insets.top, backgroundColor: c.bgBase }} />
+      ) : null}
+      {compact ? (
         <ProfileCompactBar {...chrome} displayName={profile.display_name} username={profile.username} avatarUrl={profile.avatar_url} />
       ) : null}
 

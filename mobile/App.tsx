@@ -12,7 +12,7 @@
 
 import './i18n'; // must be first — initialises i18next before any component renders
 import React, { useEffect, useState } from 'react';
-import { LogBox, StyleSheet } from 'react-native';
+import { LogBox, StatusBar, StyleSheet, useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import StripeRoot from './components/StripeRoot';
@@ -73,6 +73,7 @@ initMonitoring();
 function App() {
   const [appearanceReady, setAppearanceReady] = useState(false);
   const appColors = useThemeColors();
+  const colorScheme = useColorScheme();
 
   // Web only (no-ops on iOS / Android): browser bar colour follows the app theme; text fields never go under 16 px
   // (iOS Safari zooms the page otherwise).
@@ -101,6 +102,9 @@ function App() {
     <GestureHandlerRootView style={styles.root}>
       {/* The only SafeAreaProvider: components outside the NavigationContainer (VenueSessionBar) need it. */}
       <SafeAreaProvider>
+        {/* Baseline of the status-bar icons: dark icons on the light theme, light on the dark one. Screens that set their own
+            <StatusBar> sit on top of this one and hand it back on unmount (RN keeps a stack), so no screen leaves a stale style. */}
+        <StatusBar barStyle={colorScheme === 'light' ? 'dark-content' : 'light-content'} />
         <StripeRoot>
           <AuthProvider>
             <AuthenticatedAppearanceBridge />
