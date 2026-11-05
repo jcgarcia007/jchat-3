@@ -146,10 +146,11 @@ test('the six points and the switch hint say exactly what was agreed, in es and 
   assert.deepEqual(Object.keys(es.points), ['here', 'adults', 'erased', 'block', 'screenshots', 'help']);
   assert.deepEqual(Object.keys(en.points), Object.keys(es.points));
   assert.equal(es.points.adults.title, 'Solo mayores de 18');
-  assert.equal(es.points.adults.body, 'JChat es solo para adultos. Fotos y textos se revisan antes de publicarse.');
+  assert.equal(es.points.adults.body, 'Usamos filtros automáticos y revisamos los reportes. Puedes reportar o bloquear a cualquiera.');
   assert.equal(es.points.block.title, 'Bloquea o reporta a quien quieras');
   assert.equal(es.points.help.body, 'Pide ayuda al personal del local desde la app, sin que nadie más lo vea. En una emergencia, llama al 911.');
   assert.equal(en.points.adults.title, '18+ only');
+  assert.equal(en.points.adults.body, 'We use automatic filters and review reports. You can report or block anyone.');
   assert.equal(en.points.erased.body, 'Likes, matches and chats disappear, except with people you both follow.');
   assert.equal(en.points.help.body, 'Ask the venue staff for help from the app, without anyone else seeing it. In an emergency, call 911.');
   assert.equal(es.gamesGlobalHint, 'Match y Truth or Dare en este local. Cámbialo cuando quieras en Ajustes.');
