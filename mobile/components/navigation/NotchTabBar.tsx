@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     gap: 4,
     maxWidth: '100%',
-    paddingHorizontal: 8,
+    paddingHorizontal: 4,
     paddingVertical: 4,
   },
   // As tall as the profile avatar (30), so every pill and label lines up whatever the icon is.
