@@ -825,10 +825,10 @@ export default function CheckoutScreen() {
                 <View style={[styles.qtyBadge, { backgroundColor: palette.brandLight }]}>
                   <Text style={[styles.qtyBadgeText, { color: c.brandText }]}>{row.qty}</Text>
                 </View>
-                <Text style={[styles.summaryItemName, { color: c.textPrimary }]} numberOfLines={1}>
+                <Text style={[styles.summaryItemName, { color: c.textPrimary }]} numberOfLines={2}>
                   {row.name}
                 </Text>
-                <Text style={[styles.summaryItemPrice, { color: c.textSecondary }]}>{formatCents(row.cents)}</Text>
+                <Text style={[styles.summaryItemPrice, { color: c.textSecondary }]} numberOfLines={1}>{formatCents(row.cents)}</Text>
               </View>
             ))}
 
@@ -914,7 +914,7 @@ export default function CheckoutScreen() {
               <View style={quoteLoading ? { opacity: 0.5 } : undefined}>
                 <View style={styles.totalRow}>
                   <Text style={[styles.totalLabel, { color: c.textSecondary }]}>{t('cart.subtotal')}</Text>
-                  <Text style={[styles.totalValue, { color: c.textPrimary }]}>
+                  <Text style={[styles.totalValue, { color: c.textPrimary }]} numberOfLines={1}>
                     {formatCents(quote.subtotal_cents)}
                   </Text>
                 </View>
@@ -925,7 +925,7 @@ export default function CheckoutScreen() {
                       ? t('cart.taxLabel')
                       : t('checkout.taxLabelRate', { rate: formatTaxRate(quote.tax_rate) })}
                   </Text>
-                  <Text style={[styles.totalValue, { color: c.textPrimary }]}>
+                  <Text style={[styles.totalValue, { color: c.textPrimary }]} numberOfLines={1}>
                     {formatCents(quote.tax_cents)}
                   </Text>
                 </View>
@@ -939,7 +939,7 @@ export default function CheckoutScreen() {
                   <Text style={[styles.totalLabel, { color: c.textSecondary }]}>
                     {tipPreset === 'custom' ? t('checkout.tipLabelCustom') : t('checkout.tipLabelPercent', { value: tipPreset })}
                   </Text>
-                  <Text style={[styles.totalValue, { color: c.textPrimary }]}>
+                  <Text style={[styles.totalValue, { color: c.textPrimary }]} numberOfLines={1}>
                     {formatCents(quote.tip_cents)}
                   </Text>
                 </View>
@@ -948,7 +948,7 @@ export default function CheckoutScreen() {
 
                 <View style={styles.totalRow}>
                   <Text style={[styles.totalLabelBold, { color: c.textPrimary }]}>{t('cart.total')}</Text>
-                  <Text style={[styles.totalValueBold, { color: c.textPrimary }]}>
+                  <Text style={[styles.totalValueBold, { color: c.textPrimary }]} numberOfLines={1}>
                     {formatCents(quote.total_cents)}
                   </Text>
                 </View>
@@ -1314,17 +1314,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   totalLabel: {
+    flexShrink: 1,
     fontSize: 14,
   },
   totalValue: {
+    flexShrink: 0,
     fontSize: 14,
     fontWeight: '500',
   },
   totalLabelBold: {
+    flexShrink: 1,
     fontSize: 17,
     fontWeight: '700',
   },
   totalValueBold: {
+    flexShrink: 0,
     fontSize: 17,
     fontWeight: '700',
   },

@@ -58,7 +58,7 @@ export function CartBar({ onPress }: CartBarProps) {
         <Text maxFontSizeMultiplier={typeCap('button')} style={styles.label}>{t('cartBar.viewCart')}</Text>
 
         {/* Right: total */}
-        <Text maxFontSizeMultiplier={typeCap('compact')} style={styles.total}>{formattedTotal}</Text>
+        <Text maxFontSizeMultiplier={typeCap('compact')} numberOfLines={1} style={styles.total}>{formattedTotal}</Text>
       </Pressable>
     </View>
   );

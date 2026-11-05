@@ -128,7 +128,7 @@ export function ProductRow({ item, onOpenDetail }: ProductRowProps) {
           ) : null}
 
           <View style={styles.priceRow}>
-            <Text style={[styles.price, { color: c.textPrimary }]}>
+            <Text style={[styles.price, { color: c.textPrimary }]} numberOfLines={1}>
               {formatPrice(item.price_cents)}
             </Text>
             {hasSizes ? (
@@ -227,9 +227,11 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 15,
     fontWeight: '700',
+    flexShrink: 0,
   },
   fromLabel: {
     fontSize: 12,
+    flexShrink: 1,
   },
   rightColumn: {
     alignItems: 'center',

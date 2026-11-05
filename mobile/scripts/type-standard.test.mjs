@@ -195,3 +195,46 @@ test('B7b: dense UI (14–15 before) uses the compact role with its own cap', ()
     assert.match(src, /typeCap\('compact'\)/, file);
   }
 });
+
+// Amounts never split ("$19.0 / 0"): the amount is one line and keeps its width; the text next to it (a label or a
+// button, which may wrap) is the one that gives way.
+test('B7b: amounts next to a label or button stay on one line and never shrink', () => {
+  const amountTexts = [
+    ['screens/menu/ProductDetailScreen.tsx', ['addBarTotal', 'addBarUnit']],
+    ['components/menu/CartBar.tsx', ['styles.total']],
+    ['components/menu/ProductRow.tsx', ['styles.price,']],
+    ['screens/menu/CartScreen.tsx', ['lineTotal', 'totalValue']],
+    ['screens/checkout/CheckoutScreen.tsx', ['summaryItemPrice', 'totalValue,', 'totalValueBold']],
+  ];
+  for (const [file, names] of amountTexts) {
+    const src = read(file);
+    for (const name of names) {
+      const tag = src.split('<Text').find((chunk) => chunk.includes(name) && chunk.split('>')[0].includes(name));
+      assert.ok(tag, `${file}: no <Text> with ${name}`);
+      assert.match(tag.split('>')[0], /numberOfLines=\{1\}/, `${file}: ${name} must be numberOfLines={1}`);
+      assert.doesNotMatch(tag.split('>')[0], /adjustsFontSizeToFit/, `${file}: ${name} must not auto-shrink`);
+    }
+  }
+  const style = (file, key) => {
+    const m = read(file).match(new RegExp(`\\n  ${key}: \\{[^}]*\\}`));
+    assert.ok(m, `${file}: no style ${key}`);
+    return m[0];
+  };
+  for (const [file, key] of [
+    ['screens/menu/ProductDetailScreen.tsx', 'addBarPrice'],
+    ['components/menu/CartBar.tsx', 'total'],
+    ['components/menu/ProductRow.tsx', 'price'],
+    ['screens/menu/CartScreen.tsx', 'lineTotal'],
+    ['screens/menu/CartScreen.tsx', 'totalValue'],
+    ['screens/checkout/CheckoutScreen.tsx', 'summaryItemPrice'],
+    ['screens/checkout/CheckoutScreen.tsx', 'totalValue'],
+    ['screens/checkout/CheckoutScreen.tsx', 'totalValueBold'],
+  ]) assert.match(style(file, key), /flexShrink: 0/, `${file}: ${key} keeps its width`);
+  // The things beside the amount can give way.
+  assert.match(style('screens/menu/ProductDetailScreen.tsx', 'addButton'), /flexShrink: 1/);
+  assert.doesNotMatch(style('screens/menu/ProductDetailScreen.tsx', 'addButton'), /minWidth/);
+  assert.match(style('screens/menu/CartScreen.tsx', 'totalLabel'), /flexShrink: 1/);
+  assert.match(style('screens/checkout/CheckoutScreen.tsx', 'totalLabel'), /flexShrink: 1/);
+  assert.match(style('screens/checkout/CheckoutScreen.tsx', 'totalLabelBold'), /flexShrink: 1/);
+  assert.match(style('components/menu/ProductRow.tsx', 'fromLabel'), /flexShrink: 1/);
+});

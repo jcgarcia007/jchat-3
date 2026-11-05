@@ -358,7 +358,7 @@ export default function CartScreen() {
           </View>
 
           {/* Line total */}
-          <Text style={[styles.lineTotal, { color: c.textPrimary }]}>
+          <Text style={[styles.lineTotal, { color: c.textPrimary }]} numberOfLines={1}>
             {formatCents(line.unitPriceCents * line.qty)}
           </Text>
 
@@ -656,7 +656,7 @@ export default function CartScreen() {
             {/* Subtotal */}
             <View style={styles.totalRow}>
               <Text style={[styles.totalLabel, { color: c.textSecondary }]}>{t('cart.subtotal')}</Text>
-              <Text style={[styles.totalValue, { color: c.textPrimary }]}>
+              <Text style={[styles.totalValue, { color: c.textPrimary }]} numberOfLines={1}>
                 {formatCents(subtotalCents)}
               </Text>
             </View>
@@ -969,6 +969,7 @@ const styles = StyleSheet.create({
   lineTotal: {
     fontSize: 15,
     fontWeight: '700',
+    flexShrink: 0,
   },
   deleteBtn: {
     padding: 4,
@@ -994,9 +995,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   totalLabel: {
+    flexShrink: 1,
     fontSize: 14,
   },
   totalValue: {
+    flexShrink: 0,
     fontSize: 14,
     fontWeight: '500',
   },

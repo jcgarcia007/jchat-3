@@ -715,11 +715,11 @@ export default function ProductDetailScreen() {
         <View style={[styles.addBar, { backgroundColor: c.bgSurface, borderTopColor: c.borderSubtle }]}>
           {/* Dynamic price display */}
           <View style={styles.addBarPrice}>
-            <Text style={[styles.addBarTotal, { color: c.textPrimary }]}>
+            <Text style={[styles.addBarTotal, { color: c.textPrimary }]} numberOfLines={1}>
               {formatCents(totalCents)}
             </Text>
             {qty > 1 ? (
-              <Text style={[styles.addBarUnit, { color: c.textSecondary }]}>
+              <Text style={[styles.addBarUnit, { color: c.textSecondary }]} numberOfLines={1}>
                 {formatCents(unitPriceCents)} × {qty}
               </Text>
             ) : null}
@@ -1019,8 +1019,10 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     gap: 12,
   },
+  // Amounts never split: the price block keeps its width and the button (which may wrap) gives way.
   addBarPrice: {
-    flex: 1,
+    flexGrow: 1,
+    flexShrink: 0,
     gap: 2,
   },
   addBarTotal: {
@@ -1034,11 +1036,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 24,
     paddingVertical: 14,
-    minWidth: 160,
+    flexShrink: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   addButtonText: {
+    flexShrink: 1,
+    textAlign: 'center',
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.2,
