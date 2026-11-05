@@ -7,7 +7,7 @@
  */
 
 import React, { useCallback, useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { useNavigation } from '@react-navigation/native';
@@ -17,7 +17,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { IconArrowRight, IconMail } from '@tabler/icons-react-native';
 
 import { ticket } from '../../theme/ticket';
-import { loginFont, useLoginFonts } from '../../theme/loginFonts';
+import { useLoginFonts } from '../../theme/loginFonts';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { toUserMessage } from '../../utils/errors';
 import type { AuthStackParamList } from '../../navigation/AppNavigator';
@@ -29,7 +29,8 @@ import { TicketTitle, useTicketCascade } from '../../components/auth/TicketRevea
 import { showAlert } from '../../utils/dialog';
 import { readAuthCode } from '../../utils/authUrl';
 import { AppleAuthSlot } from '../../components/auth/AppleAuthSlot';
-import { LABEL_TEXT_CAP } from '../../theme/textScale';
+import AppText from '../../components/common/AppText';
+import { controlMinHeight, space } from '../../theme/spacing';
 
 type LoginNav = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
@@ -113,7 +114,9 @@ export default function LoginScreen() {
         <TicketTitle text={t('ticket.title')} reveal={cascade.reveal} />
       </Animated.View>
       <Animated.View style={cascade.blockStyle(2)}>
-        <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.subtitle}>{t('ticket.subtitle')}</Text>
+        <AppText variant="body" family="text" color={ticket.ticketInkMuted} style={styles.subtitle}>
+          {t('ticket.subtitle')}
+        </AppText>
       </Animated.View>
 
       <Animated.View style={cascade.blockStyle(3)}>
@@ -124,7 +127,9 @@ export default function LoginScreen() {
         accessibilityLabel={t('ticket.continueEmail')}
       >
         <IconMail size={22} color={ticket.ticketButtonText} strokeWidth={1.75} />
-        <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.primaryText}>{t('ticket.continueEmail')}</Text>
+        <AppText variant="button" family="textXBold" color={ticket.ticketButtonText}>
+          {t('ticket.continueEmail')}
+        </AppText>
         <IconArrowRight size={22} color={ticket.ticketButtonText} strokeWidth={1.75} />
       </Pressable>
       </Animated.View>
@@ -147,7 +152,7 @@ export default function LoginScreen() {
               accessibilityRole="button"
               accessibilityLabel={t('login.appleA11y')}
             >
-              <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.socialText}>{t('ticket.apple')}</Text>
+              <AppText variant="button" family="textBold" color={ticket.ticketInk}>{t('ticket.apple')}</AppText>
             </Pressable>
           }
         />
@@ -158,7 +163,7 @@ export default function LoginScreen() {
           accessibilityRole="button"
           accessibilityLabel={t('login.googleA11y')}
         >
-          <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.socialText}>{t('ticket.google')}</Text>
+          <AppText variant="button" family="textBold" color={ticket.ticketInk}>{t('ticket.google')}</AppText>
         </Pressable>
       </Animated.View>
 
@@ -170,14 +175,14 @@ export default function LoginScreen() {
       <TicketPerforation />
 
       <View style={styles.newHere}>
-        <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.newHereText}>{t('ticket.newHere')} </Text>
+        <AppText variant="body" family="text" color={ticket.ticketInkMuted}>{t('ticket.newHere')} </AppText>
         <Pressable
           onPress={openRegistration}
           hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
           accessibilityRole="button"
           accessibilityLabel={t('ticket.createAccount')}
         >
-          <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.link}>{t('ticket.createAccount')}</Text>
+          <AppText variant="body" family="textBold" color={ticket.ticketButton}>{t('ticket.createAccount')}</AppText>
         </Pressable>
       </View>
       </Animated.View>
@@ -187,27 +192,22 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   subtitle: {
-    marginTop: 10,
-    marginBottom: 22,
-    fontFamily: loginFont.text,
-    fontSize: 15,
-    lineHeight: 22,
-    color: ticket.ticketInkMuted,
+    marginTop: space.sm,
+    marginBottom: space.xl,
   },
   primary: {
     minHeight: 56,
     borderRadius: 14,
-    paddingHorizontal: 18,
+    paddingHorizontal: space.lg,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: ticket.ticketButton,
   },
-  primaryText: { fontFamily: loginFont.textXBold, fontSize: 16, color: ticket.ticketButtonText },
-  socialRow: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  socialRow: { flexDirection: 'row', gap: space.sm, marginTop: space.md },
   social: {
     flex: 1,
-    minHeight: 50,
+    minHeight: 50, // = the official Apple button next to it
     borderRadius: 14,
     borderWidth: 1,
     borderColor: ticket.ticketFieldBorder,
@@ -218,8 +218,5 @@ const styles = StyleSheet.create({
   socialBusy: { opacity: 0.6 },
   // Apple's official button: same row slot and height as the Google button.
   socialOfficial: { flex: 1, height: 50 },
-  socialText: { fontFamily: loginFont.textBold, fontSize: 15, color: ticket.ticketInk },
-  newHere: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', minHeight: 44 },
-  newHereText: { fontFamily: loginFont.text, fontSize: 14, color: ticket.ticketInkMuted },
-  link: { fontFamily: loginFont.textBold, fontSize: 14, color: ticket.ticketButton },
+  newHere: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', minHeight: controlMinHeight },
 });

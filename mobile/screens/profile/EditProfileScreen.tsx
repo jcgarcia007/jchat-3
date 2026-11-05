@@ -33,12 +33,13 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { Spinner } from '../../components/common/Spinner';
+import AppText from '../../components/common/AppText';
+import FormField from '../../components/common/FormField';
 import { AppModal } from '../../components/common/AppModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -56,6 +57,8 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
+import { controlMinHeight, fieldGap, fieldLabelGap, space } from '../../theme/spacing';
+import { typeCap, typeStyle } from '../../theme/typography';
 import { getProfileTheme } from '../../theme/profileThemes';
 import type { ProfileTheme } from '../../theme/profileThemes';
 
@@ -94,6 +97,7 @@ const USERNAME_DEBOUNCE_MS = 500;
 
 export default function EditProfileScreen(): React.JSX.Element {
   const c = useThemeColors();
+  const fieldPalette = { background: c.bgSurface, border: c.borderSubtle };
   const { t } = useTranslation('profile');
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { user: authUser } = useAuth();
@@ -387,9 +391,9 @@ export default function EditProfileScreen(): React.JSX.Element {
           <IconChevronLeft size={24} color={c.brandText} strokeWidth={2} />
         </TouchableOpacity>
 
-        <Text adjustsFontSizeToFit minimumFontScale={0.6} numberOfLines={1} style={[styles.headerTitle, { color: c.textPrimary }]}>
+        <AppText variant="headline" adjustsFontSizeToFit minimumFontScale={0.6} numberOfLines={1} style={styles.headerTitle}>
           {t('edit.title')}
-        </Text>
+        </AppText>
 
         <TouchableOpacity
           onPress={() => { void handleSave(); }}
@@ -401,7 +405,7 @@ export default function EditProfileScreen(): React.JSX.Element {
           {saving ? (
             <Spinner size="small" color={c.brandText} />
           ) : (
-            <Text style={[styles.saveText, { color: c.brandText }]}>{t('actions.save', { ns: 'common' })}</Text>
+            <AppText variant="button" color={c.brandText} style={styles.saveText}>{t('actions.save', { ns: 'common' })}</AppText>
           )}
         </TouchableOpacity>
       </View>
@@ -458,37 +462,27 @@ export default function EditProfileScreen(): React.JSX.Element {
           <View style={styles.form}>
 
             {/* Display name */}
-            <View style={styles.fieldGroup}>
-              <Text style={[styles.label, { color: c.textSecondary }]}>
-                {t('edit.displayNameLabel')}
-              </Text>
-              <TextInput
-                value={displayName}
-                onChangeText={setDisplayName}
-                style={[
-                  styles.input,
-                  {
-                    color: c.textPrimary,
-                    backgroundColor: c.bgSurface,
-                    borderColor: c.borderSubtle,
-                  },
-                ]}
-                placeholder={t('edit.namePlaceholder')}
-                placeholderTextColor={c.textTertiary}
-                maxLength={50}
-                autoCorrect={false}
-                accessibilityLabel={t('edit.displayNameA11y')}
-              />
-            </View>
+            <FormField
+              first
+              label={t('edit.displayNameLabel')}
+              palette={fieldPalette}
+              value={displayName}
+              onChangeText={setDisplayName}
+              placeholder={t('edit.namePlaceholder')}
+              maxLength={50}
+              autoCorrect={false}
+              accessibilityLabel={t('edit.displayNameA11y')}
+            />
 
             {/* Username */}
             <View style={styles.fieldGroup}>
-              <Text style={[styles.label, { color: c.textSecondary }]}>
+              <AppText variant="label" color={c.textSecondary}>
                 {t('edit.usernameLabel')}
-              </Text>
+              </AppText>
               <View style={[styles.inputRow, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
-                <Text style={[styles.atSymbol, { color: c.textTertiary }]}>@</Text>
+                <AppText variant="field" color={c.textTertiary} style={styles.atSymbol}>@</AppText>
                 <TextInput
+                  maxFontSizeMultiplier={typeCap('field')}
                   value={username}
                   onChangeText={handleUsernameChange}
                   style={[styles.inputInner, { color: c.textPrimary }]}
@@ -506,10 +500,11 @@ export default function EditProfileScreen(): React.JSX.Element {
 
             {/* Bio */}
             <View style={styles.fieldGroup}>
-              <Text style={[styles.label, { color: c.textSecondary }]}>
+              <AppText variant="label" color={c.textSecondary}>
                 {t('edit.bioLabel')}
-              </Text>
+              </AppText>
               <TextInput
+                maxFontSizeMultiplier={typeCap('field')}
                 value={bio}
                 onChangeText={setBio}
                 style={[
@@ -531,38 +526,27 @@ export default function EditProfileScreen(): React.JSX.Element {
             </View>
 
             {/* City */}
-            <View style={styles.fieldGroup}>
-              <Text style={[styles.label, { color: c.textSecondary }]}>
-                {t('edit.cityLabel')}
-              </Text>
-              {/* multiline so a long placeholder wraps to a second line at large text sizes; it stays one line of text (no new lines). */}
-              <TextInput
-                value={city}
-                onChangeText={(value) => setCity(value.replace(/[\r\n]+/g, ' '))}
-                multiline
-                scrollEnabled={false}
-                submitBehavior="blurAndSubmit"
-                style={[
-                  styles.input,
-                  {
-                    color: c.textPrimary,
-                    backgroundColor: c.bgSurface,
-                    borderColor: c.borderSubtle,
-                  },
-                ]}
-                placeholder={t('edit.cityPlaceholder')}
-                placeholderTextColor={c.textTertiary}
-                maxLength={80}
-                autoCorrect={false}
-                accessibilityLabel={t('edit.cityA11y')}
-              />
-            </View>
+            {/* multiline so a long placeholder wraps to a second line at large text sizes; it stays one line of text (no new lines). */}
+            <FormField
+              first // the form's gap already separates the fields
+              label={t('edit.cityLabel')}
+              palette={fieldPalette}
+              value={city}
+              onChangeText={(value) => setCity(value.replace(/[\r\n]+/g, ' '))}
+              multiline
+              scrollEnabled={false}
+              submitBehavior="blurAndSubmit"
+              placeholder={t('edit.cityPlaceholder')}
+              maxLength={80}
+              autoCorrect={false}
+              accessibilityLabel={t('edit.cityA11y')}
+            />
 
             {/* Language */}
             <View style={styles.fieldGroup}>
-              <Text style={[styles.label, { color: c.textSecondary }]}>
+              <AppText variant="label" color={c.textSecondary}>
                 {t('edit.languageLabel')}
-              </Text>
+              </AppText>
               <View style={styles.langRow}>
                 {LANGUAGES.map((lang) => {
                   const isSelected = language === lang.code;
@@ -586,7 +570,8 @@ export default function EditProfileScreen(): React.JSX.Element {
                       accessibilityLabel={lang.label}
                       aria-checked={isSelected}
                     >
-                      <Text
+                      <AppText
+                        variant="body"
                         style={[
                           styles.langLabel,
                           {
@@ -599,7 +584,7 @@ export default function EditProfileScreen(): React.JSX.Element {
                         ]}
                       >
                         {lang.label}
-                      </Text>
+                      </AppText>
                     </TouchableOpacity>
                   );
                 })}
@@ -608,9 +593,9 @@ export default function EditProfileScreen(): React.JSX.Element {
 
             {/* Profile Theme */}
             <View style={styles.fieldGroup}>
-              <Text style={[styles.label, { color: c.textSecondary }]}>
+              <AppText variant="label" color={c.textSecondary}>
                 {t('edit.themeLabel')}
-              </Text>
+              </AppText>
               <TouchableOpacity
                 onPress={() => setThemeModalVisible(true)}
                 style={[
@@ -630,9 +615,9 @@ export default function EditProfileScreen(): React.JSX.Element {
                     { backgroundColor: selectedTheme.accent },
                   ]}
                 />
-                <Text style={[styles.themeLabel, { color: c.textPrimary }]}>
+                <AppText variant="body" style={styles.themeLabel}>
                   {selectedTheme.name}
-                </Text>
+                </AppText>
                 <IconPalette size={18} color={c.textTertiary} style={styles.themeIcon} />
                 <IconChevronRight size={18} color={c.textTertiary} />
               </TouchableOpacity>
@@ -652,9 +637,9 @@ export default function EditProfileScreen(): React.JSX.Element {
         <SafeAreaView style={[styles.modalSafe, { backgroundColor: c.bgBase }]}>
           {/* Modal header */}
           <View style={[styles.modalHeader, { borderBottomColor: c.borderSubtle }]}>
-            <Text style={[styles.modalTitle, { color: c.textPrimary }]}>
+            <AppText variant="headline" style={styles.modalTitle}>
               {t('edit.chooseTheme')}
-            </Text>
+            </AppText>
             <TouchableOpacity
               onPress={() => setThemeModalVisible(false)}
               style={styles.headerBtn}
@@ -711,23 +696,23 @@ function UsernameHint({ status, c }: HintProps): React.JSX.Element | null {
   const { t } = useTranslation('profile');
   if (status === 'available') {
     return (
-      <Text style={[styles.hintText, { color: palette.success }]}>
+      <AppText variant="caption" color={palette.success} style={styles.hintText}>
         {t('edit.usernameAvailable')}
-      </Text>
+      </AppText>
     );
   }
   if (status === 'taken') {
     return (
-      <Text style={[styles.hintText, { color: palette.danger }]}>
+      <AppText variant="caption" color={palette.danger} style={styles.hintText}>
         {t('edit.usernameTaken')}
-      </Text>
+      </AppText>
     );
   }
   if (status === 'error') {
     return (
-      <Text style={[styles.hintText, { color: palette.warning }]}>
+      <AppText variant="caption" color={palette.warning} style={styles.hintText}>
         {t('edit.usernameCheckError')}
-      </Text>
+      </AppText>
     );
   }
   return null;
@@ -752,39 +737,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   headerBtn: {
     flexShrink: 0,
-    padding: 4,
-    minWidth: 44,
+    padding: space.xs,
+    minWidth: controlMinHeight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
     flex: 1,
     flexShrink: 1,
-    fontSize: 17,
     fontWeight: '600',
     textAlign: 'center',
   },
   saveText: {
-    fontSize: 16,
     fontWeight: '600',
   },
 
   // ── Scroll content ────────────────────────────────────────────────────────
   scroll: {
-    paddingBottom: 60,
+    paddingBottom: space.xxxl + space.xl,
   },
 
   // ── Avatar ────────────────────────────────────────────────────────────────
   avatarRow: {
-    paddingHorizontal: 20,
-    marginTop: 16, // no cover banner above any more: the avatar starts the form
-    marginBottom: 8,
+    paddingHorizontal: space.xl,
+    marginTop: space.lg, // no cover banner above any more: the avatar starts the form
+    marginBottom: space.sm,
   },
   avatarWrap: {
     width: AVATAR_SIZE,
@@ -814,28 +797,23 @@ const styles = StyleSheet.create({
 
   // ── Form ──────────────────────────────────────────────────────────────────
   form: {
-    paddingHorizontal: 20,
-    gap: 20,
-    marginTop: 8,
+    paddingHorizontal: space.xl,
+    gap: fieldGap,
+    marginTop: space.sm,
   },
   fieldGroup: {
-    gap: 6,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: '500',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    gap: fieldLabelGap,
   },
   input: {
-    fontSize: 15,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    borderRadius: 10,
+    ...typeStyle('field'),
+    minHeight: controlMinHeight,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.sm,
+    borderRadius: space.md,
     borderWidth: StyleSheet.hairlineWidth,
   },
   textArea: {
-    minHeight: 80,
+    minHeight: 80, // multi-line field: taller than controlMinHeight
     textAlignVertical: 'top',
   },
 
@@ -843,41 +821,41 @@ const styles = StyleSheet.create({
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 10,
+    minHeight: controlMinHeight,
+    borderRadius: space.md,
     borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 14,
+    paddingHorizontal: space.lg,
   },
   atSymbol: {
-    fontSize: 15,
-    marginRight: 2,
+    marginRight: space.xs,
   },
   inputInner: {
     flex: 1,
-    fontSize: 15,
-    paddingVertical: 11,
+    ...typeStyle('field'),
+    paddingVertical: space.sm,
   },
   statusIcon: {
-    marginLeft: 8,
+    marginLeft: space.sm,
   },
   hintText: {
-    fontSize: 12,
-    marginTop: 2,
-    marginLeft: 2,
+    marginTop: space.xs,
+    marginLeft: space.xs,
   },
 
   // ── Language chips ────────────────────────────────────────────────────────
   langRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: space.md,
   },
   langChip: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
+    paddingHorizontal: space.xl,
+    paddingVertical: space.sm,
+    minHeight: controlMinHeight,
+    justifyContent: 'center',
+    borderRadius: 24,
     borderWidth: 1,
   },
   langLabel: {
-    fontSize: 14,
     fontWeight: '500',
   },
 
@@ -885,11 +863,12 @@ const styles = StyleSheet.create({
   themeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 10,
+    minHeight: controlMinHeight,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.md,
+    borderRadius: space.md,
     borderWidth: StyleSheet.hairlineWidth,
-    gap: 10,
+    gap: space.md,
   },
   themeSwatch: {
     width: 28,
@@ -898,7 +877,6 @@ const styles = StyleSheet.create({
   },
   themeLabel: {
     flex: 1,
-    fontSize: 15,
   },
   themeIcon: {
     // spacer between label and chevron
@@ -912,16 +890,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingHorizontal: space.xl,
+    paddingVertical: space.lg,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   modalTitle: {
-    fontSize: 17,
     fontWeight: '600',
   },
   modalScroll: {
-    paddingHorizontal: 12,
-    paddingBottom: 40,
+    paddingHorizontal: space.md,
+    paddingBottom: space.xxxl,
   },
 });

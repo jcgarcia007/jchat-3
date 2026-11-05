@@ -6,7 +6,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
-  Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
@@ -15,6 +14,7 @@ import {
   Platform,
 } from 'react-native';
 import { Spinner } from '../../components/common/Spinner';
+import AppText from '../../components/common/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -23,13 +23,13 @@ import type { AuthError } from '@supabase/supabase-js';
 
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
+import { controlMinHeight, fieldLabelGap, sectionGap, space } from '../../theme/spacing';
+import { typeCap, typeStyle } from '../../theme/typography';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { useCaptcha, captchaErrorI18nKeys } from '../../services/captcha';
 import { useAuth } from '../../context/AuthContext';
 import { showAlert } from '../../utils/dialog';
 
-const BTN_HEIGHT = 52;
-const INPUT_HEIGHT = 52;
 const RESEND_DELAY_SECONDS = 60;
 
 type Step = 'email' | 'code';
@@ -198,18 +198,19 @@ export default function ForgotPasswordScreen() {
               : <IconShieldCheck size={32} color={palette.brand} strokeWidth={1.5} />}
           </View>
 
-          <Text style={[styles.title, { color: c.textPrimary }]}>
+          <AppText variant="title" style={styles.title}>
             {step === 'email' ? t('forgotPassword.title') : t('forgotPassword.codeTitle')}
-          </Text>
-          <Text style={[styles.subtitle, { color: c.textSecondary }]}>
+          </AppText>
+          <AppText variant="body" color={c.textSecondary} style={styles.subtitle}>
             {step === 'email' ? t('forgotPassword.subtitle') : t('forgotPassword.sentGeneric')}
-          </Text>
+          </AppText>
 
           {step === 'email' ? (
             <>
               <View style={[styles.inputRow, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
                 <TextInput
                   style={[styles.input, { color: c.textPrimary }]}
+                  maxFontSizeMultiplier={typeCap('field')}
                   value={email}
                   onChangeText={setEmail}
                   placeholder={t('forgotPassword.emailPlaceholder')}
@@ -231,18 +232,19 @@ export default function ForgotPasswordScreen() {
               >
                 {loading
                   ? <Spinner color={palette.textPrimary} />
-                  : <Text style={styles.primaryBtnText}>{t('forgotPassword.sendButton')}</Text>}
+                  : <AppText variant="button" color={palette.textPrimary} style={styles.primaryBtnText}>{t('forgotPassword.sendButton')}</AppText>}
               </TouchableOpacity>
             </>
           ) : (
             <>
               <View style={styles.fieldGroup}>
-                <Text style={[styles.label, { color: c.textSecondary }]}>
+                <AppText variant="label" color={c.textSecondary}>
                   {t('forgotPassword.codeLabel')}
-                </Text>
+                </AppText>
                 <View style={[styles.inputRow, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
                   <TextInput
                     style={[styles.codeInput, { color: c.textPrimary }]}
+                    maxFontSizeMultiplier={typeCap('title')}
                     value={code}
                     onChangeText={(value) => setCode(value.replace(/\D/g, '').slice(0, 6))}
                     placeholder={t('forgotPassword.codePlaceholder')}
@@ -269,7 +271,7 @@ export default function ForgotPasswordScreen() {
               >
                 {loading
                   ? <Spinner color={palette.textPrimary} />
-                  : <Text style={styles.primaryBtnText}>{t('forgotPassword.verify')}</Text>}
+                  : <AppText variant="button" color={palette.textPrimary} style={styles.primaryBtnText}>{t('forgotPassword.verify')}</AppText>}
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -278,14 +280,15 @@ export default function ForgotPasswordScreen() {
                 disabled={loading || resendSeconds > 0}
                 accessibilityRole="button"
               >
-                <Text style={[
-                  styles.textBtnLabel,
-                  { color: resendSeconds > 0 ? c.textTertiary : palette.brand },
-                ]}>
+                <AppText
+                  variant="button"
+                  color={resendSeconds > 0 ? c.textTertiary : palette.brand}
+                  style={styles.textBtnLabel}
+                >
                   {resendSeconds > 0
                     ? t('forgotPassword.resendIn', { seconds: resendSeconds })
                     : t('forgotPassword.resend')}
-                </Text>
+                </AppText>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -294,9 +297,9 @@ export default function ForgotPasswordScreen() {
                 disabled={loading}
                 accessibilityRole="button"
               >
-                <Text style={[styles.textBtnLabel, { color: c.textSecondary }]}>
+                <AppText variant="button" color={c.textSecondary} style={styles.textBtnLabel}>
                   {t('forgotPassword.changeEmail')}
-                </Text>
+                </AppText>
               </TouchableOpacity>
             </>
           )}
@@ -309,31 +312,31 @@ export default function ForgotPasswordScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   flex: { flex: 1 },
-  scroll: { padding: 24, gap: 20 },
-  backBtn: { alignSelf: 'flex-start', padding: 4, marginBottom: 8 },
+  scroll: { padding: space.xl, gap: sectionGap },
+  backBtn: { alignSelf: 'flex-start', padding: space.xs, marginBottom: space.sm },
   iconWrap: { width: 64, height: 64, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 24, fontWeight: '700' },
-  subtitle: { fontSize: 14, lineHeight: 22 },
-  fieldGroup: { gap: 6 },
-  label: { fontSize: 13, fontWeight: '500' },
+  title: { fontWeight: '700' },
+  subtitle: {},
+  fieldGroup: { gap: fieldLabelGap },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: INPUT_HEIGHT,
+    minHeight: controlMinHeight,
     borderRadius: 12,
     borderWidth: 1,
-    paddingHorizontal: 14,
+    paddingHorizontal: space.lg,
   },
-  input: { flex: 1, fontSize: 15 },
-  codeInput: { flex: 1, fontSize: 24, fontWeight: '700', letterSpacing: 8, textAlign: 'center' },
+  input: { flex: 1, ...typeStyle('field') },
+  // letterSpacing here is decoration: it spaces out the six digits of the code.
+  codeInput: { flex: 1, ...typeStyle('title'), fontWeight: '700', letterSpacing: 8, textAlign: 'center' }, // decoration
   primaryBtn: {
-    height: BTN_HEIGHT,
+    minHeight: controlMinHeight,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   btnDisabled: { opacity: 0.6 },
-  primaryBtnText: { color: palette.textPrimary, fontSize: 16, fontWeight: '700' },
-  textBtn: { alignItems: 'center', justifyContent: 'center', minHeight: 40, paddingHorizontal: 8 },
-  textBtnLabel: { fontSize: 14, fontWeight: '600' },
+  primaryBtnText: { fontWeight: '700' },
+  textBtn: { alignItems: 'center', justifyContent: 'center', minHeight: controlMinHeight, paddingHorizontal: space.sm },
+  textBtnLabel: { fontWeight: '600' },
 });

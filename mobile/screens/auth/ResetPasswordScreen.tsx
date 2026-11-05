@@ -6,8 +6,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
-  Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
@@ -16,23 +14,24 @@ import {
   BackHandler,
 } from 'react-native';
 import { Spinner } from '../../components/common/Spinner';
+import AppText from '../../components/common/AppText';
+import FormField from '../../components/common/FormField';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { IconEye, IconEyeOff, IconLock } from '@tabler/icons-react-native';
 
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
+import { controlMinHeight, fieldGap, sectionGap, space } from '../../theme/spacing';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { showAlert } from '../../utils/dialog';
-
-const BTN_HEIGHT = 52;
-const INPUT_HEIGHT = 52;
 
 export default function ResetPasswordScreen() {
   const c = useThemeColors();
   const { t } = useTranslation('auth');
   const { clearRecovery } = useAuth();
+  const fieldPalette = { background: c.bgSurface, border: c.borderSubtle };
 
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -125,29 +124,25 @@ export default function ResetPasswordScreen() {
             <IconLock size={32} color={palette.brand} strokeWidth={1.5} />
           </View>
 
-          <Text style={[styles.title, { color: c.textPrimary }]}>
+          <AppText variant="title" style={styles.title}>
             {t('resetPassword.title')}
-          </Text>
-          <Text style={[styles.subtitle, { color: c.textSecondary }]}>
+          </AppText>
+          <AppText variant="body" color={c.textSecondary} style={styles.subtitle}>
             {t('resetPassword.subtitle')}
-          </Text>
+          </AppText>
 
-          <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: c.textSecondary }]}>
-              {t('resetPassword.newLabel')}
-            </Text>
-            <View style={[styles.inputRow, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
-              <TextInput
-                style={[styles.input, { color: c.textPrimary }]}
-                value={newPassword}
-                onChangeText={setNewPassword}
-                placeholder={t('resetPassword.newPlaceholder')}
-                placeholderTextColor={c.textTertiary}
-                secureTextEntry={!showNew}
-                autoCapitalize="none"
-                autoCorrect={false}
-                accessibilityLabel={t('resetPassword.newA11y')}
-              />
+          <FormField
+            first
+            label={t('resetPassword.newLabel')}
+            palette={fieldPalette}
+            value={newPassword}
+            onChangeText={setNewPassword}
+            placeholder={t('resetPassword.newPlaceholder')}
+            secureTextEntry={!showNew}
+            autoCapitalize="none"
+            autoCorrect={false}
+            accessibilityLabel={t('resetPassword.newA11y')}
+            right={
               <TouchableOpacity
                 onPress={() => setShowNew((value) => !value)}
                 accessibilityLabel={showNew ? t('resetPassword.hidePassword') : t('resetPassword.showPassword')}
@@ -157,25 +152,20 @@ export default function ResetPasswordScreen() {
                   ? <IconEyeOff size={20} color={c.textSecondary} strokeWidth={1.8} />
                   : <IconEye size={20} color={c.textSecondary} strokeWidth={1.8} />}
               </TouchableOpacity>
-            </View>
-          </View>
+            }
+          />
 
-          <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: c.textSecondary }]}>
-              {t('resetPassword.confirmLabel')}
-            </Text>
-            <View style={[styles.inputRow, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
-              <TextInput
-                style={[styles.input, { color: c.textPrimary }]}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                placeholder={t('resetPassword.confirmPlaceholder')}
-                placeholderTextColor={c.textTertiary}
-                secureTextEntry={!showConfirm}
-                autoCapitalize="none"
-                autoCorrect={false}
-                accessibilityLabel={t('resetPassword.confirmA11y')}
-              />
+          <FormField
+            label={t('resetPassword.confirmLabel')}
+            palette={fieldPalette}
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            placeholder={t('resetPassword.confirmPlaceholder')}
+            secureTextEntry={!showConfirm}
+            autoCapitalize="none"
+            autoCorrect={false}
+            accessibilityLabel={t('resetPassword.confirmA11y')}
+            right={
               <TouchableOpacity
                 onPress={() => setShowConfirm((value) => !value)}
                 accessibilityLabel={showConfirm ? t('resetPassword.hidePassword') : t('resetPassword.showPassword')}
@@ -185,8 +175,8 @@ export default function ResetPasswordScreen() {
                   ? <IconEyeOff size={20} color={c.textSecondary} strokeWidth={1.8} />
                   : <IconEye size={20} color={c.textSecondary} strokeWidth={1.8} />}
               </TouchableOpacity>
-            </View>
-          </View>
+            }
+          />
 
           <TouchableOpacity
             style={[styles.saveBtn, { backgroundColor: palette.brandFill }, loading && styles.btnDisabled]}
@@ -197,7 +187,7 @@ export default function ResetPasswordScreen() {
           >
             {loading
               ? <Spinner color={palette.textPrimary} />
-              : <Text style={styles.saveBtnText}>{t('resetPassword.saveButton')}</Text>}
+              : <AppText variant="button" color={palette.textPrimary} style={styles.saveBtnText}>{t('resetPassword.saveButton')}</AppText>}
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -206,9 +196,9 @@ export default function ResetPasswordScreen() {
             disabled={loading}
             accessibilityRole="button"
           >
-            <Text style={[styles.cancelBtnText, { color: c.textSecondary }]}>
+            <AppText variant="button" color={c.textSecondary} style={styles.cancelBtnText}>
               {t('resetPassword.cancel')}
-            </Text>
+            </AppText>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -219,31 +209,19 @@ export default function ResetPasswordScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   flex: { flex: 1 },
-  scroll: { padding: 24, gap: 20 },
-  iconWrap: { width: 64, height: 64, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 24, fontWeight: '700' },
-  subtitle: { fontSize: 14, lineHeight: 22 },
-  fieldGroup: { gap: 6 },
-  label: { fontSize: 13, fontWeight: '500' },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: INPUT_HEIGHT,
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    gap: 8,
-  },
-  input: { flex: 1, fontSize: 15 },
+  scroll: { padding: space.xl },
+  iconWrap: { width: 64, height: 64, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: sectionGap },
+  title: { fontWeight: '700', marginBottom: space.sm },
+  subtitle: { marginBottom: sectionGap },
   saveBtn: {
-    height: BTN_HEIGHT,
+    minHeight: controlMinHeight,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
+    marginTop: sectionGap,
   },
   btnDisabled: { opacity: 0.6 },
-  saveBtnText: { color: palette.textPrimary, fontSize: 16, fontWeight: '700' },
-  cancelBtn: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  cancelBtnText: { fontSize: 15, fontWeight: '600' },
+  saveBtnText: { fontWeight: '700' },
+  cancelBtn: { minHeight: controlMinHeight, alignItems: 'center', justifyContent: 'center', marginTop: fieldGap },
+  cancelBtnText: { fontWeight: '600' },
 });

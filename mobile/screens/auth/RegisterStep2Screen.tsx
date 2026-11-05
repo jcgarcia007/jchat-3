@@ -20,7 +20,7 @@
  */
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { Spinner } from '../../components/common/Spinner';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -30,6 +30,9 @@ import { IconAlertCircle, IconArrowLeft, IconAt, IconCheck } from '@tabler/icons
 
 import { ticket } from '../../theme/ticket';
 import { loginFont, useLoginFonts } from '../../theme/loginFonts';
+import { controlMinHeight, fieldGap, fieldLabelGap, sectionGap, space } from '../../theme/spacing';
+import { typeCap, typeStyle } from '../../theme/typography';
+import AppText from '../../components/common/AppText';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { toUserMessage } from '../../utils/errors';
 import { useAuth } from '../../context/AuthContext';
@@ -465,13 +468,17 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
       <TicketHeader />
       <TicketStep step={2} />
       <TicketTitle text={t('register.step2Title')} dot={false} />
-      <Text style={styles.subtitle}>{t('register.step2Subtitle')}</Text>
+      <AppText variant="body" family="text" color={ticket.ticketInkMuted} style={styles.subtitle}>
+        {t('register.step2Subtitle')}
+      </AppText>
 
       {/* ── Date of birth ─────────────────────────────────────────────── */}
       <TicketBirthDate parts={dobParts} onChangeParts={setDobParts} error={dobError} />
 
       {/* ── Language selector ─────────────────────────────────────────── */}
-      <Text style={styles.fieldLabel}>{t('register.languageLabel')}</Text>
+      <AppText variant="label" family="mono" color={ticket.ticketInkMuted} style={styles.fieldLabel}>
+        {t('register.languageLabel')}
+      </AppText>
       <View style={styles.languageRow} role="radiogroup" accessibilityLabel={t('register.languageA11y')}>
         {LANGUAGE_OPTIONS.map((opt) => {
           const selected = opt.value === language;
@@ -487,19 +494,28 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
               accessibilityState={{ selected, checked: selected }}
               accessibilityLabel={opt.label}
             >
-              <Text style={styles.languageFlag}>{opt.flag}</Text>
-              <Text style={[styles.languageLabel, selected && styles.languageLabelOn]}>{opt.label}</Text>
+              <AppText variant="headline">{opt.flag}</AppText>
+              <AppText
+                variant="body"
+                family={selected ? 'textBold' : 'text'}
+                color={selected ? ticket.ticketInk : ticket.ticketInkMuted}
+              >
+                {opt.label}
+              </AppText>
             </Pressable>
           );
         })}
       </View>
 
       {/* ── @username ─────────────────────────────────────────────────── */}
-      <Text style={styles.fieldLabel}>{t('register.usernameLabel')}</Text>
+      <AppText variant="label" family="mono" color={ticket.ticketInkMuted} style={styles.fieldLabel}>
+        {t('register.usernameLabel')}
+      </AppText>
       <View style={[styles.usernameWrapper, { borderColor: usernameBorder }]}>
         <IconAt size={18} color={ticket.ticketInkMuted} strokeWidth={1.75} />
         <TextInput
           style={styles.usernameInput}
+          maxFontSizeMultiplier={typeCap('field')}
           placeholder={t('register.usernamePlaceholder')}
           placeholderTextColor={ticket.ticketInkMuted}
           autoCapitalize="none"
@@ -524,13 +540,21 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
       </View>
       {/* Inline status messages */}
       {usernameFormatError && usernameTouched ? (
-        <Text style={styles.errorText}>{t(usernameFormatError)}</Text>
+        <AppText variant="caption" family="text" color={ticket.ticketError} style={styles.below}>
+          {t(usernameFormatError)}
+        </AppText>
       ) : availability === 'taken' ? (
-        <Text style={styles.errorText}>{t('register.usernameTaken')}</Text>
+        <AppText variant="caption" family="text" color={ticket.ticketError} style={styles.below}>
+          {t('register.usernameTaken')}
+        </AppText>
       ) : availability === 'available' && !usernameFormatError ? (
-        <Text style={styles.statusText}>{t('register.usernameAvailable')}</Text>
+        <AppText variant="caption" family="textSemi" color={ticket.ticketInk} style={styles.below}>
+          {t('register.usernameAvailable')}
+        </AppText>
       ) : availability === 'error' ? (
-        <Text style={styles.mutedText}>{t('register.usernameCheckError')}</Text>
+        <AppText variant="caption" family="text" color={ticket.ticketInkMuted} style={styles.below}>
+          {t('register.usernameCheckError')}
+        </AppText>
       ) : null}
 
       {/* ── Terms & Privacy checkbox ──────────────────────────────────── */}
@@ -555,7 +579,9 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
         </View>
         {/* Label with tappable links */}
         <View style={styles.termsTextWrap}>
-          <Text style={styles.termsText}>{t('register.termsAgree')}</Text>
+          <AppText variant="caption" family="text" color={ticket.ticketInkMuted}>
+            {t('register.termsAgree')}
+          </AppText>
           <Pressable
             onPress={(e) => {
               e.stopPropagation();
@@ -563,9 +589,13 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
             }}
             hitSlop={6}
           >
-            <Text style={styles.termsLink}>{t('register.termsOfService')}</Text>
+            <AppText variant="caption" family="textBold" color={ticket.ticketButton} style={styles.termsLink}>
+              {t('register.termsOfService')}
+            </AppText>
           </Pressable>
-          <Text style={styles.termsText}>{t('register.termsAnd')}</Text>
+          <AppText variant="caption" family="text" color={ticket.ticketInkMuted}>
+            {t('register.termsAnd')}
+          </AppText>
           <Pressable
             onPress={(e) => {
               e.stopPropagation();
@@ -573,11 +603,17 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
             }}
             hitSlop={6}
           >
-            <Text style={styles.termsLink}>{t('register.privacyPolicy')}</Text>
+            <AppText variant="caption" family="textBold" color={ticket.ticketButton} style={styles.termsLink}>
+              {t('register.privacyPolicy')}
+            </AppText>
           </Pressable>
         </View>
       </Pressable>
-      {termsError ? <Text style={styles.errorText}>{termsError}</Text> : null}
+      {termsError ? (
+        <AppText variant="caption" family="text" color={ticket.ticketError} style={styles.below}>
+          {termsError}
+        </AppText>
+      ) : null}
 
       {/* ── Create account button ─────────────────────────────────────── */}
       <Pressable
@@ -591,7 +627,9 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
         {submitting ? (
           <Spinner color={ticket.ticketButtonText} />
         ) : (
-          <Text style={styles.primaryText}>{t('register.createButton')}</Text>
+          <AppText variant="button" family="textXBold" color={ticket.ticketButtonText}>
+            {t('register.createButton')}
+          </AppText>
         )}
       </Pressable>
     </TicketShell>
@@ -610,29 +648,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: ticket.ticketBackBg,
   },
-  subtitle: {
-    marginTop: 8,
-    marginBottom: 4,
-    fontFamily: loginFont.text,
-    fontSize: 15,
-    lineHeight: 22,
-    color: ticket.ticketInkMuted,
-  },
-  fieldLabel: {
-    marginTop: 18,
-    marginBottom: 6,
-    fontFamily: loginFont.mono,
-    fontSize: 11,
-    letterSpacing: 1.6,
-    textTransform: 'uppercase',
-    color: ticket.ticketInkMuted,
-  },
+  subtitle: { marginTop: space.sm, marginBottom: space.xs },
+  fieldLabel: { marginTop: fieldGap, marginBottom: fieldLabelGap },
 
   // ── Language selector ──────────────────────────────────────────────────────
-  languageRow: { flexDirection: 'row', gap: 10 },
+  languageRow: { flexDirection: 'row', gap: space.sm },
   languageOption: {
     flex: 1,
-    height: 52,
+    minHeight: 52,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: ticket.ticketFieldBorder,
@@ -640,40 +663,36 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: space.sm,
   },
   languageOptionOn: { borderColor: ticket.ticketButton, borderWidth: 2 },
-  languageFlag: { fontSize: 18 },
-  languageLabel: { fontFamily: loginFont.text, fontSize: 15, color: ticket.ticketInkMuted },
-  languageLabelOn: { fontFamily: loginFont.textBold, color: ticket.ticketInk },
 
   // ── @username field ────────────────────────────────────────────────────────
   usernameWrapper: {
-    height: 52,
+    minHeight: 52,
     borderRadius: 12,
     borderWidth: 1,
     backgroundColor: ticket.ticketField,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    gap: 6,
+    paddingHorizontal: space.md,
+    gap: fieldLabelGap,
   },
   usernameInput: {
     flex: 1,
-    height: '100%',
+    minHeight: controlMinHeight,
+    paddingVertical: space.sm,
     fontFamily: loginFont.text,
-    fontSize: 16,
+    ...typeStyle('field'),
     color: ticket.ticketInk,
   },
   availabilityIcon: { width: 24, alignItems: 'center', justifyContent: 'center' },
 
   // ── Inline feedback text ───────────────────────────────────────────────────
-  errorText: { marginTop: 6, fontFamily: loginFont.text, fontSize: 12, color: ticket.ticketError },
-  statusText: { marginTop: 6, fontFamily: loginFont.textSemi, fontSize: 12, color: ticket.ticketInk },
-  mutedText: { marginTop: 6, fontFamily: loginFont.text, fontSize: 12, color: ticket.ticketInkMuted },
+  below: { marginTop: fieldLabelGap },
 
   // ── Terms checkbox row ─────────────────────────────────────────────────────
-  termsRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginTop: 20, minHeight: 44 },
+  termsRow: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm, marginTop: space.xl, minHeight: 44 },
   checkbox: {
     width: 22,
     height: 22,
@@ -683,30 +702,21 @@ const styles = StyleSheet.create({
     backgroundColor: ticket.ticketField,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 1,
     flexShrink: 0,
   },
   checkboxOn: { borderColor: ticket.ticketButton, backgroundColor: ticket.ticketButton },
   checkboxError: { borderColor: ticket.ticketError },
   termsTextWrap: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' },
-  termsText: { fontFamily: loginFont.text, fontSize: 13, lineHeight: 22, color: ticket.ticketInkMuted },
-  termsLink: {
-    fontFamily: loginFont.textBold,
-    fontSize: 13,
-    lineHeight: 22,
-    color: ticket.ticketButton,
-    textDecorationLine: 'underline',
-  },
+  termsLink: { textDecorationLine: 'underline' },
 
   // ── Create account button ──────────────────────────────────────────────────
   primary: {
-    height: 54,
+    minHeight: 54,
     borderRadius: 14,
-    marginTop: 22,
+    marginTop: sectionGap,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: ticket.ticketButton,
   },
   primaryBusy: { opacity: 0.7 },
-  primaryText: { fontFamily: loginFont.textXBold, fontSize: 16, color: ticket.ticketButtonText },
 });

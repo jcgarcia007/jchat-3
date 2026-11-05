@@ -9,8 +9,6 @@
 import React, { useState, useCallback } from 'react';
 import {
   View,
-  Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
@@ -18,6 +16,8 @@ import {
   Platform,
 } from 'react-native';
 import { Spinner } from '../../components/common/Spinner';
+import AppText from '../../components/common/AppText';
+import FormField from '../../components/common/FormField';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -25,17 +25,16 @@ import { IconEye, IconEyeOff, IconChevronLeft } from '@tabler/icons-react-native
 
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
+import { controlMinHeight, sectionGap, space } from '../../theme/spacing';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { toUserMessage } from '../../utils/errors';
 import { useCaptcha, captchaErrorI18nKeys } from '../../services/captcha';
 import { showAlert } from '../../utils/dialog';
 
-const BTN_HEIGHT = 52;
-const INPUT_HEIGHT = 52;
-
 export default function ChangePasswordScreen() {
   const c = useThemeColors();
   const navigation = useNavigation();
+  const fieldPalette = { background: c.bgSurface, border: c.borderSubtle };
   const { t } = useTranslation('settings');
   // Captcha strings live in the `auth` namespace (shared with Login/Register).
   const { t: tAuth } = useTranslation('auth');
@@ -139,34 +138,29 @@ export default function ChangePasswordScreen() {
             >
               <IconChevronLeft size={24} color={c.textPrimary} strokeWidth={2} />
             </TouchableOpacity>
-            <Text style={[styles.title, { color: c.textPrimary }]}>
+            <AppText variant="title" style={styles.title}>
               {t('changePassword.title')}
-            </Text>
+            </AppText>
           </View>
 
-          <Text style={[styles.subtitle, { color: c.textSecondary }]}>
+          <AppText variant="body" color={c.textSecondary} style={styles.subtitle}>
             {t('changePassword.subtitle')}
-          </Text>
+          </AppText>
 
           {/* Current password */}
-          <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: c.textSecondary }]}>
-              {t('changePassword.currentPassword')}
-            </Text>
-            <View style={[styles.inputRow, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
-              <TextInput
-                style={[styles.input, { color: c.textPrimary }]}
-                value={currentPassword}
-                onChangeText={setCurrentPassword}
-                placeholder={t('changePassword.currentPasswordPlaceholder')}
-                placeholderTextColor={c.textTertiary}
-                secureTextEntry={!showCurrent}
-                autoCapitalize="none"
-                autoCorrect={false}
-                textContentType="password"
-                autoComplete="current-password"
-                accessibilityLabel={t('changePassword.currentPassword')}
-              />
+          <FormField
+            first
+            label={t('changePassword.currentPassword')}
+            palette={fieldPalette}
+            value={currentPassword}
+            onChangeText={setCurrentPassword}
+            placeholder={t('changePassword.currentPasswordPlaceholder')}
+            secureTextEntry={!showCurrent}
+            autoCapitalize="none"
+            autoCorrect={false}
+            textContentType="password"
+            autoComplete="current-password"
+            right={
               <TouchableOpacity
                 onPress={() => setShowCurrent((v) => !v)}
                 accessibilityLabel={showCurrent ? t('changePassword.hidePassword') : t('changePassword.showPassword')}
@@ -177,26 +171,21 @@ export default function ChangePasswordScreen() {
                   : <IconEye size={20} color={c.textSecondary} strokeWidth={1.8} />
                 }
               </TouchableOpacity>
-            </View>
-          </View>
+            }
+          />
 
           {/* New password */}
-          <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: c.textSecondary }]}>
-              {t('changePassword.newLabel')}
-            </Text>
-            <View style={[styles.inputRow, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
-              <TextInput
-                style={[styles.input, { color: c.textPrimary }]}
-                value={newPassword}
-                onChangeText={setNewPassword}
-                placeholder={t('changePassword.newPlaceholder')}
-                placeholderTextColor={c.textTertiary}
-                secureTextEntry={!showNew}
-                autoCapitalize="none"
-                autoCorrect={false}
-                accessibilityLabel={t('changePassword.newA11y')}
-              />
+          <FormField
+            label={t('changePassword.newLabel')}
+            palette={fieldPalette}
+            value={newPassword}
+            onChangeText={setNewPassword}
+            placeholder={t('changePassword.newPlaceholder')}
+            secureTextEntry={!showNew}
+            autoCapitalize="none"
+            autoCorrect={false}
+            accessibilityLabel={t('changePassword.newA11y')}
+            right={
               <TouchableOpacity
                 onPress={() => setShowNew((v) => !v)}
                 accessibilityLabel={showNew ? t('changePassword.hidePassword') : t('changePassword.showPassword')}
@@ -207,26 +196,21 @@ export default function ChangePasswordScreen() {
                   : <IconEye size={20} color={c.textSecondary} strokeWidth={1.8} />
                 }
               </TouchableOpacity>
-            </View>
-          </View>
+            }
+          />
 
           {/* Confirm password */}
-          <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: c.textSecondary }]}>
-              {t('changePassword.confirmLabel')}
-            </Text>
-            <View style={[styles.inputRow, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
-              <TextInput
-                style={[styles.input, { color: c.textPrimary }]}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                placeholder={t('changePassword.confirmPlaceholder')}
-                placeholderTextColor={c.textTertiary}
-                secureTextEntry={!showConfirm}
-                autoCapitalize="none"
-                autoCorrect={false}
-                accessibilityLabel={t('changePassword.confirmA11y')}
-              />
+          <FormField
+            label={t('changePassword.confirmLabel')}
+            palette={fieldPalette}
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            placeholder={t('changePassword.confirmPlaceholder')}
+            secureTextEntry={!showConfirm}
+            autoCapitalize="none"
+            autoCorrect={false}
+            accessibilityLabel={t('changePassword.confirmA11y')}
+            right={
               <TouchableOpacity
                 onPress={() => setShowConfirm((v) => !v)}
                 accessibilityLabel={showConfirm ? t('changePassword.hidePassword') : t('changePassword.showPassword')}
@@ -237,8 +221,8 @@ export default function ChangePasswordScreen() {
                   : <IconEye size={20} color={c.textSecondary} strokeWidth={1.8} />
                 }
               </TouchableOpacity>
-            </View>
-          </View>
+            }
+          />
 
           {/* Save button */}
           <TouchableOpacity
@@ -250,7 +234,7 @@ export default function ChangePasswordScreen() {
           >
             {loading
               ? <Spinner color={palette.onBrand} />
-              : <Text style={styles.saveBtnText}>{t('changePassword.saveButton')}</Text>
+              : <AppText variant="button" color={palette.onBrand} style={styles.saveBtnText}>{t('changePassword.saveButton')}</AppText>
             }
           </TouchableOpacity>
         </ScrollView>
@@ -262,30 +246,18 @@ export default function ChangePasswordScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   flex: { flex: 1 },
-  scroll: { padding: 24, gap: 20 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
-  backBtn: { padding: 4 },
-  title: { fontSize: 22, fontWeight: '700' },
-  subtitle: { fontSize: 14, lineHeight: 20, marginTop: -8 },
-  fieldGroup: { gap: 6 },
-  label: { fontSize: 13, fontWeight: '500' },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: INPUT_HEIGHT,
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    gap: 8,
-  },
-  input: { flex: 1, fontSize: 15 },
+  scroll: { padding: space.xl },
+  header: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginBottom: space.lg },
+  backBtn: { padding: space.xs },
+  title: { fontWeight: '700' },
+  subtitle: { marginBottom: sectionGap },
   saveBtn: {
-    height: BTN_HEIGHT,
+    minHeight: controlMinHeight,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
+    marginTop: sectionGap,
   },
   saveBtnDisabled: { opacity: 0.6 },
-  saveBtnText: { color: palette.onBrand, fontSize: 16, fontWeight: '700' },
+  saveBtnText: { fontWeight: '700' },
 });

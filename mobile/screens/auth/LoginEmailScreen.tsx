@@ -7,7 +7,7 @@
  */
 
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useRegistrationEntry } from '../../hooks/useRegistrationEntry';
 import { useTranslation } from 'react-i18next';
@@ -15,7 +15,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { IconArrowLeft, IconEye, IconEyeOff } from '@tabler/icons-react-native';
 
 import { ticket } from '../../theme/ticket';
-import { loginFont, useLoginFonts } from '../../theme/loginFonts';
+import { useLoginFonts } from '../../theme/loginFonts';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { toUserMessage } from '../../utils/errors';
 import { useCaptcha, captchaErrorI18nKeys } from '../../services/captcha';
@@ -26,11 +26,22 @@ import { EntryVenueCard } from '../../components/auth/EntryVenueCard';
 import { TicketPerforation } from '../../components/auth/TicketPerforation';
 import { TicketTitle } from '../../components/auth/TicketReveal';
 import { showAlert } from '../../utils/dialog';
-import { LABEL_TEXT_CAP } from '../../theme/textScale';
+import AppText from '../../components/common/AppText';
+import FormField, { type FormFieldPalette } from '../../components/common/FormField';
+import { controlMinHeight, space } from '../../theme/spacing';
 
 type Nav = NativeStackNavigationProp<AuthStackParamList, 'LoginEmail'>;
 
 const PHOTO_FRACTION = 0.3;
+
+const fieldPalette: FormFieldPalette = {
+  label: ticket.ticketInkMuted,
+  text: ticket.ticketInk,
+  placeholder: ticket.ticketInkMuted,
+  background: ticket.ticketField,
+  border: ticket.ticketFieldBorder,
+  error: ticket.ticketError,
+};
 
 export default function LoginEmailScreen() {
   const navigation = useNavigation<Nav>();
@@ -119,13 +130,16 @@ export default function LoginEmailScreen() {
       <EntryVenueCard variant="ticket" />
       <TicketTitle text={t('ticket.emailTitle')} />
 
-      <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.fieldLabel}>{t('ticket.emailLabel')}</Text>
-      <TextInput
-        style={styles.input}
+      <FormField
+        first
+        containerStyle={styles.firstField}
+        label={t('ticket.emailLabel')}
+        palette={fieldPalette}
+        labelFamily="mono"
+        textFamily="text"
         value={email}
         onChangeText={setEmail}
         placeholder={t('ticket.emailPlaceholder')}
-        placeholderTextColor={ticket.ticketInkMuted}
         keyboardType="email-address"
         autoCapitalize="none"
         autoCorrect={false}
@@ -135,35 +149,36 @@ export default function LoginEmailScreen() {
         accessibilityLabel={t('login.emailA11y')}
       />
 
-      <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.fieldLabel}>{t('ticket.passwordLabel')}</Text>
-      <View style={styles.passwordRow}>
-        <TextInput
-          style={[styles.input, styles.passwordInput]}
-          value={password}
-          onChangeText={setPassword}
-          placeholder={t('ticket.passwordPlaceholder')}
-          placeholderTextColor={ticket.ticketInkMuted}
-          secureTextEntry={!showPassword}
-          autoCapitalize="none"
-          autoCorrect={false}
-          textContentType="password"
-          returnKeyType="done"
-          onSubmitEditing={handleSignIn}
-          accessibilityLabel={t('login.passwordA11y')}
-        />
-        <Pressable
-          onPress={() => setShowPassword((v) => !v)}
-          style={styles.eye}
-          accessibilityRole="button"
-          accessibilityLabel={showPassword ? t('login.hidePassword') : t('login.showPassword')}
-        >
-          {showPassword ? (
-            <IconEyeOff size={20} color={ticket.ticketInkMuted} strokeWidth={1.75} />
-          ) : (
-            <IconEye size={20} color={ticket.ticketInkMuted} strokeWidth={1.75} />
-          )}
-        </Pressable>
-      </View>
+      <FormField
+        label={t('ticket.passwordLabel')}
+        palette={fieldPalette}
+        labelFamily="mono"
+        textFamily="text"
+        value={password}
+        onChangeText={setPassword}
+        placeholder={t('ticket.passwordPlaceholder')}
+        secureTextEntry={!showPassword}
+        autoCapitalize="none"
+        autoCorrect={false}
+        textContentType="password"
+        returnKeyType="done"
+        onSubmitEditing={handleSignIn}
+        accessibilityLabel={t('login.passwordA11y')}
+        right={
+          <Pressable
+            onPress={() => setShowPassword((v) => !v)}
+            style={styles.eye}
+            accessibilityRole="button"
+            accessibilityLabel={showPassword ? t('login.hidePassword') : t('login.showPassword')}
+          >
+            {showPassword ? (
+              <IconEyeOff size={20} color={ticket.ticketInkMuted} strokeWidth={1.75} />
+            ) : (
+              <IconEye size={20} color={ticket.ticketInkMuted} strokeWidth={1.75} />
+            )}
+          </Pressable>
+        }
+      />
 
       <Pressable
         onPress={() => navigation.navigate('ForgotPassword')}
@@ -171,7 +186,7 @@ export default function LoginEmailScreen() {
         accessibilityRole="button"
         accessibilityLabel={t('ticket.forgot')}
       >
-        <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.link}>{t('ticket.forgot')}</Text>
+        <AppText variant="body" family="textBold" color={ticket.ticketButton}>{t('ticket.forgot')}</AppText>
       </Pressable>
 
       <Pressable
@@ -182,20 +197,22 @@ export default function LoginEmailScreen() {
         accessibilityState={{ disabled: loading, busy: loading }}
         accessibilityLabel={t('ticket.signIn')}
       >
-        <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.primaryText}>{loading ? t('ticket.signingIn') : t('ticket.signIn')}</Text>
+        <AppText variant="button" family="textXBold" color={ticket.ticketButtonText}>
+          {loading ? t('ticket.signingIn') : t('ticket.signIn')}
+        </AppText>
       </Pressable>
 
       <TicketPerforation />
 
       <View style={styles.newHere}>
-        <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.newHereText}>{t('ticket.newHere')} </Text>
+        <AppText variant="body" family="text" color={ticket.ticketInkMuted}>{t('ticket.newHere')} </AppText>
         <Pressable
           onPress={openRegistration}
           hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
           accessibilityRole="button"
           accessibilityLabel={t('ticket.createAccount')}
         >
-          <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={styles.link}>{t('ticket.createAccount')}</Text>
+          <AppText variant="body" family="textBold" color={ticket.ticketButton}>{t('ticket.createAccount')}</AppText>
         </Pressable>
       </View>
     </TicketShell>
@@ -211,39 +228,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: ticket.ticketBackBg,
   },
-  fieldLabel: {
-    marginTop: 18,
-    marginBottom: 6,
-    fontFamily: loginFont.mono,
-    fontSize: 11,
-    letterSpacing: 1.6,
-    color: ticket.ticketInkMuted,
-  },
-  input: {
-    height: 52,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: ticket.ticketFieldBorder,
-    backgroundColor: ticket.ticketField,
-    paddingHorizontal: 14,
-    fontFamily: loginFont.text,
-    fontSize: 16,
-    color: ticket.ticketInk,
-  },
-  passwordRow: { justifyContent: 'center' },
-  passwordInput: { paddingRight: 52 },
-  eye: { position: 'absolute', right: 0, width: 48, height: 52, alignItems: 'center', justifyContent: 'center' },
-  forgot: { alignSelf: 'flex-end', minHeight: 44, justifyContent: 'center' },
-  link: { fontFamily: loginFont.textBold, fontSize: 14, color: ticket.ticketButton },
+  firstField: { marginTop: space.lg },
+  eye: { width: controlMinHeight, minHeight: controlMinHeight, alignItems: 'center', justifyContent: 'center' },
+  forgot: { alignSelf: 'flex-end', minHeight: controlMinHeight, justifyContent: 'center' },
   primary: {
-    height: 54,
+    minHeight: 56,
+    paddingVertical: space.sm,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: ticket.ticketButton,
   },
   primaryDisabled: { opacity: 0.6 },
-  primaryText: { fontFamily: loginFont.textXBold, fontSize: 16, color: ticket.ticketButtonText },
-  newHere: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', minHeight: 44 },
-  newHereText: { fontFamily: loginFont.text, fontSize: 14, color: ticket.ticketInkMuted },
+  newHere: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', minHeight: controlMinHeight },
 });

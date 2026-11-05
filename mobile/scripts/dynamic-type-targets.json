@@ -24,7 +24,6 @@
       "qtyBadge"
     ],
     "screens/auth/RegisterStep1Screen.tsx": [
-      "input",
       "primary",
       "social"
     ],
@@ -54,9 +53,6 @@
     "components/nearby/CategoryChip.tsx",
     "components/map/FilterPanel.tsx",
     "components/auth/TicketHeader.tsx",
-    "screens/auth/LoginScreen.tsx",
-    "screens/auth/LoginEmailScreen.tsx",
-    "screens/auth/RegisterStep1Screen.tsx",
     "components/nearby/BusinessCard.tsx"
   ]
 }

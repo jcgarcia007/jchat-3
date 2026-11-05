@@ -21,7 +21,6 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
-  Text,
   TextInput,
   TouchableOpacity,
   View,
@@ -36,6 +35,9 @@ import { IconCheck } from '@tabler/icons-react-native';
 
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
+import { controlMinHeight, fieldLabelGap, space } from '../../theme/spacing';
+import { typeCap, typeStyle } from '../../theme/typography';
+import AppText from '../../components/common/AppText';
 import { useAuth } from '../../context/AuthContext';
 import { confirmAge } from '../../services/age';
 import { recordAgeRejection } from '../../services/ageRejection';
@@ -182,17 +184,23 @@ export default function ConfirmAgeScreen() {
   if (ageStatus === 'error') {
     return (
       <View style={[...frame, styles.centerFill]}>
-        <Text style={[styles.subtitle, { color: c.textSecondary }]}>{t('age.loadError')}</Text>
+        <AppText variant="body" color={c.textSecondary} style={styles.subtitle}>
+          {t('age.loadError')}
+        </AppText>
         <Pressable
           onPress={() => void refreshAge()}
-          style={[styles.button, { backgroundColor: c.brandFill, marginTop: 20, alignSelf: 'stretch' }]}
+          style={[styles.button, { backgroundColor: c.brandFill, marginTop: space.xl, alignSelf: 'stretch' }]}
           accessibilityRole="button"
           accessibilityLabel={t('age.retry')}
         >
-          <Text style={styles.buttonLabel}>{t('age.retry')}</Text>
+          <AppText variant="button" color={LOCAL_COLORS.onBrand} style={styles.buttonLabel}>
+            {t('age.retry')}
+          </AppText>
         </Pressable>
         <Pressable onPress={() => void signOut().catch(() => null)} style={styles.linkButton} accessibilityRole="button">
-          <Text style={[styles.linkLabel, { color: c.textTertiary }]}>{t('age.signOut')}</Text>
+          <AppText variant="body" color={c.textTertiary}>
+            {t('age.signOut')}
+          </AppText>
         </Pressable>
       </View>
     );
@@ -205,17 +213,25 @@ export default function ConfirmAgeScreen() {
     <View style={frame}>
       <StatusBar barStyle={c.bgBase === palette.bgBase ? 'light-content' : 'dark-content'} />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={[styles.title, { color: c.textPrimary }]}>{t('age.title')}</Text>
-        <Text style={[styles.subtitle, { color: c.textSecondary }]}>{t('age.subtitle')}</Text>
+        <AppText variant="title" color={c.textPrimary} style={styles.title}>
+          {t('age.title')}
+        </AppText>
+        <AppText variant="body" color={c.textSecondary} style={styles.subtitle}>
+          {t('age.subtitle')}
+        </AppText>
 
         <View style={styles.dateBlock} role="group" accessibilityLabel={t('age.dateLabel')}>
-          <Text style={[styles.label, { color: c.textSecondary }]}>{t('age.dateLabel')}</Text>
+          <AppText variant="label" color={c.textSecondary} style={styles.label}>
+            {t('age.dateLabel')}
+          </AppText>
           <View style={styles.dateRow}>
             {keys.map((key, index) => {
               const isLast = index === keys.length - 1;
               return (
                 <View key={key} style={{ flex: FIELD_FLEX[key] }}>
-                  <Text style={[styles.boxLabel, { color: c.textSecondary }]}>{t(`age.${key}`)}</Text>
+                  <AppText variant="caption" color={c.textSecondary} style={styles.boxLabel}>
+                    {t(`age.${key}`)}
+                  </AppText>
                   <TextInput
                     ref={(node) => {
                       inputs.current[key] = node;
@@ -235,6 +251,7 @@ export default function ConfirmAgeScreen() {
                     placeholderTextColor={c.textTertiary}
                     accessibilityLabel={t(`age.${key}`)}
                     accessibilityHint={dateHint}
+                    maxFontSizeMultiplier={typeCap('field')}
                     style={[
                       styles.box,
                       {
@@ -249,9 +266,9 @@ export default function ConfirmAgeScreen() {
             })}
           </View>
           {dateError && (
-            <Text accessibilityRole="alert" style={[styles.errorText, { color: c.dangerText }]}>
+            <AppText accessibilityRole="alert" variant="caption" color={c.dangerText} style={styles.errorText}>
               {dateError === 'future' ? t('age.dateFuture') : t('age.dateInvalid')}
-            </Text>
+            </AppText>
           )}
         </View>
 
@@ -275,7 +292,9 @@ export default function ConfirmAgeScreen() {
             {terms && <IconCheck size={14} color={LOCAL_COLORS.onBrand} strokeWidth={2.5} />}
           </View>
           <View style={styles.termsTextWrap}>
-            <Text style={[styles.termsText, { color: c.textSecondary }]}>{t('age.termsAgree')}</Text>
+            <AppText variant="caption" color={c.textSecondary}>
+              {t('age.termsAgree')}
+            </AppText>
             <TouchableOpacity
               onPress={(e) => {
                 e.stopPropagation();
@@ -283,9 +302,13 @@ export default function ConfirmAgeScreen() {
               }}
               hitSlop={6}
             >
-              <Text style={[styles.termsLink, { color: palette.brand }]}>{t('age.terms')}</Text>
+              <AppText variant="caption" color={palette.brand} style={styles.termsLink}>
+                {t('age.terms')}
+              </AppText>
             </TouchableOpacity>
-            <Text style={[styles.termsText, { color: c.textSecondary }]}>{t('age.and')}</Text>
+            <AppText variant="caption" color={c.textSecondary}>
+              {t('age.and')}
+            </AppText>
             <TouchableOpacity
               onPress={(e) => {
                 e.stopPropagation();
@@ -293,7 +316,9 @@ export default function ConfirmAgeScreen() {
               }}
               hitSlop={6}
             >
-              <Text style={[styles.termsLink, { color: palette.brand }]}>{t('age.privacy')}</Text>
+              <AppText variant="caption" color={palette.brand} style={styles.termsLink}>
+                {t('age.privacy')}
+              </AppText>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -301,16 +326,24 @@ export default function ConfirmAgeScreen() {
         <Pressable
           onPress={onContinue}
           disabled={!canContinue}
-          style={[styles.button, { backgroundColor: c.brandFill, opacity: canContinue ? 1 : 0.4, marginTop: 28 }]}
+          style={[styles.button, { backgroundColor: c.brandFill, opacity: canContinue ? 1 : 0.4, marginTop: space.xxl }]}
           accessibilityRole="button"
           accessibilityState={{ disabled: !canContinue }}
           accessibilityLabel={t('age.continue')}
         >
-          {busy ? <Spinner color={LOCAL_COLORS.onBrand} /> : <Text style={styles.buttonLabel}>{t('age.continue')}</Text>}
+          {busy ? (
+            <Spinner color={LOCAL_COLORS.onBrand} />
+          ) : (
+            <AppText variant="button" color={LOCAL_COLORS.onBrand} style={styles.buttonLabel}>
+              {t('age.continue')}
+            </AppText>
+          )}
         </Pressable>
 
         <Pressable onPress={() => void signOut().catch(() => null)} style={styles.linkButton} accessibilityRole="button">
-          <Text style={[styles.linkLabel, { color: c.textTertiary }]}>{t('age.signOut')}</Text>
+          <AppText variant="body" color={c.textTertiary}>
+            {t('age.signOut')}
+          </AppText>
         </Pressable>
       </ScrollView>
     </View>
@@ -318,25 +351,25 @@ export default function ConfirmAgeScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, paddingHorizontal: 24 },
+  screen: { flex: 1, paddingHorizontal: space.xl },
   centerFill: { alignItems: 'center', justifyContent: 'center' },
-  content: { paddingTop: 48, paddingBottom: 24 },
-  title: { fontSize: 24, fontWeight: '700', marginBottom: 8 },
-  subtitle: { fontSize: 14, lineHeight: 20, marginBottom: 28 },
-  label: { fontSize: 13, fontWeight: '500', marginBottom: 10 },
-  dateBlock: { marginBottom: 20 },
-  dateRow: { flexDirection: 'row', gap: 10 },
-  boxLabel: { fontSize: 12, fontWeight: '500', marginBottom: 6 },
+  content: { paddingTop: 48, paddingBottom: space.xl },
+  title: { fontWeight: '700', marginBottom: space.sm },
+  subtitle: { marginBottom: space.xl },
+  label: { fontWeight: '500', marginBottom: space.sm },
+  dateBlock: { marginBottom: space.xl },
+  dateRow: { flexDirection: 'row', gap: space.sm },
+  boxLabel: { fontWeight: '500', marginBottom: fieldLabelGap },
   box: {
-    height: 52,
+    minHeight: 52,
     borderRadius: 12,
     borderWidth: 1,
-    paddingHorizontal: 8,
-    fontSize: 18,
+    paddingHorizontal: space.sm,
+    ...typeStyle('field'),
     textAlign: 'center',
   },
-  errorText: { fontSize: 13, lineHeight: 18, marginTop: 8 },
-  termsRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  errorText: { marginTop: space.sm },
+  termsRow: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm },
   checkbox: {
     width: 20,
     height: 20,
@@ -344,14 +377,11 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 2,
     flexShrink: 0,
   },
   termsTextWrap: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' },
-  termsText: { fontSize: 13, lineHeight: 20 },
-  termsLink: { fontSize: 13, lineHeight: 20, fontWeight: '600', textDecorationLine: 'underline' },
-  button: { height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  buttonLabel: { color: LOCAL_COLORS.onBrand, fontSize: 16, fontWeight: '600' },
-  linkButton: { alignItems: 'center', paddingVertical: 16 },
-  linkLabel: { fontSize: 14 },
+  termsLink: { fontWeight: '600', textDecorationLine: 'underline' },
+  button: { minHeight: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  buttonLabel: { fontWeight: '600' },
+  linkButton: { alignItems: 'center', justifyContent: 'center', minHeight: controlMinHeight, paddingVertical: space.lg },
 });

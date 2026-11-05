@@ -6,7 +6,6 @@
 import React from 'react';
 import {
   View,
-  Text,
   TouchableOpacity,
   StyleSheet,
   Platform,
@@ -24,6 +23,8 @@ import { palette } from '../../theme/tokens';
 import type { AuthStackParamList } from '../../navigation/AppNavigator';
 import { getAppWindow } from '../../utils/appWindow';
 import { EntryVenueCard } from '../../components/auth/EntryVenueCard';
+import AppText from '../../components/common/AppText';
+import { controlMinHeight, space } from '../../theme/spacing';
 
 // ---------------------------------------------------------------------------
 // Design-System gradient / border hexes specific to this screen.
@@ -44,7 +45,6 @@ type WelcomeNav = NativeStackNavigationProp<AuthStackParamList, 'Welcome'>;
 
 const { width: SCREEN_WIDTH } = getAppWindow();
 const BUTTON_RADIUS = 14;
-const BUTTON_HEIGHT = 44;
 
 export default function WelcomeScreen() {
   const navigation = useNavigation<WelcomeNav>();
@@ -62,7 +62,7 @@ export default function WelcomeScreen() {
       <StatusBar barStyle="light-content" />
 
       {/* A venue QR / link is pending: "Vas a entrar a {negocio}" (renders nothing otherwise) */}
-      <EntryVenueCard variant="welcome" style={{ marginTop: insets.top + 12, marginHorizontal: 24, alignSelf: 'stretch' }} />
+      <EntryVenueCard variant="welcome" style={{ marginTop: insets.top + space.md, marginHorizontal: space.xl, alignSelf: 'stretch' }} />
 
       {/* ── Hero section ── */}
       <View style={styles.hero}>
@@ -76,12 +76,14 @@ export default function WelcomeScreen() {
         </View>
 
         {/* Tagline */}
-        <Text style={styles.title}>{t('welcome.title')}</Text>
+        <AppText variant="display" color={WELCOME_COLORS.textOnDark} style={styles.title}>
+          {t('welcome.title')}
+        </AppText>
 
         {/* Subtitle */}
-        <Text style={styles.subtitle}>
+        <AppText variant="body" color={WELCOME_COLORS.textSecondaryOnDark} style={styles.subtitle}>
           {t('welcome.subtitle')}
-        </Text>
+        </AppText>
       </View>
 
       {/* ── Navigation dots ── */}
@@ -109,7 +111,9 @@ export default function WelcomeScreen() {
           accessibilityRole="button"
           accessibilityLabel={t('welcome.getStarted')}
         >
-          <Text style={styles.primaryButtonText}>{t('welcome.getStarted')}</Text>
+          <AppText variant="button" color={WELCOME_COLORS.onBrand} style={styles.primaryButtonText}>
+            {t('welcome.getStarted')}
+          </AppText>
         </TouchableOpacity>
 
         {/* Ghost — Log in */}
@@ -120,9 +124,9 @@ export default function WelcomeScreen() {
           accessibilityRole="button"
           accessibilityLabel={t('welcome.login')}
         >
-          <Text style={styles.ghostButtonText}>
+          <AppText variant="button" color={WELCOME_COLORS.textOnDark} style={styles.ghostButtonText}>
             {t('welcome.login')}
-          </Text>
+          </AppText>
         </TouchableOpacity>
       </View>
     </LinearGradient>
@@ -134,7 +138,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'flex-end',
-    paddingBottom: Platform.OS === 'ios' ? 48 : 32,
+    paddingBottom: Platform.OS === 'ios' ? space.xxxl + space.sm : space.xxl,
   },
 
   // ── Hero ──────────────────────────────────────────────────────────────────
@@ -142,7 +146,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: space.xxl,
   },
   logoWrap: {
     width: 88,
@@ -151,25 +155,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 32,
+    marginBottom: space.xxl,
     // Subtle glass feel — no opaque background needed; gradient shows through
   },
   title: {
-    fontSize: 28,
     fontWeight: '700',
-    color: WELCOME_COLORS.textOnDark, // always-light on dark gradient (Design System)
     textAlign: 'center',
-    lineHeight: 36,
-    letterSpacing: -0.3,
-    marginBottom: 12,
+    marginBottom: space.md,
   },
   subtitle: {
-    fontSize: 15,
     fontWeight: '400',
     textAlign: 'center',
-    lineHeight: 22,
-    paddingHorizontal: 8,
-    color: WELCOME_COLORS.textSecondaryOnDark,
+    paddingHorizontal: space.sm,
   },
 
   // ── Nav dots ──────────────────────────────────────────────────────────────
@@ -188,11 +185,10 @@ const styles = StyleSheet.create({
   // ── Buttons ───────────────────────────────────────────────────────────────
   buttonsWrap: {
     width: SCREEN_WIDTH - 48,   // full-width with 24px side margins each
-    gap: 12,
+    gap: space.md,
   },
   button: {
-    height: BUTTON_HEIGHT,
-    minHeight: 44,              // 44px minimum touch target
+    minHeight: controlMinHeight,
     borderRadius: BUTTON_RADIUS,
     alignItems: 'center',
     justifyContent: 'center',
@@ -202,10 +198,7 @@ const styles = StyleSheet.create({
     backgroundColor: palette.brandFill,
   },
   primaryButtonText: {
-    fontSize: 16,
     fontWeight: '600',
-    color: WELCOME_COLORS.onBrand,
-    letterSpacing: 0.1,
   },
   ghostButton: {
     backgroundColor: 'transparent',
@@ -213,9 +206,6 @@ const styles = StyleSheet.create({
     borderColor: WELCOME_COLORS.ghostBorder,
   },
   ghostButtonText: {
-    fontSize: 16,
     fontWeight: '500',
-    color: WELCOME_COLORS.textOnDark,
-    letterSpacing: 0.1,
   },
 });
