@@ -115,3 +115,29 @@ test('migrated screens use the standard components or roles', () => {
   }
   void files;
 });
+
+test('between the intro text and the first field, migrated screens use sectionGap (24)', () => {
+  const expected = {
+    'screens/auth/LoginScreen.tsx': /subtitle:\s*\{[^}]*marginBottom:\s*sectionGap/,
+    'screens/auth/LoginEmailScreen.tsx': /firstField:\s*\{[^}]*marginTop:\s*sectionGap/,
+    'screens/auth/RegisterStep1Screen.tsx': /subtitle:\s*\{[^}]*marginBottom:\s*sectionGap/,
+    'screens/auth/RegisterStep2Screen.tsx': /subtitle:\s*\{[^}]*marginBottom:\s*sectionGap/,
+    'screens/auth/ForgotPasswordScreen.tsx': /scroll:\s*\{[^}]*gap:\s*sectionGap/,
+    'screens/auth/ResetPasswordScreen.tsx': /subtitle:\s*\{[^}]*marginBottom:\s*sectionGap/,
+    'screens/auth/ConfirmAgeScreen.tsx': /subtitle:\s*\{[^}]*marginBottom:\s*sectionGap/,
+    'screens/profile/EditProfileScreen.tsx': /form:\s*\{[^}]*marginTop:\s*sectionGap/,
+  };
+  for (const [f, re] of Object.entries(expected)) assert.match(read(f), re, `${f}: intro → first field is not sectionGap`);
+});
+
+test('the pending fields use FormField (username, date, bio, code)', () => {
+  assert.match(read('screens/auth/RegisterStep2Screen.tsx'), /<FormField[\s\S]*?register\.usernameLabel/);
+  assert.match(read('screens/auth/ConfirmAgeScreen.tsx'), /<FormField/);
+  assert.match(read('screens/auth/ForgotPasswordScreen.tsx'), /<FormField[\s\S]*?forgotPassword\.codeLabel/);
+  const ep = read('screens/profile/EditProfileScreen.tsx');
+  assert.match(ep, /<FormField[\s\S]*?edit\.usernameLabel/);
+  assert.match(ep, /<FormField[\s\S]*?edit\.bioLabel/);
+  const ff = read('components/common/FormField.tsx');
+  assert.match(ff, /left\?: React\.ReactNode/);
+  assert.match(ff, /style,\n/);
+});

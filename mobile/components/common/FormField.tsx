@@ -3,11 +3,12 @@
  * `field` role: both share the same font-scale cap (typography.ts), so the label never looks tiny next to the
  * value. Gaps come from theme/spacing.ts (label→input 6, field→field 16) and the input is at least 48 high.
  * Colours default to the theme; the login "ticket" passes its own palette. `right` is an absolutely placed slot
- * (the password eye); the input leaves room for it.
+ * (the password eye); the input leaves room for it. `left` is the same on the left edge (the @ of a username).
+ * `style` adjusts the input (multi-line minHeight, centred digits); `below` replaces the error/hint line.
  */
 
 import React from 'react';
-import { StyleSheet, TextInput, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
+import { StyleSheet, TextInput, View, type StyleProp, type TextInputProps, type TextStyle, type ViewStyle } from 'react-native';
 
 import AppText, { type AppTextFamily } from './AppText';
 import { useThemeColors } from '../../theme/colors';
@@ -24,7 +25,7 @@ export interface FormFieldPalette {
   error: string;
 }
 
-export interface FormFieldProps extends Omit<TextInputProps, 'style'> {
+export interface FormFieldProps extends TextInputProps {
   /** React 19: `ref` is a prop; it reaches the TextInput (programmatic focus). */
   ref?: React.Ref<TextInput>;
   label: string;
@@ -32,6 +33,10 @@ export interface FormFieldProps extends Omit<TextInputProps, 'style'> {
   hint?: string | null;
   /** Content over the right edge of the input (e.g. the show-password button). */
   right?: React.ReactNode;
+  /** Content over the left edge of the input (e.g. an @ icon). */
+  left?: React.ReactNode;
+  /** Custom line under the input (several tones); wins over error/hint. */
+  below?: React.ReactNode;
   palette?: Partial<FormFieldPalette>;
   /** Brand face for the label and the text (default: the system font). */
   labelFamily?: AppTextFamily;
@@ -41,6 +46,8 @@ export interface FormFieldProps extends Omit<TextInputProps, 'style'> {
   containerStyle?: StyleProp<ViewStyle>;
   /** Extra width reserved on the right for `right` (default 48). */
   rightWidth?: number;
+  /** Extra width reserved on the left for `left` (default 40). */
+  leftWidth?: number;
 }
 
 export default function FormField({
@@ -49,12 +56,16 @@ export default function FormField({
   error,
   hint,
   right,
+  left,
+  below,
   palette,
   labelFamily,
   textFamily,
   first,
   containerStyle,
   rightWidth = controlMinHeight,
+  leftWidth = space.xxxl,
+  style,
   ...inputProps
 }: FormFieldProps) {
   const c = useThemeColors();
@@ -88,11 +99,16 @@ export default function FormField({
             },
             textFamily ? { fontFamily: loginFont[textFamily] } : null,
             right ? { paddingRight: rightWidth } : null,
+            left ? { paddingLeft: leftWidth } : null,
+            style,
           ]}
         />
+        {left ? <View style={[styles.left, { width: leftWidth }]}>{left}</View> : null}
         {right ? <View style={[styles.right, { width: rightWidth }]}>{right}</View> : null}
       </View>
-      {error ? (
+      {below ? (
+        below
+      ) : error ? (
         <AppText variant="caption" color={p.error} style={styles.below} accessibilityLiveRegion="polite">
           {error}
         </AppText>
@@ -117,5 +133,6 @@ const styles = StyleSheet.create({
     paddingVertical: space.sm,
   },
   right: { position: 'absolute', right: 0, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
+  left: { position: 'absolute', left: 0, top: 0, bottom: 0, alignItems: 'flex-end', justifyContent: 'center', paddingRight: space.xs },
   below: { marginTop: fieldLabelGap },
 });

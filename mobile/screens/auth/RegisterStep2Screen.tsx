@@ -20,7 +20,7 @@
  */
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Spinner } from '../../components/common/Spinner';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -30,6 +30,7 @@ import { IconAlertCircle, IconArrowLeft, IconAt, IconCheck } from '@tabler/icons
 
 import { ticket } from '../../theme/ticket';
 import { loginFont, useLoginFonts } from '../../theme/loginFonts';
+import FormField from '../../components/common/FormField';
 import { controlMinHeight, fieldGap, fieldLabelGap, sectionGap, space } from '../../theme/spacing';
 import { typeCap, typeStyle } from '../../theme/typography';
 import AppText from '../../components/common/AppText';
@@ -50,6 +51,16 @@ import { TicketTitle } from '../../components/auth/TicketReveal';
 import { TicketStep } from '../../components/auth/TicketStep';
 import { TicketBirthDate } from '../../components/auth/TicketBirthDate';
 import { peekPendingEntry } from '../../services/venueEntry';
+
+/** The ticket's own palette for FormField (fixed artwork, same in light and dark). */
+const fieldPalette = {
+  label: ticket.ticketInkMuted,
+  text: ticket.ticketInk,
+  placeholder: ticket.ticketInkMuted,
+  background: ticket.ticketField,
+  border: ticket.ticketFieldBorder,
+  error: ticket.ticketError,
+};
 
 // ---------------------------------------------------------------------------
 // Types / navigation
@@ -508,54 +519,54 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
       </View>
 
       {/* ── @username ─────────────────────────────────────────────────── */}
-      <AppText variant="label" family="mono" color={ticket.ticketInkMuted} style={styles.fieldLabel}>
-        {t('register.usernameLabel')}
-      </AppText>
-      <View style={[styles.usernameWrapper, { borderColor: usernameBorder }]}>
-        <IconAt size={18} color={ticket.ticketInkMuted} strokeWidth={1.75} />
-        <TextInput
-          style={styles.usernameInput}
-          maxFontSizeMultiplier={typeCap('field')}
-          placeholder={t('register.usernamePlaceholder')}
-          placeholderTextColor={ticket.ticketInkMuted}
-          autoCapitalize="none"
-          autoCorrect={false}
-          returnKeyType="done"
-          value={username}
-          onChangeText={(v) => {
-            // Normalise to lowercase as the user types
-            setUsername(v.toLowerCase());
-          }}
-          onBlur={() => setUsernameTouched(true)}
-          accessibilityLabel={t('register.usernameA11y')}
-        />
-        {/* Availability indicator */}
-        <View style={styles.availabilityIcon}>
-          {availability === 'checking' && <Spinner size="small" color={ticket.ticketInkMuted} />}
-          {availability === 'available' && !usernameFormatError && (
-            <IconCheck size={18} color={ticket.brandAccent} strokeWidth={2.5} />
-          )}
-          {availability === 'taken' && <IconAlertCircle size={18} color={ticket.ticketError} strokeWidth={2} />}
-        </View>
-      </View>
-      {/* Inline status messages */}
-      {usernameFormatError && usernameTouched ? (
-        <AppText variant="caption" family="text" color={ticket.ticketError} style={styles.below}>
-          {t(usernameFormatError)}
-        </AppText>
-      ) : availability === 'taken' ? (
-        <AppText variant="caption" family="text" color={ticket.ticketError} style={styles.below}>
-          {t('register.usernameTaken')}
-        </AppText>
-      ) : availability === 'available' && !usernameFormatError ? (
-        <AppText variant="caption" family="textSemi" color={ticket.ticketInk} style={styles.below}>
-          {t('register.usernameAvailable')}
-        </AppText>
-      ) : availability === 'error' ? (
-        <AppText variant="caption" family="text" color={ticket.ticketInkMuted} style={styles.below}>
-          {t('register.usernameCheckError')}
-        </AppText>
-      ) : null}
+      <FormField
+        label={t('register.usernameLabel')}
+        labelFamily="mono"
+        textFamily="text"
+        palette={{ ...fieldPalette, border: usernameBorder }}
+        left={<IconAt size={18} color={ticket.ticketInkMuted} strokeWidth={1.75} />}
+        leftWidth={space.xxl}
+        right={
+          <View style={styles.availabilityIcon}>
+            {availability === 'checking' && <Spinner size="small" color={ticket.ticketInkMuted} />}
+            {availability === 'available' && !usernameFormatError && (
+              <IconCheck size={18} color={ticket.brandAccent} strokeWidth={2.5} />
+            )}
+            {availability === 'taken' && <IconAlertCircle size={18} color={ticket.ticketError} strokeWidth={2} />}
+          </View>
+        }
+        placeholder={t('register.usernamePlaceholder')}
+        autoCapitalize="none"
+        autoCorrect={false}
+        returnKeyType="done"
+        value={username}
+        onChangeText={(v) => {
+          // Normalise to lowercase as the user types
+          setUsername(v.toLowerCase());
+        }}
+        onBlur={() => setUsernameTouched(true)}
+        accessibilityLabel={t('register.usernameA11y')}
+        below={
+          /* Inline status messages */
+          usernameFormatError && usernameTouched ? (
+            <AppText variant="caption" family="text" color={ticket.ticketError} style={styles.below}>
+              {t(usernameFormatError)}
+            </AppText>
+          ) : availability === 'taken' ? (
+            <AppText variant="caption" family="text" color={ticket.ticketError} style={styles.below}>
+              {t('register.usernameTaken')}
+            </AppText>
+          ) : availability === 'available' && !usernameFormatError ? (
+            <AppText variant="caption" family="textSemi" color={ticket.ticketInk} style={styles.below}>
+              {t('register.usernameAvailable')}
+            </AppText>
+          ) : availability === 'error' ? (
+            <AppText variant="caption" family="text" color={ticket.ticketInkMuted} style={styles.below}>
+              {t('register.usernameCheckError')}
+            </AppText>
+          ) : null
+        }
+      />
 
       {/* ── Terms & Privacy checkbox ──────────────────────────────────── */}
       <Pressable
@@ -648,7 +659,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: ticket.ticketBackBg,
   },
-  subtitle: { marginTop: space.sm, marginBottom: space.xs },
+  subtitle: { marginTop: space.sm, marginBottom: sectionGap },
   fieldLabel: { marginTop: fieldGap, marginBottom: fieldLabelGap },
 
   // ── Language selector ──────────────────────────────────────────────────────
@@ -668,24 +679,6 @@ const styles = StyleSheet.create({
   languageOptionOn: { borderColor: ticket.ticketButton, borderWidth: 2 },
 
   // ── @username field ────────────────────────────────────────────────────────
-  usernameWrapper: {
-    minHeight: 52,
-    borderRadius: 12,
-    borderWidth: 1,
-    backgroundColor: ticket.ticketField,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: space.md,
-    gap: fieldLabelGap,
-  },
-  usernameInput: {
-    flex: 1,
-    minHeight: controlMinHeight,
-    paddingVertical: space.sm,
-    fontFamily: loginFont.text,
-    ...typeStyle('field'),
-    color: ticket.ticketInk,
-  },
   availabilityIcon: { width: 24, alignItems: 'center', justifyContent: 'center' },
 
   // ── Inline feedback text ───────────────────────────────────────────────────

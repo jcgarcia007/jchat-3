@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { Spinner } from '../../components/common/Spinner';
 import AppText from '../../components/common/AppText';
+import FormField from '../../components/common/FormField';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -44,6 +45,7 @@ function isCaptchaError(error: AuthError | null): boolean {
 
 export default function ForgotPasswordScreen() {
   const c = useThemeColors();
+  const fieldPalette = { background: c.bgSurface, border: c.borderSubtle };
   const navigation = useNavigation();
   const { t } = useTranslation('auth');
   const { beginRecovery, clearRecovery } = useAuth();
@@ -207,21 +209,19 @@ export default function ForgotPasswordScreen() {
 
           {step === 'email' ? (
             <>
-              <View style={[styles.inputRow, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
-                <TextInput
-                  style={[styles.input, { color: c.textPrimary }]}
-                  maxFontSizeMultiplier={typeCap('field')}
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder={t('forgotPassword.emailPlaceholder')}
-                  placeholderTextColor={c.textTertiary}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoComplete="email"
-                  accessibilityLabel={t('forgotPassword.emailA11y')}
-                />
-              </View>
+              <FormField
+                first
+                label={t('forgotPassword.emailLabel')}
+                palette={fieldPalette}
+                value={email}
+                onChangeText={setEmail}
+                placeholder={t('forgotPassword.emailPlaceholder')}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="email"
+                accessibilityLabel={t('forgotPassword.emailA11y')}
+              />
 
               <TouchableOpacity
                 style={[styles.primaryBtn, { backgroundColor: palette.brandFill }, loading && styles.btnDisabled]}
@@ -237,27 +237,22 @@ export default function ForgotPasswordScreen() {
             </>
           ) : (
             <>
-              <View style={styles.fieldGroup}>
-                <AppText variant="label" color={c.textSecondary}>
-                  {t('forgotPassword.codeLabel')}
-                </AppText>
-                <View style={[styles.inputRow, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
-                  <TextInput
-                    style={[styles.codeInput, { color: c.textPrimary }]}
-                    maxFontSizeMultiplier={typeCap('title')}
-                    value={code}
-                    onChangeText={(value) => setCode(value.replace(/\D/g, '').slice(0, 6))}
-                    placeholder={t('forgotPassword.codePlaceholder')}
-                    placeholderTextColor={c.textTertiary}
-                    keyboardType="number-pad"
-                    textContentType="oneTimeCode"
-                    autoComplete={Platform.OS === 'android' ? 'sms-otp' : 'one-time-code'}
-                    maxLength={6}
-                    autoFocus
-                    accessibilityLabel={t('forgotPassword.codeLabel')}
-                  />
-                </View>
-              </View>
+              <FormField
+                first
+                label={t('forgotPassword.codeLabel')}
+                palette={fieldPalette}
+                style={styles.codeInput}
+                maxFontSizeMultiplier={typeCap('title')}
+                value={code}
+                onChangeText={(value) => setCode(value.replace(/\D/g, '').slice(0, 6))}
+                placeholder={t('forgotPassword.codePlaceholder')}
+                keyboardType="number-pad"
+                textContentType="oneTimeCode"
+                autoComplete={Platform.OS === 'android' ? 'sms-otp' : 'one-time-code'}
+                maxLength={6}
+                autoFocus
+                accessibilityLabel={t('forgotPassword.codeLabel')}
+              />
 
               <TouchableOpacity
                 style={[
@@ -328,7 +323,7 @@ const styles = StyleSheet.create({
   },
   input: { flex: 1, ...typeStyle('field') },
   // letterSpacing here is decoration: it spaces out the six digits of the code.
-  codeInput: { flex: 1, ...typeStyle('title'), fontWeight: '700', letterSpacing: 8, textAlign: 'center' }, // decoration
+  codeInput: { ...typeStyle('title'), fontWeight: '700', letterSpacing: 8, textAlign: 'center' }, // decoration
   primaryBtn: {
     minHeight: controlMinHeight,
     borderRadius: 14,

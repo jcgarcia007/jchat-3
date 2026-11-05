@@ -524,7 +524,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: ticket.ticketBackBg,
   },
-  subtitle: { marginTop: space.sm, marginBottom: space.lg },
+  subtitle: { marginTop: space.sm, marginBottom: sectionGap },
   eye: { width: controlMinHeight, minHeight: controlMinHeight, alignItems: 'center', justifyContent: 'center' },
   rulesList: { marginTop: space.sm, gap: space.xs },
   ruleRow: { flexDirection: 'row', alignItems: 'center', gap: fieldLabelGap },

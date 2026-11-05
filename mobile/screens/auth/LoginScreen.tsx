@@ -30,7 +30,7 @@ import { showAlert } from '../../utils/dialog';
 import { readAuthCode } from '../../utils/authUrl';
 import { AppleAuthSlot } from '../../components/auth/AppleAuthSlot';
 import AppText from '../../components/common/AppText';
-import { controlMinHeight, space } from '../../theme/spacing';
+import { controlMinHeight, sectionGap, space } from '../../theme/spacing';
 
 type LoginNav = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
@@ -193,7 +193,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   subtitle: {
     marginTop: space.sm,
-    marginBottom: space.xl,
+    marginBottom: sectionGap,
   },
   primary: {
     minHeight: 56,

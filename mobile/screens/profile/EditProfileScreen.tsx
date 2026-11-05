@@ -57,7 +57,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
-import { controlMinHeight, fieldGap, fieldLabelGap, space } from '../../theme/spacing';
+import { controlMinHeight, fieldGap, fieldLabelGap, sectionGap, space } from '../../theme/spacing';
 import { typeCap, typeStyle } from '../../theme/typography';
 import { getProfileTheme } from '../../theme/profileThemes';
 import type { ProfileTheme } from '../../theme/profileThemes';
@@ -475,55 +475,37 @@ export default function EditProfileScreen(): React.JSX.Element {
             />
 
             {/* Username */}
-            <View style={styles.fieldGroup}>
-              <AppText variant="label" color={c.textSecondary}>
-                {t('edit.usernameLabel')}
-              </AppText>
-              <View style={[styles.inputRow, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
-                <AppText variant="field" color={c.textTertiary} style={styles.atSymbol}>@</AppText>
-                <TextInput
-                  maxFontSizeMultiplier={typeCap('field')}
-                  value={username}
-                  onChangeText={handleUsernameChange}
-                  style={[styles.inputInner, { color: c.textPrimary }]}
-                  placeholder={t('edit.usernamePlaceholder')}
-                  placeholderTextColor={c.textTertiary}
-                  maxLength={30}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  accessibilityLabel={t('edit.usernameA11y')}
-                />
-                <UsernameIndicator status={usernameStatus} />
-              </View>
-              <UsernameHint status={usernameStatus} c={c} />
-            </View>
+            <FormField
+              first
+              label={t('edit.usernameLabel')}
+              palette={fieldPalette}
+              left={<AppText variant="field" color={c.textTertiary}>@</AppText>}
+              leftWidth={space.xxl}
+              right={<UsernameIndicator status={usernameStatus} />}
+              below={<UsernameHint status={usernameStatus} c={c} />}
+              maxLength={30}
+              value={username}
+              onChangeText={handleUsernameChange}
+              placeholder={t('edit.usernamePlaceholder')}
+              autoCapitalize="none"
+              autoCorrect={false}
+              accessibilityLabel={t('edit.usernameA11y')}
+            />
 
             {/* Bio */}
-            <View style={styles.fieldGroup}>
-              <AppText variant="label" color={c.textSecondary}>
-                {t('edit.bioLabel')}
-              </AppText>
-              <TextInput
-                maxFontSizeMultiplier={typeCap('field')}
-                value={bio}
-                onChangeText={setBio}
-                style={[
-                  styles.input,
-                  styles.textArea,
-                  {
-                    color: c.textPrimary,
-                    backgroundColor: c.bgSurface,
-                    borderColor: c.borderSubtle,
-                  },
-                ]}
-                placeholder={t('edit.bioPlaceholder')}
-                placeholderTextColor={c.textTertiary}
-                multiline
-                numberOfLines={3}
-                maxLength={160}
-                accessibilityLabel={t('edit.bioA11y')}
-              />
-            </View>
+            <FormField
+              first
+              label={t('edit.bioLabel')}
+              palette={fieldPalette}
+              style={styles.textArea}
+              value={bio}
+              onChangeText={setBio}
+              placeholder={t('edit.bioPlaceholder')}
+              multiline
+              numberOfLines={3}
+              maxLength={160}
+              accessibilityLabel={t('edit.bioA11y')}
+            />
 
             {/* City */}
             {/* multiline so a long placeholder wraps to a second line at large text sizes; it stays one line of text (no new lines). */}
@@ -799,7 +781,7 @@ const styles = StyleSheet.create({
   form: {
     paddingHorizontal: space.xl,
     gap: fieldGap,
-    marginTop: space.sm,
+    marginTop: sectionGap,
   },
   fieldGroup: {
     gap: fieldLabelGap,

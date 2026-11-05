@@ -35,7 +35,8 @@ import { IconCheck } from '@tabler/icons-react-native';
 
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
-import { controlMinHeight, fieldLabelGap, space } from '../../theme/spacing';
+import FormField from '../../components/common/FormField';
+import { controlMinHeight, fieldLabelGap, sectionGap, space } from '../../theme/spacing';
 import { typeCap, typeStyle } from '../../theme/typography';
 import AppText from '../../components/common/AppText';
 import { useAuth } from '../../context/AuthContext';
@@ -228,40 +229,36 @@ export default function ConfirmAgeScreen() {
             {keys.map((key, index) => {
               const isLast = index === keys.length - 1;
               return (
-                <View key={key} style={{ flex: FIELD_FLEX[key] }}>
-                  <AppText variant="caption" color={c.textSecondary} style={styles.boxLabel}>
-                    {t(`age.${key}`)}
-                  </AppText>
-                  <TextInput
-                    ref={(node) => {
-                      inputs.current[key] = node;
-                    }}
-                    value={parts[key]}
-                    onChangeText={(text) => onChangeField(key, text)}
-                    onKeyPress={(e) => onKeyPress(key, e)}
-                    onSubmitEditing={() => focusField(keys[index + 1])}
-                    keyboardType="number-pad"
-                    inputMode="numeric"
-                    returnKeyType={isLast ? 'done' : 'next'}
-                    textContentType="none"
-                    autoComplete="off"
-                    autoCorrect={false}
-                    selectTextOnFocus
-                    placeholder={t(`age.${key}Placeholder`)}
-                    placeholderTextColor={c.textTertiary}
-                    accessibilityLabel={t(`age.${key}`)}
-                    accessibilityHint={dateHint}
-                    maxFontSizeMultiplier={typeCap('field')}
-                    style={[
-                      styles.box,
-                      {
-                        backgroundColor: c.bgSurface,
-                        borderColor: dateError ? c.danger : c.borderSubtle,
-                        color: c.textPrimary,
-                      },
-                    ]}
-                  />
-                </View>
+                <FormField
+                  key={key}
+                  first
+                  containerStyle={{ flex: FIELD_FLEX[key] }}
+                  label={t(`age.${key}`)}
+                  palette={{
+                    background: c.bgSurface,
+                    border: dateError ? c.danger : c.borderSubtle,
+                    label: c.textSecondary,
+                    text: c.textPrimary,
+                    placeholder: c.textTertiary,
+                  }}
+                  style={styles.box}
+                  ref={(node) => {
+                    inputs.current[key] = node;
+                  }}
+                  value={parts[key]}
+                  onChangeText={(text) => onChangeField(key, text)}
+                  onKeyPress={(e) => onKeyPress(key, e)}
+                  onSubmitEditing={() => focusField(keys[index + 1])}
+                  keyboardType="number-pad"
+                  inputMode="numeric"
+                  returnKeyType={isLast ? 'done' : 'next'}
+                  textContentType="none"
+                  autoComplete="off"
+                  autoCorrect={false}
+                  selectTextOnFocus
+                  placeholder={t(`age.${key}Placeholder`)}
+                  accessibilityHint={dateHint}
+                />
               );
             })}
           </View>
@@ -355,19 +352,11 @@ const styles = StyleSheet.create({
   centerFill: { alignItems: 'center', justifyContent: 'center' },
   content: { paddingTop: 48, paddingBottom: space.xl },
   title: { fontWeight: '700', marginBottom: space.sm },
-  subtitle: { marginBottom: space.xl },
+  subtitle: { marginBottom: sectionGap },
   label: { fontWeight: '500', marginBottom: space.sm },
   dateBlock: { marginBottom: space.xl },
   dateRow: { flexDirection: 'row', gap: space.sm },
-  boxLabel: { fontWeight: '500', marginBottom: fieldLabelGap },
-  box: {
-    minHeight: 52,
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: space.sm,
-    ...typeStyle('field'),
-    textAlign: 'center',
-  },
+  box: { paddingHorizontal: space.sm, textAlign: 'center' },
   errorText: { marginTop: space.sm },
   termsRow: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm },
   checkbox: {

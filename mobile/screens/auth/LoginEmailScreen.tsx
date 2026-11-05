@@ -28,7 +28,7 @@ import { TicketTitle } from '../../components/auth/TicketReveal';
 import { showAlert } from '../../utils/dialog';
 import AppText from '../../components/common/AppText';
 import FormField, { type FormFieldPalette } from '../../components/common/FormField';
-import { controlMinHeight, space } from '../../theme/spacing';
+import { controlMinHeight, sectionGap, space } from '../../theme/spacing';
 
 type Nav = NativeStackNavigationProp<AuthStackParamList, 'LoginEmail'>;
 
@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: ticket.ticketBackBg,
   },
-  firstField: { marginTop: space.lg },
+  firstField: { marginTop: sectionGap },
   eye: { width: controlMinHeight, minHeight: controlMinHeight, alignItems: 'center', justifyContent: 'center' },
   forgot: { alignSelf: 'flex-end', minHeight: controlMinHeight, justifyContent: 'center' },
   primary: {
