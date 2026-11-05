@@ -15,6 +15,7 @@ import { IconRosetteDiscountCheckFilled, IconUser } from '@tabler/icons-react-na
 
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
+import { typeCap, typeStyle } from '../../theme/typography';
 import { cardName } from '../../services/matchTypes';
 import type { MatchCard as MatchCardData } from '../../services/matchTypes';
 
@@ -95,7 +96,7 @@ export function MatchCard({ card, photoUrl, interestNames, maxChips = 4 }: Match
                       : { backgroundColor: palette.scrimMedium, borderColor: palette.onImageFaint, borderWidth: 1 },
                   ]}
                 >
-                  <Text style={[styles.chipText, { color: isCommon ? palette.onBrand : palette.onImage }]}>
+                  <Text maxFontSizeMultiplier={typeCap('caption')} style={[styles.chipText, { color: isCommon ? palette.onBrand : palette.onImage }]}>
                     {interestNames[key] ?? key}
                   </Text>
                 </View>
@@ -132,7 +133,7 @@ const styles = StyleSheet.create({
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   name: { fontSize: 24, fontWeight: '800', flexShrink: 1 },
   username: { fontSize: 14 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
-  chip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
-  chipText: { fontSize: 12, fontWeight: '600' },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  chip: { minHeight: 28, justifyContent: 'center', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999 },
+  chipText: { ...typeStyle('caption'), fontWeight: '600' },
 });

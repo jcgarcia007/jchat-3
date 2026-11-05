@@ -28,6 +28,7 @@ import {
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
+import { typeCap, typeStyle } from '../../theme/typography';
 import { MatchLightbox } from '../../components/match/MatchLightbox';
 import { useMatchSafety } from '../../components/match/MatchSafety';
 import { getMatchProfile, matchErrorCode, matchSwipe } from '../../services/matchDeck';
@@ -219,7 +220,7 @@ export default function MatchProfileScreen() {
                             : { backgroundColor: c.bgElevated, borderColor: c.borderSubtle },
                         ]}
                       >
-                        <Text style={[styles.chipText, { color: isCommon ? palette.onBrand : c.textPrimary }]}>
+                        <Text maxFontSizeMultiplier={typeCap('caption')} style={[styles.chipText, { color: isCommon ? palette.onBrand : c.textPrimary }]}>
                           {interestNames[key] ?? key}
                         </Text>
                       </View>
@@ -297,8 +298,8 @@ const styles = StyleSheet.create({
   superPillText: { fontSize: 12, fontWeight: '800', letterSpacing: 0.4 },
   bio: { fontSize: 15, lineHeight: 22 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, borderWidth: 1 },
-  chipText: { fontSize: 13, fontWeight: '600' },
+  chip: { minHeight: 36, justifyContent: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1 },
+  chipText: { ...typeStyle('caption'), fontWeight: '600' },
   fullProfile: { minHeight: 44, justifyContent: 'center' },
   fullProfileText: { fontSize: 15, fontWeight: '600' },
   notice: { fontSize: 13, textAlign: 'center' },

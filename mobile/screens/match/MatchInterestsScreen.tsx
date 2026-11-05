@@ -21,6 +21,7 @@ import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { useAuth } from '../../context/AuthContext';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
+import { typeCap, typeStyle } from '../../theme/typography';
 import { fetchInterests, fetchMyInterestKeys, interestName, saveMyInterests } from '../../services/matchProfile';
 import { markInterestsQuizSkipped } from '../../services/match';
 import type { InterestRow } from '../../services/matchTypes';
@@ -133,7 +134,7 @@ export default function MatchInterestsScreen() {
                         : { backgroundColor: c.bgElevated, borderColor: c.borderSubtle },
                     ]}
                   >
-                    <Text style={[styles.chipText, { color: active ? palette.onBrand : c.textPrimary }]}>
+                    <Text maxFontSizeMultiplier={typeCap('field')} style={[styles.chipText, { color: active ? palette.onBrand : c.textPrimary }]}>
                       {interestName(row, language)}
                     </Text>
                   </Pressable>
@@ -185,9 +186,9 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   content: { padding: 20, gap: 16 },
   intro: { fontSize: 14, lineHeight: 20 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  chip: { minHeight: 44, paddingHorizontal: 16, justifyContent: 'center', borderRadius: 999, borderWidth: 1 },
-  chipText: { fontSize: 15, fontWeight: '600' },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: { minHeight: 44, paddingHorizontal: 16, paddingVertical: 8, justifyContent: 'center', borderRadius: 999, borderWidth: 1 },
+  chipText: { ...typeStyle('field'), fontWeight: '600' },
   footer: { padding: 16, gap: 10, borderTopWidth: StyleSheet.hairlineWidth },
   counter: { fontSize: 13, textAlign: 'center' },
   saveBtn: { minHeight: 50, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },

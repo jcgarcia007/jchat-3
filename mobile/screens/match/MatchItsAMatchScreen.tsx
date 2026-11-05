@@ -21,6 +21,7 @@ import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { useAuth } from '../../context/AuthContext';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
+import { typeCap, typeStyle } from '../../theme/typography';
 import { useFollowSystem } from '../../hooks/useFollowSystem';
 import { fetchMyMatchPhotos, signedPhotoUrls } from '../../services/matchProfile';
 import { cardName } from '../../services/matchTypes';
@@ -144,7 +145,7 @@ export default function MatchItsAMatchScreen() {
                   accessibilityLabel={phrase}
                   style={[styles.chip, { borderColor: c.borderSubtle, backgroundColor: c.bgElevated }]}
                 >
-                  <Text style={[styles.chipText, { color: c.textPrimary }]}>{phrase}</Text>
+                  <Text maxFontSizeMultiplier={typeCap('field')} style={[styles.chipText, { color: c.textPrimary }]}>{phrase}</Text>
                 </Pressable>
               );
             })}
@@ -209,8 +210,8 @@ const styles = StyleSheet.create({
   followHint: { fontSize: 12, textAlign: 'center', lineHeight: 17 },
   sectionLabel: { alignSelf: 'flex-start', fontSize: 14, fontWeight: '700', marginTop: 6 },
   chips: { alignSelf: 'stretch', gap: 8 },
-  chip: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 14, borderWidth: 1 },
-  chipText: { fontSize: 14 },
+  chip: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16, borderWidth: 1 },
+  chipText: { ...typeStyle('field') },
   input: {
     alignSelf: 'stretch',
     minHeight: 56,

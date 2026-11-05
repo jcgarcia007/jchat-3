@@ -26,6 +26,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useVenueSession } from '../../context/VenueSessionContext';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
+import { typeCap, typeStyle } from '../../theme/typography';
 import { MatchCard } from '../../components/match/MatchCard';
 import { useMyMatchProfile } from '../../hooks/useMyMatchProfile';
 import { joinMatchVenue } from '../../services/matchPresence';
@@ -555,7 +556,7 @@ export default function MatchMyProfileScreen() {
               accessibilityState={{ selected: active }}
               style={[styles.optionChip, active ? { backgroundColor: c.brandFill, borderColor: c.brand } : { backgroundColor: c.bgElevated, borderColor: c.borderSubtle }]}
             >
-              <Text style={[styles.optionText, { color: active ? palette.onBrand : c.textPrimary }]}>{t(`profile.v2.${labelKey}.${option}`)}</Text>
+              <Text maxFontSizeMultiplier={typeCap('field')} style={[styles.optionText, { color: active ? palette.onBrand : c.textPrimary }]}>{t(`profile.v2.${labelKey}.${option}`)}</Text>
             </Pressable>
           );
         })}
@@ -682,7 +683,7 @@ export default function MatchMyProfileScreen() {
           <View style={styles.chipsRow}>
             {interestKeys.map((key) => (
               <View key={key} style={[styles.interestChip, { backgroundColor: c.bgElevated, borderColor: c.borderSubtle }]}>
-                <Text style={[styles.interestChipText, { color: c.textPrimary }]}>{interestNames[key] ?? key}</Text>
+                <Text maxFontSizeMultiplier={typeCap('caption')} style={[styles.interestChipText, { color: c.textPrimary }]}>{interestNames[key] ?? key}</Text>
               </View>
             ))}
           </View>
@@ -749,9 +750,10 @@ const styles = StyleSheet.create({
   track: { height: 8, borderRadius: 4, overflow: 'hidden' },
   fill: { height: 8, borderRadius: 4 },
   optionBlock: { gap: 8 },
-  optionRow: { flexDirection: 'row', gap: 8 },
-  optionChip: { flex: 1, minHeight: 44, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
-  optionText: { fontSize: 14, fontWeight: '600', textAlign: 'center' },
+  optionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  // Wraps to a second row (and the label wraps inside the chip) at large text; never a fixed height.
+  optionChip: { flexGrow: 1, flexBasis: 0, minWidth: 96, minHeight: 44, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, paddingVertical: 8 },
+  optionText: { ...typeStyle('field'), fontWeight: '600', textAlign: 'center' },
   cardWrap: { width: '100%', maxWidth: 360, alignSelf: 'center' },
   shortcut: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 14, padding: 12 },
   shortcutThumb: { width: 56, height: 56, borderRadius: 28 },
@@ -772,8 +774,8 @@ const styles = StyleSheet.create({
   linkText: { fontSize: 15 },
   buttonRow: { flexDirection: 'row', gap: 10 },
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  interestChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, borderWidth: 1 },
-  interestChipText: { fontSize: 13, fontWeight: '600' },
+  interestChip: { minHeight: 36, justifyContent: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1 },
+  interestChipText: { ...typeStyle('caption'), fontWeight: '600' },
   settingsCard: { borderWidth: 1, borderRadius: 14, padding: 14, gap: 10 },
   settingLabel: { fontSize: 15, fontWeight: '600' },
   stepperRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
