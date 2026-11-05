@@ -389,20 +389,9 @@ export function useNotifications({ passive = false }: UseNotificationsOptions = 
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
-const VALID_NOTIFICATION_TYPES: ReadonlySet<NotificationType> = new Set([
-  'dm',
-  'follower',
-  'like',
-  'comment',
-  'work_alert',
-  'match_like',
-  'match_super',
-  'match_match',
-  'match_new_people',
-  'order_status',
-  'gift_offer',
-  'gift_response',
-] as const);
+// One source: every type of services/notifications.ts (a hand-kept copy here had dropped the two Match photo verdicts,
+// so tapping their push opened nothing).
+const VALID_NOTIFICATION_TYPES: ReadonlySet<NotificationType> = new Set(SOCIAL_NOTIFICATION_TYPES);
 
 function isValidNotificationType(value: unknown): value is NotificationType {
   return (
