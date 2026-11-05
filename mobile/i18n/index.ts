@@ -46,8 +46,8 @@ import nearbyEn from './locales/en/nearby.json';
 import nearbyEs from './locales/es/nearby.json';
 import mapEn from './locales/en/map.json';
 import mapEs from './locales/es/map.json';
-// pricing.json (en/es) is no longer registered: the Verified plan is not sold in the store v1 (decision 2026-10-14),
-// so its texts ($1.99, "Get Verified") must not ship in the bundle. Register it again when IAP/RevenueCat returns.
+// The user-plans screen and its pricing.json were deleted: the Verified plan is not sold in the store v1
+// (decision 2026-10-14). Bring them back from git history when IAP/RevenueCat returns.
 import inventoryEn from './locales/en/inventory.json';
 import inventoryEs from './locales/es/inventory.json';
 import offersEn from './locales/en/offers.json';
