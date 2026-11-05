@@ -323,7 +323,10 @@
     "mutedMessage": "You're muted in this room.",
     "bannedTitle": "No access",
     "bannedMessage": "You no longer have access to this room.",
-    "loadMessagesError": "We couldn't load the messages"
+    "loadMessagesError": "We couldn't load the messages",
+    "geoPermissionTitle": "We need your location",
+    "geoPermissionBlockedBody": "Location is off for JChat. Turn it on in Settings to enter the chat at {{business}}.",
+    "geoOpenSettings": "Open Settings"
   },
   "report": {
     "title": "Report {{name}}",

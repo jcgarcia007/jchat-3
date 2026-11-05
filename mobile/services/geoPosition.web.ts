@@ -51,6 +51,12 @@ export async function hasForegroundPermission(): Promise<boolean> {
   return readingSucceeded;
 }
 
+/** Browsers do not say whether they will ask again: only an explicit 'denied' means Settings. */
+export async function getForegroundPermissionInfo(): Promise<{ granted: boolean; canAsk: boolean }> {
+  const state = await queryPermission();
+  return { granted: await hasForegroundPermission(), canAsk: state !== 'denied' };
+}
+
 export async function requestForegroundPermission(): Promise<boolean> {
   const state = await queryPermission();
   if (state === 'granted') return true;

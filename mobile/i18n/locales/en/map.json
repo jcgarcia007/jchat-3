@@ -13,7 +13,10 @@
     "zoomInA11y": "Zoom in",
     "zoomOutA11y": "Zoom out",
     "mapStyleA11y": "Map style: {{style}}",
-    "closeSheetA11y": "Close"
+    "closeSheetA11y": "Close",
+    "prePermissionTitle": "Before we ask for your location",
+    "prePermissionBody": "We use your location only while you use the app, to show what is nearby and confirm you are inside a venue. We don't store or share it.",
+    "prePermissionContinue": "Continue"
   },
   "messagesA11y": "Messages, {{count}} unread",
   "nearbyTitle": "Near you",

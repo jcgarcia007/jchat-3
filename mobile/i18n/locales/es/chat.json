@@ -323,7 +323,10 @@
     "mutedMessage": "Estás silenciado en esta sala.",
     "bannedTitle": "Sin acceso",
     "bannedMessage": "Ya no tienes acceso a esta sala.",
-    "loadMessagesError": "No pudimos cargar los mensajes"
+    "loadMessagesError": "No pudimos cargar los mensajes",
+    "geoPermissionTitle": "Necesitamos tu ubicación",
+    "geoPermissionBlockedBody": "Ubicación desactivada para JChat. Actívala en Ajustes para entrar al chat de {{business}}.",
+    "geoOpenSettings": "Abrir Ajustes"
   },
   "report": {
     "title": "Reportar a {{name}}",

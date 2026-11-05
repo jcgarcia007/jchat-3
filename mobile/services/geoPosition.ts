@@ -25,6 +25,12 @@ export async function hasForegroundPermission(): Promise<boolean> {
   return status === Location.PermissionStatus.GRANTED;
 }
 
+/** Permission as the gate needs it: granted, or whether the system still lets the app ask (false = Settings only). */
+export async function getForegroundPermissionInfo(): Promise<{ granted: boolean; canAsk: boolean }> {
+  const { status, canAskAgain } = await Location.getForegroundPermissionsAsync();
+  return { granted: status === Location.PermissionStatus.GRANTED, canAsk: status === Location.PermissionStatus.UNDETERMINED || canAskAgain };
+}
+
 /**
  * One-shot: fetch the device's current position.
  *

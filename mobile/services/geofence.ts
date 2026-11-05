@@ -33,7 +33,7 @@
 import * as Location from 'expo-location';
 import { getCurrentPosition } from './geoPosition';
 
-export { getCurrentPosition, hasForegroundPermission, requestForegroundPermission } from './geoPosition';
+export { getCurrentPosition, hasForegroundPermission, requestForegroundPermission, getForegroundPermissionInfo } from './geoPosition';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ─────────────────────────────────────────────────────────────────────────────

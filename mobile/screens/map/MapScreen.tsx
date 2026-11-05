@@ -27,9 +27,10 @@ import { Spinner } from '../../components/common/Spinner';
 import { AppModal } from '../../components/common/AppModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Linking } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { IconMap, IconSatellite, IconPlus, IconMinus, IconCurrentLocation } from '@tabler/icons-react-native';
+import { IconMap, IconMapPin, IconSatellite, IconPlus, IconMinus, IconCurrentLocation } from '@tabler/icons-react-native';
 import type MapView from 'react-native-maps';
 import type { Region } from 'react-native-maps';
 import { useNavigation } from '@react-navigation/native';
@@ -120,6 +121,9 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 function openAppSettings(): void {
   Linking.openSettings().catch(() => undefined);
 }
+
+/** The explanation before the system location prompt is shown once (B10-6). */
+const PRE_PERMISSION_SEEN_KEY = 'map.prePermissionSeen';
 
 const DEMO_BUSINESSES: MapBusiness[] = [
   { id: 'b1', name: 'The Rooftop Bar', category: 'Bar', icon_emoji: '🍸', lat: 25.765, lng: -80.193, status: 'verified', activeCount: 62, address: '100 Ocean Dr', cover_url: null, hours: null, rating: 4.6 },
@@ -212,19 +216,38 @@ export default function MapScreen() {
     mapRef.current?.animateToRegion(target, 350);
   }, []);
 
-  // First load: ask once if never asked, then place the initial camera. The map is only
-  // mounted after this, and it is never unmounted again (retries/recenter keep the camera).
+  // First load: ask once if never asked (after a one-time explanation), then place the initial camera. The map is
+  // only mounted after this, and it is never unmounted again (retries/recenter keep the camera).
+  const [prePermission, setPrePermission] = useState(false);
+  const startLocation = useCallback(async () => {
+    const coords = await readPosition(true);
+    if (!isMounted.current) return;
+    setRegion(
+      coords
+        ? { latitude: coords.lat, longitude: coords.lng, ...DEFAULT_DELTA }
+        : FALLBACK_REGION,
+    );
+  }, [readPosition]);
   useEffect(() => {
     void (async () => {
-      const coords = await readPosition(true);
-      if (!isMounted.current) return;
-      setRegion(
-        coords
-          ? { latitude: coords.lat, longitude: coords.lng, ...DEFAULT_DELTA }
-          : FALLBACK_REGION,
-      );
+      try {
+        const [permission, seen] = await Promise.all([
+          Location.getForegroundPermissionsAsync(),
+          AsyncStorage.getItem(PRE_PERMISSION_SEEN_KEY).catch(() => 'true'),
+        ]);
+        if (permission.status === Location.PermissionStatus.UNDETERMINED && seen !== 'true') {
+          if (isMounted.current) setPrePermission(true);
+          return;
+        }
+      } catch { /* fall through to the normal flow */ }
+      await startLocation();
     })();
-  }, [readPosition]);
+  }, [startLocation]);
+  const continuePrePermission = useCallback(() => {
+    setPrePermission(false);
+    void AsyncStorage.setItem(PRE_PERMISSION_SEEN_KEY, 'true').catch(() => undefined);
+    void startLocation();
+  }, [startLocation]);
 
   // Back from Settings (permission just granted?): re-read silently, never prompting.
   useEffect(() => {
@@ -417,6 +440,24 @@ export default function MapScreen() {
     });
     void Linking.openURL(url);
   }, []);
+
+  if (region === null && prePermission) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: c.bgBase, paddingHorizontal: 32 }]}>
+        <IconMapPin size={40} color={c.brandText} strokeWidth={2} />
+        <Text accessibilityRole="header" style={[styles.prePermissionTitle, { color: c.textPrimary }]}>{t('mapScreen.prePermissionTitle')}</Text>
+        <Text style={[styles.loadingText, { color: c.textSecondary, textAlign: 'center' }]}>{t('mapScreen.prePermissionBody')}</Text>
+        <Pressable
+          testID="map-pre-permission-continue"
+          onPress={continuePrePermission}
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.prePermissionBtn, { backgroundColor: c.brandFill, opacity: pressed ? 0.82 : 1 }]}
+        >
+          <Text style={[styles.prePermissionBtnLabel, { color: palette.onBrand }]}>{t('mapScreen.prePermissionContinue')}</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   if (region === null) {
     return (
@@ -679,6 +720,9 @@ export default function MapScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  prePermissionTitle: { fontSize: 20, fontWeight: '700', textAlign: 'center' },
+  prePermissionBtn: { alignSelf: 'stretch', minHeight: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, marginTop: 8 },
+  prePermissionBtnLabel: { fontSize: 16, fontWeight: '600' },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   loadingText: { fontSize: 14 },
   overlayContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },

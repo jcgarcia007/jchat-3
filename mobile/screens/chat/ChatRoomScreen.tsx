@@ -55,6 +55,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { useGeofenceGate, formatDistanceM } from './useGeofenceGate';
+import { getForegroundPermissionInfo } from '../../services/geofence';
+import { locationGateView } from '../../utils/locationGate';
 import { getChatPermissions, EMPTY_PERMISSIONS, getBusinessRoleMap } from '../../services/permissions';
 import type { ChatPermissions, ChatRole } from '../../services/permissions';
 import { uploadImage } from '../../services/storage';
@@ -1049,6 +1051,29 @@ export default function ChatRoomScreen() {
   // Golden rule: when the entry gate refuses (outside / no location), the person still gets the menu
   // and — only if the owner enabled it — pick-up orders. The server tells us whether pick-up exists.
   const gateRefused = geoGate.gateStatus !== 'idle' && geoGate.gateStatus !== 'checking';
+
+  // Location denied: if the system will not ask again the button goes to Settings; coming back with the permission
+  // granted tries to enter again by itself (utils/locationGate.ts decides what is shown).
+  const [permissionBlocked, setPermissionBlocked] = useState(false);
+  const permissionDenied = geoGate.gateStatus === 'permission_denied';
+  useEffect(() => {
+    if (!permissionDenied) return;
+    let alive = true;
+    void getForegroundPermissionInfo().then((info) => { if (alive) setPermissionBlocked(!info.canAsk); }).catch(() => undefined);
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next !== 'active') return;
+      void getForegroundPermissionInfo().then((info) => {
+        if (!alive) return;
+        setPermissionBlocked(!info.canAsk);
+        if (info.granted) void handleEnter();
+      }).catch(() => undefined);
+    });
+    return () => { alive = false; sub.remove(); };
+  }, [permissionDenied, handleEnter]);
+  const gateView = locationGateView({
+    permission: !permissionDenied ? 'granted' : permissionBlocked ? 'denied' : 'askable',
+    reading: geoGate.gateStatus === 'position_error' ? 'error' : 'ok',
+  });
   // No GPS fix (timeout / error) is not "you are outside": say so, with Retry.
   const noReading = geoGate.gateStatus === 'position_error';
   const [outsidePickup, setOutsidePickup] = useState(false);
@@ -1795,12 +1820,16 @@ export default function ChatRoomScreen() {
                     <IconMapPin size={30} color={themeColors.brandText} strokeWidth={2} />
                   </View>
                   <Text style={[gateStyles.outsideTitle, { color: themeColors.textPrimary }]}>
-                    {noReading
+                    {permissionDenied
+                      ? gt('chatRoom.geoPermissionTitle')
+                      : noReading
                       ? gt('chatRoom.geoNoReadingTitle')
                       : gt('chatRoom.geoOutsideTitle', { business: business?.name ?? gt('chatRoom.chatRoomFallback') })}
                   </Text>
                   <Text style={[gateStyles.outsideBody, { color: themeColors.textSecondary }]}>
-                    {geoGate.gateStatus === 'permission_denied'
+                    {permissionDenied && permissionBlocked
+                      ? gt('chatRoom.geoPermissionBlockedBody', { business: business?.name ?? gt('chatRoom.chatRoomFallback') })
+                      : geoGate.gateStatus === 'permission_denied'
                       ? gt('chatRoom.geoWhy', { business: business?.name ?? gt('chatRoom.chatRoomFallback') })
                       : geoGate.gateStatus === 'outside_radius'
                         ? gt('chatRoom.geoOutsideRadius', { distance: formatDistanceM(geoGate.outsideDistanceM ?? 0) })
@@ -1816,12 +1845,12 @@ export default function ChatRoomScreen() {
                   <View style={gateStyles.outsideButtons}>
                     <Pressable
                       testID="chat-geo-retry"
-                      onPress={handleEnter}
+                      onPress={gateView.button === 'openSettings' ? () => { Linking.openSettings().catch(() => undefined); } : handleEnter}
                       accessibilityRole="button"
                       style={({ pressed }) => [gateStyles.outsideBtn, { backgroundColor: themeColors.brandFill, opacity: pressed ? 0.82 : 1 }]}
                     >
                       <Text style={[gateStyles.outsideBtnLabel, { color: palette.onBrand }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-                        {geoGate.gateStatus === 'permission_denied' ? gt('chatRoom.geoAllowLocation') : gt('chatRoom.geoRetry')}
+                        {gateView.button === 'openSettings' ? gt('chatRoom.geoOpenSettings') : geoGate.gateStatus === 'permission_denied' ? gt('chatRoom.geoAllowLocation') : gt('chatRoom.geoRetry')}
                       </Text>
                     </Pressable>
                     {menuAvailable ? (

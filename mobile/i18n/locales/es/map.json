@@ -13,7 +13,10 @@
     "zoomInA11y": "Acercar",
     "zoomOutA11y": "Alejar",
     "mapStyleA11y": "Estilo de mapa: {{style}}",
-    "closeSheetA11y": "Cerrar"
+    "closeSheetA11y": "Cerrar",
+    "prePermissionTitle": "Antes de pedir tu ubicación",
+    "prePermissionBody": "Usamos tu ubicación solo mientras usas la app, para mostrarte lo que hay cerca y confirmar que estás dentro de un local. No la guardamos ni la compartimos.",
+    "prePermissionContinue": "Continuar"
   },
   "messagesA11y": "Mensajes, {{count}} sin leer",
   "nearbyTitle": "Cerca de ti",
