@@ -48,7 +48,7 @@ import { palette } from '../../theme/tokens';
 import type { UserAnchor } from './MessageBubble';
 import { getInitials } from '../../utils/initials';
 import { BusinessIcon } from '../common/BusinessIcon';
-import { LABEL_TEXT_CAP } from '../../theme/textScale';
+import { typeCap, typeStyle } from '../../theme/typography';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -139,7 +139,7 @@ function UserAvatar({ user, theme, onPressUser }: UserAvatarProps) {
         />
       ) : (
         <View style={[avatarStyles.img, avatarStyles.fallback, { backgroundColor: theme.bubbleInBg, borderColor: theme.border }]}>
-          <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[avatarStyles.initial, { color: theme.bubbleInText }]}>
+          <Text maxFontSizeMultiplier={typeCap('button')} style={[avatarStyles.initial, { color: theme.bubbleInText }]}>
             {getInitials(displayName)}
           </Text>
         </View>
@@ -163,7 +163,7 @@ const avatarStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   initial: {
-    fontSize: 15,
+    ...typeStyle('button'),
     fontWeight: '700',
   },
 });
@@ -208,10 +208,10 @@ export function ChatTopBar({
         <View style={topBarStyles.titleArea}>
           <BusinessIcon iconUrl={business.icon_url} emoji={business.icon_emoji} size={28} radius={8} emojiStyle={topBarStyles.emoji} />
           <View style={topBarStyles.titleText}>
-            <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[topBarStyles.businessName, { color: theme.bubbleInText }]} numberOfLines={1}>
+            <Text maxFontSizeMultiplier={typeCap('button')} style={[topBarStyles.businessName, { color: theme.bubbleInText }]} numberOfLines={2}>
               {business.name}
             </Text>
-            <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[topBarStyles.activeCount, { color: theme.tabInactive }]}>
+            <Text maxFontSizeMultiplier={typeCap('caption')} style={[topBarStyles.activeCount, { color: theme.tabInactive }]} numberOfLines={2}>
               {t('topBar.peopleHere', { count: activeCount })}
             </Text>
           </View>
@@ -248,7 +248,7 @@ export function ChatTopBar({
             <IconBell size={22} color={theme.tabActive} />
             {unreadCount > 0 ? (
               <View style={[topBarStyles.badge, { backgroundColor: palette.danger }]}>
-                <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[topBarStyles.badgeText, { color: palette.onBrand }]}>
+                <Text maxFontSizeMultiplier={typeCap('caption')} style={[topBarStyles.badgeText, { color: palette.onBrand }]}>
                   {unreadCount > 9 ? '9+' : String(unreadCount)}
                 </Text>
               </View>
@@ -327,13 +327,14 @@ const topBarStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
-    paddingVertical: 10,
+    paddingVertical: 8,
     gap: 8,
+    minHeight: 56,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   backBtn: {
     width: 44,
-    height: 44,
+    minHeight: 48,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
@@ -354,15 +355,14 @@ const topBarStyles = StyleSheet.create({
   },
   titleText: {
     flex: 1,
-    gap: 1,
+    gap: 0,
   },
   businessName: {
-    fontSize: 16,
+    ...typeStyle('button'),
     fontWeight: '700',
-    letterSpacing: 0.1,
   },
   activeCount: {
-    fontSize: 12,
+    ...typeStyle('caption'),
   },
   // The action buttons (💬 🔔 🍴 ⋯): no gap between them. 40 px wide x 44 px tall: the tall touch target is kept,
   // and there is no horizontal hitSlop (neighbours would overlap).
@@ -373,7 +373,7 @@ const topBarStyles = StyleSheet.create({
   },
   iconBtn: {
     width: 40,
-    height: 44,
+    minHeight: 48,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
@@ -389,7 +389,7 @@ const topBarStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  badgeText: { fontSize: 11, fontWeight: '700' },
+  badgeText: { ...typeStyle('caption'), fontWeight: '700' },
   dot: {
     position: 'absolute',
     top: 9,

@@ -43,6 +43,8 @@ import {
 } from '@tabler/icons-react-native';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
+import { typeCap, typeStyle } from '../../theme/typography';
+import { controlMinHeight } from '../../theme/spacing';
 import { CATEGORY_ICONS, initialsColor } from './pinAppearance';
 import { initials, pinCategory } from '../../utils/mapPin';
 import { cityFromAddress, formatMeters } from '../../utils/businessCard';
@@ -267,7 +269,7 @@ export default function BusinessPreviewCard({
             accessible
             accessibilityLabel={statusText}
           >
-            <Text style={styles.statusChipText} numberOfLines={2}>{statusText}</Text>
+            <Text style={styles.statusChipText} maxFontSizeMultiplier={typeCap('caption')} numberOfLines={2}>{statusText}</Text>
           </View>
 
           {/* Logo + name + category + distance · city — bottom left, over the gradient */}
@@ -293,15 +295,15 @@ export default function BusinessPreviewCard({
               <View style={styles.metaRow}>
                 <View style={styles.categoryChip}>
                   <CategoryIcon size={13} color={palette.onImage} strokeWidth={2} />
-                  <Text style={styles.categoryChipText} numberOfLines={1}>{business.category}</Text>
+                  <Text style={styles.categoryChipText} maxFontSizeMultiplier={typeCap('caption')} numberOfLines={1}>{business.category}</Text>
                 </View>
                 {business.rating != null ? (
                   <View style={styles.ratingInline} accessible accessibilityLabel={t('businessPreviewCard.ratingA11y', { rating: business.rating.toFixed(1) })}>
                     <IconStarFilled size={12} color={palette.heatMild} />
-                    <Text style={styles.metaText}>{business.rating.toFixed(1)}</Text>
+                    <Text style={styles.metaText} maxFontSizeMultiplier={typeCap('caption')}>{business.rating.toFixed(1)}</Text>
                   </View>
                 ) : null}
-                {distanceLine ? <Text style={styles.metaText} numberOfLines={1}>{distanceLine}</Text> : null}
+                {distanceLine ? <Text style={styles.metaText} maxFontSizeMultiplier={typeCap('caption')} numberOfLines={1}>{distanceLine}</Text> : null}
               </View>
             </View>
           </View>
@@ -319,7 +321,7 @@ export default function BusinessPreviewCard({
               accessibilityLabel={blocked ? t('businessPreviewCard.enterChatBlockedA11y') : t('businessPreviewCard.enterChatA11y')}
             >
               <IconMessage size={18} color={blocked ? c.textTertiary : palette.onBrand} strokeWidth={2} />
-              <Text style={[styles.btnMainLabel, { color: blocked ? c.textTertiary : palette.onBrand }]} numberOfLines={1}>
+              <Text style={[styles.btnMainLabel, { color: blocked ? c.textTertiary : palette.onBrand }]} maxFontSizeMultiplier={typeCap('button')} numberOfLines={1}>
                 {t('businessPreviewCard.enterChatButton')}
               </Text>
             </TouchableOpacity>
@@ -331,7 +333,7 @@ export default function BusinessPreviewCard({
               accessibilityLabel={t('businessPreviewCard.navigateA11y')}
             >
               <IconNavigation size={18} color={c.brandText} strokeWidth={2} />
-              <Text style={[styles.btnMainLabel, { color: c.textPrimary }]} numberOfLines={1}>
+              <Text style={[styles.btnMainLabel, { color: c.textPrimary }]} maxFontSizeMultiplier={typeCap('button')} numberOfLines={1}>
                 {t('businessPreviewCard.directionsButton')}
               </Text>
             </TouchableOpacity>
@@ -353,7 +355,7 @@ export default function BusinessPreviewCard({
               accessibilityLabel={t('businessPreviewCard.menuA11y')}
             >
               <IconToolsKitchen2 size={17} color={c.textSecondary} strokeWidth={2} />
-              <Text style={[styles.btnSecondaryLabel, { color: c.textPrimary }]} numberOfLines={1}>
+              <Text style={[styles.btnSecondaryLabel, { color: c.textPrimary }]} maxFontSizeMultiplier={typeCap('caption')} numberOfLines={1}>
                 {t('businessPreviewCard.menuButton')}
               </Text>
             </TouchableOpacity>
@@ -365,7 +367,7 @@ export default function BusinessPreviewCard({
               accessibilityLabel={business.has_active_offers ? t('businessPreviewCard.offersActiveA11y') : t('businessPreviewCard.offersA11y')}
             >
               <IconTag size={17} color={c.textSecondary} strokeWidth={2} />
-              <Text style={[styles.btnSecondaryLabel, { color: c.textPrimary }]} numberOfLines={1}>
+              <Text style={[styles.btnSecondaryLabel, { color: c.textPrimary }]} maxFontSizeMultiplier={typeCap('caption')} numberOfLines={1}>
                 {t('businessPreviewCard.offersButton')}
               </Text>
               {business.has_active_offers ? <View style={[styles.offersDot, { backgroundColor: palette.danger }]} /> : null}
@@ -378,7 +380,7 @@ export default function BusinessPreviewCard({
               accessibilityLabel={t('businessPreviewCard.reserveA11y')}
             >
               <IconCalendarEvent size={17} color={c.textSecondary} strokeWidth={2} />
-              <Text style={[styles.btnSecondaryLabel, { color: c.textPrimary }]} numberOfLines={1}>
+              <Text style={[styles.btnSecondaryLabel, { color: c.textPrimary }]} maxFontSizeMultiplier={typeCap('caption')} numberOfLines={1}>
                 {t('businessPreviewCard.reserveButton')}
               </Text>
             </TouchableOpacity>
@@ -645,7 +647,7 @@ const styles = StyleSheet.create({
 
   // Cover
   cover: {
-    height: COVER_HEIGHT,
+    minHeight: COVER_HEIGHT,
     width: '100%',
   },
   coverGradient: {
@@ -657,16 +659,18 @@ const styles = StyleSheet.create({
   },
   statusChip: {
     position: 'absolute',
-    top: 14,
-    left: 14,
+    top: 16,
+    left: 16,
     maxWidth: '66%', // leaves room for the share and close buttons; a long text wraps to two lines
+    minHeight: 28,
+    justifyContent: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 4,
     borderRadius: 16,
   },
   statusChipText: {
     color: palette.onBrand,
-    fontSize: 12,
+    ...typeStyle('caption'),
     fontWeight: '700',
   },
   coverBottom: {
@@ -713,8 +717,9 @@ const styles = StyleSheet.create({
   categoryChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 9,
+    gap: 4,
+    minHeight: 28,
+    paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 999,
     backgroundColor: palette.scrimMedium,
@@ -722,18 +727,18 @@ const styles = StyleSheet.create({
   },
   categoryChipText: {
     color: palette.onImage,
-    fontSize: 12,
+    ...typeStyle('caption'),
     fontWeight: '600',
     flexShrink: 1,
   },
   ratingInline: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    gap: 4,
   },
   metaText: {
     color: palette.onImageStrong,
-    fontSize: 12,
+    ...typeStyle('caption'),
     fontWeight: '500',
   },
 
@@ -788,7 +793,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
   },
   btnEnter: {
     flex: 1.3,
@@ -798,23 +804,24 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
   },
   btnMainLabel: {
-    fontSize: 15,
+    ...typeStyle('button'),
     fontWeight: '700',
     flexShrink: 1,
   },
   btnSecondary: {
     flex: 1,
-    height: MIN_TOUCH,
+    minHeight: controlMinHeight,
     borderRadius: 12,
     borderWidth: 0.5,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingHorizontal: 6,
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
   btnSecondaryLabel: {
-    fontSize: 13,
+    ...typeStyle('caption'),
     fontWeight: '600',
     flexShrink: 1,
   },

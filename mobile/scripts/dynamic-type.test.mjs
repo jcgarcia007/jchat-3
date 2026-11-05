@@ -52,11 +52,11 @@ for (const [file, selectors] of Object.entries(targets.minHeightSelectors)) {
 for (const file of targets.labelCapFiles) {
   test(`(c) ${file}: every <Text> of the short-label file is capped at LABEL_TEXT_CAP`, () => {
     const source = read(file);
-    assert.match(source, /import \{ LABEL_TEXT_CAP \} from/);
+    assert.match(source, /import \{ (LABEL_TEXT_CAP|typeCap)/);
     const texts = source.match(/<Text(?=[\s>])[^>]*>/gs) ?? [];
     assert.ok(texts.length > 0);
     for (const tag of texts) {
-      assert.ok(/maxFontSizeMultiplier=\{(LABEL_TEXT_CAP|1\.\d+)\}/.test(tag), `uncapped <Text> in ${file}: ${tag.slice(0, 60)}`);
+      assert.ok(/maxFontSizeMultiplier=\{(LABEL_TEXT_CAP|typeCap\('\w+'\)|1\.\d+)\}/.test(tag), `uncapped <Text> in ${file}: ${tag.slice(0, 60)}`);
     }
   });
 }
