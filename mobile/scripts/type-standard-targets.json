@@ -1,0 +1,20 @@
+{
+  "migrated": [
+    "screens/auth/WelcomeScreen.tsx",
+    "screens/auth/LoginScreen.tsx",
+    "screens/auth/LoginEmailScreen.tsx",
+    "screens/auth/RegisterStep1Screen.tsx",
+    "screens/auth/RegisterStep2Screen.tsx",
+    "screens/auth/ForgotPasswordScreen.tsx",
+    "screens/auth/ResetPasswordScreen.tsx",
+    "screens/auth/ConfirmAgeScreen.tsx",
+    "screens/profile/EditProfileScreen.tsx",
+    "screens/settings/ChangePasswordScreen.tsx"
+  ],
+  "standardFiles": [
+    "theme/typography.ts",
+    "theme/spacing.ts",
+    "components/common/AppText.tsx",
+    "components/common/FormField.tsx"
+  ]
+}
