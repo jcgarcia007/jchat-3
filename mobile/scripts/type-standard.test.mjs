@@ -141,3 +141,40 @@ test('the pending fields use FormField (username, date, bio, code)', () => {
   assert.match(ff, /left\?: React\.ReactNode/);
   assert.match(ff, /style,\n/);
 });
+
+// ── Second batch (B7b): the elements a Dynamic-Type matrix found broken ───────────────────────────────────────────
+// Only the listed style blocks are checked (the rest of those screens migrate later): no numeric fontSize / lineHeight,
+// no fixed `height:` (minHeight is fine), and margin / padding / gap on the 4-point grid (6 allowed).
+function styleBlock(source, selector) {
+  const m = source.match(new RegExp(`^( *)${selector}: \\{(.*?)(?:\\n\\1\\},|\\},?$)`, 'ms'));
+  return m ? m[0] : null;
+}
+const GRID_RE = /\b(margin|marginTop|marginBottom|marginLeft|marginRight|marginHorizontal|marginVertical|marginStart|marginEnd|padding|paddingTop|paddingBottom|paddingLeft|paddingRight|paddingHorizontal|paddingVertical|paddingStart|paddingEnd|gap|rowGap|columnGap)\s*:\s*(-?\d+(?:\.\d+)?)\b/g;
+
+for (const { file, styles } of targets.elements ?? []) {
+  test(`B7b ${file}: ${styles.join(', ')} follow the type + spacing standard`, () => {
+    const source = read(file);
+    assert.match(source, /theme\/typography/, `${file} imports the type standard`);
+    for (const name of styles) {
+      const raw = styleBlock(source, name);
+      assert.ok(raw, `style rule ${name} exists in ${file}`);
+      const block = raw.replace(/shadowOffset:\s*\{[^}]*\}/g, ''); // a shadow offset is not a size
+      assert.doesNotMatch(block, /\b(fontSize|lineHeight)\s*:\s*-?\d/, `${file} ${name}: numeric fontSize/lineHeight`);
+      assert.doesNotMatch(block, /(?<![A-Za-z])height:/, `${file} ${name}: fixed height (use minHeight)`);
+      for (const m of block.matchAll(GRID_RE)) {
+        const v = Math.abs(Number(m[2]));
+        assert.ok(v % 4 === 0 || v === 6, `${file} ${name}: ${m[0]} is off the 4-point grid`);
+      }
+    }
+  });
+}
+
+test('B7b: the tab labels and the chips cap their text with typeCap, not a loose number', () => {
+  const tab = read('components/navigation/NotchTabBar.tsx');
+  assert.match(tab, /maxFontSizeMultiplier=\{typeCap\('caption'\)\}/);
+  assert.doesNotMatch(tab, /maxFontSizeMultiplier=\{1\.\d+\}/);
+  assert.match(read('screens/checkout/CheckoutScreen.tsx'), /tipChipText[\s\S]*?typeStyle\('caption'\)/);
+  assert.match(read('screens/checkout/CheckoutScreen.tsx'), /tipRow: \{[^}]*flexWrap: 'wrap'/);
+  assert.match(read('screens/settings/SettingsScreen.tsx'), /segmented: \{[^}]*flexWrap: 'wrap'/);
+  assert.match(read('screens/match/MatchMyProfileScreen.tsx'), /optionRow: \{[^}]*flexWrap: 'wrap'/);
+});

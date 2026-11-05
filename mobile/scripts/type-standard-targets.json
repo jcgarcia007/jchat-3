@@ -16,5 +16,141 @@
     "theme/spacing.ts",
     "components/common/AppText.tsx",
     "components/common/FormField.tsx"
+  ],
+  "elements": [
+    {
+      "file": "screens/match/MatchMyProfileScreen.tsx",
+      "styles": [
+        "optionRow",
+        "optionChip",
+        "optionText",
+        "chipsRow",
+        "interestChip",
+        "interestChipText"
+      ]
+    },
+    {
+      "file": "screens/match/MatchInterestsScreen.tsx",
+      "styles": [
+        "chips",
+        "chip",
+        "chipText"
+      ]
+    },
+    {
+      "file": "screens/match/MatchProfileScreen.tsx",
+      "styles": [
+        "chips",
+        "chip",
+        "chipText"
+      ]
+    },
+    {
+      "file": "screens/match/MatchItsAMatchScreen.tsx",
+      "styles": [
+        "chips",
+        "chip",
+        "chipText"
+      ]
+    },
+    {
+      "file": "components/match/MatchCard.tsx",
+      "styles": [
+        "chips",
+        "chip",
+        "chipText"
+      ]
+    },
+    {
+      "file": "screens/checkout/CheckoutScreen.tsx",
+      "styles": [
+        "tipRow",
+        "tipChip",
+        "tipChipText",
+        "tipChipAmount",
+        "customTipWrapper",
+        "customTipDollar",
+        "customTipInput"
+      ]
+    },
+    {
+      "file": "components/menu/CartBar.tsx",
+      "styles": [
+        "wrapper",
+        "bar",
+        "badgeWrapper",
+        "countBadge",
+        "countText",
+        "label",
+        "total"
+      ]
+    },
+    {
+      "file": "screens/menu/CartScreen.tsx",
+      "styles": [
+        "checkoutBar",
+        "checkoutHint",
+        "checkoutButton",
+        "checkoutButtonText"
+      ]
+    },
+    {
+      "file": "components/map/BusinessPreviewCard.tsx",
+      "styles": [
+        "cover",
+        "statusChip",
+        "statusChipText",
+        "categoryChip",
+        "categoryChipText",
+        "ratingInline",
+        "metaText",
+        "btnMain",
+        "btnMainLabel",
+        "btnSecondary",
+        "btnSecondaryLabel"
+      ]
+    },
+    {
+      "file": "components/chat/ChatTopBar.tsx",
+      "styles": [
+        "headerRow",
+        "backBtn",
+        "titleText",
+        "businessName",
+        "activeCount",
+        "iconBtn",
+        "badge",
+        "badgeText",
+        "initial"
+      ]
+    },
+    {
+      "file": "screens/settings/SettingsScreen.tsx",
+      "styles": [
+        "segmented",
+        "segmentedOption",
+        "segmentedLabel",
+        "rowLabel",
+        "rowSublabel",
+        "pickerPad",
+        "compoundRow"
+      ]
+    },
+    {
+      "file": "components/navigation/NotchTabBar.tsx",
+      "styles": [
+        "pill",
+        "label",
+        "offersLabel"
+      ]
+    },
+    {
+      "file": "screens/map/MapScreen.tsx",
+      "styles": [
+        "styleSwitcher",
+        "styleBtn",
+        "styleBtnLabel"
+      ]
+    }
   ]
 }

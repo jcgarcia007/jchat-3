@@ -54,6 +54,7 @@ import { buildCategoryOptions, categoryMatches } from '../../utils/categories';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
+import { typeCap, typeStyle } from '../../theme/typography';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { useHomeBarInset } from '../../components/venue/HomeBarInset';
 import { shareContent } from '../../utils/shareContent';
@@ -646,7 +647,7 @@ export default function MapScreen() {
                 accessibilityLabel={t('mapScreen.mapStyleA11y', { style: styleLabels[variant] })}
               >
                 <Icon size={18} color={isActive ? palette.brand : c.textSecondary} strokeWidth={isActive ? 2.5 : 1.75} />
-                <Text style={[styles.styleBtnLabel, { color: isActive ? c.textPrimary : c.textSecondary }]}>{styleLabels[variant]}</Text>
+                <Text maxFontSizeMultiplier={typeCap('caption')} style={[styles.styleBtnLabel, { color: isActive ? c.textPrimary : c.textSecondary }]}>{styleLabels[variant]}</Text>
               </TouchableOpacity>
             );
           })}
@@ -731,11 +732,12 @@ const styles = StyleSheet.create({
   bannerAction: { fontWeight: '800', marginTop: 2, textDecorationLine: 'underline' },
   styleSwitcher: {
     position: 'absolute', right: 16, borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden', minWidth: 90,
+    borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden', minWidth: 92, maxWidth: '60%',
     ...Platform.select({ ios: { shadowColor: palette.bgBase, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6 }, android: { elevation: 6 } }),
   },
-  styleBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, gap: 8 },
-  styleBtnLabel: { fontSize: 13, fontWeight: '500' },
+  // minHeight (never a fixed height) and a wrapping label: "Satélite" / "Normal" stay whole at large text.
+  styleBtn: { flexDirection: 'row', alignItems: 'center', minHeight: 48, paddingVertical: 8, paddingHorizontal: 12, gap: 8 },
+  styleBtnLabel: { ...typeStyle('caption'), fontWeight: '500', flexShrink: 1 },
   sheetBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: palette.scrim },
   sheetDismiss: { flex: 1 },
   // The card owns the top (its cover reaches the rounded corners) and the close button.

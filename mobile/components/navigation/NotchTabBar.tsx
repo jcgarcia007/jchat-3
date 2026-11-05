@@ -25,6 +25,7 @@ import { useReduceTransparency } from '../../hooks/useReduceTransparency';
 import { useUnreadBadge } from '../../hooks/useUnreadBadge';
 import { glassMetrics, useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
+import { typeCap, typeStyle } from '../../theme/typography';
 import ProfileTabAvatar from './ProfileTabAvatar';
 import { BAR_HEIGHT, BUTTON_SIZE, CENTER_Y, NOTCH_ROOM, barPath } from './notchGeometry';
 
@@ -106,7 +107,7 @@ export default function NotchTabBar({ state, descriptors, navigation }: BottomTa
           <View style={styles.iconSlot}>{icon}</View>
           <Text
             adjustsFontSizeToFit
-            maxFontSizeMultiplier={1.2}
+            maxFontSizeMultiplier={typeCap('caption')}
             minimumFontScale={0.85}
             numberOfLines={1}
             style={[styles.label, { color: colors.textPrimary, fontWeight: focused ? '800' : '600' }]}
@@ -189,6 +190,9 @@ export default function NotchTabBar({ state, descriptors, navigation }: BottomTa
       <Text
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
+        maxFontSizeMultiplier={typeCap('caption')}
+        adjustsFontSizeToFit
+        minimumFontScale={0.85}
         numberOfLines={1}
         style={[styles.offersLabel, { color: colors.textPrimary, fontWeight: offersFocused ? '800' : '700' }]}
       >
@@ -260,10 +264,10 @@ const styles = StyleSheet.create({
     // Android drew the active tab's background as a square on the Profile tab (its icon is a clipped, bordered
     // avatar); clipping the pill to its own rounded shape makes both platforms identical.
     overflow: 'hidden',
-    gap: 2,
+    gap: 4,
     maxWidth: '100%',
-    paddingHorizontal: 6,
-    paddingVertical: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
   // As tall as the profile avatar (30), so every pill and label lines up whatever the icon is.
   iconSlot: {
@@ -271,8 +275,9 @@ const styles = StyleSheet.create({
     height: 30,
     justifyContent: 'center',
   },
+  // caption role, capped at typeCap('caption') (1.4): pill = 4 + 30 + 4 + label + 4 stays inside the 64 pt bar.
   label: {
-    fontSize: 11,
+    ...typeStyle('caption'),
   },
   unreadDot: {
     borderRadius: 5,
@@ -285,8 +290,8 @@ const styles = StyleSheet.create({
   },
   // Under the notch, inside the bar (the notch is 41 pt deep, the bar 64: the label sits in the 23 pt below it).
   offersLabel: {
-    bottom: 5,
-    fontSize: 10,
+    bottom: 4,
+    ...typeStyle('caption'),
     left: '50%',
     marginLeft: -NOTCH_ROOM / 2,
     position: 'absolute',

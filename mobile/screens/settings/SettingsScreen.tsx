@@ -64,6 +64,7 @@ import {
 
 import { palette } from '../../theme/tokens';
 import { useThemeColors } from '../../theme/colors';
+import { typeCap, typeStyle } from '../../theme/typography';
 import { applyAppearance, type AppearancePreference } from '../../theme/appearance';
 import { useAuth } from '../../context/AuthContext';
 import { isSupabaseConfigured } from '../../services/supabase';
@@ -173,6 +174,7 @@ function SettingsRow({
       <View style={styles.rowIcon}>{icon}</View>
       <View style={styles.rowBody}>
         <Text
+          maxFontSizeMultiplier={typeCap('body')}
           style={[
             styles.rowLabel,
             { color: destructive ? c.dangerText : c.textPrimary },
@@ -181,7 +183,7 @@ function SettingsRow({
           {label}
         </Text>
         {sublabel ? (
-          <Text style={[styles.rowSublabel, { color: c.textTertiary }]}>{sublabel}</Text>
+          <Text maxFontSizeMultiplier={typeCap('caption')} style={[styles.rowSublabel, { color: c.textTertiary }]}>{sublabel}</Text>
         ) : null}
       </View>
       {right ? <View style={styles.rowRight}>{right}</View> : null}
@@ -227,6 +229,7 @@ function SegmentedPicker<T extends string>({
             accessibilityState={{ selected: active }}
           >
             <Text
+              maxFontSizeMultiplier={typeCap('caption')}
               style={[
                 styles.segmentedLabel,
                 { color: active ? c.textPrimary : c.textSecondary },
@@ -656,8 +659,8 @@ export default function SettingsScreen() {
                 <IconEyeOff size={20} color={c.brandText} strokeWidth={2} />
               </View>
               <View style={styles.rowBody}>
-                <Text style={[styles.rowLabel, { color: c.textPrimary }]}>{t(label)}</Text>
-                <Text style={[styles.rowSublabel, { color: c.textTertiary }]}>{t(sub)}</Text>
+                <Text maxFontSizeMultiplier={typeCap('body')} style={[styles.rowLabel, { color: c.textPrimary }]}>{t(label)}</Text>
+                <Text maxFontSizeMultiplier={typeCap('caption')} style={[styles.rowSublabel, { color: c.textTertiary }]}>{t(sub)}</Text>
               </View>
             </View>
             <View style={styles.pickerPad}>
@@ -668,12 +671,12 @@ export default function SettingsScreen() {
                 labelMap={PREVIEW_LABELS}
               />
             </View>
-            <Text style={[styles.rowSublabel, { color: c.textSecondary, paddingHorizontal: 16, paddingBottom: 12 }]}>
+            <Text maxFontSizeMultiplier={typeCap('caption')} style={[styles.rowSublabel, { color: c.textSecondary, paddingHorizontal: 16, paddingBottom: 12 }]}>
               {t(`main.previewHint.${settings[key]}`)}
             </Text>
           </View>
         ))}
-        <Text style={[styles.rowSublabel, { color: c.textTertiary, paddingHorizontal: 16, paddingTop: 8 }]}>
+        <Text maxFontSizeMultiplier={typeCap('caption')} style={[styles.rowSublabel, { color: c.textTertiary, paddingHorizontal: 16, paddingTop: 8 }]}>
           {t('main.previewBrandNote')}
         </Text>
 
@@ -723,7 +726,7 @@ export default function SettingsScreen() {
               <IconLanguage size={20} color={c.brandText} strokeWidth={2} />
             </View>
             <View style={styles.rowBody}>
-              <Text style={[styles.rowLabel, { color: c.textPrimary }]}>{t('main.language')}</Text>
+              <Text maxFontSizeMultiplier={typeCap('body')} style={[styles.rowLabel, { color: c.textPrimary }]}>{t('main.language')}</Text>
             </View>
           </View>
           <View style={styles.pickerPad}>
@@ -751,8 +754,8 @@ export default function SettingsScreen() {
               <IconMoon size={20} color={c.brandText} strokeWidth={2} />
             </View>
             <View style={styles.rowBody}>
-              <Text style={[styles.rowLabel, { color: c.textPrimary }]}>{t('main.theme')}</Text>
-              <Text style={[styles.rowSublabel, { color: c.textTertiary }]}>
+              <Text maxFontSizeMultiplier={typeCap('body')} style={[styles.rowLabel, { color: c.textPrimary }]}>{t('main.theme')}</Text>
+              <Text maxFontSizeMultiplier={typeCap('caption')} style={[styles.rowSublabel, { color: c.textTertiary }]}>
                 {t('main.themeSub')}
               </Text>
             </View>
@@ -781,8 +784,8 @@ export default function SettingsScreen() {
               <IconSpeakerphone size={20} color={c.brandText} strokeWidth={2} />
             </View>
             <View style={styles.rowBody}>
-              <Text style={[styles.rowLabel, { color: c.textPrimary }]}>{t('main.feedRadius')}</Text>
-              <Text style={[styles.rowSublabel, { color: c.textTertiary }]}>
+              <Text maxFontSizeMultiplier={typeCap('body')} style={[styles.rowLabel, { color: c.textPrimary }]}>{t('main.feedRadius')}</Text>
+              <Text maxFontSizeMultiplier={typeCap('caption')} style={[styles.rowSublabel, { color: c.textTertiary }]}>
                 {t('main.feedRadiusSub')}
               </Text>
             </View>
@@ -998,14 +1001,14 @@ const styles = StyleSheet.create({
   },
 
   rowLabel: {
-    fontSize: 16,
+    ...typeStyle('body'),
     fontWeight: '400',
   },
 
   rowSublabel: {
-    fontSize: 13,
+    ...typeStyle('caption'),
     fontWeight: '400',
-    marginTop: 2,
+    marginTop: 4,
   },
 
   rowRight: {
@@ -1024,24 +1027,30 @@ const styles = StyleSheet.create({
   },
 
   // ── Segmented picker ─────────────────────────────────────────────────────
+  // Options wrap to a second row (minWidth) when the labels no longer fit at large text; each option is >= 48 high.
   segmented: {
     flexDirection: 'row',
-    borderRadius: 10,
+    flexWrap: 'wrap',
+    borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
-    padding: 3,
+    padding: 4,
   },
 
   segmentedOption: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: 0,
+    minWidth: 80,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 7,
-    minHeight: 44 - 6, // + the 3 pt padding of the segmented container on each side = 44 pt target
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    minHeight: 40, // + the 4 pt padding of the segmented container on each side = 48 pt target
     borderRadius: 8,
   },
 
   segmentedLabel: {
-    fontSize: 13,
+    ...typeStyle('caption'),
     fontWeight: '400',
+    textAlign: 'center',
   },
 });

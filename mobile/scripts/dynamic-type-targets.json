@@ -13,7 +13,11 @@
       "footerApplyBtn"
     ],
     "components/map/BusinessPreviewCard.tsx": [
-      "btnMain"
+      "btnMain",
+      "cover",
+      "statusChip",
+      "categoryChip",
+      "btnSecondary"
     ],
     "screens/settings/PosTableHub.tsx": [
       "orderActionBtn",
@@ -21,14 +25,19 @@
       "draftBtn"
     ],
     "screens/checkout/CheckoutScreen.tsx": [
-      "qtyBadge"
+      "qtyBadge",
+      "tipChip",
+      "customTipWrapper"
     ],
     "screens/auth/RegisterStep1Screen.tsx": [
       "primary",
       "social"
     ],
     "components/chat/ChatTopBar.tsx": [
-      "badge"
+      "badge",
+      "backBtn",
+      "iconBtn",
+      "headerRow"
     ],
     "screens/reservations/ReservationScreen.tsx": [
       "stepperValue"
@@ -44,6 +53,28 @@
       "backButton",
       "leaveButton",
       "viewButton"
+    ],
+    "screens/match/MatchMyProfileScreen.tsx": [
+      "optionChip",
+      "interestChip"
+    ],
+    "screens/match/MatchInterestsScreen.tsx": [
+      "chip"
+    ],
+    "screens/match/MatchProfileScreen.tsx": [
+      "chip"
+    ],
+    "components/menu/CartBar.tsx": [
+      "bar"
+    ],
+    "screens/menu/CartScreen.tsx": [
+      "checkoutButton"
+    ],
+    "screens/map/MapScreen.tsx": [
+      "styleBtn"
+    ],
+    "screens/settings/SettingsScreen.tsx": [
+      "segmentedOption"
     ]
   },
   "labelCapFiles": [
