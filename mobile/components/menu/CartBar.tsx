@@ -58,7 +58,7 @@ export function CartBar({ onPress }: CartBarProps) {
         <Text maxFontSizeMultiplier={typeCap('button')} style={styles.label}>{t('cartBar.viewCart')}</Text>
 
         {/* Right: total */}
-        <Text maxFontSizeMultiplier={typeCap('button')} style={styles.total}>{formattedTotal}</Text>
+        <Text maxFontSizeMultiplier={typeCap('compact')} style={styles.total}>{formattedTotal}</Text>
       </Pressable>
     </View>
   );
@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     flexShrink: 0,
     textAlign: 'right',
-    ...typeStyle('button'),
+    ...typeStyle('compact'),
     fontWeight: '700',
     color: palette.onBrand,
   },

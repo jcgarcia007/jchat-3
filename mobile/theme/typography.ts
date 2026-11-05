@@ -19,6 +19,7 @@ export type TypeRole =
   | 'field'
   | 'label'
   | 'button'
+  | 'compact'
   | 'caption';
 
 export interface TypeRoleSpec {
@@ -39,6 +40,8 @@ export const TYPE_ROLES: Readonly<Record<TypeRole, TypeRoleSpec>> = {
   field: { fontSize: 16, lineHeightRatio: 1.3, cap: 1.6 },
   label: { fontSize: 13, lineHeightRatio: 1.3, cap: 1.6 },
   button: { fontSize: 16, lineHeightRatio: 1.2, cap: 1.3 },
+  // Dense UI (chips, pills, segmented controls, tip chips): what used to be 14–15. Below 14 it is `caption`.
+  compact: { fontSize: 14, lineHeightRatio: 1.3, cap: 1.4 },
   caption: { fontSize: 12, lineHeightRatio: 1.35, cap: 1.4 },
 };
 

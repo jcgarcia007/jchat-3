@@ -139,7 +139,7 @@ function UserAvatar({ user, theme, onPressUser }: UserAvatarProps) {
         />
       ) : (
         <View style={[avatarStyles.img, avatarStyles.fallback, { backgroundColor: theme.bubbleInBg, borderColor: theme.border }]}>
-          <Text maxFontSizeMultiplier={typeCap('button')} style={[avatarStyles.initial, { color: theme.bubbleInText }]}>
+          <Text maxFontSizeMultiplier={typeCap('compact')} style={[avatarStyles.initial, { color: theme.bubbleInText }]}>
             {getInitials(displayName)}
           </Text>
         </View>
@@ -163,7 +163,7 @@ const avatarStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   initial: {
-    ...typeStyle('button'),
+    ...typeStyle('compact'),
     fontWeight: '700',
   },
 });

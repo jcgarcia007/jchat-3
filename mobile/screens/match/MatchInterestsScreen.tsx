@@ -134,7 +134,7 @@ export default function MatchInterestsScreen() {
                         : { backgroundColor: c.bgElevated, borderColor: c.borderSubtle },
                     ]}
                   >
-                    <Text maxFontSizeMultiplier={typeCap('field')} style={[styles.chipText, { color: active ? palette.onBrand : c.textPrimary }]}>
+                    <Text maxFontSizeMultiplier={typeCap('compact')} style={[styles.chipText, { color: active ? palette.onBrand : c.textPrimary }]}>
                       {interestName(row, language)}
                     </Text>
                   </Pressable>
@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
   intro: { fontSize: 14, lineHeight: 20 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { minHeight: 44, paddingHorizontal: 16, paddingVertical: 8, justifyContent: 'center', borderRadius: 999, borderWidth: 1 },
-  chipText: { ...typeStyle('field'), fontWeight: '600' },
+  chipText: { ...typeStyle('compact'), fontWeight: '600' },
   footer: { padding: 16, gap: 10, borderTopWidth: StyleSheet.hairlineWidth },
   counter: { fontSize: 13, textAlign: 'center' },
   saveBtn: { minHeight: 50, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },

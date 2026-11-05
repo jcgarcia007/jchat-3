@@ -25,7 +25,10 @@ import { useReduceTransparency } from '../../hooks/useReduceTransparency';
 import { useUnreadBadge } from '../../hooks/useUnreadBadge';
 import { glassMetrics, useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
-import { typeCap, typeStyle } from '../../theme/typography';
+import { typeStyle } from '../../theme/typography';
+
+// Bottom-bar labels barely grow with the system text size (as in Apple's tab bars), so all five stay the same size.
+const TAB_LABEL_CAP = 1.2;
 import ProfileTabAvatar from './ProfileTabAvatar';
 import { BAR_HEIGHT, BUTTON_SIZE, CENTER_Y, NOTCH_ROOM, barPath } from './notchGeometry';
 
@@ -106,9 +109,7 @@ export default function NotchTabBar({ state, descriptors, navigation }: BottomTa
         <View style={[styles.pill, focused && { backgroundColor: colors.tabPillActive }]}>
           <View style={styles.iconSlot}>{icon}</View>
           <Text
-            adjustsFontSizeToFit
-            maxFontSizeMultiplier={typeCap('caption')}
-            minimumFontScale={0.85}
+            maxFontSizeMultiplier={TAB_LABEL_CAP}
             numberOfLines={1}
             style={[styles.label, { color: colors.textPrimary, fontWeight: focused ? '800' : '600' }]}
           >
@@ -190,9 +191,7 @@ export default function NotchTabBar({ state, descriptors, navigation }: BottomTa
       <Text
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
-        maxFontSizeMultiplier={typeCap('caption')}
-        adjustsFontSizeToFit
-        minimumFontScale={0.85}
+        maxFontSizeMultiplier={TAB_LABEL_CAP}
         numberOfLines={1}
         style={[styles.offersLabel, { color: colors.textPrimary, fontWeight: offersFocused ? '800' : '700' }]}
       >
@@ -275,7 +274,7 @@ const styles = StyleSheet.create({
     height: 30,
     justifyContent: 'center',
   },
-  // caption role, capped at typeCap('caption') (1.4): pill = 4 + 30 + 4 + label + 4 stays inside the 64 pt bar.
+  // caption role, capped at TAB_LABEL_CAP (1.2): pill = 4 + 30 + 4 + label + 4 stays inside the 64 pt bar.
   label: {
     ...typeStyle('caption'),
   },

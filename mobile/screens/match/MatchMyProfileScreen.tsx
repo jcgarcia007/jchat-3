@@ -556,7 +556,7 @@ export default function MatchMyProfileScreen() {
               accessibilityState={{ selected: active }}
               style={[styles.optionChip, active ? { backgroundColor: c.brandFill, borderColor: c.brand } : { backgroundColor: c.bgElevated, borderColor: c.borderSubtle }]}
             >
-              <Text maxFontSizeMultiplier={typeCap('field')} style={[styles.optionText, { color: active ? palette.onBrand : c.textPrimary }]}>{t(`profile.v2.${labelKey}.${option}`)}</Text>
+              <Text maxFontSizeMultiplier={typeCap('compact')} style={[styles.optionText, { color: active ? palette.onBrand : c.textPrimary }]}>{t(`profile.v2.${labelKey}.${option}`)}</Text>
             </Pressable>
           );
         })}
@@ -753,7 +753,7 @@ const styles = StyleSheet.create({
   optionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   // Wraps to a second row (and the label wraps inside the chip) at large text; never a fixed height.
   optionChip: { flexGrow: 1, flexBasis: 0, minWidth: 96, minHeight: 44, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, paddingVertical: 8 },
-  optionText: { ...typeStyle('field'), fontWeight: '600', textAlign: 'center' },
+  optionText: { ...typeStyle('compact'), fontWeight: '600', textAlign: 'center' },
   cardWrap: { width: '100%', maxWidth: 360, alignSelf: 'center' },
   shortcut: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 14, padding: 12 },
   shortcutThumb: { width: 56, height: 56, borderRadius: 28 },

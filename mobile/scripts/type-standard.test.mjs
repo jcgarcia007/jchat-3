@@ -24,7 +24,7 @@ const spacing = await load('theme/spacing.ts');
 test('the role table is exactly the agreed standard', () => {
   const expected = {
     display: [32, 1.15, 1.3], title: [24, 1.2, 1.3], headline: [18, 1.3, 1.4], body: [16, 1.4, 1.6],
-    field: [16, 1.3, 1.6], label: [13, 1.3, 1.6], button: [16, 1.2, 1.3], caption: [12, 1.35, 1.4],
+    field: [16, 1.3, 1.6], label: [13, 1.3, 1.6], button: [16, 1.2, 1.3], compact: [14, 1.3, 1.4], caption: [12, 1.35, 1.4],
   };
   assert.deepEqual(Object.keys(typo.TYPE_ROLES).sort(), Object.keys(expected).sort());
   for (const [role, [size, ratio, cap]] of Object.entries(expected)) {
@@ -171,10 +171,27 @@ for (const { file, styles } of targets.elements ?? []) {
 
 test('B7b: the tab labels and the chips cap their text with typeCap, not a loose number', () => {
   const tab = read('components/navigation/NotchTabBar.tsx');
-  assert.match(tab, /maxFontSizeMultiplier=\{typeCap\('caption'\)\}/);
+  // Bottom-bar labels barely grow (cap 1.2) and never shrink to fit: the five labels share one size.
+  assert.match(tab, /const TAB_LABEL_CAP = 1\.2;/);
+  assert.match(tab, /maxFontSizeMultiplier=\{TAB_LABEL_CAP\}/);
+  assert.doesNotMatch(tab, /adjustsFontSizeToFit|minimumFontScale/);
   assert.doesNotMatch(tab, /maxFontSizeMultiplier=\{1\.\d+\}/);
   assert.match(read('screens/checkout/CheckoutScreen.tsx'), /tipChipText[\s\S]*?typeStyle\('caption'\)/);
   assert.match(read('screens/checkout/CheckoutScreen.tsx'), /tipRow: \{[^}]*flexWrap: 'wrap'/);
   assert.match(read('screens/settings/SettingsScreen.tsx'), /segmented: \{[^}]*flexWrap: 'wrap'/);
   assert.match(read('screens/match/MatchMyProfileScreen.tsx'), /optionRow: \{[^}]*flexWrap: 'wrap'/);
+});
+
+test('B7b: dense UI (14–15 before) uses the compact role with its own cap', () => {
+  for (const [file, style] of [
+    ['screens/match/MatchInterestsScreen.tsx', /chipText: \{ \.\.\.typeStyle\('compact'\)/],
+    ['screens/match/MatchItsAMatchScreen.tsx', /chipText: \{ \.\.\.typeStyle\('compact'\)/],
+    ['screens/match/MatchMyProfileScreen.tsx', /optionText: \{ \.\.\.typeStyle\('compact'\)/],
+    ['components/map/BusinessPreviewCard.tsx', /btnMainLabel: \{\s*\.\.\.typeStyle\('compact'\)/],
+    ['components/menu/CartBar.tsx', /total: \{[^}]*typeStyle\('compact'\)/],
+  ]) {
+    const src = read(file);
+    assert.match(src, style, file);
+    assert.match(src, /typeCap\('compact'\)/, file);
+  }
 });

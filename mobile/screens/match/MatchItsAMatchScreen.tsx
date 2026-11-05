@@ -145,7 +145,7 @@ export default function MatchItsAMatchScreen() {
                   accessibilityLabel={phrase}
                   style={[styles.chip, { borderColor: c.borderSubtle, backgroundColor: c.bgElevated }]}
                 >
-                  <Text maxFontSizeMultiplier={typeCap('field')} style={[styles.chipText, { color: c.textPrimary }]}>{phrase}</Text>
+                  <Text maxFontSizeMultiplier={typeCap('compact')} style={[styles.chipText, { color: c.textPrimary }]}>{phrase}</Text>
                 </Pressable>
               );
             })}
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
   sectionLabel: { alignSelf: 'flex-start', fontSize: 14, fontWeight: '700', marginTop: 6 },
   chips: { alignSelf: 'stretch', gap: 8 },
   chip: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16, borderWidth: 1 },
-  chipText: { ...typeStyle('field') },
+  chipText: { ...typeStyle('compact') },
   input: {
     alignSelf: 'stretch',
     minHeight: 56,

@@ -15,12 +15,14 @@ Test que lo hace cumplir: `mobile/scripts/type-standard.test.mjs` (lista de arch
 | `field` | 16 | 1.3 | 1.6 | Lo que escribe la persona en un campo |
 | `label` | 13 | 1.3 | 1.6 | Etiqueta de campo (mayúsculas, con tracking) |
 | `button` | 16 | 1.2 | 1.3 | Texto de botones |
+| `compact` | 14 | 1.3 | 1.4 | UI densa: chips, pills, segmentados, propinas (lo que era 14–15) |
 | `caption` | 12 | 1.35 | 1.4 | Errores, ayudas, notas, reglas de contraseña |
 
 Reglas:
 
 - **El interlineado es siempre una proporción del tamaño**, calculada en `typeStyle(role)`. Nunca `lineHeight: 22` en un estilo: un px fijo se ve demasiado abierto cuando el tope frena el texto.
 - **`letterSpacing` solo en `label`** (y en decoración marcada como tal en el código). Nada más lleva tracking.
+- **Equivalencias al migrar**: 14–15 → `compact`; 11–13 → `caption`; 16 o más → `body`/`field`/`button`. No se sube a 16 un chip que era de 14–15.
 - **Etiqueta y campo comparten tope (1.6)**: la etiqueta no puede quedar diminuta junto al valor que sí crece.
 - Los topes protegen contenedores de forma fija (botones 1.3, titulares 1.3); el texto de contenido crece hasta 1.6. Nunca `allowFontScaling={false}`.
 - Las fuentes de marca (serif del título, mono de las etiquetas, Plus Jakarta del texto de login) se mantienen: el estándar define tamaños y ritmos, no cambia la marca. Se aplican con `family` en `AppText`/`FormField`.

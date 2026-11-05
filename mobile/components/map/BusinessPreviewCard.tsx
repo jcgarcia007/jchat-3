@@ -321,7 +321,7 @@ export default function BusinessPreviewCard({
               accessibilityLabel={blocked ? t('businessPreviewCard.enterChatBlockedA11y') : t('businessPreviewCard.enterChatA11y')}
             >
               <IconMessage size={18} color={blocked ? c.textTertiary : palette.onBrand} strokeWidth={2} />
-              <Text style={[styles.btnMainLabel, { color: blocked ? c.textTertiary : palette.onBrand }]} maxFontSizeMultiplier={typeCap('button')} numberOfLines={1}>
+              <Text style={[styles.btnMainLabel, { color: blocked ? c.textTertiary : palette.onBrand }]} maxFontSizeMultiplier={typeCap('compact')} numberOfLines={1}>
                 {t('businessPreviewCard.enterChatButton')}
               </Text>
             </TouchableOpacity>
@@ -333,7 +333,7 @@ export default function BusinessPreviewCard({
               accessibilityLabel={t('businessPreviewCard.navigateA11y')}
             >
               <IconNavigation size={18} color={c.brandText} strokeWidth={2} />
-              <Text style={[styles.btnMainLabel, { color: c.textPrimary }]} maxFontSizeMultiplier={typeCap('button')} numberOfLines={1}>
+              <Text style={[styles.btnMainLabel, { color: c.textPrimary }]} maxFontSizeMultiplier={typeCap('compact')} numberOfLines={1}>
                 {t('businessPreviewCard.directionsButton')}
               </Text>
             </TouchableOpacity>
@@ -804,7 +804,7 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
   },
   btnMainLabel: {
-    ...typeStyle('button'),
+    ...typeStyle('compact'),
     fontWeight: '700',
     flexShrink: 1,
   },
