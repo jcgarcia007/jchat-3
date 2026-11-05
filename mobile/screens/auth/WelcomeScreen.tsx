@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { IconBrandPagekit } from '@tabler/icons-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { safeBottomPadding } from '../../utils/safeBottom';
 
 import { palette } from '../../theme/tokens';
 import type { AuthStackParamList } from '../../navigation/AppNavigator';
@@ -55,7 +56,7 @@ export default function WelcomeScreen() {
   return (
     <LinearGradient
       colors={[WELCOME_COLORS.gradientStart, WELCOME_COLORS.gradientEnd]}
-      style={styles.gradient}
+      style={[styles.gradient, { paddingBottom: safeBottomPadding(Platform.OS === 'ios' ? 48 : 32, insets.bottom) }]}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
     >
