@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { IconShoppingCart } from '@tabler/icons-react-native';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
+import { typeCap, typeStyle } from '../../theme/typography';
 import { useCart } from '../../context/CartContext';
 
 interface CartBarProps {
@@ -48,16 +49,16 @@ export function CartBar({ onPress }: CartBarProps) {
           <View style={styles.badgeWrapper}>
             <IconShoppingCart size={20} color={palette.onBrand} strokeWidth={2} />
             <View style={styles.countBadge}>
-              <Text style={styles.countText}>{itemCount > 99 ? '99+' : String(itemCount)}</Text>
+              <Text maxFontSizeMultiplier={typeCap('caption')} style={styles.countText}>{itemCount > 99 ? '99+' : String(itemCount)}</Text>
             </View>
           </View>
         </View>
 
         {/* Center label */}
-        <Text style={styles.label}>{t('cartBar.viewCart')}</Text>
+        <Text maxFontSizeMultiplier={typeCap('button')} style={styles.label}>{t('cartBar.viewCart')}</Text>
 
         {/* Right: total */}
-        <Text style={styles.total}>{formattedTotal}</Text>
+        <Text maxFontSizeMultiplier={typeCap('button')} style={styles.total}>{formattedTotal}</Text>
       </Pressable>
     </View>
   );
@@ -68,22 +69,23 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    paddingBottom: 8,
   },
   bar: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 14,
-    paddingVertical: 14,
+    minHeight: 52,
+    borderRadius: 16,
+    paddingVertical: 12,
     paddingHorizontal: 20,
+    gap: 8,
   },
   leftGroup: {
     flex: 1,
   },
   badgeWrapper: {
     position: 'relative',
-    width: 28,
-    height: 24,
+    minWidth: 28,
+    minHeight: 24,
   },
   countBadge: {
     position: 'absolute',
@@ -91,29 +93,30 @@ const styles = StyleSheet.create({
     right: -8,
     backgroundColor: palette.onBrand,
     borderRadius: 10,
-    minWidth: 18,
-    height: 18,
+    minWidth: 20,
+    minHeight: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 3,
+    paddingHorizontal: 4,
   },
   countText: {
-    fontSize: 10,
+    ...typeStyle('caption'),
     fontWeight: '800',
     color: palette.brand,
   },
   label: {
     flex: 2,
     textAlign: 'center',
-    fontSize: 16,
+    ...typeStyle('button'),
     fontWeight: '700',
     color: palette.onBrand,
-    letterSpacing: 0.2,
   },
+  // The total never shrinks (a clipped price is worse than a narrower label); the label wraps instead.
   total: {
-    flex: 1,
+    flexGrow: 1,
+    flexShrink: 0,
     textAlign: 'right',
-    fontSize: 15,
+    ...typeStyle('button'),
     fontWeight: '700',
     color: palette.onBrand,
   },

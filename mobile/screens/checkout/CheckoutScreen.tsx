@@ -59,6 +59,7 @@ import {
 
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
+import { typeCap, typeStyle } from '../../theme/typography';
 import { useCart } from '../../context/CartContext';
 import { IdRequiredNotice } from '../../components/common/IdRequiredNotice';
 import { useAuth } from '../../context/AuthContext';
@@ -864,6 +865,7 @@ export default function CheckoutScreen() {
                     aria-checked={isSelected}
                   >
                     <Text
+                      maxFontSizeMultiplier={typeCap('caption')}
                       style={[
                         styles.tipChipText,
                         { color: isSelected ? palette.brand : c.textSecondary },
@@ -873,6 +875,7 @@ export default function CheckoutScreen() {
                     </Text>
                     {preset !== 'custom' && (
                       <Text
+                        maxFontSizeMultiplier={typeCap('caption')}
                         style={[
                           styles.tipChipAmount,
                           { color: isSelected ? palette.brandDark : c.textTertiary },
@@ -888,9 +891,10 @@ export default function CheckoutScreen() {
 
             {tipPreset === 'custom' && (
               <View style={[styles.customTipWrapper, { borderColor: c.borderSubtle }]}>
-                <Text style={[styles.customTipDollar, { color: c.textPrimary }]}>$</Text>
+                <Text maxFontSizeMultiplier={typeCap('headline')} style={[styles.customTipDollar, { color: c.textPrimary }]}>$</Text>
                 <TextInput
                   style={[styles.customTipInput, { color: c.textPrimary }]}
+                  maxFontSizeMultiplier={typeCap('headline')}
                   placeholder="0.00"
                   placeholderTextColor={c.textTertiary}
                   value={customTipInput}
@@ -1212,43 +1216,52 @@ const styles = StyleSheet.create({
   },
 
   // ── Tip ───────────────────────────────────────────────────────────────────────
+  // The chips wrap to a second row (minWidth) instead of squeezing "Custom" at large text; no fixed height.
   tipRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
     marginBottom: 12,
   },
   tipChip: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: 0,
+    minWidth: 72,
+    minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
-    borderRadius: 10,
+    paddingHorizontal: 8,
+    borderRadius: 12,
     borderWidth: 1.5,
-    gap: 2,
+    gap: 4,
   },
   tipChipText: {
-    fontSize: 13,
+    ...typeStyle('caption'),
     fontWeight: '700',
+    textAlign: 'center',
   },
   tipChipAmount: {
-    fontSize: 11,
+    ...typeStyle('caption'),
+    textAlign: 'center',
   },
   customTipWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
+    minHeight: 48,
     borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     gap: 4,
   },
   customTipDollar: {
-    fontSize: 18,
+    ...typeStyle('headline'),
     fontWeight: '600',
   },
   customTipInput: {
     flex: 1,
-    fontSize: 18,
+    ...typeStyle('headline'),
     fontWeight: '600',
     padding: 0,
     margin: 0,

@@ -60,6 +60,7 @@ import {
 
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
+import { typeCap, typeStyle } from '../../theme/typography';
 import { useCart } from '../../context/CartContext';
 import { IdRequiredNotice } from '../../components/common/IdRequiredNotice';
 import { qtyOfItemInOtherLines, stockLimitOf } from '../../context/CartContext';
@@ -672,18 +673,18 @@ export default function CartScreen() {
         <View style={[styles.checkoutBar, { backgroundColor: c.bgSurface, borderTopColor: c.borderSubtle }]}>
           {/* Disabled hint */}
           {!canCheckout && orderType === 'gift' && !giftRecipientId ? (
-            <Text style={[styles.checkoutHint, { color: c.warningText }]}>
+            <Text maxFontSizeMultiplier={typeCap('caption')} style={[styles.checkoutHint, { color: c.warningText }]}>
               {t('cart.checkoutHint')}
             </Text>
           ) : null}
           {!canCheckout && orderType === 'table' && !tableLabel?.trim() ? (
-            <Text style={[styles.checkoutHint, { color: c.warningText }]}>
+            <Text maxFontSizeMultiplier={typeCap('caption')} style={[styles.checkoutHint, { color: c.warningText }]}>
               {t('cart.tableRequired')}
             </Text>
           ) : null}
 
           {venueClosed ? (
-            <Text style={[styles.checkoutHint, { color: c.warningText }]} accessibilityRole="alert">
+            <Text maxFontSizeMultiplier={typeCap('caption')} style={[styles.checkoutHint, { color: c.warningText }]} accessibilityRole="alert">
               {toUserMessage(new AppError('venue_closed'))}
             </Text>
           ) : null}
@@ -704,6 +705,7 @@ export default function CartScreen() {
             accessibilityState={{ disabled: !canCheckout || venueClosed }}
           >
             <Text
+              maxFontSizeMultiplier={typeCap('button')}
               style={[
                 styles.checkoutButtonText,
                 { color: canCheckout && !venueClosed ? palette.bgSurfaceLight : c.textTertiary },
@@ -1014,25 +1016,26 @@ const styles = StyleSheet.create({
   // ── Checkout bar ──────────────────────────────────────────────────────────────
   checkoutBar: {
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    paddingBottom: 10,
+    paddingVertical: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
-    gap: 6,
+    gap: 8,
   },
   checkoutHint: {
-    fontSize: 12,
+    ...typeStyle('caption'),
     fontWeight: '500',
     textAlign: 'center',
   },
   checkoutButton: {
-    borderRadius: 14,
-    paddingVertical: 16,
+    minHeight: 52,
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkoutButtonText: {
-    fontSize: 16,
+    ...typeStyle('button'),
     fontWeight: '700',
-    letterSpacing: 0.2,
+    textAlign: 'center',
   },
 });
