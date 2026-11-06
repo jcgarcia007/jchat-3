@@ -1,5 +1,7 @@
 # Ficha de tienda — App Store y Google Play (es y en)
 
+> **BORRADOR para revisión de Juan · 2026-11-06.** Revisada contra la app de hoy: todo lo que promete existe (chat del local con geocerca, menú y pedidos, ofertas, Match con opt-in explícito que se borra al salir, Verdad o Reto, mensajes directos, borrado de cuenta, 18+). No promete pagos con tarjeta en todos los locales ni Android/iOS en tablet (`supportsTablet: false`). Contadores comprobados en la sección de cada texto (Apple: palabras clave ≤100; nombre ≤30; subtítulo ≤30; Google: título ≤30, descripción corta ≤80). El cuestionario de edad de abajo se movió a `clasificacion-edad.md` (más completo); esta copia se conserva solo como referencia. Contacto de soporte para la ficha: `soporte@jchat.cloud` (y `safety@jchat.cloud` solo para seguridad), tal como queda en la rama `fix/a6-web-legal`.
+
 Texto listo para pegar, **sin enviar nada a ninguna consola**. Está basado en los borradores ya revisados de `docs/store-listing/` (que solo describen lo que la app hace HOY: chat del local, menú y pedidos, ofertas, Match, Verdad o Reto y mensajes privados, 18+) y los contadores se calculan aquí sobre el texto exacto. Cambios que debes decidir tú: (1) la descripción no menciona los regalos de una bebida/plato a otra persona del local ni el aviso 21+, por prudencia; si quieres añadirlos, mantén "bienes físicos en el local"; (2) las URL de privacidad, soporte y términos son `https://jchat.cloud/privacy`, `/support`, `/terms`.
 
 ## Resumen de decisiones
