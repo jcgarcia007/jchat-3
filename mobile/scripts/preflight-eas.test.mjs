@@ -69,12 +69,12 @@ test('only top-level registry packages with an android/ or ios/ folder are check
   assert.deepEqual(nativePackages(root).map((p) => `${p.name}@${p.version}`), ['native-one@1.0.0', 'native-two@2.0.0']);
 });
 
-test('runtime: the active runtime is build 11 until Juan confirms build 12; compareRuntime flags any change', () => {
-  assert.equal(ACTIVE_RUNTIME, 'build11'); // switch to 'build12' only AFTER build 12 (see the comment in preflight-eas.mjs)
-  assert.deepEqual(compareRuntime(RUNTIMES.build11).ok, true);
-  const r = compareRuntime(RUNTIMES.build12);
+test('runtime: the active runtime is build 12 (installed since 2026-11); compareRuntime flags any change', () => {
+  assert.equal(ACTIVE_RUNTIME, 'build12');
+  assert.deepEqual(compareRuntime(RUNTIMES.build12).ok, true);
+  const r = compareRuntime(RUNTIMES.build11);
   assert.equal(r.ok, false);
   assert.match(r.lines.join('\n'), /✖ ios/);
-  assert.deepEqual(compareRuntime(RUNTIMES.build12, RUNTIMES.build12).ok, true);
+  assert.deepEqual(compareRuntime(RUNTIMES.build11, RUNTIMES.build11).ok, true);
   for (const b of Object.values(RUNTIMES)) for (const h of Object.values(b)) assert.match(h, /^[0-9a-f]{40}$/);
 });

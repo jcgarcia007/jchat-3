@@ -56,8 +56,8 @@ export const RUNTIMES = {
   // config-plugins, eas.json or a native dependency changes before the build).
   build12: { ios: '04e88e9740e9a5811cc2e003033e99c0bdf0a25a', android: '6b8d88666a255a5cec8cfbbeb2e686fe0e7ea4a0' },
 };
-// ACTIVATE AFTER BUILD 12: when Juan confirms build 12 is the one in the stores (and its EAS log hashes equal `build12` above), change this to 'build12'.
-export const ACTIVE_RUNTIME = 'build11';
+// Build 12 is the installed one (its EAS log hashes equal `build12` above). An OTA may only target this runtime; the next native change needs build 13.
+export const ACTIVE_RUNTIME = 'build12';
 
 /** { ok, lines } comparing the current fingerprints with the runtime an OTA is allowed to target. */
 export function compareRuntime(current, expected = RUNTIMES[ACTIVE_RUNTIME]) {
