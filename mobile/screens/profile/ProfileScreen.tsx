@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { AppModal } from '../../components/common/AppModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -152,6 +152,10 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
   const { user: authUser } = useAuth();
   // Opened as the sheet over the chat (route ProfileSheet): the sheet draws its own ✕, handle and top gap.
   const inSheet = route.name === 'ProfileSheet';
+  // The Profile tab stays mounted when the person goes to another tab or screen: its <StatusBar> only counts while it is focused,
+  // otherwise its (light) icons stay on top of the stack and show on white screens (menu, checkout).
+  const isFocused = useIsFocused();
+  const ownsStatusBar = !inSheet && isFocused;
   const routeUserId = userId ?? route.params?.userId;
   const targetId = routeUserId ?? authUser?.id ?? null;
   const isOwnProfile = !routeUserId || routeUserId === authUser?.id;
@@ -351,7 +355,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
     const loadingBottom = route.name === 'Profile' ? TAB_BAR_LIFT + insets.bottom + BAR_HEIGHT + 24 + homeBarInset : 24 + insets.bottom;
     return (
       <View style={[styles.root, { backgroundColor: c.bgBase }]}>
-        {inSheet ? null : <StatusBar barStyle={colorScheme === 'light' ? 'dark-content' : 'light-content'} translucent backgroundColor="transparent" />}
+        {!ownsStatusBar ? null : <StatusBar barStyle={colorScheme === 'light' ? 'dark-content' : 'light-content'} translucent backgroundColor="transparent" />}
         <ScrollView scrollEnabled={false} showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scrollContent, { paddingBottom: loadingBottom }]}>
           <ProfileHeaderSkeleton {...loadingChrome} showBones={showSkeleton} capsuleCount={isOwnProfile && route.name !== 'Profile' ? 1 : 2} />
           <View style={styles.gridTop}><ProfileGridSkeleton cellSize={cellSize} showBones={showSkeleton} /></View>
@@ -391,7 +395,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
 
   return (
     <View style={[styles.root, { backgroundColor: c.bgBase }]}>
-      {inSheet ? null : <StatusBar barStyle={statusBarStyle} translucent backgroundColor="transparent" />}
+      {!ownsStatusBar ? null : <StatusBar barStyle={statusBarStyle} translucent backgroundColor="transparent" />}
       <Animated.View needsOffscreenAlphaCompositing style={[styles.contentArea, { opacity: contentOpacity }]}>
       <ScrollView
         showsVerticalScrollIndicator={false}

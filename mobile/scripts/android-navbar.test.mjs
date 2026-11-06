@@ -48,3 +48,11 @@ test('B6 matrix fixes: a status-bar baseline, the entry sheet clears the nav bar
   const profile = read('../screens/profile/ProfileScreen.tsx');
   assert.match(profile, /height: insets\.top, backgroundColor: c\.bgBase/);
 });
+
+test('B6: the Profile tab only owns the status bar while it is focused (its light icons stayed on white screens)', () => {
+  const profile = read('../screens/profile/ProfileScreen.tsx');
+  assert.match(profile, /useIsFocused\(\)/);
+  assert.match(profile, /const ownsStatusBar = !inSheet && isFocused;/);
+  assert.equal((profile.match(/\{!ownsStatusBar \? null : <StatusBar/g) ?? []).length, 2);
+  assert.doesNotMatch(profile, /\{inSheet \? null : <StatusBar/);
+});
