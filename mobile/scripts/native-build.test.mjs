@@ -80,3 +80,45 @@ test('C3 (B7-2): nothing caches the font scale at module level; the chat input r
   assert.match(input, /useWindowDimensions\(\)\.fontScale/);
   assert.doesNotMatch(input, /PixelRatio\.getFontScale\(\)/);
 });
+
+// C4 (B10-4): the Stripe Terminal SDK (beta) is evaluated only when Work Mode is opened.
+import { readdirSync, statSync } from 'node:fs';
+function sourceFiles(dir) {
+  const out = [];
+  for (const name of readdirSync(join(root, dir))) {
+    const rel = `${dir}/${name}`;
+    if (['node_modules', 'ios', 'android', 'scripts', 'web-stubs', 'dist', '.expo'].includes(name)) continue;
+    if (statSync(join(root, rel)).isDirectory()) out.push(...sourceFiles(rel));
+    else if (/\.(ts|tsx)$/.test(name)) out.push(rel);
+  }
+  return out;
+}
+const ALL = ['screens', 'components', 'hooks', 'navigation', 'services', 'contexts', 'utils', 'theme'].flatMap((d) => { try { return sourceFiles(d); } catch { return []; } }).concat(['App.tsx', 'index.ts']);
+
+test('C4 (B10-4): PosNavigator is loaded with import() on native; no static import of it outside the POS tree', () => {
+  const lazy = read('navigation/lazyScreens.tsx');
+  assert.match(lazy, /lazyScreen\(\(\) => import\('\.\/PosNavigator'\)\)/);
+  assert.doesNotMatch(lazy, /import PosNavigator/);
+  for (const f of ALL) {
+    if (f.startsWith('screens/settings/Pos') || f === 'navigation/PosNavigator.tsx') continue;
+    const src = read(f);
+    assert.doesNotMatch(src, /^import (?!type)[^;]*from ['"][^'"]*\/PosNavigator['"]/m, `${f}: static value import of PosNavigator`);
+  }
+});
+
+test('C4 (B10-4): nothing imports @stripe/stripe-terminal-react-native except services/terminalSdk.ts (lazy require) and the web stub', () => {
+  for (const f of ALL) {
+    const src = read(f);
+    const imports = src.match(/^import[^;]*from ['"]@stripe\/stripe-terminal-react-native['"]/m);
+    assert.equal(imports, null, `${f}: static import of the Terminal SDK`);
+  }
+  assert.match(read('services/terminalSdk.ts'), /require\('@stripe\/stripe-terminal-react-native'\)/);
+});
+
+test('C4 (B10-4): only the POS tree and terminalSdk.ts import services/terminalSdk', () => {
+  const allowed = new Set(['navigation/PosNavigator.tsx', 'hooks/usePosReader.ts', 'services/terminalSdk.ts']);
+  for (const f of ALL) {
+    if (allowed.has(f) || f.startsWith('screens/settings/Pos')) continue;
+    assert.doesNotMatch(read(f), /from ['"][^'"]*\/terminalSdk['"]/, `${f} imports terminalSdk`);
+  }
+});

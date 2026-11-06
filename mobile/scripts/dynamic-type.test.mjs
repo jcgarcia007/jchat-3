@@ -70,7 +70,8 @@ test('(c2) the Messages title does not split and is capped', () => {
 
 test('(c3) the chat input line height follows the capped font scale', () => {
   const source = read('components/chat/ChatInput.tsx');
-  assert.match(source, /Math\.min\(PixelRatio\.getFontScale\(\), CONTENT_TEXT_CAP\)/);
+  // Reactive since B7-2 (the activity is no longer recreated when the system font size changes): the cap is applied to useWindowDimensions().fontScale.
+  assert.match(source, /Math\.min\(useWindowDimensions\(\)\.fontScale, CONTENT_TEXT_CAP\)/);
 });
 
 function walk(dir, out = []) {
