@@ -1,6 +1,6 @@
 # Instructions for Google Play review (Play Console → App content → "App access" and "Notes")
 
-> **BORRADOR para revisión de Juan · 2026-11-06.** Mismo estado, flujo (modo revisión, cuenta 1 dueña / cuenta 2 cliente) y mismas preguntas pendientes que `notas-revisor-apple.md` (sección "Pendiente de Juan"): tarjeta del local de demo, segunda cuenta para Match/ToD, subdominio del local, credenciales y PIN. Las credenciales las añade Juan desde su archivo local; no se guardan aquí.
+> **BORRADOR para revisión de Juan · 2026-11-06.** Mismo estado, flujo (modo revisión, cuenta 1 dueña / cuenta 2 cliente) y mismas preguntas pendientes que `notas-revisor-apple.md` (sección "Pendiente de Juan"): tarjeta/pagos del local de demo (`<PAGOS>`, dos variantes redactadas en la sección Pendiente de Apple), segunda cuenta para Match/ToD (perfil completo vía `review_seed_reviewer2.sql`), subdominio del local, credenciales y PIN. Las credenciales las añade Juan desde su archivo local; no se guardan aquí.
 > Texto pegable: desde `---` hasta el final de "Data safety".
 
 ---
@@ -15,9 +15,9 @@ JChat opens a venue's chat only when the phone is physically inside it. So that 
 4. With account 2 open the **Map** or **Nearby** tab, tap **JChat Demo Lounge** (listed even if you are far away) → **Enter chat**. Location "while using the app" is optional here; when allowed it is used only to confirm presence, is never shown to other people and coordinates are not stored.
 
 **What you can test (account 2)**
-- Chat in the Main Room (four demo people present, three messages); long-press a message to **Report** or **Block**.
-- **+ → Games**: Match (the four demo people appear) and Truth or Dare (18+, optional).
-- **Menu** (six items) → add one → checkout; two demo offers in **Offers**. `<PAYMENT_NOTE>`
+- Chat in the Main Room (enter it first, before ordering; three messages); long-press a message to **Report** or **Block**. The "people here" counter counts only people with the app open right now; the four demo people show in the map counter and in Match.
+- **+ → Games**: Match (account 2's profile is already complete: the deck opens directly, with the four demo people) and Truth or Dare (pick a category to publish a card; only the test accounts see it).
+- **Menu** (six items) → add one → checkout; two demo offers in **Offers**. `<PAGOS>`
 - **Direct messages** from any profile; ⋯ menu to report or block.
 - **Settings → Delete account** (immediate and permanent: use it last).
 

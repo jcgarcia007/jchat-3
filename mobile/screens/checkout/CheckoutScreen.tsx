@@ -74,6 +74,7 @@ import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { AppError, toUserMessage } from '../../utils/errors';
 import { useVenueClosed } from '../../hooks/useVenueClosed';
 import { VENUE_CLOSED_CODE } from '../../utils/checkoutGate';
+import { isPaymentsNotEnabled } from '../../utils/paymentsNotEnabled';
 import { resetToTabsThen } from '../../utils/navFlow';
 import { confirm, showAlert } from '../../utils/dialog';
 
@@ -88,7 +89,9 @@ type QuoteState =
   | { status: 'ready'; quote: OrderQuote }
   | { status: 'error'; message: string; quote: OrderQuote | null }
   // Golden rule: the server says this order type isn't allowed from where the person is.
-  | { status: 'venue'; quote: null; pickupAvailable: boolean };
+  | { status: 'venue'; quote: null; pickupAvailable: boolean }
+  // The venue has no Stripe Connect account (or has not finished it): nothing can be charged in the app. No Retry: it cannot fix itself.
+  | { status: 'notEnabled'; quote: null };
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -453,7 +456,7 @@ export default function CheckoutScreen() {
     if (!businessId || lines.length === 0 || venueClosed) return;
     const quoteId = ++quoteSeqRef.current;
     const stale = () => quoteId !== quoteSeqRef.current || !mountedRef.current;
-    setQuoteState((previous) => (previous.status === 'venue' ? { status: 'loading', quote: null } : { status: 'loading', quote: previous.quote }));
+    setQuoteState((previous) => (previous.status === 'venue' || previous.status === 'notEnabled' ? { status: 'loading', quote: null } : { status: 'loading', quote: previous.quote }));
     const timer = setTimeout(() => {
       void (async () => {
         // Golden rule, client side: ask the server first what this person may order from here, so the
@@ -484,6 +487,10 @@ export default function CheckoutScreen() {
             const access = await fetchVenueAccess(businessId, await readVenueCoords()).catch(() => null);
             if (stale()) return;
             setQuoteState({ status: 'venue', quote: null, pickupAvailable: access?.allowedTypes.includes('counter') === true });
+            return;
+          }
+          if (isPaymentsNotEnabled(error)) {
+            setQuoteState({ status: 'notEnabled', quote: null });
             return;
           }
           const message = toUserMessage(error, 'pos:checkout.quoteError');
@@ -985,6 +992,12 @@ export default function CheckoutScreen() {
                 >
                   <Text style={[styles.quoteRetryText, { color: c.textPrimary }]}>{t('shared.goBack')}</Text>
                 </Pressable>
+              </View>
+            ) : null}
+
+            {!venueClosed && quoteState.status === 'notEnabled' ? (
+              <View style={styles.quoteErrorBox} accessibilityRole="alert">
+                <Text style={[styles.quoteErrorText, { color: c.textPrimary, fontWeight: '700' }]}>{t('checkout.paymentsNotEnabled')}</Text>
               </View>
             ) : null}
 

@@ -38,6 +38,7 @@ insert into public.menu_items (category_id, business_id, name, price_cents) sele
 SQL
 cat "$ROOT/supabase/scripts/review_seed.sql"
 cat "$ROOT/supabase/scripts/review_seed.sql"   # idempotent: twice
+cat "$ROOT/supabase/scripts/review_seed_reviewer2.sql"   # the standalone block, a third time
 cat <<'SQL'
 select pg_temp.chk((select count(*) from public.review_group_members where note = 'review-seed') = 5, '5 real accounts in the group');
 select pg_temp.chk((select count(*) from public.review_group_members where kind = 'reviewer') = 2, '2 reviewers, 3 qa real + 4 fictional');
@@ -50,7 +51,14 @@ select pg_temp.chk((select count(*) from public.offers where id::text like 'd400
 select pg_temp.chk((select count(*) from public.menu_items where business_id = 'f1000000-0000-4000-8000-000000000001') = 6, 'menu completed to 6 items');
 select pg_temp.chk((select count(*) from public.room_geo_presence where user_id::text like 'd4000000-%') = 4, 'presence for the 4 people');
 select pg_temp.chk((select count(*) from public.match_presence where user_id::text like 'd4000000-%' and active_since is not null) = 4, 'match presence for the 4 people');
-select pg_temp.chk((select count(*) from public.match_photos where id::text like 'd4000000-%' and status = 'approved') = 4, '4 approved placeholder photos');
+select pg_temp.chk((select count(*) from public.match_photos where id::text like 'd4000000-%' and status = 'approved') = 5, '5 approved placeholder photos (4 people + reviewer 2)');
+select pg_temp.chk((select count(*) from public.match_photos where user_id = 'f0000000-0000-4000-8000-000000000002') = 1, 'reviewer 2: exactly one photo after 3 runs');
+select pg_temp.chk((select count(*) from public.user_interests where user_id = 'f0000000-0000-4000-8000-000000000002') = 2, 'reviewer 2: 2 interests');
+-- deckGate (utils/matchProfileState.ts) on the DB data: gender + seeking + a photo + an APPROVED photo => state complete => no gate
+select pg_temp.chk((select mp.gender is not null and mp.seeking is not null
+                      and exists (select 1 from public.match_photos ph where ph.user_id = mp.user_id)
+                      and exists (select 1 from public.match_photos ph where ph.user_id = mp.user_id and ph.status = 'approved')
+                    from public.match_profiles mp where mp.user_id = 'f0000000-0000-4000-8000-000000000002'), 'reviewer 2: Match profile complete (deckGate = null)');
 select pg_temp.chk((select count(*) from public.match_profiles where user_id = 'f0000000-0000-4000-8000-000000000002') = 1, 'reviewer 2 has a match profile');
 select pg_temp.chk((select count(*) from public.review_bypass_log) = 0, 'the seed writes no bypass log');
 select pg_temp.chk(not public.review_mode_active(), 'the seed does NOT turn the switch on');

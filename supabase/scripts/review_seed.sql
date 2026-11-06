@@ -7,6 +7,7 @@
 --      con un mensaje y no escribe nada.
 --   2. Sube los 4 avatares de supabase/scripts/review-seed-avatars/demo-1..4.png al bucket PRIVADO `match-photos`, con las rutas
 --         demo/review-seed/demo-1.png … demo-4.png
+--      y demo/review-seed/demo-reviewer.png (la silueta de @jchatreview2, 5 archivos en total)
 --      (Storage → match-photos → crear carpeta demo/review-seed → subir). Sin ese paso el mazo de Match funciona igual, pero las fotos salen vacías.
 --      Son siluetas generadas (sin fotos reales de nadie).
 --
@@ -19,7 +20,8 @@
 --   · 3 mensajes en el chat, 2 ofertas (30 días) y, si el local tiene menos de 6 productos, los que falten hasta 6.
 --   · Verdad o Reto: NO se siembran cartas. El catálogo es global (tod_cards: 1.000 cartas activas en inglés y otras tantas en español) y el local ya las usa; las rondas las
 --     crea quien juega desde la app (la cuenta 2 las abre desde "Juegos").
---   · De @jchatreview2 solo toca su perfil de Match (género 'nonbinary' y busca 'all') SI aún no tiene uno, para que el mazo no la filtre por orientación.
+--   · De @jchatreview2 completa su perfil de Match (género/busca solo si faltan; una foto aprobada demo-reviewer.png; 2 intereses), para que abra el mazo directamente.
+--     Mismo bloque, solo, en review_seed_reviewer2.sql. Sube también demo/review-seed/demo-reviewer.png (5 archivos en total).
 --   · No toca Stripe, ni planes, ni el dueño del local, ni nada de las cuentas reales salvo lo dicho.
 -- Todo lo sembrado lleva ids d4000000-0000-4000-8000-… (excepto las filas del grupo de las cuentas reales y los game flags): review_unseed.sql borra solo eso.
 
@@ -102,9 +104,21 @@ begin
     on conflict (user_id, business_id) do update set expires_at = excluded.expires_at, last_seen_at = excluded.last_seen_at, active_since = coalesce(public.match_presence.active_since, now());
   end loop;
 
-  -- 4. la cuenta 2: perfil de Match mínimo, solo si no tiene
+  -- 4. la cuenta 2 (@jchatreview2): perfil de Match COMPLETO, solo filas con ids d4000000-… y solo si ella existe.
+  --    Requisitos de utils/matchProfileState.ts (summarize/deckGate): género, "busca", al menos una foto y al menos una APROBADA (state = 'complete' → deckGate = null).
+  --    Género y "busca" se ponen solo si aún no tiene perfil; si ya lo tiene, no se pisan. Los intereses no son requisito del mazo, pero el perfil se ve mejor con 2.
   select id into v_reviewer2 from public.users where lower(username) = 'jchatreview2';
-  insert into public.match_profiles (user_id, gender, seeking) values (v_reviewer2, 'nonbinary', 'all') on conflict (user_id) do nothing;
+  if v_reviewer2 is not null then
+    insert into public.match_profiles (user_id, gender, seeking) values (v_reviewer2, 'nonbinary', 'all') on conflict (user_id) do nothing;
+    update public.match_profiles set gender = 'nonbinary' where user_id = v_reviewer2 and gender is null;
+    update public.match_profiles set seeking = 'all' where user_id = v_reviewer2 and seeking is null;
+    insert into public.match_photos (id, user_id, path, sort, status, reviewed_at)
+    values ('d4000000-0000-4000-8000-000000000699', v_reviewer2, 'demo/review-seed/demo-reviewer.png', 0, 'approved', now())
+    on conflict (id) do update set status = 'approved', reviewed_at = now();
+    insert into public.user_interests (user_id, interest_key)
+    select v_reviewer2, k from unnest(array['music', 'food']) k where exists (select 1 from public.interests i where i.key = k)
+    on conflict do nothing;
+  end if;
 
   -- 5. tres mensajes en el chat
   for v_msg in select * from jsonb_array_elements('[

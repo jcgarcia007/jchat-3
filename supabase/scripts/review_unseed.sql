@@ -14,7 +14,7 @@ begin
   delete from public.messages where id::text like 'd4000000-0000-4000-8000-%' or user_id = any (v_ids);
   delete from public.menu_items where id::text like 'd4000000-0000-4000-8000-%';
   delete from public.menu_categories where id = 'd4000000-0000-4000-8000-0000000000c1';
-  delete from public.match_photos where id::text like 'd4000000-0000-4000-8000-%';
+  delete from public.match_photos where id::text like 'd4000000-0000-4000-8000-%';  -- incluye la foto de @jchatreview2 (…0699); su cuenta y su perfil no se tocan
   delete from public.match_presence where user_id = any (v_ids);
   delete from public.game_optins where user_id = any (v_ids);
   delete from public.room_geo_presence where user_id = any (v_ids);

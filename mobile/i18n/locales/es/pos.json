@@ -140,6 +140,7 @@
     "venueRetry": "Permitir ubicación / Reintentar",
     "venueFallback": "el negocio",
     "quoteRetry": "Reintentar",
+    "paymentsNotEnabled": "Este local todavía no acepta pagos en la app. Puedes pedir en el mostrador.",
     "taxLabelRate": "Impuesto ({{rate}}%)",
     "taxNotConfigured": "El negocio no tiene impuestos configurados.",
     "bioFailedTitle": "No pudimos verificar tu identidad",

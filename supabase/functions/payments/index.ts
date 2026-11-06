@@ -202,7 +202,7 @@ async function buildQuote(
     status: string | null;
     stripe_charges_enabled: boolean | null;
   });
-  if (gate) return errorResponse(gate.error, gate.status);
+  if (gate) return jsonResponse({ error: gate.error, ...(gate.code ? { code: gate.code } : {}) }, gate.status);
 
   // ── Validate items + server-side recalculation (P0-2 + FIX #6 modifiers) ──
   const priced = await priceLinesFromDb(db, business_id, items, { enforceModifierRules: true });
@@ -1064,7 +1064,7 @@ async function handleGiftHold(body: Record<string, unknown>, authUserId: string,
     status: string | null;
     stripe_charges_enabled: boolean | null;
   });
-  if (chargeGate) return errorResponse(chargeGate.error, chargeGate.status);
+  if (chargeGate) return jsonResponse({ error: chargeGate.error, ...(chargeGate.code ? { code: chargeGate.code } : {}) }, chargeGate.status);
 
   const rawItems = Array.isArray(offer.items) ? (offer.items as { menu_item_id?: unknown; qty?: unknown }[]) : [];
   const items: PriceableItem[] = rawItems.map((it) => ({

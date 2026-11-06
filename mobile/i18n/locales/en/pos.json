@@ -140,6 +140,7 @@
     "venueRetry": "Allow location / Retry",
     "venueFallback": "this venue",
     "quoteRetry": "Retry",
+    "paymentsNotEnabled": "This venue doesn't accept in-app payments yet. You can order at the counter.",
     "taxLabelRate": "Tax ({{rate}}%)",
     "taxNotConfigured": "Taxes are not configured by this business.",
     "bioFailedTitle": "We couldn't verify your identity",

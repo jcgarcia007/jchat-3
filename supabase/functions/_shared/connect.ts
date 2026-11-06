@@ -27,12 +27,12 @@ export interface BusinessChargeState {
  */
 export function businessChargeGate(
   business: BusinessChargeState,
-): { error: string; status: number } | null {
+): { error: string; status: number; code?: string } | null {
   if (business.status !== "verified") {
     return { error: "This business is pending verification", status: 409 };
   }
   if (!business.stripe_account_id) {
-    return { error: "This business is not set up to accept payments yet", status: 409 };
+    return { error: "This business is not set up to accept payments yet", status: 409, code: "payments_not_enabled" };
   }
   if (!business.stripe_charges_enabled) {
     return { error: "This business has not completed Stripe onboarding", status: 409 };
