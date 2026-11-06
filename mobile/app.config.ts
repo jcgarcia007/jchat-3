@@ -44,7 +44,8 @@ const COLLECTED_DATA_TYPES = [
 // InfoPlist.strings at prebuild). One string per key so two plugins can never disagree about it.
 const LOCATION_WHEN_IN_USE = 'JChat uses your location only while you use the app, to confirm you are at the venue and open its chat, show nearby venues on the map, and connect to card readers.';
 const CAMERA = 'JChat uses the camera to take photos for chat, posts and your profile, and to scan inventory barcodes.';
-const FACE_ID = 'JChat uses Face ID to unlock the app when you turn on biometric lock.';
+const FACE_ID = 'JChat uses Face ID to unlock the app and confirm payments.';
+const LOCAL_NETWORK = 'JChat uses the local network to connect to WiFi card readers and network printers at the venue.';
 const MOTION = "JChat uses your device's motion sensors to detect how you are holding it, so photos you take with the camera are saved the right way up.";
 
 const config: ExpoConfig = {
@@ -116,6 +117,8 @@ const config: ExpoConfig = {
   },
   android: {
     package: 'com.otunitylabs.jchat',
+    // The session must not travel in Google backups (Auto Backup / device-to-device transfer).
+    allowBackup: false,
     adaptiveIcon: {
       backgroundColor: '#4263EB',
       foregroundImage: './assets/android-icon-foreground.png',
@@ -186,6 +189,10 @@ const config: ExpoConfig = {
     // post_install (Xcode 27 rejects deployment targets < 15.0). Pods already at
     // 15.1+ (e.g. 16.4) are untouched.
     './config-plugins/withMinPodsDeploymentTarget',
+    // B7-2: changing the system font size must not recreate MainActivity (the open chat and the dock would be lost).
+    './config-plugins/withAndroidFontScaleConfigChanges',
+    // Registered BEFORE the Stripe Terminal plugin on purpose: it deletes the key that plugin always writes (see the file).
+    './config-plugins/withoutBluetoothPeripheral',
     [
       'react-native-maps',
       {
@@ -226,10 +233,7 @@ const config: ExpoConfig = {
         locationWhenInUsePermission: LOCATION_WHEN_IN_USE,
         bluetoothAlwaysUsagePermission:
           'JChat uses Bluetooth to connect to Stripe Terminal card readers for in-person payments.',
-        bluetoothPeripheralPermission:
-          'JChat uses Bluetooth to communicate with card readers for in-person payments.',
-        localNetworkUsagePermission:
-          'JChat uses the local network to connect to WiFi-enabled card readers.',
+        localNetworkUsagePermission: LOCAL_NETWORK,
       },
     ],
     'expo-web-browser',

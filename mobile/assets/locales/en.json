@@ -4,10 +4,9 @@
     "NSCameraUsageDescription": "JChat uses the camera to take photos for chat, posts and your profile, and to scan inventory barcodes.",
     "NSMicrophoneUsageDescription": "JChat needs access to your microphone to send voice messages.",
     "NSLocationWhenInUseUsageDescription": "JChat uses your location only while you use the app, to confirm you are at the venue and open its chat, show nearby venues on the map, and connect to card readers.",
-    "NSFaceIDUsageDescription": "JChat uses Face ID to unlock the app when you turn on biometric lock.",
+    "NSFaceIDUsageDescription": "JChat uses Face ID to unlock the app and confirm payments.",
     "NSMotionUsageDescription": "JChat uses your device's motion sensors to detect how you are holding it, so photos you take with the camera are saved the right way up.",
     "NSBluetoothAlwaysUsageDescription": "JChat uses Bluetooth to connect to Stripe Terminal card readers for in-person payments.",
-    "NSBluetoothPeripheralUsageDescription": "JChat uses Bluetooth to communicate with card readers for in-person payments.",
-    "NSLocalNetworkUsageDescription": "JChat uses the local network to connect to WiFi-enabled card readers."
+    "NSLocalNetworkUsageDescription": "JChat uses the local network to connect to WiFi card readers and network printers at the venue."
   }
 }
