@@ -11,7 +11,7 @@ declare
   u3 uuid := pg_temp.seed_user(3);   -- usuario real
   u4 uuid := pg_temp.seed_user(4);   -- QA (miembro)
   u5 uuid := pg_temp.seed_user(5);   -- super-admin
-  r record; n int; v_until timestamptz; ok boolean;
+  r record; n int; v_until timestamptz; ok boolean; v_err text;
 begin
   set local session_replication_role = replica;
   insert into public.businesses (id, owner_id, name, slug, lat, lng) values (biz2, pg_temp.uid(1), 'Real Venue', 'real-venue-sql-test', 41.0, -75.0);
@@ -65,6 +65,53 @@ begin
   perform pg_temp.t_ok(not exists (select 1 from public.review_bypass_businesses()), 'review_bypass_businesses vacío para un usuario real');
   perform pg_temp.as_service();
   perform pg_temp.t_ok(not public.venue_presence_ok(biz, u3), 'review_join_room no dejó presencia al usuario real');
+
+  -- 2b) funciones STABLE/VOLATILE que llaman a venue_inside (que escribe el log vía review_bypass), con un miembro a ~5.000 km (Madrid 40.42,-3.70)
+  -- del local de demo. Ojo: assert_venue_order_allowed y guest_request_service_by_label solo las ejecuta service_role (auth.uid() es null ahí).
+  perform pg_temp.as_service();
+  delete from public.room_geo_presence where user_id = u2;
+  delete from public.review_bypass_log where user_id = u2;
+  -- (a) venue_order_access: la que llama la edge function payments (quote_order / create_payment_intent) con el JWT del cliente. STABLE → venue_inside → INSERT en el log.
+  perform pg_temp.as_user(u2);
+  begin
+    select (public.venue_order_access(biz, 40.42, -3.70)->>'inside')::boolean into ok;
+    perform pg_temp.t_ok(ok is true, 'venue_order_access (STABLE) desde 5.000 km: inside = true y sin error');
+  exception when others then
+    perform pg_temp.t_ok(false, 'venue_order_access (STABLE) desde 5.000 km: inside = true y sin error', sqlstate || ': ' || sqlerrm);
+  end;
+  perform pg_temp.t_ok((public.venue_order_access(biz, 40.42, -3.70)->'allowed_types') ? 'counter', 'quote_order: el tipo "counter" está permitido para el miembro lejos');
+  perform pg_temp.as_service();
+  perform pg_temp.t_ok((select count(*) from public.review_bypass_log where user_id = u2 and business_id = biz and fn = 'venue_inside') = 1, 'venue_order_access deja UNA fila en review_bypass_log (la segunda llamada la absorbe la deduplicación de 10 min)');
+  -- (b) assert_venue_order_allowed (STABLE, solo service_role): sin sesión no hay bypass -> outside_venue limpio (sin error de volatilidad); con la presencia de la entrada del miembro, pasa
+  perform pg_temp.t_raises(format('select public.assert_venue_order_allowed(%L, %L, ''table'', 40.42, -3.70, ''customer_stripe'', null)', biz, u2), 'outside_venue', 'assert_venue_order_allowed como service_role sin presencia: outside_venue (sin bypass sin sesión; falla cerrado, sin error de volatilidad)');
+  perform pg_temp.as_user(u2);
+  perform pg_temp.t_ok(public.review_join_room(room), 'el miembro entra (presencia)');
+  perform pg_temp.as_service();
+  begin
+    perform public.assert_venue_order_allowed(biz, u2, 'table', 40.42, -3.70, 'customer_stripe', null);
+    perform pg_temp.t_ok(true, 'assert_venue_order_allowed con la presencia del miembro: no lanza error');
+  exception when others then
+    perform pg_temp.t_ok(false, 'assert_venue_order_allowed con la presencia del miembro: no lanza error', sqlstate || ': ' || sqlerrm);
+  end;
+  -- (c) guest_request_service_by_label (VOLATILE, service_role): el invitado no tiene sesión, no hay bypass; responde outside_venue sin lanzar
+  begin
+    select public.guest_request_service_by_label(biz, '1', 40.42, -3.70, 'device-review-1', null)->>'error' into v_err;
+    perform pg_temp.t_ok(v_err = 'outside_venue', 'guest_request_service_by_label: invitado a 5.000 km -> outside_venue, sin error');
+  exception when others then
+    perform pg_temp.t_ok(false, 'guest_request_service_by_label: invitado a 5.000 km -> outside_venue, sin error', sqlstate || ': ' || sqlerrm);
+  end;
+  -- el usuario real, en venue_order_access, sigue fuera
+  perform pg_temp.as_user(u3);
+  perform pg_temp.t_ok(not (public.venue_order_access(biz, 40.42, -3.70)->>'inside')::boolean, 'usuario real: venue_order_access inside = false');
+  -- create_paid_order sin pago a un local del grupo abierto (sin horario = abierto): el pedido se crea
+  perform pg_temp.as_service();
+  begin
+    perform * from public.create_paid_order(jsonb_build_object('business_id', biz, 'user_id', u2, 'order_type', 'counter'),
+      jsonb_build_array(jsonb_build_object('menu_item_id', '10000000-0000-4000-8000-0000000000b1', 'qty', 1, 'price_cents', 500)));
+    perform pg_temp.t_ok(true, 'create_paid_order sin pago a un local del grupo abierto: se crea');
+  exception when others then
+    perform pg_temp.t_ok(false, 'create_paid_order sin pago a un local del grupo abierto: se crea', sqlstate || ': ' || sqlerrm);
+  end;
 
   -- 3) miembro + local REAL: la regla de oro sigue entera
   perform pg_temp.as_user(u2);
