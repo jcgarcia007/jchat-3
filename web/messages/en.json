@@ -2593,7 +2593,8 @@
       "navDisputes": "Disputes",
       "navBackToDashboard": "Back to Dashboard",
       "navBusinessRadius": "Business Radius",
-      "navAffiliates": "Affiliates"
+      "navAffiliates": "Affiliates",
+      "navReviewMode": "Review mode"
     },
     "gate": {
       "checkingAccess": "Checking access…",
@@ -2660,7 +2661,8 @@
       "statusLabelPending": "Pending",
       "statusLabelSuspended": "Suspended",
       "statusLabelClosed": "Closed",
-      "statusLabelRejected": "Rejected"
+      "statusLabelRejected": "Rejected",
+      "testTag": "Test"
     },
     "verification": {
       "title": "Business verification",
@@ -3072,6 +3074,39 @@
       "validMin": "Minimum must be at least 1.",
       "validMax": "Maximum must be greater than 0.",
       "validRange": "Minimum cannot exceed maximum."
+    },
+    "reviewMode": {
+      "title": "Review mode",
+      "intro": "Lets the review group (reviewer and QA accounts) enter the group's demo venues from anywhere. Everyone else keeps the golden rule. Every use is logged.",
+      "statusOn": "Active until {date}",
+      "statusOff": "Off",
+      "enable": "Turn on for 30 days",
+      "disable": "Turn off",
+      "confirmOff": "Turn review mode off?",
+      "members": "Accounts",
+      "venues": "Venues",
+      "log": "Last 50 uses",
+      "logEmpty": "No uses yet",
+      "none": "None",
+      "kindReviewer": "Reviewer",
+      "kindQa": "QA",
+      "statusActive": "Active",
+      "statusPaused": "Paused",
+      "statusRetired": "Retired",
+      "pause": "Pause",
+      "resume": "Resume",
+      "retire": "Retire",
+      "addMember": "Add account",
+      "addVenue": "Add venue",
+      "username": "Username",
+      "slug": "Venue slug",
+      "add": "Add",
+      "loadError": "Could not load review mode.",
+      "actionError": "The change was not applied.",
+      "colWhen": "When",
+      "colWho": "Who",
+      "colVenue": "Venue",
+      "colFn": "Function"
     }
   },
   "menuAssistant": {

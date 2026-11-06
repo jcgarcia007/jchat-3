@@ -98,6 +98,7 @@ export default function SuperAdminBusinessesPage() {
   const t = useTranslations("superAdmin.businesses");
   const [query, setQuery] = useState("");
   const [businesses, setBusinesses] = useState<BusinessRow[]>([]);
+  const [testIds, setTestIds] = useState<Set<string>>(new Set()); // review group venues (migration 262): shown with a "Test" tag
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
@@ -160,6 +161,12 @@ export default function SuperAdminBusinessesPage() {
     }
 
     setBusinesses((data ?? []) as BusinessRow[]);
+    // review group venues (migration 262; not in the generated types yet). Only a platform admin can read the table.
+    const groupTable = (supabase as unknown as {
+      from: (t: string) => { select: (c: string) => { neq: (c: string, v: string) => PromiseLike<{ data: { business_id: string }[] | null }> } };
+    }).from("review_group_businesses");
+    const { data: groupRows } = await groupTable.select("business_id").neq("status", "retired");
+    setTestIds(new Set((groupRows ?? []).map((r) => r.business_id)));
     setSearched(true);
     setLoading(false);
   }, [query]);
@@ -338,6 +345,7 @@ export default function SuperAdminBusinessesPage() {
                 <BizRow
                   key={b.id}
                   biz={b}
+                  isTest={testIds.has(b.id)}
                   isLast={idx === businesses.length - 1}
                   onSuspend={() => openAction(b, "suspend")}
                   onClose={() => openAction(b, "close")}
@@ -371,12 +379,14 @@ export default function SuperAdminBusinessesPage() {
 
 function BizRow({
   biz: b,
+  isTest,
   isLast,
   onSuspend,
   onClose,
   onSilentAccess,
 }: {
   biz: BusinessRow;
+  isTest: boolean;
   isLast: boolean;
   onSuspend: () => void;
   onClose: () => void;
@@ -422,6 +432,21 @@ function BizRow({
           }}
         >
           {b.name}
+          {isTest && (
+            <span
+              style={{
+                marginLeft: "8px",
+                padding: "1px 7px",
+                borderRadius: "20px",
+                fontSize: "11px",
+                fontWeight: 700,
+                color: "var(--color-brand-purple)",
+                border: "1px solid var(--color-brand-purple)",
+              }}
+            >
+              {tb("testTag")}
+            </span>
+          )}
         </div>
         <div style={{ fontSize: "12px", color: "var(--text-tertiary)", marginTop: "2px" }}>
           {b.slug ? `/${b.slug}` : b.id.slice(0, 12)}

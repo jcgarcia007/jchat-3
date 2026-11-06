@@ -60,7 +60,7 @@ test('inside the card, outside the radius "Entrar al chat" is disabled (inside_r
   assert.match(preview, /const blocked = inside_radius === false;/);
   assert.match(preview, /disabled=\{blocked\}/);
   const sheet = read('components/map/BusinessCardSheet.tsx');
-  assert.match(sheet, /inside_radius: typeof radius === 'number' && radius > 0 \? distance_m <= radius : null/);
+  assert.match(sheet, /inside_radius: insideRadiusForCard\(typeof radius === 'number' && radius > 0 \? distance_m <= radius : null, business\.id, reviewBypassIds\)/);
   assert.match(sheet, /inside_radius=\{geo\.inside_radius\}/);
 });
 

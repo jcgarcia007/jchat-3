@@ -44,6 +44,8 @@ import { searchBusinesses, SEARCH_DEBOUNCE_MS } from '../../utils/mapSearch';
 import BusinessPreviewCard from '../../components/map/BusinessPreviewCard';
 import { getOpenStatus, isOpenNow, type HoursMap } from '../../utils/hours';
 import { haversineMeters } from '../../services/geofence';
+import { useReviewBypassIds } from '../../hooks/useReviewBypassIds';
+import { insideRadiusForCard } from '../../utils/reviewMode';
 import { formatMeters } from '../../utils/businessCard';
 import { resolvePinModes, type CollisionPin } from '../../utils/pinCollision';
 import { fetchPeopleCounts } from '../../services/venuePresence';
@@ -376,6 +378,7 @@ export default function MapScreen() {
   // The tapped business, with the real distance from the user. inside_radius: inside the venue's radius or not;
   // null (unknown) when there is no position or the venue has no radius — the card then does not warn and the
   // server decides on entry.
+  const reviewBypassIds = useReviewBypassIds(); // review group: the server skips the distance, so the card must not block
   const selectedGeo = useMemo(() => {
     if (!selected || !userCoords) return { distance_m: undefined, distance: undefined, inside_radius: null as boolean | null };
     const distance_m = haversineMeters(userCoords.lat, userCoords.lng, selected.lat, selected.lng);
@@ -383,9 +386,9 @@ export default function MapScreen() {
     return {
       distance_m,
       distance: formatMeters(distance_m, usesKilometers()),
-      inside_radius: typeof radius === 'number' && radius > 0 ? distance_m <= radius : null,
+      inside_radius: insideRadiusForCard(typeof radius === 'number' && radius > 0 ? distance_m <= radius : null, selected.id, reviewBypassIds),
     };
-  }, [selected, userCoords]);
+  }, [selected, userCoords, reviewBypassIds]);
 
   const searchDistanceLabel = useCallback(
     (business: MapBusiness): string | undefined => {

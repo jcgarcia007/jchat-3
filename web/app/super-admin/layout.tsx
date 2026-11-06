@@ -29,6 +29,7 @@ import {
   IconMapPin,
   IconArrowLeft,
   IconReceiptRefund,
+  IconTestPipe,
   IconUsers,
   IconBuildingStore,
   IconUserCheck,
@@ -153,6 +154,7 @@ export default async function SuperAdminLayout({
 
         <NavLink href="/super-admin/locations" icon={IconMapPin} label={t("navPublicLocations")} />
         <NavLink href="/super-admin/disputes" icon={IconReceiptRefund} label={t("navDisputes")} />
+        <NavLink href="/super-admin/review-mode" icon={IconTestPipe} label={t("navReviewMode")} />
 
         {/* Back to dashboard */}
         <div style={{ marginTop: "auto", padding: "16px 0 0", borderTop: "1px solid var(--border-subtle)" }}>

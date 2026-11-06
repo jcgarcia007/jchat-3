@@ -2593,7 +2593,8 @@
       "navDisputes": "Disputas",
       "navBackToDashboard": "Volver al panel",
       "navBusinessRadius": "Radio de negocio",
-      "navAffiliates": "Afiliados"
+      "navAffiliates": "Afiliados",
+      "navReviewMode": "Modo revisión"
     },
     "gate": {
       "checkingAccess": "Verificando acceso…",
@@ -2660,7 +2661,8 @@
       "statusLabelPending": "Pendiente",
       "statusLabelSuspended": "Suspendido",
       "statusLabelClosed": "Cerrado",
-      "statusLabelRejected": "Rechazado"
+      "statusLabelRejected": "Rechazado",
+      "testTag": "Prueba"
     },
     "verification": {
       "title": "Verificación de negocios",
@@ -3072,6 +3074,39 @@
       "validMin": "El mínimo debe ser al menos 1.",
       "validMax": "El máximo debe ser mayor que 0.",
       "validRange": "El mínimo no puede superar el máximo."
+    },
+    "reviewMode": {
+      "title": "Modo revisión",
+      "intro": "Permite que el grupo de revisión (cuentas del revisor y QA) entre desde cualquier sitio a los locales de demo del grupo. Todos los demás conservan la regla de oro. Cada uso queda registrado.",
+      "statusOn": "Activo hasta {date}",
+      "statusOff": "Apagado",
+      "enable": "Activar 30 días",
+      "disable": "Apagar",
+      "confirmOff": "¿Apagar el modo revisión?",
+      "members": "Cuentas",
+      "venues": "Locales",
+      "log": "Últimos 50 usos",
+      "logEmpty": "Aún no se ha usado",
+      "none": "Ninguno",
+      "kindReviewer": "Revisor",
+      "kindQa": "QA",
+      "statusActive": "Activa",
+      "statusPaused": "En pausa",
+      "statusRetired": "Retirada",
+      "pause": "Pausar",
+      "resume": "Reanudar",
+      "retire": "Retirar",
+      "addMember": "Añadir cuenta",
+      "addVenue": "Añadir local",
+      "username": "Usuario",
+      "slug": "Slug del local",
+      "add": "Añadir",
+      "loadError": "No se pudo cargar el modo revisión.",
+      "actionError": "No se aplicó el cambio.",
+      "colWhen": "Cuándo",
+      "colWho": "Quién",
+      "colVenue": "Local",
+      "colFn": "Función"
     }
   },
   "menuAssistant": {

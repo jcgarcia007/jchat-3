@@ -17,6 +17,8 @@ import { AppModal } from '../common/AppModal';
 import ReservationScreen from '../../screens/reservations/ReservationScreen';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { haversineMeters } from '../../services/geofence';
+import { useReviewBypassIds } from '../../hooks/useReviewBypassIds';
+import { insideRadiusForCard } from '../../utils/reviewMode';
 import { resolveMainRoomId, type CardBusiness } from '../../services/businesses';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
@@ -37,6 +39,7 @@ export default function BusinessCardSheet({ business, userCoords, onClose }: Pro
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const [reserveFor, setReserveFor] = useState<string | null>(null);
 
+  const reviewBypassIds = useReviewBypassIds(); // review group: the server skips the distance
   const geo = useMemo(() => {
     if (!business || !userCoords) return { distance_m: undefined, distance: undefined, inside_radius: null as boolean | null };
     const distance_m = haversineMeters(userCoords.lat, userCoords.lng, business.lat, business.lng);
@@ -44,9 +47,9 @@ export default function BusinessCardSheet({ business, userCoords, onClose }: Pro
     return {
       distance_m,
       distance: formatMeters(distance_m, usesKilometers()),
-      inside_radius: typeof radius === 'number' && radius > 0 ? distance_m <= radius : null,
+      inside_radius: insideRadiusForCard(typeof radius === 'number' && radius > 0 ? distance_m <= radius : null, business.id, reviewBypassIds),
     };
-  }, [business, userCoords]);
+  }, [business, userCoords, reviewBypassIds]);
 
   const handleNavigate = useCallback((lat: number, lng: number) => {
     const url = Platform.select({

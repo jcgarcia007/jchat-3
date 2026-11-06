@@ -47,6 +47,8 @@ import {
   type ExitVerdict,
 } from '../../utils/exitCheck';
 import { SILENT_VERIFY_INTERVAL_MS, nextVerifyDelayMs } from '../../utils/exitSchedule';
+import { shouldTryReviewEntry } from '../../utils/reviewMode';
+import { joinRoomForReview } from '../../services/reviewMode';
 
 const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000; // renew geo-presence every 5 min while open+foreground
 export { SILENT_VERIFY_INTERVAL_MS };
@@ -94,16 +96,20 @@ export interface VenueGeometry {
 // ── Shared state of the silent verification (module level: the chat's gate and the venue session share it) ──
 const readingBuffers = new Map<string, ExitReading[]>();
 const lastRenewedAt = new Map<string, number>();
+/** Rooms the server let this person into through the review group (migration 262): no distance is measured for them, the server renews the presence. */
+const reviewRooms = new Set<string>();
 
 /** Forgets the readings and the renewal time of a room (or of all of them): a session starts or ends. */
 export function resetExitState(roomId?: string): void {
   if (roomId === undefined) {
     readingBuffers.clear();
     lastRenewedAt.clear();
+    reviewRooms.clear();
     return;
   }
   readingBuffers.delete(roomId);
   lastRenewedAt.delete(roomId);
+  reviewRooms.delete(roomId);
 }
 
 function recordReading(roomId: string, coords: Coords): ExitReading {
@@ -149,6 +155,7 @@ async function callGeofenceRpc(roomId: string, coords: Coords): Promise<GeoCheck
 
   const row = data[0] as GeoRpcRow;
   if (row.access_granted) {
+    if (row.reason === 'review_bypass') reviewRooms.add(roomId);
     markPresenceRenewed(roomId);
     return { granted: true, reason: 'granted', distanceM: row.distance_m };
   }
@@ -175,6 +182,24 @@ export async function runGeoCheck(
   roomId: string,
   onReading?: (coords: Coords) => void,
   opts: { interactive?: boolean } = {},
+): Promise<GeoCheckResult> {
+  const result = await runPlainGeoCheck(roomId, onReading, opts);
+  if (result.granted || !opts.interactive || !shouldTryReviewEntry(result.reason)) return result;
+  // The server decides: the review group (reviewer / QA accounts, only while the super-admin switch is on) enters a group venue with no
+  // permission, no fix, or from anywhere. For everybody else this call answers false and writes nothing.
+  if (await joinRoomForReview(roomId)) {
+    reviewRooms.add(roomId);
+    markPresenceRenewed(roomId);
+    onReading?.({ lat: 0, lng: 0, mocked: false, accuracy: null }); // placeholder: the server ignores coordinates for the group; Match needs a reading to renew
+    return { granted: true, reason: 'granted', distanceM: null };
+  }
+  return result;
+}
+
+async function runPlainGeoCheck(
+  roomId: string,
+  onReading: ((coords: Coords) => void) | undefined,
+  opts: { interactive?: boolean },
 ): Promise<GeoCheckResult> {
   try {
     let permitted: boolean;
@@ -234,6 +259,14 @@ export async function runSilentGeoCheck(
   onReading?: (coords: Coords) => void,
 ): Promise<SilentCheckResult> {
   try {
+    if (reviewRooms.has(roomId)) {
+      // Review group: the server renews the presence; no GPS is read and no distance is measured here.
+      if (await joinRoomForReview(roomId)) {
+        markPresenceRenewed(roomId);
+        return { status: 'inside', pendingExit: false };
+      }
+      reviewRooms.delete(roomId); // the switch went off or the account was paused: the normal rules apply again
+    }
     let permitted = false;
     try {
       permitted = await hasForegroundPermission();
@@ -258,6 +291,12 @@ export async function runSilentGeoCheck(
 
     const verdict = evaluateExit(readingBuffers.get(roomId) ?? [], geometry, geometry.radiusM);
     if (verdict === 'outside_confirmed') {
+      // A session restored after a restart does not remember it came in through the review group: ask the server before ending it.
+      if (await joinRoomForReview(roomId)) {
+        reviewRooms.add(roomId);
+        markPresenceRenewed(roomId);
+        return { status: 'inside', pendingExit: false };
+      }
       await callGeofenceRpc(roomId, coords).catch(() => undefined); // revokes the server presence
       return { status: 'outside_confirmed', pendingExit: false };
     }
