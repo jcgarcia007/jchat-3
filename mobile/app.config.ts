@@ -264,6 +264,9 @@ const config: ExpoConfig = {
       {
         microphonePermission: 'JChat needs access to your microphone to send voice messages.',
         enableBackgroundRecording: false,
+        // Voice notes and POS alerts play in the foreground only: no `audio` background mode, no media-playback foreground
+        // service (Apple 2.5.4 / Play foreground-service declaration).
+        enableBackgroundPlayback: false,
       },
     ],
   ],
