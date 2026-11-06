@@ -1,0 +1,89 @@
+# Files EAS Build does NOT upload. It lives at the repo root because eas-cli only reads .easignore from the
+# git root (a mobile/.easignore is silently ignored). eas-cli also stops reading every .gitignore once this
+# file exists, so everything the .gitignore files hide is repeated here (secrets and generated output first).
+# Patterns have NO trailing slash on purpose: eas-cli copies with a path filter that never matches "dir/".
+# Never exclude here what the app build reads: mobile/app.config.ts, mobile/assets, mobile/config-plugins,
+# mobile/package.json, mobile/package-lock.json, mobile/eas.json and the mobile source folders.
+
+# ── Dependencies, caches and generated output ───────────
+node_modules
+.pnp
+.pnp.js
+.expo
+dist
+dist-web
+dist-web-audit
+dist-web-local
+web-build
+/web/.next
+/web/out
+next-env.d.ts
+coverage
+*.tsbuildinfo
+*.orig.*
+.metro-health-check*
+.kotlin
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+.idea
+.vscode
+
+# ── Secrets and local credentials (never uploaded; EAS gets them from `eas env`) ──
+.env
+.env.*
+!.env.example
+google-services.json
+*.plist
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+generar-jwt.mjs
+.mcp.json
+.codex
+.gstack
+.backup-claude-*
+
+# ── Local test output and sessions (gitignored; they weigh GBs and hold session tokens) ──
+/e2e/out
+/e2e/artifacts
+/e2e/.auth
+/e2e/.env.local
+scripts/menu-photos/out
+scripts/test-*.ts
+loadtest/results
+
+# ── Git history: the shallow clone would carry the blobs of everything excluded below (+96 MB). EAS does not need it. ──
+.git
+
+# ── Prebuilds: EAS regenerates them from app.config.ts ──
+/ios
+/android
+/mobile/ios
+/mobile/android
+
+# ── Not part of the app build ───────────────────────────
+docs
+design
+planning
+release-evidence
+loadtest
+gallery
+screenshots
+.overnight-shots
+.playwright-mcp
+.agents
+.claude
+.maestro
+supabase/.branches
+supabase/.temp
+*.pdf
+# capture PNGs anywhere except the app's own images
+*.png
+!/mobile/assets/**/*.png
+!/mobile/public/**/*.png
+!/web/public/**/*.png
