@@ -38,7 +38,7 @@ Open the **Nearby** tab (or the map) and tap **JChat Demo Lounge** → **Enter c
 
 **Other.** Sign in with Apple is offered with Google and e-mail (4.8). Permissions: location while using the app, camera/photos/microphone (profile and chat photos, voice notes), notifications; Face ID is optional (app lock). Bluetooth-central is declared only for the staff card reader. No tracking, no ad identifier.
 
-Thank you for reviewing JChat. Questions: safety@jchat.cloud.
+Thank you for reviewing JChat. Questions: soporte@jchat.cloud (safety reports: safety@jchat.cloud).
 
 ---
 
