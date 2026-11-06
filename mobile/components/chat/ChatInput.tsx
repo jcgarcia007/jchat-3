@@ -19,7 +19,7 @@
 
 import React, { useCallback, useRef, useState } from 'react';
 import {
-  PixelRatio,
+  useWindowDimensions,
   Platform,
   Pressable,
   StyleSheet,
@@ -92,7 +92,8 @@ export function ChatInput({
   const [attachmentOpen, setAttachmentOpen] = useState(false);
   const [recordingVoice, setRecordingVoice] = useState(false);
   const inputRef = useRef<TextInput>(null);
-  const fontScale = Math.min(PixelRatio.getFontScale(), CONTENT_TEXT_CAP);
+  // Reactive: useWindowDimensions re-renders when the system font size changes (the activity is no longer recreated: B7-2).
+  const fontScale = Math.min(useWindowDimensions().fontScale, CONTENT_TEXT_CAP);
   // Web only (native: nothing): the box starts as tall as the round buttons (iconBtn: 44) and grows to maxHeight with the text.
   const fit = useComposerFit(inputRef, text, { minHeight: 44, maxHeight: 120, lineHeight: 20, borderWidth: 1 });
   // Closed keyboard: the bar (and its background) clears the home indicator; open keyboard: 8.
