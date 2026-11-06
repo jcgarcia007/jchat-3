@@ -1,5 +1,21 @@
 # Kit del revisor — pasos para Juan Carlos (en orden)
 
+> **ACTUALIZADO en la Fase D (modo revisión).** El flujo vigente es la sección **A0**; las secciones A–D de abajo describen el seed antiguo (`demo_venue_seed.sql`, local "JChat Demo" de Cupertino) y se conservan solo como historial.
+
+## A0. Flujo vigente: modo revisión (migración 262) + `review_seed.sql`
+
+Todo se ejecuta en producción **por ti** (Claude solo prepara los scripts). Estado de hoy: 262 aplicada, interruptor apagado, grupo vacío.
+
+1. **Cuenta 1 (dueña) = `@jchatreview`** (ya existe, dueña de JChat Demo Lounge). **Cuenta 2 (cliente) = `@jchatreview2`** (ya creada). Si hay que crear otra cuenta de revisor: regístrala en la app con un correo tuyo, completa el alta (términos, fecha de nacimiento 21+), anota el usuario y añádelo al script (lista `('jchatreview2','reviewer')`). Contraseñas: solo en tu archivo local, nunca en el repositorio ni en capturas.
+2. **Avatares:** Supabase → Storage → bucket **match-photos** (privado) → carpeta `demo/review-seed/` → sube `supabase/scripts/review-seed-avatars/demo-1.png … demo-4.png`. Son siluetas generadas; sin ellas el mazo de Match funciona pero con fotos vacías.
+3. **Seed:** ejecuta `supabase/scripts/review_seed.sql` (idempotente; se detiene sin escribir nada si falta alguna de las 5 cuentas). Mete en el grupo a `@jchatreview` y `@jchatreview2` (reviewer) y a `@test`, `@test1`, `@test002` (qa), añade el local al grupo, activa Match y Verdad o Reto, siembra 4 personas ficticias presentes 14 días, 3 mensajes, 2 ofertas y, si faltan, productos hasta 6. **No enciende el interruptor.** Repítelo si la revisión pasa de 14 días (renueva presencias y ofertas).
+4. **Interruptor:** `/super-admin/review-mode` → **Activar 30 días** la víspera del envío (cuentas, local y registro de usos se ven en la misma página). Apágalo al terminar.
+5. **Prueba tú mismo** desde fuera de Florida, con `@jchatreview2` en iPhone y Android: Mapa/Cerca de mí lista JChat Demo Lounge → Entrar al chat (también con la ubicación denegada) → Match (4 personas) → Verdad o Reto → menú/oferta → mensajes directos → reportar/bloquear. Con `@jchatreview`: dashboard web y Modo Trabajo con el PIN.
+6. **Pega** `notas-revisor-apple.md` / `notas-revisor-google.md` rellenando los marcadores (incluida la nota de pago: léela, depende de Stripe).
+7. **Al terminar:** apaga el interruptor y, si no quieres dejar los datos, ejecuta `supabase/scripts/review_unseed.sql` (borra solo lo sembrado; las cuentas reales y su pertenencia al grupo se quedan; las 4 fotos de Storage se borran a mano).
+
+---
+
 Todo lo que se prepara aquí está **sin aplicar**. Nada toca producción hasta que tú lo ejecutes.
 
 ## A. Antes de enviar a revisión
