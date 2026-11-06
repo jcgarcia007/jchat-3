@@ -64,8 +64,15 @@ export function PrivacyEN() {
       <ul style={UL}>
         <li>
           <em>Account information:</em> email address, password (stored hashed by our authentication
-          provider), name, username, profile photo, bio, language and app settings. If you sign in with Apple
-          or Google, we receive the name and email those services share with us.
+          provider), name, username, profile photo, bio, language and app settings, and the <strong>year of
+          birth</strong> you give us to confirm you are 18 or older (we keep only the year). If you sign in
+          with Apple or Google, we receive the name and email those services share with us.
+        </li>
+        <li>
+          <em>Match profile (optional):</em> if you use Match, your gender (woman, man or non-binary), who you
+          want to meet (women, men or everyone), your interests and your photos. This is sensitive information:
+          it is used only to show you people who fit and to show you to them. Your likes, matches and Match chats are
+          erased when you leave the venue (except with people who follow each other).
         </li>
         <li>
           <em>Precise location, only while you use the app:</em> to show venues near you, to let you join a
@@ -95,7 +102,8 @@ export function PrivacyEN() {
         </li>
         <li>
           <em>Device and diagnostic data:</em> device type, operating system, app version,
-          push-notification token, crash and error logs.
+          push-notification token, crash and error logs (attached to your account ID only, never to your name,
+          email or IP address).
         </li>
         <li>
           <em>Safety data:</em> reports you submit, users you block, moderation actions taken by venue owners,
@@ -123,8 +131,9 @@ export function PrivacyEN() {
         <li><strong>Google Cloud Vision</strong> — safety review of photos you send in Match and in direct messages: the bytes of the photo are sent to Google to detect content that breaks our rules.</li>
         <li><strong>Google Maps</strong> and <strong>Firebase Cloud Messaging</strong> (Google) — maps on Android and push notifications. <strong>Apple</strong> — push notifications and Apple Maps on iOS.</li>
         <li><strong>Expo</strong> — push notifications (the title and text of a notification pass through Expo's push service on their way to your phone) and app builds and updates.</li>
-        <li><strong>Sentry</strong> — technical diagnostics (crash and error reports) without personal data.</li>
+        <li><strong>Sentry</strong> — technical diagnostics (crash and error reports), linked only to your account ID, without your name, email or IP address.</li>
         <li><strong>hCaptcha</strong> — protection against bots when you sign in, sign up or recover a password.</li>
+        <li><strong>Resend</strong> — sending account emails (sign-up confirmation, password recovery, receipts).</li>
         <li><strong>Vercel</strong> — website hosting.</li>
       </ul>
       <p style={P}>
@@ -152,6 +161,7 @@ export function PrivacyEN() {
         <li><strong>Orders and payments:</strong> 7 years, without your personal data, for tax and accounting obligations.</li>
         <li><strong>Security logs:</strong> 90 days.</li>
         <li><strong>Moderation reports:</strong> 1 year.</li>
+        <li><strong>Gifts</strong> you sent or received: kept without your identity.</li>
       </ul>
       <p style={P}>
         Guest ordering identifiers are kept for a limited period for security.

@@ -64,8 +64,15 @@ export function PrivacyES() {
       <ul style={UL}>
         <li>
           <em>Cuenta:</em> correo, contraseña (guardada cifrada por nuestro proveedor de autenticación),
-          nombre, usuario, foto de perfil, biografía, idioma y ajustes. Si inicias sesión con Apple o Google,
-          recibimos el nombre y correo que esos servicios comparten.
+          nombre, usuario, foto de perfil, biografía, idioma y ajustes, y el <strong>año de nacimiento</strong> que
+          nos das para confirmar que tienes 18 años o más (solo guardamos el año). Si inicias sesión con Apple o
+          Google, recibimos el nombre y correo que esos servicios comparten.
+        </li>
+        <li>
+          <em>Perfil de Match (opcional):</em> si usas Match, tu sexo (mujer, hombre o no binario), a quién quieres
+          conocer (mujeres, hombres o todos), tus intereses y tus fotos. Es información sensible: se usa solo para
+          mostrarte personas que encajan y mostrarte a ellas. Tus likes, matches y chats de Match se borran
+          cuando sales del local (salvo con quienes te siguen mutuamente).
         </li>
         <li>
           <em>Ubicación precisa, solo mientras usas la app:</em> para mostrarte lugares cercanos, permitirte
@@ -96,7 +103,7 @@ export function PrivacyES() {
         </li>
         <li>
           <em>Datos del dispositivo y diagnóstico:</em> tipo de dispositivo, sistema operativo, versión de
-          la app, token de notificaciones push, registros de errores.
+          la app, token de notificaciones push, registros de errores (vinculados solo a tu id de cuenta, nunca a tu nombre, correo ni IP).
         </li>
         <li>
           <em>Datos de seguridad:</em> reportes que envías, usuarios que bloqueas, acciones de moderación de
@@ -124,8 +131,9 @@ export function PrivacyES() {
         <li><strong>Google Cloud Vision</strong> — revisión de seguridad de las fotos que envías en Match y en mensajes directos: los bytes de la foto se envían a Google para detectar contenido que incumple nuestras reglas.</li>
         <li><strong>Google Maps</strong> y <strong>Firebase Cloud Messaging</strong> (Google) — mapas en Android y notificaciones push. <strong>Apple</strong> — notificaciones push y Apple Maps en iOS.</li>
         <li><strong>Expo</strong> — notificaciones push (el título y el texto de una notificación pasan por el servicio push de Expo antes de llegar a tu teléfono) y compilación y actualizaciones de la app.</li>
-        <li><strong>Sentry</strong> — diagnósticos técnicos (informes de errores y cierres inesperados) sin datos personales.</li>
+        <li><strong>Sentry</strong> — diagnósticos técnicos (informes de errores y cierres inesperados), vinculados solo a tu id de cuenta, sin tu nombre, correo ni dirección IP.</li>
         <li><strong>hCaptcha</strong> — protección contra bots al iniciar sesión, registrarte o recuperar la contraseña.</li>
+        <li><strong>Resend</strong> — envío de correos de la cuenta (confirmación de registro, recuperación de contraseña, recibos).</li>
         <li><strong>Vercel</strong> — alojamiento web.</li>
       </ul>
       <p style={P}>
@@ -154,6 +162,7 @@ export function PrivacyES() {
         <li><strong>Pedidos y pagos:</strong> 7 años, sin tus datos personales, por obligaciones fiscales y contables.</li>
         <li><strong>Registros de seguridad:</strong> 90 días.</li>
         <li><strong>Reportes de moderación:</strong> 1 año.</li>
+        <li><strong>Regalos</strong> que enviaste o recibiste: se conservan sin tu identidad.</li>
       </ul>
       <p style={P}>
         Los identificadores de pedidos de invitados se conservan un tiempo limitado por seguridad.
