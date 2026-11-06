@@ -300,3 +300,40 @@ test('B8: label/value rows never cut the label in half', () => {
     assert.doesNotMatch(read(f), /(rowLabel|listLabel|fieldLabel)\w*: \{[^}]*flexBasis: 0/, f);
   }
 });
+
+// ── B9: the leftovers (Ajustes headers, preview card, map, bell badge, radius picker, interests row) ───────────────────
+test('B9: Ajustes section header uses the label role, the title the headline role, the icon box grows (minHeight)', () => {
+  const src = read('screens/settings/SettingsScreen.tsx');
+  assert.match(src, /sectionHeader: \{\s*\.\.\.typeStyle\('label'\)/);
+  assert.match(src, /headerTitle: \{[^}]*typeStyle\('headline'\)/);
+  assert.match(src, /rowIcon: \{\s*minWidth: ICON_BOX,\s*minHeight: ICON_BOX/);
+});
+
+test('B9: the bell badge is anchored to the bell right edge (never covers the bell) and the radius picker splits 5 options 3 + 2', () => {
+  const bar = read('components/chat/ChatTopBar.tsx');
+  assert.match(bar, /badge: \{\s*position: 'absolute',\s*top: 2,\s*left: 22,/);
+  assert.doesNotMatch(bar.match(/badge: \{[^}]*\}/s)[0], /right:/);
+  const set = read('screens/settings/SettingsScreen.tsx');
+  assert.match(set, /options\.length >= 5 && fontScale >= 1\.3/);
+  assert.match(set, /Math\.ceil\(options\.length \/ 2\)/);
+  assert.match(set, /balancedBasis \? \{ flexBasis: balancedBasis \} : null/);
+});
+
+test('B9: an interest chip never splits a word (the chip is at most the row wide and its text shrinks and wraps at words)', () => {
+  const src = read('screens/match/MatchMyProfileScreen.tsx');
+  assert.match(src, /interestChip: \{ maxWidth: '100%'/);
+  assert.match(src, /interestChipText: \{[^}]*flexShrink: 1/);
+});
+
+test('B9: the preview card and the map text come from typography roles (no loose sizes) with their caps', () => {
+  const card = read('components/map/BusinessPreviewCard.tsx');
+  const map = read('screens/map/MapScreen.tsx');
+  for (const name of ['addressText', 'moreLabel', 'liveCount', 'roomChipText', 'hoursGridDay', 'hoursGridTime', 'dayCircleLabel']) {
+    assert.match(card, new RegExp(`typeCap\\('caption'\\)\\}[^>]*styles\\.${name}|${name}: \\{[^}]*typeStyle\\('caption'\\)`, 's'), name);
+  }
+  assert.match(card, /businessName: \{[^}]*typeStyle\('title'\)/s);
+  assert.match(card, /descriptionText: \{[^}]*typeStyle\('compact'\)/s);
+  assert.match(card, /dayCircle: \{\s*minWidth: 26,\s*minHeight: 26/);
+  assert.match(map, /deniedBannerText: \{[^}]*typeStyle\('caption'\)/);
+  assert.match(map, /prePermissionTitle: \{ \.\.\.typeStyle\('headline'\)/);
+});

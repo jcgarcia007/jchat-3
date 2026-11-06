@@ -381,10 +381,11 @@ const topBarStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Anchored to the bell's right edge and growing to the right, so a wide "9+" at big text never covers the bell.
   badge: {
     position: 'absolute',
-    top: 3,
-    right: 0,
+    top: 2,
+    left: 22,
     minWidth: 18,
     minHeight: 18,
     borderRadius: 9,

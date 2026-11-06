@@ -32,6 +32,7 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -136,7 +137,7 @@ function SectionDivider() {
 function SectionHeader({ label }: { label: string }) {
   const c = useThemeColors();
   return (
-    <Text style={[styles.sectionHeader, { color: c.textTertiary }]}>{label}</Text>
+    <Text maxFontSizeMultiplier={typeCap('label')} style={[styles.sectionHeader, { color: c.textTertiary }]}>{label}</Text>
   );
 }
 
@@ -212,6 +213,9 @@ function SegmentedPicker<T extends string>({
   testIDPrefix?: string;
 }) {
   const c = useThemeColors();
+  const { fontScale } = useWindowDimensions();
+  // With 5+ options and big text the row wraps: split it in two balanced rows (3 + 2) instead of 4 + 1.
+  const balancedBasis = options.length >= 5 && fontScale >= 1.3 ? (`${Math.floor(100 / Math.ceil(options.length / 2)) - 2}%` as `${number}%`) : undefined;
   return (
     <View style={[styles.segmented, { backgroundColor: c.bgElevated, borderColor: c.borderSubtle }]}>
       {options.map((opt) => {
@@ -223,6 +227,7 @@ function SegmentedPicker<T extends string>({
             onPress={() => onChange(opt)}
             style={[
               styles.segmentedOption,
+              balancedBasis ? { flexBasis: balancedBasis } : null,
               active && { backgroundColor: c.bgSurface, borderRadius: 8 },
             ]}
             accessibilityRole="button"
@@ -529,7 +534,7 @@ export default function SettingsScreen() {
         >
           <IconChevronLeft size={24} color={c.brandText} strokeWidth={2} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: c.textPrimary }]}>{t('main.title')}</Text>
+        <Text maxFontSizeMultiplier={typeCap('headline')} style={[styles.headerTitle, { color: c.textPrimary }]}>{t('main.title')}</Text>
       </View>
 
       <ScrollView
@@ -950,7 +955,7 @@ const styles = StyleSheet.create({
 
   headerTitle: {
     flex: 1,
-    fontSize: 18,
+    ...typeStyle('headline'),
     fontWeight: '600',
   },
 
@@ -961,10 +966,8 @@ const styles = StyleSheet.create({
 
   // ── Section header ─────────────────────────────────────────────────────────
   sectionHeader: {
-    fontSize: 12,
+    ...typeStyle('label'),
     fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
     minHeight: SECTION_HEADER_H,
     paddingTop: 8,
     paddingBottom: 4,
@@ -988,8 +991,8 @@ const styles = StyleSheet.create({
   },
 
   rowIcon: {
-    width: ICON_BOX,
-    height: ICON_BOX,
+    minWidth: ICON_BOX,
+    minHeight: ICON_BOX,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,

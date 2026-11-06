@@ -287,11 +287,11 @@ export default function BusinessPreviewCard({
                   onError={() => setLogoFailed(true)}
                 />
               ) : (
-                <Text style={styles.logoInitials}>{initials(business.name)}</Text>
+                <Text maxFontSizeMultiplier={typeCap('headline')} style={styles.logoInitials}>{initials(business.name)}</Text>
               )}
             </View>
             <View style={styles.coverText}>
-              <Text style={styles.businessName} numberOfLines={2}>{business.name}</Text>
+              <Text maxFontSizeMultiplier={typeCap('title')} style={styles.businessName} numberOfLines={2}>{business.name}</Text>
               <View style={styles.metaRow}>
                 <View style={styles.categoryChip}>
                   <CategoryIcon size={13} color={palette.onImage} strokeWidth={2} />
@@ -343,7 +343,7 @@ export default function BusinessPreviewCard({
           {status === 'closed' ? (
             <View style={styles.closedNote} accessible accessibilityRole="text" accessibilityLabel={t('businessPreviewCard.closedNowA11y')}>
               <IconClock size={14} color={c.warningText} strokeWidth={2} />
-              <Text style={[styles.closedNoteText, { color: c.warningText }]}>{t('businessPreviewCard.closedNow')}</Text>
+              <Text maxFontSizeMultiplier={typeCap('caption')} style={[styles.closedNoteText, { color: c.warningText }]}>{t('businessPreviewCard.closedNow')}</Text>
             </View>
           ) : null}
 
@@ -391,7 +391,7 @@ export default function BusinessPreviewCard({
         {business.address ? (
           <View style={styles.addressRow}>
             <IconMapPin size={14} color={palette.brand} style={styles.addressIcon} />
-            <Text style={[styles.addressText, { color: c.textSecondary }]} numberOfLines={2}>
+            <Text maxFontSizeMultiplier={typeCap('caption')} style={[styles.addressText, { color: c.textSecondary }]} numberOfLines={2}>
               {business.address}
             </Text>
           </View>
@@ -400,14 +400,14 @@ export default function BusinessPreviewCard({
         {/* ── Description: 3 lines + show more ─────────────────────────────────────── */}
         {description ? (
           <View style={styles.descriptionBlock}>
-            <Text
+            <Text maxFontSizeMultiplier={typeCap('compact')}
               style={[styles.descriptionText, { color: c.textPrimary }]}
               numberOfLines={descriptionExpanded ? undefined : DESCRIPTION_LINES}
             >
               {description}
             </Text>
             {/* Invisible copy without a line limit: tells how many lines the text needs on any platform. */}
-            <Text
+            <Text maxFontSizeMultiplier={typeCap('compact')}
               style={[styles.descriptionText, styles.descriptionMeasure]}
               onTextLayout={(e) => setDescriptionLines(e.nativeEvent.lines.length)}
               accessibilityElementsHidden
@@ -423,7 +423,7 @@ export default function BusinessPreviewCard({
                 accessibilityRole="button"
                 accessibilityLabel={descriptionExpanded ? t('businessPreviewCard.descriptionLess') : t('businessPreviewCard.descriptionMore')}
               >
-                <Text style={[styles.moreLabel, { color: c.brandText }]}>
+                <Text maxFontSizeMultiplier={typeCap('caption')} style={[styles.moreLabel, { color: c.brandText }]}>
                   {descriptionExpanded ? t('businessPreviewCard.descriptionLess') : t('businessPreviewCard.descriptionMore')}
                 </Text>
               </Pressable>
@@ -449,7 +449,7 @@ export default function BusinessPreviewCard({
             ))}
             {extraCount > 0 && (
               <View style={[styles.galleryThumb, styles.galleryCounter, { backgroundColor: c.bgElevated }]}>
-                <Text style={[styles.galleryCounterText, { color: c.textPrimary }]}>
+                <Text maxFontSizeMultiplier={typeCap('caption')} style={[styles.galleryCounterText, { color: c.textPrimary }]}>
                   +{extraCount}
                 </Text>
               </View>
@@ -464,7 +464,7 @@ export default function BusinessPreviewCard({
             {(business.active_count ?? 0) > 0 && (
               <View style={styles.liveLeft}>
                 <View style={[styles.liveDot, { backgroundColor: CARD_COLORS.openGreen }]} />
-                <Text style={[styles.liveCount, { color: c.textSecondary }]}>
+                <Text maxFontSizeMultiplier={typeCap('caption')} style={[styles.liveCount, { color: c.textSecondary }]}>
                   {t('businessPreviewCard.activeCount', { count: business.active_count ?? 0 })}
                 </Text>
               </View>
@@ -490,7 +490,7 @@ export default function BusinessPreviewCard({
                       },
                     ]}
                   >
-                    <Text
+                    <Text maxFontSizeMultiplier={typeCap('caption')}
                       style={[
                         styles.roomChipText,
                         { color: room.accentColor ?? c.textSecondary },
@@ -515,7 +515,7 @@ export default function BusinessPreviewCard({
               accessibilityState={{ expanded: hoursOpen }}
               accessibilityLabel={t('businessPreviewCard.hoursToggleA11y')}
             >
-              <Text style={[styles.hoursToggleLabel, { color: c.textPrimary }]}>{t('businessPreviewCard.hoursToggle')}</Text>
+              <Text maxFontSizeMultiplier={typeCap('compact')} style={[styles.hoursToggleLabel, { color: c.textPrimary }]}>{t('businessPreviewCard.hoursToggle')}</Text>
               {hoursOpen ? (
                 <IconChevronUp size={18} color={c.textSecondary} />
               ) : (
@@ -542,7 +542,7 @@ export default function BusinessPreviewCard({
                           },
                         ]}
                       >
-                        <Text style={[styles.dayCircleLabel, { color: isToday ? palette.onBrand : c.textSecondary }]}>
+                        <Text maxFontSizeMultiplier={typeCap('caption')} style={[styles.dayCircleLabel, { color: isToday ? palette.onBrand : c.textSecondary }]}>
                           {dayLabels[idx].charAt(0)}
                         </Text>
                       </View>
@@ -554,7 +554,7 @@ export default function BusinessPreviewCard({
                 <View style={styles.hoursGrid}>
                   {hoursEntries.map(({ label, dayKey, hours: dayH, isToday }) => (
                     <View key={dayKey} style={styles.hoursGridItem}>
-                      <Text
+                      <Text maxFontSizeMultiplier={typeCap('caption')}
                         style={[
                           styles.hoursGridDay,
                           { color: isToday ? CARD_COLORS.openGreen : c.textSecondary, fontWeight: isToday ? '700' : '400' },
@@ -562,7 +562,7 @@ export default function BusinessPreviewCard({
                       >
                         {label}
                       </Text>
-                      <Text
+                      <Text maxFontSizeMultiplier={typeCap('caption')}
                         style={[
                           styles.hoursGridTime,
                           { color: isToday ? CARD_COLORS.openGreen : c.textTertiary, fontWeight: isToday ? '600' : '400' },
@@ -694,9 +694,8 @@ const styles = StyleSheet.create({
   },
   logoInitials: {
     color: palette.onBrand,
-    fontSize: 22,
+    ...typeStyle('headline'),
     fontWeight: '800',
-    letterSpacing: 0.3,
   },
   coverText: {
     flex: 1,
@@ -704,9 +703,8 @@ const styles = StyleSheet.create({
   },
   businessName: {
     color: palette.onImage,
-    fontSize: 24,
+    ...typeStyle('title'),
     fontWeight: '800',
-    letterSpacing: -0.4,
   },
   metaRow: {
     flexDirection: 'row',
@@ -782,7 +780,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
   },
   closedNoteText: {
-    fontSize: 13,
+    ...typeStyle('caption'),
     fontWeight: '600',
     flexShrink: 1,
   },
@@ -847,8 +845,7 @@ const styles = StyleSheet.create({
   },
   addressText: {
     flex: 1,
-    fontSize: 12,
-    lineHeight: 17,
+    ...typeStyle('caption'),
   },
 
   // Description
@@ -857,8 +854,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   descriptionText: {
-    fontSize: 14,
-    lineHeight: 20,
+    ...typeStyle('compact'),
   },
   descriptionMeasure: {
     position: 'absolute',
@@ -874,7 +870,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   moreLabel: {
-    fontSize: 13,
+    ...typeStyle('caption'),
     fontWeight: '700',
   },
 
@@ -894,7 +890,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   galleryCounterText: {
-    fontSize: 13,
+    ...typeStyle('caption'),
     fontWeight: '700',
   },
 
@@ -919,7 +915,7 @@ const styles = StyleSheet.create({
     borderRadius: 3.5,
   },
   liveCount: {
-    fontSize: 11,
+    ...typeStyle('caption'),
     fontWeight: '500',
   },
   roomChipsRow: {
@@ -934,9 +930,8 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
   },
   roomChipText: {
-    fontSize: 8,
+    ...typeStyle('caption'),
     fontWeight: '600',
-    letterSpacing: 0.1,
   },
 
   // Hours (folded)
@@ -951,7 +946,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   hoursToggleLabel: {
-    fontSize: 14,
+    ...typeStyle('compact'),
     fontWeight: '600',
   },
   hoursBody: {
@@ -963,14 +958,14 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   dayCircle: {
-    width: 26,
-    height: 26,
+    minWidth: 26,
+    minHeight: 26,
     borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
   },
   dayCircleLabel: {
-    fontSize: 10,
+    ...typeStyle('caption'),
     fontWeight: '600',
   },
   hoursGrid: {
@@ -987,11 +982,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   hoursGridDay: {
-    fontSize: 12,
-    width: 34,
+    ...typeStyle('caption'),
+    minWidth: 36,
   },
   hoursGridTime: {
-    fontSize: 11,
+    ...typeStyle('caption'),
     flex: 1,
   },
 

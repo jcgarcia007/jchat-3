@@ -107,7 +107,21 @@
         "btnMain",
         "btnMainLabel",
         "btnSecondary",
-        "btnSecondaryLabel"
+        "btnSecondaryLabel",
+        "roomChipText",
+        "galleryCounterText",
+        "hoursGridTime",
+        "closedNoteText",
+        "descriptionText",
+        "hoursGridDay",
+        "liveCount",
+        "addressText",
+        "hoursToggleLabel",
+        "dayCircle",
+        "logoInitials",
+        "moreLabel",
+        "dayCircleLabel",
+        "businessName"
       ]
     },
     {
@@ -133,7 +147,10 @@
         "rowLabel",
         "rowSublabel",
         "pickerPad",
-        "compoundRow"
+        "compoundRow",
+        "headerTitle",
+        "sectionHeader",
+        "rowIcon"
       ]
     },
     {
@@ -149,7 +166,12 @@
       "styles": [
         "styleSwitcher",
         "styleBtn",
-        "styleBtnLabel"
+        "styleBtnLabel",
+        "prePermissionTitle",
+        "loadingText",
+        "prePermissionBtnLabel",
+        "deniedBanner",
+        "deniedBannerText"
       ]
     }
   ]

@@ -449,15 +449,15 @@ export default function MapScreen() {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: c.bgBase, paddingHorizontal: 32 }]}>
         <IconMapPin size={40} color={c.brandText} strokeWidth={2} />
-        <Text accessibilityRole="header" style={[styles.prePermissionTitle, { color: c.textPrimary }]}>{t('mapScreen.prePermissionTitle')}</Text>
-        <Text style={[styles.loadingText, { color: c.textSecondary, textAlign: 'center' }]}>{t('mapScreen.prePermissionBody')}</Text>
+        <Text accessibilityRole="header" maxFontSizeMultiplier={typeCap('headline')} style={[styles.prePermissionTitle, { color: c.textPrimary }]}>{t('mapScreen.prePermissionTitle')}</Text>
+        <Text maxFontSizeMultiplier={typeCap('compact')} style={[styles.loadingText, { color: c.textSecondary, textAlign: 'center' }]}>{t('mapScreen.prePermissionBody')}</Text>
         <Pressable
           testID="map-pre-permission-continue"
           onPress={continuePrePermission}
           accessibilityRole="button"
           style={({ pressed }) => [styles.prePermissionBtn, { backgroundColor: c.brandFill, opacity: pressed ? 0.82 : 1 }]}
         >
-          <Text style={[styles.prePermissionBtnLabel, { color: palette.onBrand }]}>{t('mapScreen.prePermissionContinue')}</Text>
+          <Text maxFontSizeMultiplier={typeCap('button')} style={[styles.prePermissionBtnLabel, { color: palette.onBrand }]}>{t('mapScreen.prePermissionContinue')}</Text>
         </Pressable>
       </View>
     );
@@ -467,7 +467,7 @@ export default function MapScreen() {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: c.bgBase }]}>
         <Spinner size="large" color={palette.brand} />
-        <Text style={[styles.loadingText, { color: c.textSecondary }]}>{t('mapScreen.findingLocation')}</Text>
+        <Text maxFontSizeMultiplier={typeCap('compact')} style={[styles.loadingText, { color: c.textSecondary }]}>{t('mapScreen.findingLocation')}</Text>
       </View>
     );
   }
@@ -536,8 +536,8 @@ export default function MapScreen() {
             activeOpacity={0.8}
             accessibilityRole="button"
           >
-            <Text style={styles.deniedBannerText}>{t('mapScreen.locationDenied')}</Text>
-            <Text style={[styles.deniedBannerText, styles.bannerAction]}>{t('mapScreen.openSettings')}</Text>
+            <Text maxFontSizeMultiplier={typeCap('caption')} style={styles.deniedBannerText}>{t('mapScreen.locationDenied')}</Text>
+            <Text maxFontSizeMultiplier={typeCap('caption')} style={[styles.deniedBannerText, styles.bannerAction]}>{t('mapScreen.openSettings')}</Text>
           </TouchableOpacity>
         )}
         {locationState === 'unavailable' && (
@@ -547,7 +547,7 @@ export default function MapScreen() {
             activeOpacity={0.8}
             accessibilityRole="button"
           >
-            <Text style={styles.deniedBannerText}>{t('mapScreen.locationUnavailable')}</Text>
+            <Text maxFontSizeMultiplier={typeCap('caption')} style={styles.deniedBannerText}>{t('mapScreen.locationUnavailable')}</Text>
           </TouchableOpacity>
         )}
         {businessesError && (
@@ -557,8 +557,8 @@ export default function MapScreen() {
             activeOpacity={0.8}
             accessibilityRole="button"
           >
-            <Text style={styles.deniedBannerText}>{t('mapScreen.loadError')}</Text>
-            <Text style={[styles.deniedBannerText, styles.bannerAction]}>{t('mapScreen.retry')}</Text>
+            <Text maxFontSizeMultiplier={typeCap('caption')} style={styles.deniedBannerText}>{t('mapScreen.loadError')}</Text>
+            <Text maxFontSizeMultiplier={typeCap('caption')} style={[styles.deniedBannerText, styles.bannerAction]}>{t('mapScreen.retry')}</Text>
           </TouchableOpacity>
         )}
 
@@ -724,14 +724,14 @@ export default function MapScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  prePermissionTitle: { fontSize: 20, fontWeight: '700', textAlign: 'center' },
+  prePermissionTitle: { ...typeStyle('headline'), fontWeight: '700', textAlign: 'center' },
   prePermissionBtn: { alignSelf: 'stretch', minHeight: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, marginTop: 8 },
-  prePermissionBtnLabel: { fontSize: 16, fontWeight: '600' },
+  prePermissionBtnLabel: { ...typeStyle('button'), fontWeight: '600' },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  loadingText: { fontSize: 14 },
+  loadingText: { ...typeStyle('compact') },
   overlayContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  deniedBanner: { marginHorizontal: 16, marginTop: 8, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 14 },
-  deniedBannerText: { color: palette.bgSurfaceLight, fontSize: 13, fontWeight: '500', textAlign: 'center' },
+  deniedBanner: { marginHorizontal: 16, marginTop: 8, borderRadius: 10, paddingVertical: 12, paddingHorizontal: 16 },
+  deniedBannerText: { color: palette.bgSurfaceLight, ...typeStyle('caption'), fontWeight: '500', textAlign: 'center' },
   bannerAction: { fontWeight: '800', marginTop: 2, textDecorationLine: 'underline' },
   styleSwitcher: {
     position: 'absolute', right: 16, borderRadius: 12,
