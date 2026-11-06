@@ -522,7 +522,7 @@ export default function MatchMyProfileScreen() {
             {rows.map((row) => (
               <Pressable key={row.key} onPress={edit} accessibilityRole="button" accessibilityLabel={`${row.label}: ${row.value}`} style={[styles.listRow, { borderBottomColor: c.borderSubtle }]}>
                 <Text style={[styles.listLabel, { color: c.textPrimary }]}>{row.label}</Text>
-                <Text style={[styles.listValueText, styles.rowValue, { color: c.textSecondary }]} numberOfLines={1}>{row.value}</Text>
+                <Text style={[styles.listValueText, styles.rowValue, { color: c.textSecondary }]} numberOfLines={3}>{row.value}</Text>
               </Pressable>
             ))}
           </View>
@@ -787,10 +787,11 @@ const styles = StyleSheet.create({
   switchTexts: { flex: 1, gap: 2 },
   listCard: { borderWidth: 1, borderRadius: 14, overflow: 'hidden' },
   listRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 48, paddingHorizontal: 14, borderBottomWidth: StyleSheet.hairlineWidth },
-  listLabel: { fontSize: 15, flexShrink: 1 },
+  // The label keeps its width (a word is never cut in half) up to 55% of the row, then wraps at whole words; the value gives way.
+  listLabel: { fontSize: 15, flexShrink: 0, maxWidth: '55%' },
   listValue: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   listValueText: { fontSize: 14, fontWeight: '600' },
-  rowValue: { flexShrink: 1, textAlign: 'right' },
+  rowValue: { flexShrink: 1, flexGrow: 1, textAlign: 'right' },
   banner: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 14, padding: 14 },
   bannerText: { flex: 1, fontSize: 14, fontWeight: '700' },
   summaryRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },

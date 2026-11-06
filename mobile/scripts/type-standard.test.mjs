@@ -282,3 +282,21 @@ test('Spanish copy is sentence case: no textTransform capitalize, no Title Case 
     assert.ok(!all.includes(bad), `"${bad}" is Title Case`);
   }
 });
+
+// Label / value rows: the label is never squeezed below one word ("Interes / es" at the largest text size). It keeps its
+// width (up to 55% of the row, then it wraps at whole words) and the value is the one that wraps or gives way.
+test('B8: label/value rows never cut the label in half', () => {
+  const src = read('screens/match/MatchMyProfileScreen.tsx');
+  const label = src.match(/\n  listLabel: \{[^}]*\}/)[0];
+  assert.match(label, /flexShrink: 0/);
+  assert.match(label, /maxWidth: '55%'/);
+  assert.doesNotMatch(label, /flexShrink: 1/);
+  const value = src.match(/\n  rowValue: \{[^}]*\}/)[0];
+  assert.match(value, /flexShrink: 1/);
+  assert.match(src, /styles\.rowValue[^>]*numberOfLines=\{3\}/);
+  assert.doesNotMatch(src, /styles\.rowValue[^>]*numberOfLines=\{1\}/);
+  // No label/value row anywhere lets its label shrink to a sliver: a row label with flexShrink 1 next to a text value is the bug.
+  for (const f of ['screens/settings/SettingsScreen.tsx', 'screens/profile/EditProfileScreen.tsx']) {
+    assert.doesNotMatch(read(f), /(rowLabel|listLabel|fieldLabel)\w*: \{[^}]*flexBasis: 0/, f);
+  }
+});
