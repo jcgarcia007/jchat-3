@@ -387,7 +387,7 @@ export default function ProductDetailScreen() {
                     style={[styles.tag, { borderColor: c.borderSubtle, backgroundColor: c.bgElevated }]}
                   >
                     <Text style={[styles.tagText, { color: c.textSecondary }]}>
-                      {tag}
+                      {tag.charAt(0).toUpperCase() + tag.slice(1)}
                     </Text>
                   </View>
                 ))}
@@ -870,7 +870,6 @@ const styles = StyleSheet.create({
   tagText: {
     fontSize: 11,
     fontWeight: '500',
-    textTransform: 'capitalize',
   },
   idNotice: {
     marginTop: 10,

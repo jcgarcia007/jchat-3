@@ -171,8 +171,8 @@ for (const { file, styles } of targets.elements ?? []) {
 
 test('B7b: the tab labels and the chips cap their text with typeCap, not a loose number', () => {
   const tab = read('components/navigation/NotchTabBar.tsx');
-  // Bottom-bar labels barely grow (cap 1.2) and never shrink to fit: the five labels share one size.
-  assert.match(tab, /const TAB_LABEL_CAP = 1\.2;/);
+  // Bottom-bar labels do not grow (cap 1) and never shrink to fit: the five labels share one size.
+  assert.match(tab, /const TAB_LABEL_CAP = 1;/);
   assert.match(tab, /maxFontSizeMultiplier=\{TAB_LABEL_CAP\}/);
   assert.doesNotMatch(tab, /adjustsFontSizeToFit|minimumFontScale/);
   assert.doesNotMatch(tab, /maxFontSizeMultiplier=\{1\.\d+\}/);
@@ -237,4 +237,48 @@ test('B7b: amounts next to a label or button stay on one line and never shrink',
   assert.match(style('screens/checkout/CheckoutScreen.tsx', 'totalLabel'), /flexShrink: 1/);
   assert.match(style('screens/checkout/CheckoutScreen.tsx', 'totalLabelBold'), /flexShrink: 1/);
   assert.match(style('components/menu/ProductRow.tsx', 'fromLabel'), /flexShrink: 1/);
+});
+
+// A word is never cut in half ("Persona / lizada"): chips that share a row are as wide as their text (flexBasis auto,
+// they grow to fill and wrap to another row when they do not fit), never an equal share of 0 that can be narrower
+// than one word.
+test('B7b: chips and segmented options are content-sized, never an equal share that can split a word', () => {
+  const targets = JSON.parse(read('scripts/type-standard-targets.json'));
+  for (const { file } of targets.elements) {
+    assert.doesNotMatch(read(file), /flexBasis: 0\b/, `${file}: flexBasis 0 can split a word in a chip`);
+  }
+  assert.match(read('screens/checkout/CheckoutScreen.tsx'), /tipChip: \{[^}]*flexBasis: 'auto'[^}]*maxWidth: '100%'/);
+  assert.match(read('screens/settings/SettingsScreen.tsx'), /segmentedOption: \{[^}]*flexBasis: 'auto'[^}]*maxWidth: '100%'/);
+});
+
+// The custom-tip chip reads "Otra" / "Other"; the screen reader still says "Propina personalizada" / "Custom tip".
+test('B7b: the custom tip chip is short and keeps a full accessibility label', () => {
+  const es = JSON.parse(read('i18n/locales/es/pos.json')).checkout;
+  const en = JSON.parse(read('i18n/locales/en/pos.json')).checkout;
+  assert.equal(es.tipCustom, 'Otra');
+  assert.equal(en.tipCustom, 'Other');
+  assert.equal(es.tipCustomA11y, 'Propina personalizada');
+  assert.equal(en.tipCustomA11y, 'Custom tip');
+  assert.match(read('screens/checkout/CheckoutScreen.tsx'), /preset === 'custom' \? t\('checkout\.tipCustomA11y'\)/);
+});
+
+// The five bottom-bar labels fit without truncating; the Nearby screen keeps its own title.
+test('B7b: the Nearby tab label is "Cerca" / "Nearby" and the screen title is unchanged', () => {
+  const es = JSON.parse(read('i18n/locales/es/common.json'));
+  const en = JSON.parse(read('i18n/locales/en/common.json'));
+  assert.equal(es.tabs.nearby, 'Cerca');
+  assert.equal(en.tabs.nearby, 'Nearby');
+  for (const k of ['map', 'messages', 'offers', 'profile']) assert.ok(es.tabs[k].length <= 8, `es tab ${k} is short`);
+});
+
+// Spanish uses sentence case: no CSS capitalize on text that is already localized ("Recoger En Mostrador"), and the
+// document / step names are lowercase after the first word.
+test('Spanish copy is sentence case: no textTransform capitalize, no Title Case in the listed strings', () => {
+  for (const f of ['screens/checkout/CheckoutScreen.tsx', 'screens/menu/ProductDetailScreen.tsx']) {
+    assert.doesNotMatch(read(f), /textTransform: 'capitalize'/, f);
+  }
+  const all = ['auth', 'chat', 'match', 'settings'].map((n) => read(`i18n/locales/es/${n}.json`)).join('\n');
+  for (const bad of ['Términos del Servicio', 'Política de Privacidad', 'del Paso 1', 'al Paso 1', 'el Dueño', 'la Etapa 3', 'Modo Trabajo', 'la Política de privacidad']) {
+    assert.ok(!all.includes(bad), `"${bad}" is Title Case`);
+  }
 });

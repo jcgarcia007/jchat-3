@@ -1038,7 +1038,8 @@ const styles = StyleSheet.create({
 
   segmentedOption: {
     flexGrow: 1,
-    flexBasis: 0,
+    flexBasis: 'auto',
+    maxWidth: '100%',
     minWidth: 80,
     alignItems: 'center',
     justifyContent: 'center',

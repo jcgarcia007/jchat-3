@@ -111,8 +111,8 @@
     "deleteOwnerMessage": "Eres dueño de un negocio. Ciérralo o transfiérelo antes de eliminar tu cuenta."
   },
   "workMode": {
-    "title": "Modo Trabajo",
-    "row": "Modo Trabajo (POS)",
+    "title": "Modo trabajo",
+    "row": "Modo trabajo (POS)",
     "rowSub": "Acceder al terminal de punto de venta",
     "loading": "Cargando tus lugares de trabajo…",
     "empty": "Sin acceso POS asignado",

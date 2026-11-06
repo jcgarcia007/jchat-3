@@ -861,7 +861,7 @@ export default function CheckoutScreen() {
                     ]}
                     accessibilityRole="radio"
                     accessibilityState={{ checked: isSelected }}
-                    accessibilityLabel={tipPresetLabel(preset)}
+                    accessibilityLabel={preset === 'custom' ? t('checkout.tipCustomA11y') : tipPresetLabel(preset)}
                     aria-checked={isSelected}
                   >
                     <Text
@@ -1212,7 +1212,6 @@ const styles = StyleSheet.create({
   orderTypeBadgeText: {
     fontSize: 12,
     fontWeight: '600',
-    textTransform: 'capitalize',
   },
 
   // ── Tip ───────────────────────────────────────────────────────────────────────
@@ -1225,7 +1224,8 @@ const styles = StyleSheet.create({
   },
   tipChip: {
     flexGrow: 1,
-    flexBasis: 0,
+    flexBasis: 'auto',
+    maxWidth: '100%',
     minWidth: 72,
     minHeight: 48,
     alignItems: 'center',

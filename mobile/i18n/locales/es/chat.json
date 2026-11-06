@@ -129,7 +129,7 @@
     "expired": "Vencida",
     "orderNow": "Ordenar ahora",
     "shareOffer": "Compartir oferta",
-    "postedByOwner": "Publicado por el Dueño"
+    "postedByOwner": "Publicado por el dueño"
   },
   "service": {
     "callWaiter": "Llamar al mesero",
@@ -277,7 +277,7 @@
     "sectionDescription": "Descripción (opcional)",
     "descriptionPlaceholder": "Detalles extra, exclusiones o condiciones…",
     "sectionDuration": "Duración",
-    "customNote": "El selector de fecha personalizado llegará en la Etapa 3.",
+    "customNote": "El selector de fecha personalizado llegará en la etapa 3.",
     "sectionPostToRooms": "Publicar en salas",
     "postA11y": "Publicar oferta",
     "postButton": "Publicar oferta",

@@ -27,8 +27,9 @@ import { glassMetrics, useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { typeStyle } from '../../theme/typography';
 
-// Bottom-bar labels barely grow with the system text size (as in Apple's tab bars), so all five stay the same size.
-const TAB_LABEL_CAP = 1.2;
+// Bottom-bar labels do not grow with the system text size (as in Apple's tab bars): all five keep one size and fit a
+// tab (≈62 pt on the narrowest phone) without truncating. At 1.2 "Mensajes" no longer fit.
+const TAB_LABEL_CAP = 1;
 import ProfileTabAvatar from './ProfileTabAvatar';
 import { BAR_HEIGHT, BUTTON_SIZE, CENTER_Y, NOTCH_ROOM, barPath } from './notchGeometry';
 
@@ -264,8 +265,8 @@ const styles = StyleSheet.create({
     // avatar); clipping the pill to its own rounded shape makes both platforms identical.
     overflow: 'hidden',
     gap: 4,
-    maxWidth: '100%',
-    paddingHorizontal: 4,
+    width: '100%',
+    paddingHorizontal: 0,
     paddingVertical: 4,
   },
   // As tall as the profile avatar (30), so every pill and label lines up whatever the icon is.
@@ -274,7 +275,7 @@ const styles = StyleSheet.create({
     height: 30,
     justifyContent: 'center',
   },
-  // caption role, capped at TAB_LABEL_CAP (1.2): pill = 4 + 30 + 4 + label + 4 stays inside the 64 pt bar.
+  // caption role, capped at TAB_LABEL_CAP (1): pill = 4 + 30 + 4 + label + 4 stays inside the 64 pt bar.
   label: {
     ...typeStyle('caption'),
   },
