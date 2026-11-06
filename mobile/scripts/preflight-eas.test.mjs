@@ -5,7 +5,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
-import { BUILD_OUTPUT, diffTrees, nativePackages } from './preflight-eas.mjs';
+import { ACTIVE_RUNTIME, BUILD_OUTPUT, RUNTIMES, compareRuntime, diffTrees, nativePackages } from './preflight-eas.mjs';
 
 const tree = (spec) => {
   const root = mkdtempSync(join(tmpdir(), 'preflight-test-'));
@@ -67,4 +67,14 @@ test('only top-level registry packages with an android/ or ios/ folder are check
     }),
   });
   assert.deepEqual(nativePackages(root).map((p) => `${p.name}@${p.version}`), ['native-one@1.0.0', 'native-two@2.0.0']);
+});
+
+test('runtime: the active runtime is build 11 until Juan confirms build 12; compareRuntime flags any change', () => {
+  assert.equal(ACTIVE_RUNTIME, 'build11'); // switch to 'build12' only AFTER build 12 (see the comment in preflight-eas.mjs)
+  assert.deepEqual(compareRuntime(RUNTIMES.build11).ok, true);
+  const r = compareRuntime(RUNTIMES.build12);
+  assert.equal(r.ok, false);
+  assert.match(r.lines.join('\n'), /✖ ios/);
+  assert.deepEqual(compareRuntime(RUNTIMES.build12, RUNTIMES.build12).ok, true);
+  for (const b of Object.values(RUNTIMES)) for (const h of Object.values(b)) assert.match(h, /^[0-9a-f]{40}$/);
 });

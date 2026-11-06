@@ -48,7 +48,39 @@ export function diffTrees(pristine, installed) {
   return diffs;
 }
 
+/** Runtime versions (= `expo-updates fingerprint:generate`) of the builds that exist. An OTA only reaches a build whose runtime equals the one it was published for. */
+export const RUNTIMES = {
+  build11: { ios: '3760a588d7f43619b331660b4527b716db128d5a', android: '1237ce003f532b7083ac3b41a60c2d0cc4dabf35' }, // installed (build 11, 2026-10-29)
+  // Fase C (native changes: no audio background mode, no peripheral key, new permission texts, allowBackup false, fontScale configChanges,
+  // iOS image Xcode 26.6). Computed on fix/c-native-build; they MUST be the hashes in the EAS log of build 12 (recompute if app.config.ts,
+  // config-plugins, eas.json or a native dependency changes before the build).
+  build12: { ios: '04e88e9740e9a5811cc2e003033e99c0bdf0a25a', android: '6b8d88666a255a5cec8cfbbeb2e686fe0e7ea4a0' },
+};
+// ACTIVATE AFTER BUILD 12: when Juan confirms build 12 is the one in the stores (and its EAS log hashes equal `build12` above), change this to 'build12'.
+export const ACTIVE_RUNTIME = 'build11';
+
+/** { ok, lines } comparing the current fingerprints with the runtime an OTA is allowed to target. */
+export function compareRuntime(current, expected = RUNTIMES[ACTIVE_RUNTIME]) {
+  const lines = [];
+  let ok = true;
+  for (const platform of ['ios', 'android']) {
+    const same = current[platform] === expected[platform];
+    if (!same) ok = false;
+    lines.push(`${same ? '✔' : '✖'} ${platform}: ${current[platform]}${same ? '' : ` (expected ${expected[platform]})`}`);
+  }
+  return { ok, lines };
+}
+
+function currentRuntimes(root) {
+  const out = {};
+  for (const platform of ['ios', 'android']) {
+    out[platform] = JSON.parse(execFileSync('npx', ['expo-updates', 'fingerprint:generate', '--platform', platform], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })).hash;
+  }
+  return out;
+}
+
 function main() {
+  const forOta = process.argv.includes('--ota');
   const root = process.cwd();
   const work = mkdtempSync(join(tmpdir(), 'preflight-eas-'));
   const packages = nativePackages(root);
@@ -79,6 +111,17 @@ function main() {
   }
   if (ignored) console.log(`(${ignored} extra build-output files from local Gradle runs (build/, .gradle/, .cxx/): ignored by the fingerprint, harmless)`);
   console.log('✔ all native packages are identical to the registry: safe to run eas build');
+  // --ota: before `eas update`. The runtime of this code must be the one of the build that is installed (ACTIVE_RUNTIME); if it changed, something
+  // native entered and an OTA must NOT be published. Without --ota (before `eas build`) the runtime is only printed.
+  const current = currentRuntimes(root);
+  const { ok, lines } = compareRuntime(current);
+  console.log(`runtime (active: ${ACTIVE_RUNTIME}):`);
+  for (const l of lines) console.log(`  ${l}`);
+  if (!ok && forOta) {
+    console.log('\n✖ the runtime changed: native code entered. DO NOT publish an OTA from here; it needs a new build.');
+    process.exit(1);
+  }
+  if (!ok) console.log('  (differs from the active runtime: expected before a new build; `--ota` would fail)');
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) main();
