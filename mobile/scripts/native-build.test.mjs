@@ -122,3 +122,11 @@ test('C4 (B10-4): only the POS tree and terminalSdk.ts import services/terminalS
     assert.doesNotMatch(read(f), /from ['"][^'"]*\/terminalSdk['"]/, `${f} imports terminalSdk`);
   }
 });
+
+test('C5: the production iOS build is pinned to the EAS image for SDK 57 / Xcode 26.6 (iOS 26 SDK), never `latest` (Xcode 27)', () => {
+  const eas = JSON.parse(read('eas.json'));
+  assert.equal(eas.build.production.ios.image, 'macos-tahoe-26.5-xcode-26.6');
+  assert.equal(eas.build.production.autoIncrement, true);
+  assert.equal(eas.cli.appVersionSource, 'remote');
+  assert.equal(cfg.version, '1.0.0'); // the build number is EAS's (remote + autoIncrement)
+});

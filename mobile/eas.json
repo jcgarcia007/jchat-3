@@ -43,6 +43,9 @@
       "channel": "production",
       "env": {
         "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+      },
+      "ios": {
+        "image": "macos-tahoe-26.5-xcode-26.6"
       }
     }
   },
