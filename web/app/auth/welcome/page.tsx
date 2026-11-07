@@ -4,53 +4,74 @@
  * JChat 3.0 — Bienvenida post-registro.
  * Arregla el bucle: antes el registro empujaba a /dashboard y el gate de plan
  * rebotaba al usuario nuevo (regular) de vuelta a /auth/register?upgrade=1.
- * Aquí se le felicita y se le ofrece mejorar a Business/Pro.
+ * Dos caminos del mismo nivel: "Tengo un negocio" (planes) y "Quiero usar la app" (descarga).
  * Si YA tiene plan de negocio vigente, se salta esta pantalla y va al panel.
- * Bilingüe por `users.language` (elegido en el registro) hasta que exista i18n real.
+ * La zona de descarga cambia por CSS (hover/pointer), nunca por user agent: así no rompe la hidratación.
+ * Look: paleta de jchat.cloud (--land-*), igual que el registro. Textos: next-intl `authPages.welcome`.
  */
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { motion, useReducedMotion } from "framer-motion";
 import {
-  IconCircleCheck,
+  IconCheck,
   IconLoader2,
   IconBuildingStore,
+  IconDeviceMobile,
   IconArrowRight,
   IconMessageCircle2,
+  IconReceipt2,
+  IconBrandAppstore,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { APP_STORES_LIVE, DOWNLOAD_PATH } from "@/lib/appLinks";
+import { BUSINESS_PLANS_HREF } from "@/lib/plans";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import AuthSplitLayout from "@/components/auth/AuthSplitLayout";
+import { DownloadQr, StoreButtons } from "@/components/download/StoreButtons";
 
-type Lang = "es" | "en";
+const EASE = [0.16, 1, 0.3, 1] as const;
 
-const STRINGS: Record<Lang, Record<string, string>> = {
-  es: {
-    congrats: "¡Felicidades!",
-    created: "Has creado tu cuenta en JChat",
-    ready:
-      "Tu cuenta ya está lista. Puedes empezar a usar JChat desde la app móvil cuando quieras.",
-    bizTitle: "¿Tienes un negocio?",
-    bizBody:
-      "Con Business o Pro administras tu local desde el panel web: menú, mesas, pedidos y pagos.",
-    seePlans: "Ver planes Business y Pro",
-    later: "Ahora no, gracias",
-  },
-  en: {
-    congrats: "Congratulations!",
-    created: "Your JChat account is ready",
-    ready: "You can start using JChat from the mobile app whenever you like.",
-    bizTitle: "Do you run a business?",
-    bizBody:
-      "With Business or Pro you manage your venue from the web dashboard: menu, tables, orders and payments.",
-    seePlans: "See Business and Pro plans",
-    later: "Not now, thanks",
-  },
+// Teal más oscuro que --land-teal (#0EA5A0 da 2.85:1 sobre el fondo mint de la píldora; este da 5.14:1, AA).
+const PILL_TEAL = "#0F766E";
+
+const WELCOME_CSS = `
+  .wl-h1 { font-family: var(--font-grotesk), system-ui, sans-serif; font-size: 32px; font-weight: 700; letter-spacing: -.04em; line-height: 1.12; margin: 0 0 10px; }
+  .wl-gtext {
+    background: linear-gradient(135deg, var(--land-peach) 0%, var(--land-rose) 45%, var(--color-brand) 90%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  [data-brand="tabpos"] .auth-col .wl-gtext { background: none; -webkit-text-fill-color: currentColor; }
+  main.auth-col { align-items: flex-start; }
+  .auth-col > .wl-card { margin: auto; }
+  .wl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+  .wl-path { display: flex; flex-direction: column; transition: transform .2s ease; }
+  @media (hover: hover) and (pointer: fine) { .wl-path:hover { transform: translateY(-4px); } }
+  .wl-dl-touch { display: none; }
+  .wl-dl-pointer { display: block; }
+  @media (hover: none) and (pointer: coarse) {
+    .wl-dl-touch { display: block; }
+    .wl-dl-pointer { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { .wl-path { transition: none; } .wl-path:hover { transform: none; } }
+`;
+
+const pillBase: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  padding: "4px 12px",
+  borderRadius: 999,
+  fontSize: 12,
+  fontWeight: 700,
 };
 
 export default function WelcomePage() {
   const router = useRouter();
-  const [lang, setLang] = useState<Lang>("es");
+  const t = useTranslations("authPages.welcome");
+  const reduce = useReducedMotion();
   const [name, setName] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
 
@@ -70,12 +91,11 @@ export default function WelcomePage() {
       }
       const { data: profile } = await supabase
         .from("users")
-        .select("display_name, username, language, plan, plan_status, plan_trial_end")
+        .select("display_name, username, plan, plan_status, plan_trial_end")
         .eq("id", user.id)
         .single();
       if (cancelled) return;
 
-      if (profile?.language === "en") setLang("en");
       setName(profile?.display_name ?? profile?.username ?? null);
 
       // Misma regla que el gate del dashboard (D-69): una prueba vencida no cuenta.
@@ -101,8 +121,6 @@ export default function WelcomePage() {
     };
   }, [router]);
 
-  const t = STRINGS[lang];
-
   if (checking) {
     return (
       <AuthSplitLayout>
@@ -113,111 +131,258 @@ export default function WelcomePage() {
     );
   }
 
+  const firstName = name?.trim().split(/\s+/)[0] ?? "";
+  const stage = (delay: number) =>
+    reduce
+      ? {}
+      : {
+          initial: { opacity: 0, y: 16 },
+          animate: { opacity: 1, y: 0 },
+          transition: { duration: 0.7, ease: EASE, delay },
+        };
+
+  const bizFeatures = [
+    { text: t("bizF1"), color: "var(--land-peach)" },
+    { text: t("bizF2"), color: "var(--land-mint)" },
+    { text: t("bizF3"), color: "var(--land-sky)" },
+    { text: t("bizF4"), color: "var(--land-lavender)" },
+  ];
+  const appBenefits = [
+    { title: t("appB1Title"), body: t("appB1Body"), bg: "var(--land-tint-peach)" },
+    { title: t("appB2Title"), body: t("appB2Body"), bg: "var(--land-tint-mint)" },
+    { title: t("appB3Title"), body: t("appB3Body"), bg: "var(--land-tint-sky)" },
+    { title: t("appB4Title"), body: t("appB4Body"), bg: "rgb(var(--land-lavender-rgb) / .14)" },
+  ];
+
+  const pathCard: React.CSSProperties = {
+    background: "var(--land-glass)",
+    borderRadius: 22,
+    boxShadow: "var(--land-shadow)",
+    padding: 24,
+  };
+  const eyebrow: React.CSSProperties = {
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: ".1em",
+    color: "var(--land-sub)",
+    margin: "18px 0 4px",
+  };
+  const h2: React.CSSProperties = {
+    fontFamily: "var(--font-grotesk), system-ui, sans-serif",
+    fontSize: 22,
+    fontWeight: 700,
+    letterSpacing: "-.02em",
+    margin: "0 0 8px",
+  };
+  const bodyText: React.CSSProperties = { fontSize: 14, lineHeight: 1.55, color: "var(--land-sub)", margin: "0 0 16px" };
+  const iconBox = (bg: string, color: string): React.CSSProperties => ({
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    background: bg,
+    color,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+  });
+  const disabledBtn: React.CSSProperties = {
+    width: "100%",
+    minHeight: 52,
+    borderRadius: 14,
+    border: "none",
+    background: "var(--gray-200)",
+    color: "var(--land-sub)",
+    fontSize: 15,
+    fontWeight: 700,
+    cursor: "not-allowed",
+  };
+
   return (
     <AuthSplitLayout>
-    <div
-      style={{
-        width: "100%",
-        maxWidth: 420,
-        background: "var(--bg-surface)",
-        border: "1px solid var(--border-subtle)",
-        borderRadius: 16,
-        padding: 28,
-        boxShadow: "0 10px 30px var(--bg-overlay)",
-        textAlign: "center",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 22 }}>
-        <span
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 30,
-            height: 30,
-            borderRadius: 9,
-            background: "var(--color-brand)",
-            color: "var(--on-brand)",
-          }}
-        >
-          <IconMessageCircle2 size={17} />
-        </span>
-        <span style={{ fontSize: 15, fontWeight: 700 }}>JChat</span>
-      </div>
-
-      <IconCircleCheck size={52} stroke={1.4} style={{ color: "var(--color-success)" }} />
-
-      <h1 style={{ fontSize: 21, fontWeight: 700, margin: "12px 0 4px" }}>
-        {name ? `${t.congrats} ${name}` : t.congrats}
-      </h1>
-      <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", margin: "0 0 8px" }}>
-        {t.created}
-      </p>
-      <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "0 0 24px", lineHeight: 1.6 }}>
-        {t.ready}
-      </p>
-
       <div
-        style={{
-          border: "1px solid var(--border-subtle)",
-          borderRadius: 12,
-          background: "var(--bg-base)",
-          padding: 18,
-          textAlign: "left",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-          <IconBuildingStore size={18} style={{ color: "var(--color-brand)" }} />
-          <span style={{ fontSize: 14, fontWeight: 700 }}>{t.bizTitle}</span>
-        </div>
-        <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "0 0 14px", lineHeight: 1.6 }}>
-          {t.bizBody}
-        </p>
-        <button
-          onClick={() => router.push("/pricing")}
-          style={{
-            width: "100%",
-            padding: "11px 16px",
-            borderRadius: 10,
-            border: "none",
-            background: "var(--color-brand)",
-            color: "var(--on-brand)",
-            fontSize: 14,
-            fontWeight: 600,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-            cursor: "pointer",
-          }}
-        >
-          {t.seePlans}
-          <IconArrowRight size={17} />
-        </button>
-      </div>
-
-      <button
-        onClick={() => router.push("/")}
+        className="wl-card"
         style={{
           width: "100%",
-          marginTop: 14,
-          padding: "9px 16px",
-          borderRadius: 10,
-          border: "none",
-          background: "none",
-          color: "var(--text-secondary)",
-          fontSize: 13,
-          fontWeight: 600,
-          cursor: "pointer",
+          maxWidth: 760,
+          background: "var(--land-glass)",
+          border: "1px solid rgb(var(--ink-rgb) / .07)",
+          borderRadius: 24,
+          padding: 28,
+          boxShadow: "var(--land-shadow)",
         }}
       >
-        {t.later}
-      </button>
+        <style>{WELCOME_CSS}</style>
 
-      <div style={{ marginTop: 14 }}>
-        <LanguageSwitcher />
+        <motion.div
+          {...stage(0)}
+          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22 }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 32,
+                height: 32,
+                borderRadius: 10,
+                background: "linear-gradient(135deg, var(--land-peach), var(--land-peach-dark))",
+                color: "var(--on-brand)",
+              }}
+            >
+              <IconMessageCircle2 className="brand-jchat" size={18} aria-hidden />
+              <IconReceipt2 className="brand-tabpos" size={18} aria-hidden />
+            </span>
+            <span style={{ fontSize: 17, fontWeight: 800, letterSpacing: "-.02em" }}>
+              <span className="brand-jchat">JChat</span>
+              <span className="brand-tabpos">Tab POS</span>
+            </span>
+          </div>
+          <LanguageSwitcher variant="pills" />
+        </motion.div>
+
+        <motion.div {...stage(0.08)}>
+          <span style={{ ...pillBase, background: "rgb(var(--land-mint-rgb) / .14)", color: PILL_TEAL, marginBottom: 14 }}>
+            <IconCheck size={14} aria-hidden />
+            {t("created")}
+          </span>
+          <h1 className="wl-h1">
+            {firstName ? t("titleNamed", { name: firstName }) : t("titleAnon")}
+            <br />
+            <span className="wl-gtext">{t("titleLine2")}</span>
+          </h1>
+          <p style={{ ...bodyText, fontSize: 15, margin: "0 0 24px" }}>{t("subtitle")}</p>
+        </motion.div>
+
+        <motion.div {...stage(0.16)} className="wl-grid">
+          {/* Tarjeta A — negocio */}
+          <section className="wl-path" style={{ ...pathCard, border: "1px solid var(--land-border-v)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <span style={iconBox("var(--land-peach-glow)", "var(--land-peach)")}>
+                <IconBuildingStore size={26} aria-hidden />
+              </span>
+              <span style={{ ...pillBase, background: "var(--land-tint-peach)", color: "var(--land-peach)" }}>{t("bizBadge")}</span>
+            </div>
+            <p style={eyebrow}>{t("bizEyebrow")}</p>
+            <h2 style={h2}>{t("bizTitle")}</h2>
+            <p style={bodyText}>{t("bizBody")}</p>
+            <ul style={{ listStyle: "none", margin: "0 0 20px", padding: 0, display: "grid", gap: 10, flex: 1, alignContent: "start" }}>
+              {bizFeatures.map((item) => (
+                <li key={item.text} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: item.color, flexShrink: 0 }} />
+                  {item.text}
+                </li>
+              ))}
+            </ul>
+            <Link
+              href={BUSINESS_PLANS_HREF}
+              style={{
+                minHeight: 52,
+                borderRadius: 14,
+                background: "var(--land-peach)",
+                color: "var(--on-brand)",
+                boxShadow: "0 6px 24px var(--land-peach-glow)",
+                fontFamily: "var(--font-grotesk)",
+                fontSize: 15,
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                textDecoration: "none",
+              }}
+            >
+              {t("bizCta")}
+              <IconArrowRight size={18} aria-hidden />
+            </Link>
+            <p style={{ fontSize: 12, color: "var(--land-sub)", textAlign: "center", margin: "10px 0 0" }}>{t("bizFoot")}</p>
+          </section>
+
+          {/* Tarjeta B — app */}
+          <section className="wl-path" style={{ ...pathCard, border: "1px solid var(--land-border-c)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <span style={iconBox("var(--land-sky-glow)", "var(--land-blue)")}>
+                <IconDeviceMobile size={26} aria-hidden />
+              </span>
+              <span style={{ ...pillBase, background: "var(--land-tint-sky)", color: "var(--land-sub)" }}>{t("appBadge")}</span>
+            </div>
+            <p style={eyebrow}>{t("appEyebrow")}</p>
+            <h2 style={h2}>{t("appTitle")}</h2>
+            <p style={bodyText}>{t("appBody")}</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 20, flex: 1, alignContent: "start" }}>
+              {appBenefits.map((item) => (
+                <div key={item.title} style={{ background: item.bg, borderRadius: 14, padding: "12px 12px" }}>
+                  <div style={{ fontSize: 13, fontWeight: 700 }}>{item.title}</div>
+                  <div style={{ fontSize: 12, color: "var(--land-sub)", marginTop: 2 }}>{item.body}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Celular / tablet */}
+            <div className="wl-dl-touch">
+              {APP_STORES_LIVE ? (
+                <Link
+                  href={DOWNLOAD_PATH}
+                  style={{
+                    minHeight: 52,
+                    borderRadius: 14,
+                    background: "var(--gray-900)",
+                    color: "var(--on-brand)",
+                    fontSize: 15,
+                    fontWeight: 700,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    textDecoration: "none",
+                  }}
+                >
+                  <IconBrandAppstore size={18} aria-hidden />
+                  {t("appDownload")}
+                </Link>
+              ) : (
+                <button type="button" disabled style={disabledBtn}>
+                  {t("appDownload")}
+                </button>
+              )}
+              <p style={{ fontSize: 12, color: "var(--land-sub)", textAlign: "center", margin: "10px 0 0" }}>
+                {APP_STORES_LIVE ? t("appDownloadHint") : t("comingSoon")}
+              </p>
+            </div>
+
+            {/* Computadora */}
+            <div className="wl-dl-pointer">
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <DownloadQr size={112} />
+                <div style={{ display: "grid", gap: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>{t("appScan")}</span>
+                  <StoreButtons />
+                </div>
+              </div>
+              {!APP_STORES_LIVE && (
+                <p style={{ fontSize: 12, color: "var(--land-sub)", margin: "10px 0 0" }}>{t("comingSoon")}</p>
+              )}
+            </div>
+          </section>
+        </motion.div>
+
+        <motion.div {...stage(0.24)} style={{ textAlign: "center", marginTop: 18 }}>
+          <Link
+            href="/"
+            style={{
+              minHeight: 44,
+              display: "inline-flex",
+              alignItems: "center",
+              padding: "0 16px",
+              color: "var(--land-sub)",
+              fontSize: 14,
+              fontWeight: 600,
+            }}
+          >
+            {t("later")}
+          </Link>
+        </motion.div>
       </div>
-    </div>
     </AuthSplitLayout>
   );
 }

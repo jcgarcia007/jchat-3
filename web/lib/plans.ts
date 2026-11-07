@@ -72,3 +72,6 @@ export const SOCIAL_PLANS: SocialPlan[] = [
   { id: "verified",   priceLabel: "$0.99 / mes",  cta: "soon" },
   { id: "pro_social", priceLabel: "$4.99 / mes",  cta: "soon" },
 ];
+
+/** Destino de "Ver planes para negocios" (bienvenida). El spec 3 lo cambiará a la página nueva de planes de negocio. */
+export const BUSINESS_PLANS_HREF = "/pricing";

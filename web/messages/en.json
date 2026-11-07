@@ -3581,7 +3581,23 @@
     "flow_state_expired": "The sign-in attempt expired. Please try again.",
     "request_timeout": "The request took too long. Please try again."
   },
+  "download": {
+    "title": "Get JChat",
+    "body": "See which venues nearby have people right now, get alerts when someone replies, and jump into each place's chat.",
+    "opening": "Opening the store…",
+    "openManually": "If it doesn't open, tap here.",
+    "soonTitle": "Coming soon to the App Store and Google Play.",
+    "useWeb": "Meanwhile, use JChat on the web →",
+    "b1": "Live venues on the map, right now",
+    "b2": "Phone alerts when someone replies",
+    "b3": "Offers near you",
+    "b4": "Games at the venue: Match and Truth or Dare"
+  },
   "meta": {
+    "download": {
+      "title": "Download JChat",
+      "description": "Get the JChat app to see which venues have people right now and join their chat."
+    },
     "home": {
       "title": "JChat — Chat, order and pay where you are",
       "description": "Join location-based chat rooms at your favorite venues, order from your table and pay in the app."
@@ -3699,6 +3715,43 @@
     "customSubject": "JChat Custom plan"
   },
   "authPages": {
+    "welcome": {
+      "created": "Account created",
+      "titleNamed": "All set, {name}.",
+      "titleAnon": "All set.",
+      "titleLine2": "Where do you want to start?",
+      "subtitle": "Your JChat account is live. Pick a path; you can always do the other one later.",
+      "bizEyebrow": "JCHAT FOR BUSINESS",
+      "bizBadge": "30 days free",
+      "bizTitle": "I have a business",
+      "bizBody": "Put your bar or restaurant on the JChat map and sell right from the guest's table.",
+      "bizF1": "Digital menu and a QR for every table",
+      "bizF2": "Orders and payments from the table",
+      "bizF3": "A chat for your venue and its guests",
+      "bizF4": "Web dashboard with sales, tables and bookings",
+      "bizCta": "See business plans",
+      "bizFoot": "From $49/month · Cancel anytime",
+      "appEyebrow": "THE JCHAT APP",
+      "appBadge": "Free",
+      "appTitle": "I want to use the app",
+      "appBody": "Your same account works in the app, with all of this:",
+      "appB1Title": "Live venues",
+      "appB1Body": "On the map, right now",
+      "appB2Title": "Phone alerts",
+      "appB2Body": "When someone replies",
+      "appB3Title": "Offers nearby",
+      "appB3Body": "All around you",
+      "appB4Title": "Games at the venue",
+      "appB4Body": "Match and Truth or Dare",
+      "appDownload": "Get JChat",
+      "appDownloadHint": "Opens the App Store on iPhone or Google Play on Android.",
+      "appScan": "Scan it with your phone",
+      "appStore": "App Store",
+      "playStore": "Google Play",
+      "comingSoon": "Coming soon to the App Store and Google Play",
+      "qrAlt": "QR code to download JChat",
+      "later": "Not now, go to my profile"
+    },
     "login": {
       "brandSubtitle": "Business dashboard",
       "brandSubtitlePos": "Point of sale",
