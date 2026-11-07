@@ -51,6 +51,7 @@ function ForgotPasswordForm() {
   useEffect(() => {
     try {
       const saved = sessionStorage.getItem(RECOVERY_EMAIL_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reads sessionStorage, which only exists in the browser, once on mount
       if (saved) setEmail(saved);
     } catch { /* storage blocked: the form still works */ }
     setWait(cooldownRemaining(readSentAt(), Date.now()));

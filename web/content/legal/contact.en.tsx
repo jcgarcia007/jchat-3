@@ -11,7 +11,7 @@ export function ContactEN() {
   return (
     <>
       <h1 style={H1}>Contact</h1>
-      <p style={DATE}>Last updated: October 8, 2026</p>
+      <p style={DATE}>Last updated: November 7, 2026</p>
 
       <h2 style={H2}>Safety and abuse reports</h2>
       <p style={P}><a href="mailto:safety@jchat.cloud" style={LINK}>safety@jchat.cloud</a> — we review every report within 24 hours. See <a href="/safety" style={LINK}>Safety &amp; Community Standards</a>.</p>

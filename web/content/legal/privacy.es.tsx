@@ -12,7 +12,7 @@ export function PrivacyES() {
         Política de privacidad
       </h1>
       <p style={{ color: "var(--gray-500)", fontSize: "14px", marginTop: "0", marginBottom: "32px" }}>
-        Última actualización: 6 de noviembre de 2026
+        Última actualización: 7 de noviembre de 2026
       </p>
 
       <p style={P}>
@@ -133,6 +133,7 @@ export function PrivacyES() {
         <li><strong>Expo</strong> — notificaciones push (el título y el texto de una notificación pasan por el servicio push de Expo antes de llegar a tu teléfono) y compilación y actualizaciones de la app.</li>
         <li><strong>Sentry</strong> — diagnósticos técnicos (informes de errores y cierres inesperados), vinculados solo a tu id de cuenta, sin tu nombre, correo ni dirección IP.</li>
         <li><strong>hCaptcha</strong> — protección contra bots al iniciar sesión, registrarte o recuperar la contraseña.</li>
+        <li><strong>Have I Been Pwned</strong> — al crear tu cuenta comprobamos si tu contraseña ha aparecido en una filtración de datos conocida. Solo se envían los 5 primeros caracteres del hash SHA-1 de la contraseña (k-anonimato), junto con tu dirección IP como en cualquier petición web, y solo al registrarte. Tu contraseña y el resto del hash nunca salen de tu dispositivo.</li>
         <li><strong>Resend</strong> — envío de correos de la cuenta (confirmación de registro, recuperación de contraseña, recibos).</li>
         <li><strong>Vercel</strong> — alojamiento web.</li>
       </ul>

@@ -11,7 +11,7 @@ export function SafetyEN() {
   return (
     <>
       <h1 style={H1}>Safety &amp; Community Standards</h1>
-      <p style={DATE}>Last updated: October 8, 2026</p>
+      <p style={DATE}>Last updated: November 7, 2026</p>
 
       <p style={P}>
         JChat is for adults (18+) who want to meet and talk at real places. Everyone should feel safe doing it.

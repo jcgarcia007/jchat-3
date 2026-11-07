@@ -11,7 +11,7 @@ export function ContactES() {
   return (
     <>
       <h1 style={H1}>Contacto</h1>
-      <p style={DATE}>Última actualización: 8 de octubre de 2026</p>
+      <p style={DATE}>Última actualización: 7 de noviembre de 2026</p>
 
       <h2 style={H2}>Reportes de seguridad y abuso</h2>
       <p style={P}><a href="mailto:safety@jchat.cloud" style={LINK}>safety@jchat.cloud</a> — revisamos cada reporte en un máximo de 24 horas. Consulta <a href="/safety" style={LINK}>Seguridad y normas de la comunidad</a>.</p>

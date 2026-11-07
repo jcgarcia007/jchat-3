@@ -11,7 +11,7 @@ export function TermsEN() {
         Terms of Service
       </h1>
       <p style={{ color: "var(--gray-500)", fontSize: "14px", marginTop: "0", marginBottom: "32px" }}>
-        Last updated: September 21, 2026
+        Last updated: November 7, 2026
       </p>
 
       <p style={P}>

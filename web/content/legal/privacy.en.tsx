@@ -12,7 +12,7 @@ export function PrivacyEN() {
         Privacy Policy
       </h1>
       <p style={{ color: "var(--gray-500)", fontSize: "14px", marginTop: "0", marginBottom: "32px" }}>
-        Last updated: November 6, 2026
+        Last updated: November 7, 2026
       </p>
 
       <p style={P}>
@@ -130,9 +130,10 @@ export function PrivacyEN() {
         <li><strong>Stripe</strong> — payment processing, business payouts and card readers. We never see or store your card number.</li>
         <li><strong>Google Cloud Vision</strong> — safety review of photos you send in Match and in direct messages: the bytes of the photo are sent to Google to detect content that breaks our rules.</li>
         <li><strong>Google Maps</strong> and <strong>Firebase Cloud Messaging</strong> (Google) — maps on Android and push notifications. <strong>Apple</strong> — push notifications and Apple Maps on iOS.</li>
-        <li><strong>Expo</strong> — push notifications (the title and text of a notification pass through Expo's push service on their way to your phone) and app builds and updates.</li>
+        <li><strong>Expo</strong> — push notifications (the title and text of a notification pass through Expo&apos;s push service on their way to your phone) and app builds and updates.</li>
         <li><strong>Sentry</strong> — technical diagnostics (crash and error reports), linked only to your account ID, without your name, email or IP address.</li>
         <li><strong>hCaptcha</strong> — protection against bots when you sign in, sign up or recover a password.</li>
+        <li><strong>Have I Been Pwned</strong> — when you create an account we check whether your password has appeared in a known data breach. Only the first 5 characters of the password&apos;s SHA-1 hash are sent (k-anonymity), together with your IP address as in any web request, and only when you sign up. Your password and the rest of the hash never leave your device.</li>
         <li><strong>Resend</strong> — sending account emails (sign-up confirmation, password recovery, receipts).</li>
         <li><strong>Vercel</strong> — website hosting.</li>
       </ul>

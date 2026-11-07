@@ -11,7 +11,7 @@ export function SupportES() {
         Ayuda y soporte
       </h1>
       <p style={{ color: "var(--gray-500)", fontSize: "14px", marginTop: "0", marginBottom: "32px" }}>
-        Última actualización: 21 de septiembre de 2026
+        Última actualización: 7 de noviembre de 2026
       </p>
 
       <p style={P}>
