@@ -73,7 +73,8 @@ export interface BlockRow {
 /** Mirrors the `reports` table */
 export interface ReportRow {
   id: string;
-  reporter_id: string;
+  /** null when the reporter deleted their account (the report stays as evidence) */
+  reporter_id: string | null;
   reported_user_id: string | null;
   content_type: string;
   content_id: string | null;

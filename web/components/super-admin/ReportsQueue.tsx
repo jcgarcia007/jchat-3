@@ -114,7 +114,7 @@ export default function ReportsQueue({ onPendingCount }: { onPendingCount?: (n: 
       });
     }
 
-    const userIds = [...new Set(rows.map((r) => r.reported_user_id).filter((id): id is string => !!id))];
+    const userIds = [...new Set(rows.flatMap((r) => [r.reported_user_id, r.reporter_id]).filter((id): id is string => !!id))];
     if (userIds.length > 0) {
       const { data: profs } = await supabase.from("public_profiles").select("id, display_name, username").in("id", userIds);
       setNames(Object.fromEntries((profs ?? []).map((p) => [p.id as string, (p.display_name as string | null) || `@${p.username as string}`])));
@@ -246,7 +246,8 @@ export default function ReportsQueue({ onPendingCount }: { onPendingCount?: (n: 
             <div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
               {formatRelativeTime(r.created_at, trel, { granularity: "time" })}
               {` · ${t("type")}: ${r.content_type ?? "—"}`}
-              {r.reported_user_id ? ` · ${t("reported")}: ${names[r.reported_user_id] ?? r.reported_user_id.slice(0, 8)}` : ""}
+              {` · ${t("reported")}: ${r.reported_user_id ? (names[r.reported_user_id] ?? r.reported_user_id.slice(0, 8)) : t("deletedAccount")}`}
+              {` · ${t("reportedBy")}: ${r.reporter_id ? (names[r.reporter_id] ?? r.reporter_id.slice(0, 8)) : t("deletedAccount")}`}
               {r.business_id ? ` · ${t("venue")}: ${businessNames[r.business_id] ?? r.business_id.slice(0, 8)}` : ""}
             </div>
             {r.details && <div style={{ fontSize: 13, color: "var(--text-primary)", whiteSpace: "pre-wrap" }}>{r.details}</div>}
