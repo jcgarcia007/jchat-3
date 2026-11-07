@@ -55,7 +55,7 @@ export function DeleteAccountClient() {
       setPhase("form");
     })();
     return () => { alive = false; };
-  }, [router]);
+  }, [router, t]);
 
   const isOwner = !!owner && owner.names.length > 0;
   const blocker = owner?.blocker ?? null;
