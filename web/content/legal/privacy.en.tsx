@@ -12,7 +12,7 @@ export function PrivacyEN() {
         Privacy Policy
       </h1>
       <p style={{ color: "var(--gray-500)", fontSize: "14px", marginTop: "0", marginBottom: "32px" }}>
-        Last updated: September 21, 2026
+        Last updated: November 6, 2026
       </p>
 
       <p style={P}>
@@ -148,7 +148,14 @@ export function PrivacyEN() {
         <a href="/account/delete" style={LINK}>jchat.cloud/account/delete</a>. Deletion is immediate and irreversible. If you cannot
         access the app, email{" "}
         <a href="mailto:jgarcia@otunitylabs.com" style={LINK}>jgarcia@otunitylabs.com</a> from the address
-        on your account and we will delete it. Business owners should first close or transfer their business.
+        on your account and we will delete it.
+      </p>
+      <p style={P}>
+        <strong>Venue owner accounts.</strong> You can delete your account yourself in the app (Settings → Delete account)
+        or at jchat.cloud/account/delete. Your venue closes (it stops being visible and taking orders) and your personal
+        data is deleted immediately. The venue&apos;s order, payment and receipt records are kept for up to 7 years, without
+        your personal data, because accounting and tax rules require it. Your subscription is cancelled immediately, with no
+        refund of the period already paid. If Stripe still holds a balance for you, it must reach your bank first.
       </p>
 
       <h2 id="your-rights" style={H2}>8. Your rights</h2>

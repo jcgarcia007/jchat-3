@@ -3616,9 +3616,37 @@
         "description": "Cómo contactar con JChat: reportes de seguridad, soporte y solicitudes de privacidad."
       },
       "accountDelete": {
-        "title": "Eliminar tu cuenta — JChat",
-        "description": "Elimina tu cuenta de JChat y tus datos personales desde la web, sin la app."
-      }
+    "title": "Eliminar tu cuenta",
+    "checking": "Comprobando tu sesión…",
+    "intro": "Esta página elimina tu cuenta de JChat sin necesitar la app. Inicia sesión con la cuenta que quieres eliminar.",
+    "whatTitle": "Qué se borra",
+    "what1": "Tu perfil, fotos y publicaciones, comentarios e historias.",
+    "what2": "Tus mensajes, seguidos, bloqueos y ajustes.",
+    "what3": "Tus reseñas, notificaciones y datos guardados en tu cuenta.",
+    "what4": "Los pedidos, pagos y registros se conservan sin tu identidad, como exige la ley por contabilidad y prevención de fraude.",
+    "irreversible": "La eliminación es inmediata y no se puede deshacer.",
+    "ownerTitle": "Tienes un negocio en JChat",
+    "ownerBody": "Al eliminar tu cuenta, tu local ({names}) se cierra: se oculta del mapa y deja de aceptar pedidos. Tus datos personales se borran ahora mismo. Los pedidos, pagos y recibos se guardan 7 años sin tus datos personales, como exige la ley fiscal. Tu suscripción se cancela hoy, sin reembolso. Tu equipo y los clientes con reserva reciben un aviso.",
+    "ownerHelp": "¿Dudas? Escribe a",
+    "contact": "Contacto",
+    "account": "Cuenta: {email}",
+    "typePrompt": "Para confirmar, escribe {word}",
+    "confirmWord": "ELIMINAR",
+    "deleteButton": "Eliminar mi cuenta",
+    "deleting": "Eliminando…",
+    "cancel": "Cancelar",
+    "error": "No pudimos eliminar tu cuenta. Inténtalo de nuevo o escribe a safety@jchat.cloud.",
+    "doneTitle": "Tu cuenta fue eliminada",
+    "doneBody": "Tu cuenta y tus datos personales se eliminaron y cerramos tu sesión. Gracias por probar JChat.",
+    "goHome": "Volver al inicio",
+    "ownerBodyNoName": "Al eliminar tu cuenta, tu local se cierra: se oculta del mapa y deja de aceptar pedidos. Tus datos personales se borran ahora mismo. Los pedidos, pagos y recibos se guardan 7 años sin tus datos personales, como exige la ley fiscal. Tu suscripción se cancela hoy, sin reembolso. Tu equipo y los clientes con reserva reciben un aviso.",
+    "ownerCheckbox": "Entiendo que mi local se cerrará y que no se puede deshacer.",
+    "ownerButton": "Eliminar mi cuenta y cerrar mi local",
+    "ownerBalance": "Stripe tiene {amount} de tus ventas sin transferir a tu banco. Espera a que llegue y vuelve a intentarlo.",
+    "ownerOpen": "Tienes pedidos en curso o mesas abiertas. Ciérralos primero y vuelve a intentarlo. No se ha borrado nada.",
+    "ownerError": "No pudimos terminar. Algo falló al cerrar tu local; tu cuenta sigue activa y puedes intentarlo de nuevo. Si sigue pasando, escríbenos a safety@jchat.cloud con este código: {code}.",
+    "ownerDeleteButtonBusy": "Cerrando tu local y eliminando tu cuenta…"
+  }
     },
     "business": {
       "title": "{name} en JChat",

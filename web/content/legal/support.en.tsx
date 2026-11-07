@@ -48,7 +48,7 @@ export function SupportEN() {
         In the app: <strong>Settings → Delete account</strong>, or on the web at{" "}
         <a href="/account/delete" style={LINK}>jchat.cloud/account/delete</a>. This permanently deletes your profile,
         content and personal data. If you can't access the app, email us from the address on your account and
-        we'll delete it for you. Business owners: close or transfer your business first.
+        we'll delete it for you. Business owners: deleting your account closes your venue (it does not reopen), cancels your subscription and, if Stripe still holds a balance for you, it must reach your bank first.
       </p>
 
       <h2 id="report" style={H2}>Report or block someone</h2>

@@ -12,7 +12,7 @@ export function PrivacyES() {
         Política de privacidad
       </h1>
       <p style={{ color: "var(--gray-500)", fontSize: "14px", marginTop: "0", marginBottom: "32px" }}>
-        Última actualización: 21 de septiembre de 2026
+        Última actualización: 6 de noviembre de 2026
       </p>
 
       <p style={P}>
@@ -151,7 +151,15 @@ export function PrivacyES() {
         <a href="/account/delete" style={LINK}>jchat.cloud/account/delete</a>. La eliminación es inmediata e irreversible. Si no puedes
         acceder a la app, escríbenos a{" "}
         <a href="mailto:jgarcia@otunitylabs.com" style={LINK}>jgarcia@otunitylabs.com</a> desde el correo
-        de tu cuenta y la eliminaremos. Los dueños de negocio deben cerrar o transferir su negocio primero.
+        de tu cuenta y la eliminaremos.
+      </p>
+      <p style={P}>
+        <strong>Cuentas de dueños de locales.</strong> Puedes eliminar tu cuenta tú mismo desde la app (Ajustes → Eliminar
+        cuenta) o en jchat.cloud/account/delete. Tu local se cierra (deja de ser visible y de aceptar pedidos) y tus datos
+        personales se borran de inmediato. Los registros de pedidos, pagos y recibos del local se conservan hasta 7 años,
+        sin tus datos personales, porque la contabilidad y la normativa fiscal lo exigen. Tu suscripción se cancela al
+        momento, sin reembolso del periodo ya pagado. Si Stripe aún tiene saldo tuyo sin transferir, primero debe llegar a
+        tu banco.
       </p>
 
       <h2 id="your-rights" style={H2}>8. Tus derechos</h2>

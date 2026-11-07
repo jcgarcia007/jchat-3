@@ -49,7 +49,7 @@ export function SupportES() {
         En la app: <strong>Ajustes → Eliminar cuenta</strong>, o en la web en{" "}
         <a href="/account/delete" style={LINK}>jchat.cloud/account/delete</a>. Esto borra de forma permanente tu perfil,
         contenido y datos personales. Si no puedes acceder a la app, escríbenos desde el correo de tu cuenta
-        y la eliminamos por ti. Dueños de negocio: cierren o transfieran su negocio primero.
+        y la eliminamos por ti. Dueños de negocio: al eliminar tu cuenta tu local se cierra (no se reabre), tu suscripción se cancela y, si Stripe aún tiene saldo tuyo sin transferir, primero debe llegar a tu banco.
       </p>
 
       <h2 id="report" style={H2}>Reportar o bloquear a alguien</h2>
