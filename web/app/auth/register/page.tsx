@@ -74,7 +74,7 @@ const primaryBtn: React.CSSProperties = {
   padding: "11px 16px",
   borderRadius: 14,
   border: "none",
-  background: "linear-gradient(135deg, var(--land-peach-dark) 0%, var(--land-peach) 100%)",
+  background: "var(--land-peach)",
   color: "var(--on-brand)",
   boxShadow: "0 6px 24px var(--land-peach-glow)",
   fontFamily: "var(--font-grotesk)",
