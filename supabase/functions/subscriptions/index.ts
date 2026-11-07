@@ -624,7 +624,8 @@ async function handleWebhook(req: Request): Promise<Response> {
       };
       if (customerId) upd.stripe_customer_id = customerId;
 
-      await db.from("users").update(upd).eq("id", userId);
+      const { error: updErr } = await db.from("users").update(upd).eq("id", userId);
+      if (updErr) console.error("[subscriptions] users.update failed", { event: event.type, error: updErr });
 
       // Consumir el código promocional AQUÍ, no al crear la sesión: un checkout
       // abandonado no debe quemar el código. El `.is("redeemed_by", null)` hace la
@@ -675,7 +676,8 @@ async function handleWebhook(req: Request): Promise<Response> {
       // downgrade the plan itself — keep what they had. Otherwise apply the plan change.
       if (planStatus !== "past_due") upd.plan = plan;
 
-      await db.from("users").update(upd).eq("id", userId);
+      const { error: updErr } = await db.from("users").update(upd).eq("id", userId);
+      if (updErr) console.error("[subscriptions] users.update failed", { event: event.type, error: updErr });
       console.log(`[subscriptions] sub updated: user=${userId} plan=${plan} status=${planStatus}`);
       break;
     }
@@ -691,7 +693,7 @@ async function handleWebhook(req: Request): Promise<Response> {
         break;
       }
 
-      await db
+      const { error: updErr } = await db
         .from("users")
         .update({
           plan: "regular",
@@ -701,6 +703,7 @@ async function handleWebhook(req: Request): Promise<Response> {
           stripe_subscription_id: null,
         })
         .eq("id", userId);
+      if (updErr) console.error("[subscriptions] users.update failed", { event: event.type, error: updErr });
       console.log(`[subscriptions] sub deleted/canceled → regular: user=${userId}`);
       break;
     }
@@ -717,7 +720,8 @@ async function handleWebhook(req: Request): Promise<Response> {
       }
 
       // past_due loses dashboard access (gate), but we do NOT touch which plan they had.
-      await db.from("users").update({ plan_status: "past_due" }).eq("id", userId);
+      const { error: updErr } = await db.from("users").update({ plan_status: "past_due" }).eq("id", userId);
+      if (updErr) console.error("[subscriptions] users.update failed", { event: event.type, error: updErr });
       console.log(`[subscriptions] payment failed → past_due: user=${userId}`);
       break;
     }
@@ -769,7 +773,8 @@ async function handleWebhook(req: Request): Promise<Response> {
         upd.plan_status = "active";
       }
       if (Object.keys(upd).length > 0) {
-        await db.from("users").update(upd).eq("id", userId);
+        const { error: updErr } = await db.from("users").update(upd).eq("id", userId);
+        if (updErr) console.error("[subscriptions] users.update failed", { event: event.type, error: updErr });
       }
       console.log(`[subscriptions] payment succeeded: user=${userId}`);
 
