@@ -41,6 +41,7 @@ import { confirmAge } from '../../services/age';
 import { hasActiveAgeRejection, recordAgeRejection } from '../../services/ageRejection';
 import { deleteMyAccount } from '../../services/account';
 import { useCaptcha, captchaErrorI18nKeys } from '../../services/captcha';
+import { isSignupBlocked } from '../../utils/signupError';
 import type { AuthStackParamList } from '../../navigation/AppNavigator';
 import i18n, { changeAppLanguage, type SupportedLanguage } from '../../i18n';
 import { showAlert } from '../../utils/dialog';
@@ -366,6 +367,12 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
         if (code === 'weak_password' || /weak|leaked|pwned/i.test(signUpError.message ?? '')) {
           setSubmitting(false);
           navigation.navigate('RegisterStep1', { passwordError: 'leaked' });
+          return;
+        }
+        // A blocked e-mail (D6): generic text, without saying why (the block is not revealed).
+        if (isSignupBlocked(signUpError)) {
+          showAlert(t('register.alerts.signUpFailedTitle'), t('register.alerts.signupBlocked'));
+          setSubmitting(false);
           return;
         }
         showAlert(t('register.alerts.signUpFailedTitle'), toUserMessage(signUpError, 'auth:register.alerts.unexpectedError'));

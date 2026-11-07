@@ -3558,6 +3558,7 @@
     "oauthFailed": "Google sign-in failed. Please try again.",
     "noSession": "Your account was created but you aren't signed in yet. Try signing in.",
     "notEligible": "You don't meet the requirements to use JChat.",
+    "signupBlocked": "We couldn't create an account with this e-mail. If you think this is a mistake, write to soporte@jchat.cloud.",
     "usernameTaken": "That username is already taken.",
     "invalid_credentials": "Incorrect email or password.",
     "email_not_confirmed": "Please confirm your email address first. Check your inbox.",

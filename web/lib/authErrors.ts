@@ -32,6 +32,16 @@ interface ErrorLike {
   code?: string;
   status?: number;
   name?: string;
+  message?: string;
+}
+
+/**
+ * D6: a sign-up the database refused. The trigger on auth.users raises `signup_blocked` for an e-mail on the ban list and Supabase Auth
+ * answers `unexpected_failure` / "Database error saving new user". The page shows a generic text that does not reveal the block.
+ */
+export function isSignupBlocked(err: ErrorLike | null | undefined): boolean {
+  if (!err) return false;
+  return err.code === "unexpected_failure" || /database error saving new user/i.test(err.message ?? "");
 }
 
 /** Key inside `authErrors` for this error (falls back to `generic`). */
