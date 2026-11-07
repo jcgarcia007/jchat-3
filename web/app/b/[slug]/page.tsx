@@ -31,6 +31,7 @@ import {
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { APP_STORES_LIVE, APP_STORE_URL, PLAY_STORE_URL } from "@/lib/appLinks";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -432,9 +433,7 @@ function MenuPreviewStub() {
 
 function DownloadCTA({ businessName }: { businessName: string }) {
   const t = useTranslations("businessPage");
-  // TODO: replace placeholder URLs with real App Store / Google Play production links
-  const APP_STORE_URL = "https://apps.apple.com/app/jchat/id000000000"; // TODO: real App Store link
-  const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.otunitylabs.jchat"; // TODO: real Play Store link
+  const tSoon = useTranslations("authPages.welcome");
 
   return (
     <div
@@ -476,6 +475,7 @@ function DownloadCTA({ businessName }: { businessName: string }) {
           alignItems: "center",
         }}
       >
+        {APP_STORES_LIVE ? (
         <a
           href={APP_STORE_URL}
           target="_blank"
@@ -499,6 +499,33 @@ function DownloadCTA({ businessName }: { businessName: string }) {
           <IconBrandAppstore size={20} />
           {t("appStore")}
         </a>
+        ) : (
+        <span
+          role="link"
+          aria-disabled="true"
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            background: "rgb(var(--white-rgb) / 0.15)",
+            color: "rgb(var(--white-rgb) / 0.8)",
+            borderRadius: 12,
+            padding: "10px 24px",
+            fontWeight: 600,
+            fontSize: 14,
+            width: "100%",
+            maxWidth: 260,
+            cursor: "not-allowed",
+          }}
+        >
+          <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <IconBrandAppstore size={20} />
+            {t("appStore")}
+          </span>
+          <span style={{ fontSize: 11, fontWeight: 500 }}>{tSoon("comingSoon")}</span>
+        </span>
+        )}
+        {APP_STORES_LIVE ? (
         <a
           href={PLAY_STORE_URL}
           target="_blank"
@@ -523,6 +550,32 @@ function DownloadCTA({ businessName }: { businessName: string }) {
           <IconBrandGooglePlay size={20} />
           {t("googlePlay")}
         </a>
+        ) : (
+        <span
+          role="link"
+          aria-disabled="true"
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            background: "rgb(var(--white-rgb) / 0.15)",
+            color: "rgb(var(--white-rgb) / 0.8)",
+            borderRadius: 12,
+            padding: "10px 24px",
+            fontWeight: 600,
+            fontSize: 14,
+            width: "100%",
+            maxWidth: 260,
+            cursor: "not-allowed",
+          }}
+        >
+          <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <IconBrandGooglePlay size={20} />
+            {t("googlePlay")}
+          </span>
+          <span style={{ fontSize: 11, fontWeight: 500 }}>{tSoon("comingSoon")}</span>
+        </span>
+        )}
       </div>
     </div>
   );
