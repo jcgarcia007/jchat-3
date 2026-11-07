@@ -161,12 +161,20 @@ export function PrivacyES() {
       </p>
       <ul style={UL}>
         <li><strong>Pedidos y pagos:</strong> 7 años, sin tus datos personales, por obligaciones fiscales y contables.</li>
-        <li><strong>Registros de seguridad:</strong> 90 días.</li>
-        <li><strong>Reportes de moderación:</strong> 1 año.</li>
+        <li><strong>Registros de seguridad:</strong> 90 días. El registro de acciones de moderación y de suspensiones de cuentas: 1 año.</li>
+        <li><strong>Reportes cerrados</strong> (con la evidencia que llevan): 1 año desde que se resuelven. Reportes de seguridad infantil o enviados a las autoridades (NCMEC): 2 años desde que se resuelven. Los reportes abiertos se conservan hasta que se resuelven.</li>
+        <li><strong>Registros de moderación</strong> de chats y juegos de los locales, y <strong>registros de reservas de mesa</strong>: 1 año.</li>
+        <li><strong>Registros del escaneo de fotos</strong> y <strong>registros de entrega de correos</strong>: 90 días (30 días los correos entregados).</li>
         <li><strong>Regalos</strong> que enviaste o recibiste: se conservan sin tu identidad.</li>
       </ul>
       <p style={P}>
         Los identificadores de pedidos de invitados se conservan un tiempo limitado por seguridad.
+      </p>
+      <p style={P}>
+        Cuando eliminas tu cuenta, los reportes que hiciste o recibiste se conservan <strong>sin tu identidad</strong> hasta que termine
+        su plazo de arriba. Si tu cuenta estaba suspendida por una infracción confirmada, guardamos una huella cifrada de tu correo
+        (no el correo) hasta 2 años para impedir que se abran cuentas nuevas. Para apelar, escribe a{" "}
+        <a href="mailto:soporte@jchat.cloud" style={LINK}>soporte@jchat.cloud</a>.
       </p>
 
       <h2 id="delete-account" style={H2}>7. Eliminar tu cuenta</h2>

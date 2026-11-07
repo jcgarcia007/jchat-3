@@ -34,3 +34,33 @@ Rama `fix/a6-web-legal-2026-11` (main `ee627ad5` + 5 commits de `fix/a6-web-lega
 
 ## Corrección encontrada al fusionar (no es texto legal nuevo)
 Los textos de dueños de D4 de `web/messages/*.json` (ownerCheckbox, ownerButton, ownerBalance, ownerOpen, ownerError, ownerDeleteButtonBusy y los textos nuevos de ownerTitle/ownerBody/ownerBodyNoName/ownerHelp) estaban **dentro de `meta.legal.accountDelete`** en lugar de `accountDelete` (error mío en D4: se editó el primer objeto con ese nombre). Resultado en `main`: la pantalla de dueños mostraría las claves sin traducir y la descripción meta de la página se perdía. En esta rama quedan en `accountDelete` y `meta.legal.accountDelete` vuelve a `{title, description}`. Además, `safety@jchat.cloud` → `soporte@jchat.cloud` en `error` y `ownerError` (contacto general).
+
+---
+
+# D6 — filas añadidas (2026-11-07, rama `fix/d6-retention`)
+Retención con borrado automático (`retention_purge`, migración 267), evidencia de reportes y huella del correo de las cuentas suspendidas. Lo que se dice aquí es lo que hace el cron; los plazos son los de la spec aprobada por Juan. ⚠ = sin revisión de abogado.
+
+## /privacy §6 "Data retention" / "Conservación" (`privacy.{en,es}.tsx`)
+| Elemento | Antes (a6) | Después (EN; el ES dice lo mismo) |
+|---|---|---|
+| Registros de seguridad | "Security logs: 90 days." | "Security logs: 90 days. **The record of moderation actions and account suspensions: 1 year.**" |
+| Reportes | "Moderation reports: 1 year." | "**Closed reports** (with the evidence attached to them): **1 year after they are resolved**. Reports about **child safety, or sent to the authorities (NCMEC): 2 years** after they are resolved. **Open reports are kept until they are resolved.**" ⚠ (2 años = conservación voluntaria por encima del mínimo legal de 1 año, decisión de Juan) |
+| Moderación y reservas | (no existía) | "**Moderation records** of venue chats and games, and **table reservation records**: 1 year." |
+| Escaneo de fotos y correos | (no existía) | "**Photo-scan records** and **e-mail delivery records**: 90 days (30 days for e-mails that were delivered)." |
+| Pedidos, pagos, regalos, invitados | sin cambio | sin cambio |
+| Párrafo nuevo | (no existía) | "When you delete your account, the reports you made or received stay **without your identity** until their term above ends. If your account was suspended for a confirmed violation, we keep an **encrypted fingerprint of your e-mail address (not the address itself) for up to 2 years** to prevent new accounts from being opened. To appeal, write to soporte@jchat.cloud." ES: "Cuando eliminas tu cuenta, los reportes que hiciste o recibiste se conservan sin tu identidad hasta que termine su plazo de arriba. Si tu cuenta estaba suspendida por una infracción confirmada, guardamos una huella cifrada de tu correo (no el correo) hasta 2 años para impedir que se abran cuentas nuevas. Para apelar, escribe a soporte@jchat.cloud." ⚠ |
+
+## /account/delete — "What is kept and for how long" (`web/messages/{en,es}.json › accountDelete.keep3/keep5/keep6`, `page.tsx`)
+| Línea | Antes | Después |
+|---|---|---|
+| keep3 | "Moderation reports: 1 year." | "Moderation reports: 1 year after they are resolved (2 years for child safety)." / "Reportes de moderación: 1 año desde que se resuelven (2 años los de seguridad infantil)." |
+| keep5 (nueva) | — | "Reports you made or received stay without your identity until their term ends." / "Los reportes que hiciste o recibiste se conservan sin tu identidad hasta que termine su plazo." |
+| keep6 (nueva) | — | "If your account was suspended for a confirmed violation, we keep an encrypted fingerprint of your e-mail for up to 2 years to prevent new accounts. To appeal, write to soporte@jchat.cloud." / "Si tu cuenta estaba suspendida por una infracción confirmada, guardamos una huella cifrada de tu correo hasta 2 años para impedir cuentas nuevas. Para apelar, escribe a soporte@jchat.cloud." |
+
+## Textos de la app y del panel (no legales, para completar el inventario)
+| Dónde | Texto (EN / ES) |
+|---|---|
+| Registro (móvil `register.alerts.signupBlocked`, web `authErrors.signupBlocked`) | "We couldn't create an account with this e-mail. If you think this is a mistake, write to soporte@jchat.cloud." / "No pudimos crear una cuenta con este correo. Si crees que es un error, escribe a soporte@jchat.cloud." (no revela el bloqueo) |
+| Super-admin › Reportes | "Deleted account" / "Cuenta eliminada" cuando el reportante o el reportado borró su cuenta; sección "Remove an e-mail block" / "Quitar bloqueo de correo" |
+
+Fecha de "Last updated" de /privacy y de las páginas tocadas: 7 de noviembre de 2026 (hoy, ya puesta en a6).

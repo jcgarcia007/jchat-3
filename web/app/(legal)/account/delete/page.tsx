@@ -52,6 +52,8 @@ export default async function AccountDeletePage() {
         <li>{t("keep2")}</li>
         <li>{t("keep3")}</li>
         <li>{t("keep4")}</li>
+        <li>{t("keep5")}</li>
+        <li>{t("keep6")}</li>
       </ul>
 
       <p style={P}>{t("irreversible")}</p>
