@@ -2,11 +2,12 @@
 
 /**
  * JChat 3.0 — Web Registration (Auth), 2-step flow mirroring the mobile app.
- * Step 1: full name, email, password (+ strength) + Google/Facebook/Apple + sign-in link.
+ * Step 1: full name, email, password (3 visible rules, same criterion as the app: lib/password.ts)
+ * + confirmation + HIBP leaked-password check (lib/pwned.ts) + Google + sign-in link.
  * Step 2: date of birth (18+), language, @username (realtime availability), terms.
  * On success → supabase.auth.signUp + users upsert → /dashboard.
  * Uses the cookie-based browser client (@/lib/supabase) so the session is
- * readable by the server-side dashboard auth gate. Visual style matches login/page.tsx.
+ * readable by the server-side dashboard auth gate. Look: jchat.cloud landing palette (--land-*).
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -23,6 +24,7 @@ import {
   IconX,
   IconAlertCircle,
   IconLoader2,
+  IconCircleCheckFilled,
   IconMessageCircle2,
   IconReceipt2,
   IconBrandGoogle,
@@ -32,6 +34,8 @@ import { confirmAge, deleteMyAccount } from "@/lib/account";
 import { useTranslations } from "next-intl";
 import { authErrorKey } from "@/lib/authErrors";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { isPasswordValid, passwordRules } from "@/lib/password";
+import { checkPwnedPassword, type PwnedResult } from "@/lib/pwned";
 import AuthSplitLayout from "@/components/auth/AuthSplitLayout";
 
 // ── Shared styles (mirror login/page.tsx) ─────────────────────────────────────
@@ -43,7 +47,7 @@ const inputStyle: React.CSSProperties = {
   border: "1px solid var(--border-subtle)",
   background: "var(--bg-base)",
   color: "var(--text-primary)",
-  fontSize: 14,
+  fontSize: 16,
   outline: "none",
 };
 
@@ -66,25 +70,37 @@ const labelStyle: React.CSSProperties = {
 
 const primaryBtn: React.CSSProperties = {
   width: "100%",
+  minHeight: 52,
   padding: "11px 16px",
-  borderRadius: 10,
+  borderRadius: 14,
   border: "none",
-  background: "var(--color-brand)",
+  background: "linear-gradient(135deg, var(--land-peach-dark) 0%, var(--land-peach) 100%)",
   color: "var(--on-brand)",
-  fontSize: 14,
-  fontWeight: 600,
+  boxShadow: "0 6px 24px var(--land-peach-glow)",
+  fontFamily: "var(--font-grotesk)",
+  fontSize: 15,
+  fontWeight: 700,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   gap: 8,
 };
 
+// Disabled primary: flat gray, no shadow (spec §2).
+const primaryBtnDisabled: React.CSSProperties = {
+  background: "var(--gray-200)",
+  color: "var(--land-sub)",
+  boxShadow: "none",
+  cursor: "not-allowed",
+};
+
 const oauthBtn: React.CSSProperties = {
   width: "100%",
+  minHeight: 48,
   padding: "11px 16px",
-  borderRadius: 10,
-  border: "1px solid var(--border-subtle)",
-  background: "var(--bg-elevated)",
+  borderRadius: 12,
+  border: "1px solid var(--gray-200)",
+  background: "rgb(var(--white-rgb))",
   color: "var(--text-primary)",
   fontSize: 14,
   fontWeight: 600,
@@ -95,21 +111,6 @@ const oauthBtn: React.CSSProperties = {
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-type Strength = { label: "weak" | "fair" | "strong"; color: string; pct: number };
-
-function passwordStrength(pw: string): Strength | null {
-  if (!pw) return null;
-  let score = 0;
-  if (pw.length >= 8) score++;
-  if (pw.length >= 12) score++;
-  if (/[A-Z]/.test(pw)) score++;
-  if (/[0-9]/.test(pw)) score++;
-  if (/[^A-Za-z0-9]/.test(pw)) score++;
-  if (score <= 2) return { label: "weak", color: "var(--color-danger)", pct: 33 };
-  if (score === 3) return { label: "fair", color: "var(--color-warning)", pct: 66 };
-  return { label: "strong", color: "var(--color-success)", pct: 100 };
-}
 
 function ageFromDob(dob: string): number {
   // Parse YYYY-MM-DD as a LOCAL date (new Date(str) is UTC and can be off by a day).
@@ -179,20 +180,72 @@ function CardHeader() {
           <span className="brand-tabpos">{t("brandSubtitlePos")}</span>
         </div>
       </div>
+      <div style={{ marginLeft: "auto" }}>
+        <LanguageSwitcher variant="pills" />
+      </div>
     </div>
   );
 }
 
 const stepLabelStyle: React.CSSProperties = {
+  fontFamily: "var(--font-grotesk)",
   fontSize: 12,
-  fontWeight: 600,
-  color: "var(--color-brand)",
+  fontWeight: 700,
+  color: "var(--land-peach)",
   textTransform: "uppercase",
-  letterSpacing: "0.05em",
+  letterSpacing: "0.1em",
   marginBottom: 6,
 };
 
+// Classes (not inline) so styles/brands/tabpos.css can still override them under data-brand="tabpos".
+const REGISTER_CSS = `
+  /* The card is taller than short viewports: auto margins center it without clipping the top (align-items:center would). */
+  main.auth-col { align-items: flex-start; }
+  .auth-col > .auth-card { margin: auto; }
+  .reg-h1 { font-family: var(--font-grotesk), system-ui, sans-serif; font-size: 28px; font-weight: 700; letter-spacing: -.04em; line-height: 1.12; margin: 0 0 6px; }
+  .reg-gtext {
+    background: linear-gradient(135deg, var(--land-peach) 0%, var(--land-rose) 45%, var(--color-brand) 90%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  [data-brand="tabpos"] .auth-col .reg-gtext { background: none; -webkit-text-fill-color: currentColor; }
+  [data-brand="tabpos"] .auth-col .auth-primary:disabled { opacity: .5; }
+  .reg-pw-toggle { position: absolute; right: 0; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: none; border: none; cursor: pointer; color: var(--text-tertiary); }
+`;
+
 // ── Step 1 ────────────────────────────────────────────────────────────────────
+
+function RuleRow({ met, label }: { met: boolean; label: string }) {
+  const t = useTranslations("authPages.register");
+  return (
+    <li
+      aria-label={`${label}: ${met ? t("ruleMet") : t("rulePending")}`}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        fontSize: 13,
+        color: met ? "var(--land-teal)" : "var(--text-secondary)",
+      }}
+    >
+      {met ? (
+        <IconCircleCheckFilled size={18} aria-hidden style={{ color: "var(--land-teal)", flexShrink: 0 }} />
+      ) : (
+        <span
+          aria-hidden
+          style={{
+            width: 16,
+            height: 16,
+            margin: 1,
+            borderRadius: "50%",
+            border: "2px solid var(--gray-300)",
+            flexShrink: 0,
+          }}
+        />
+      )}
+      {label}
+    </li>
+  );
+}
 
 function RegisterStep1Form({
   fullName,
@@ -201,9 +254,14 @@ function RegisterStep1Form({
   setEmail,
   password,
   setPassword,
+  confirm,
+  setConfirm,
   showPassword,
   setShowPassword,
   error,
+  leaked,
+  checking,
+  passwordRef,
   googleLoading,
   onGoogle,
   onContinue,
@@ -214,23 +272,32 @@ function RegisterStep1Form({
   setEmail: (s: string) => void;
   password: string;
   setPassword: (s: string) => void;
+  confirm: string;
+  setConfirm: (s: string) => void;
   showPassword: boolean;
   setShowPassword: (b: boolean) => void;
   error: string | null;
+  leaked: boolean;
+  checking: boolean;
+  passwordRef: React.RefObject<HTMLInputElement | null>;
   googleLoading: boolean;
   onGoogle: () => void;
   onContinue: () => void;
 }) {
   const t = useTranslations("authPages.register");
-  const strength = passwordStrength(password);
+  const [pwFocused, setPwFocused] = useState(false);
+  const rules = passwordRules(password);
+  const mismatch = confirm.length > 0 && confirm !== password;
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const canContinue =
-    fullName.trim().length > 0 && email.trim().length > 0 && password.length >= 8;
+    isPasswordValid(password) && confirm === password && fullName.trim().length > 0 && emailOk;
+  const showRules = pwFocused || password.length > 0;
 
   return (
     <>
       <div className="auth-step" style={stepLabelStyle}>{t("step1")}</div>
-      <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 4px" }}>
-        {t("createTitle")}
+      <h1 className="reg-h1">
+        {t("titleLine1")} <span className="reg-gtext">{t("titleLine2")}</span>
       </h1>
       <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "0 0 20px" }}>
         <span className="brand-jchat">{t("joinJchat")}</span>
@@ -242,7 +309,7 @@ function RegisterStep1Form({
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          if (canContinue) onContinue();
+          if (canContinue && !checking) onContinue();
         }}
       >
         {/* Full name */}
@@ -286,84 +353,94 @@ function RegisterStep1Form({
             <IconLock size={18} />
           </span>
           <input
+            ref={passwordRef}
             type={showPassword ? "text" : "password"}
             required
             autoComplete="new-password"
-            minLength={8}
             placeholder={t("passwordPlaceholder")}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            style={{ ...inputStyle, paddingRight: 40 }}
+            onFocus={() => setPwFocused(true)}
+            onBlur={() => setPwFocused(false)}
+            aria-invalid={leaked}
+            style={{
+              ...inputStyle,
+              paddingRight: 48,
+              ...(leaked ? { borderColor: "var(--color-danger)" } : null),
+            }}
           />
           <button
             type="button"
+            className="reg-pw-toggle"
             onClick={() => setShowPassword(!showPassword)}
             aria-label={showPassword ? t("hidePassword") : t("showPassword")}
-            style={{
-              position: "absolute",
-              right: 8,
-              top: "50%",
-              transform: "translateY(-50%)",
-              background: "none",
-              border: "none",
-              padding: 4,
-              cursor: "pointer",
-              color: "var(--text-tertiary)",
-              display: "flex",
-            }}
           >
             {showPassword ? <IconEyeOff size={18} /> : <IconEye size={18} />}
           </button>
         </div>
 
-        {/* Strength indicator */}
-        {strength && (
-          <div style={{ marginBottom: 20 }}>
+        {/* Rules + leaked alert (live region) */}
+        <div aria-live="polite" style={{ marginBottom: 14 }}>
+          {showRules && (
+            <ul style={{ listStyle: "none", margin: "0 0 8px", padding: 0, display: "grid", gap: 4 }}>
+              <RuleRow met={rules.minLength} label={t("ruleMinLength")} />
+              <RuleRow met={rules.hasLetter} label={t("ruleLetter")} />
+              <RuleRow met={rules.hasNumber} label={t("ruleNumber")} />
+            </ul>
+          )}
+          {leaked && (
             <div
+              role="alert"
               style={{
-                height: 4,
-                borderRadius: 999,
-                background: "var(--border-subtle)",
-                overflow: "hidden",
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 8,
+                fontSize: 13,
+                color: "var(--color-danger)",
               }}
             >
-              <div
-                style={{
-                  height: "100%",
-                  width: "100%",
-                  background: strength.color,
-                  transformOrigin: "left",
-                  transform: `scaleX(${strength.pct / 100})`,
-                  transition: "transform 0.2s ease",
-                }}
-              />
+              <IconAlertCircle size={18} style={{ flexShrink: 0, marginTop: 1 }} />
+              <span>{t("passwordLeaked")}</span>
             </div>
-            <div
-              style={{
-                fontSize: 11,
-                fontWeight: 600,
-                color: strength.color,
-                marginTop: 4,
-                textTransform: "capitalize",
-              }}
-            >
-              {t(`strength.${strength.label}`)}
-            </div>
-          </div>
-        )}
-        {!strength && <div style={{ marginBottom: 20 }} />}
+          )}
+        </div>
+
+        {/* Confirm password */}
+        <label style={labelStyle}>{t("confirmPassword")}</label>
+        <div style={{ position: "relative", marginBottom: 6 }}>
+          <span style={iconWrap}>
+            <IconLock size={18} />
+          </span>
+          <input
+            type={showPassword ? "text" : "password"}
+            required
+            autoComplete="new-password"
+            placeholder={t("confirmPlaceholder")}
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            aria-invalid={mismatch}
+            style={{ ...inputStyle, ...(mismatch ? { borderColor: "var(--color-danger)" } : null) }}
+          />
+        </div>
+        <div aria-live="polite" style={{ minHeight: 18, marginBottom: 14 }}>
+          {mismatch && (
+            <span style={{ fontSize: 12, color: "var(--color-danger)" }}>{t("passwordsMismatch")}</span>
+          )}
+        </div>
 
         <button
           type="submit"
           className="auth-primary"
-          disabled={!canContinue}
+          disabled={!canContinue || checking}
+          aria-busy={checking}
           style={{
             ...primaryBtn,
-            cursor: canContinue ? "pointer" : "default",
-            opacity: canContinue ? 1 : 0.6,
+            ...(canContinue || checking ? null : primaryBtnDisabled),
+            cursor: canContinue && !checking ? "pointer" : "not-allowed",
           }}
         >
-          {t("continue")}
+          {checking && <IconLoader2 size={18} className="spin" />}
+          {checking ? t("checking") : canContinue ? t("continue") : t("continueDisabled")}
         </button>
       </form>
 
@@ -413,7 +490,7 @@ function RegisterStep1Form({
         }}
       >
         {t("haveAccount")}{" "}
-        <a href="/auth/login" style={{ color: "var(--color-brand)", fontWeight: 600 }}>
+        <a href="/auth/login" style={{ color: "var(--land-peach)", fontWeight: 600 }}>
           {t("signIn")}
         </a>
       </p>
@@ -424,6 +501,7 @@ function RegisterStep1Form({
 // ── Step 2 ────────────────────────────────────────────────────────────────────
 
 function RegisterStep2Form({
+  firstName,
   dob,
   setDob,
   language,
@@ -438,6 +516,7 @@ function RegisterStep2Form({
   onCreate,
   onBack,
 }: {
+  firstName: string;
   dob: string;
   setDob: (s: string) => void;
   language: string;
@@ -461,7 +540,10 @@ function RegisterStep2Form({
   return (
     <>
       <div className="auth-step" style={stepLabelStyle}>{t("step2")}</div>
-      <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 4px" }}>{t("almostThere")}</h1>
+      <h1 className="reg-h1">
+        {firstName ? `${t("step2TitlePrefix")} ` : `${t("step2TitlePrefix").replace(/,$/, "")}`}
+        <span className="reg-gtext">{firstName ? `${firstName}.` : "."}</span>
+      </h1>
       <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "0 0 20px" }}>
         {t("step2Subtitle")}
       </p>
@@ -584,7 +666,7 @@ function RegisterStep2Form({
               href="/terms"
               target="_blank"
               rel="noopener noreferrer"
-              style={{ color: "var(--color-brand)", fontWeight: 600 }}
+              style={{ color: "var(--land-peach)", fontWeight: 600 }}
             >
               {t("terms")}
             </a>{" "}
@@ -593,7 +675,7 @@ function RegisterStep2Form({
               href="/privacy"
               target="_blank"
               rel="noopener noreferrer"
-              style={{ color: "var(--color-brand)", fontWeight: 600 }}
+              style={{ color: "var(--land-peach)", fontWeight: 600 }}
             >
               {t("privacy")}
             </a>
@@ -607,8 +689,8 @@ function RegisterStep2Form({
           disabled={!canCreate}
           style={{
             ...primaryBtn,
-            cursor: canCreate ? "pointer" : "default",
-            opacity: canCreate ? 1 : 0.6,
+            ...(canCreate || loading ? null : primaryBtnDisabled),
+            cursor: canCreate ? "pointer" : "not-allowed",
           }}
         >
           {loading && <IconLoader2 size={18} className="spin" />}
@@ -651,7 +733,13 @@ export default function RegisterPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  // HIBP leaked-password check (step 1). Cache per password so the same one is never asked twice.
+  const [leaked, setLeaked] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const pwnedCache = useRef(new Map<string, PwnedResult>());
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   // Step 2 fields
   const [dob, setDob] = useState("");
@@ -699,8 +787,32 @@ export default function RegisterPage() {
     return () => clearTimeout(t);
   }, [username]);
 
-  function goToStep2() {
+  function onPasswordChange(v: string) {
+    setPassword(v);
+    setLeaked(false);
+  }
+
+  function flagLeaked() {
+    setLeaked(true);
+    setStep(1);
+    // The field exists only once step 1 has rendered.
+    requestAnimationFrame(() => passwordRef.current?.focus());
+  }
+
+  async function goToStep2() {
     setError(null);
+    setLeaked(false);
+    let result = pwnedCache.current.get(password);
+    if (!result) {
+      setChecking(true);
+      result = await checkPwnedPassword(password);
+      setChecking(false);
+      pwnedCache.current.set(password, result);
+    }
+    if (result === "leaked") {
+      flagLeaked();
+      return;
+    }
     setStep(2);
   }
 
@@ -762,6 +874,12 @@ export default function RegisterPage() {
 
     if (signUpErr) {
       setLoading(false);
+      // Defense in depth: the server rejected the password as leaked/weak → back to step 1.
+      if (signUpErr.code === "weak_password") {
+        pwnedCache.current.set(password, "leaked");
+        flagLeaked();
+        return;
+      }
       setError(te(authErrorKey(signUpErr)));
       return;
     }
@@ -823,13 +941,14 @@ export default function RegisterPage() {
       style={{
         width: "100%",
         maxWidth: 380,
-        background: "var(--bg-surface)",
-        border: "1px solid var(--border-subtle)",
-        borderRadius: 16,
+        background: "var(--land-glass)",
+        border: "1px solid rgb(var(--ink-rgb) / .07)",
+        borderRadius: 24,
         padding: 28,
-        boxShadow: "0 10px 30px var(--bg-overlay)",
+        boxShadow: "var(--land-shadow)",
       }}
     >
+      <style>{REGISTER_CSS}</style>
       <CardHeader />
 
       {step === 1 ? (
@@ -839,7 +958,12 @@ export default function RegisterPage() {
           email={email}
           setEmail={setEmail}
           password={password}
-          setPassword={setPassword}
+          setPassword={onPasswordChange}
+          confirm={confirm}
+          setConfirm={setConfirm}
+          leaked={leaked}
+          checking={checking}
+          passwordRef={passwordRef}
           showPassword={showPassword}
           setShowPassword={setShowPassword}
           error={error}
@@ -849,6 +973,7 @@ export default function RegisterPage() {
         />
       ) : (
         <RegisterStep2Form
+          firstName={fullName.trim().split(/\s+/)[0] ?? ""}
           dob={dob}
           setDob={setDob}
           language={language}
@@ -864,10 +989,6 @@ export default function RegisterPage() {
           onBack={backToStep1}
         />
       )}
-
-      <div style={{ marginTop: 14, textAlign: "center" }}>
-        <LanguageSwitcher />
-      </div>
 
       {/* hCaptcha invisible (D-38): sin UI salvo cuando el reto se dispara. Una sola
           instancia para ambos steps; el submit real (signUp) ocurre en el step 2. */}

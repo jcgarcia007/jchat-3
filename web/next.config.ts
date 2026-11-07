@@ -51,8 +51,8 @@ const buildCsp = (frameAncestors: string): string => [
   `img-src 'self' data: blob: ${SUPABASE} https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.googleusercontent.com https://*.ggpht.com https://q.stripe.com`,
   // Fuentes self-hosted (next/font) + data: + fonts.gstatic.com (Roboto que sirve el mapa).
   `font-src 'self' data: https://fonts.gstatic.com`,
-  // API + Realtime (Supabase, wss), Stripe API + m.stripe.network (fraude/3DS), Maps tiles, hCaptcha verify.
-  `connect-src 'self' ${SUPABASE} ${SUPABASE_WS} https://api.stripe.com https://m.stripe.network https://maps.googleapis.com https://*.googleapis.com https://*.gstatic.com https://hcaptcha.com https://*.hcaptcha.com`,
+  // API + Realtime (Supabase, wss), Stripe API + m.stripe.network (fraude/3DS), Maps tiles, hCaptcha verify, HIBP (api.pwnedpasswords.com: chequeo de contraseña filtrada, solo viaja un prefijo SHA-1 de 5 caracteres).
+  `connect-src 'self' ${SUPABASE} ${SUPABASE_WS} https://api.stripe.com https://m.stripe.network https://maps.googleapis.com https://*.googleapis.com https://*.gstatic.com https://hcaptcha.com https://*.hcaptcha.com https://api.pwnedpasswords.com`,
   // Stripe monta iframes para 3D Secure / payment elements / Identity (js.stripe.com,
   // hooks.stripe.com, m.stripe.network); hCaptcha su reto.
   `frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://m.stripe.network https://hcaptcha.com https://*.hcaptcha.com`,
