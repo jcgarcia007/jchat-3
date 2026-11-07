@@ -28,7 +28,7 @@
 - Filters: word filter on chat, comments and DMs; photos in DMs and Match are scanned (SafeSearch) and Match photos are reviewed.
 - Contact: **Settings → Contact us**, https://jchat.cloud/support, safety@jchat.cloud.
 
-**Account deletion (5.1.1(v)).** **Settings → Delete account** inside the app removes the account and personal data at once (profile, photos, messages). Also at https://jchat.cloud/account/delete. Venue-owner accounts must close the venue first.
+**Account deletion (5.1.1(v)).** **Settings → Delete account** inside the app removes the account and personal data at once (profile, photos, messages). Also at https://jchat.cloud/account/delete. Venue owners can delete too (the venue closes).
 
 **Payments (3.1.1 / 3.1.3(e)).** JChat sells no digital content, subscriptions or app features. Everything paid is **physical food and drink consumed at the venue** (orders, tips, a drink for someone present), paid via Stripe and Apple Pay.
 
@@ -51,5 +51,5 @@ Thank you. Questions: soporte@jchat.cloud (safety: safety@jchat.cloud).
 4. **Modo Trabajo y dashboard** son de la cuenta 1 (dueña); confirma entrando una vez que el dashboard web abre con las mismas credenciales.
 5. **Verdad o Reto:** el seed no crea cartas (catálogo global de 1.000). En la app solo existe "elegir categoría → publicar una carta" (no se puede robar sin publicar); lo publicado lo ven solo las cuentas del grupo. Verificado en Android 2026-11-06.
 6. **Match:** el seed (o `review_seed_reviewer2.sql` solo) deja completo el perfil de Match de la cuenta 2: género/busca si faltaban, foto aprobada `demo-reviewer.png` (id …0699) y 2 intereses. Sube antes el archivo `demo-reviewer.png`. Comprobar que el mazo abre directo y muestra a las 4 personas.
-7. **Borrado de cuenta del dueño:** hoy `@jchatreview` recibiría 409 si intentara borrarse (se arregla en D4). Las notas mandan a borrar solo con la cuenta 2.
+7. **Borrado de cuenta del dueño (D4):** el dueño puede borrar su cuenta desde la app y la web: sus locales se CIERRAN (no se reabren) y se conservan pedidos y pagos sin datos personales. **No uses `@jchatreview` (dueña de Demo Lounge) para probar el borrado**: cerraría el local de demo. Las notas mandan a borrar solo con la cuenta 2 (`@jchatreview2`).
 8. **Cuentas QA (`@test`, `@test1`, `@test002`):** quedan en el grupo, así que ven el Demo Lounge mientras el interruptor esté encendido. Apaga el interruptor al terminar la revisión.

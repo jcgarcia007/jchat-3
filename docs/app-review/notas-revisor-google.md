@@ -23,7 +23,7 @@ JChat opens a venue's chat only when the phone is physically inside it. So that 
 
 **User-generated content (UGC policy).** Users can report and block from every place where people see other people's content (messages, direct messages, profiles, posts, comments, stories, Match profiles, Truth or Dare results). A person reviews reports within 24 hours (moderation queue); content is hidden and accounts suspended when needed. Chat, comments and direct messages pass a word filter; photos in direct messages and Match are scanned with Google Cloud Vision SafeSearch and explicit images are blocked. Contact: safety@jchat.cloud, https://jchat.cloud/support, and **Settings → Contact us**.
 
-**Account deletion.** In the app: **Settings → Delete account** (immediate; profile, photos and messages are removed). On the web: https://jchat.cloud/account/delete (use this URL in the Data safety form). Venue owners close or transfer the venue first.
+**Account deletion.** In the app: **Settings → Delete account** (immediate; profile, photos and messages are removed). On the web: https://jchat.cloud/account/delete (use this URL in the Data safety form). Venue owners can delete too: the venue closes and sales records are kept without personal data.
 
 **Payments policy.** Everything paid in the app is **physical food and drink consumed at the venue** (orders, tips, and a drink or dish given to another person who is there). No digital goods, subscriptions or app features are sold in the app, so Google Play Billing is not used; payments are processed by Stripe.
 
