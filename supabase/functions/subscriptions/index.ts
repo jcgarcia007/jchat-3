@@ -30,7 +30,9 @@
  *                               (subscriptions). Separate from stripe-webhook's
  *                               STRIPE_WEBHOOK_SECRET (payments) — each Stripe endpoint has
  *                               its own signing secret, so they must NOT share a variable.
- *   STRIPE_PRICE_BUSINESS / STRIPE_PRICE_PRO / STRIPE_PRICE_VERIFIED — recurring Price IDs
+ *   STRIPE_PRICE_BUSINESS / STRIPE_PRICE_PRO / STRIPE_PRICE_VERIFIED — recurring Price IDs (monthly)
+ *   STRIPE_PRICE_BUSINESS_6M / _BUSINESS_1Y / STRIPE_PRICE_PRO_6M / _PRO_1Y — 6-month and yearly Price IDs
+ *                               (created by supabase/scripts/stripe_create_interval_prices.ts)
  *   SUPABASE_URL              — project URL (auto-injected)
  *   SB_SECRET_KEY — service role key (set manually in secrets)
  *   SB_PUBLISHABLE_KEY         — for the JWT verification path
@@ -46,6 +48,13 @@
 import Stripe from "npm:stripe@16.2.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.44.4";
 import { createAdminClient, getPublishableKey } from "../_shared/supabaseAdmin.ts";
+import {
+  buildPriceIds,
+  checkoutInterval,
+  intervalFromPrice,
+  planFromPrice,
+  priceIdsOfPlan,
+} from "./billing.ts";
 
 // ── Plan catalogue ────────────────────────────────────────────────────────────
 
@@ -81,6 +90,9 @@ const PLANS: Record<PlanId, PlanDef> = {
     stripe_price_id: Deno.env.get("STRIPE_PRICE_PRO") ?? null,
   },
 };
+
+/** (plan, interval) → Stripe price id. The monthly ids are the same secrets as PLANS[...].stripe_price_id. */
+const PRICE_IDS = buildPriceIds((name) => Deno.env.get(name));
 
 // ── Supabase admin client (service role — bypasses RLS) ──────────────────────
 
@@ -214,6 +226,10 @@ async function handleCreateCheckout(
   const plan = PLANS[planId as PlanId];
   if (!plan) return errorResponse(`Unknown plan: ${planId}`);
 
+  const intervalCheck = checkoutInterval(planId, body.interval);
+  if (!intervalCheck.ok) return errorResponse(intervalCheck.error, 400);
+  const interval = intervalCheck.interval;
+
   const db = getAdminClient();
 
   // Downgrade to the free plan. If the user has a live Stripe subscription, we schedule
@@ -258,16 +274,20 @@ async function handleCreateCheckout(
         plan_renews_at: null,
         plan_trial_end: null,
         stripe_subscription_id: null,
+        plan_interval: null,
       })
       .eq("id", authUserId);
     if (error) return errorResponse(`DB error: ${error.message}`, 500);
     return jsonResponse({ downgraded: true });
   }
 
-  if (!plan.stripe_price_id) {
+  // business/pro: the price of the requested interval. NEVER fall back to the monthly one when the interval's secret is missing
+  // (the customer would be charged a different amount than the one on the page).
+  const priceId = planId === "business" || planId === "pro" ? PRICE_IDS[planId][interval] : plan.stripe_price_id;
+  if (!priceId) {
     return errorResponse(
-      `No Stripe Price ID configured for plan "${planId}". ` +
-        "Set STRIPE_PRICE_VERIFIED / STRIPE_PRICE_BUSINESS / STRIPE_PRICE_PRO in Edge Function secrets.",
+      `No Stripe Price ID configured for plan "${planId}" (${interval}). ` +
+        "Set STRIPE_PRICE_VERIFIED / STRIPE_PRICE_BUSINESS[_6M|_1Y] / STRIPE_PRICE_PRO[_6M|_1Y] in Edge Function secrets.",
       500,
     );
   }
@@ -277,7 +297,7 @@ async function handleCreateCheckout(
   // Resolve/create the user's Stripe Customer.
   const { data: userRow, error: userErr } = await db
     .from("users")
-    .select("stripe_customer_id, plan_trial_end")
+    .select("stripe_customer_id, trial_used_at")
     .eq("id", authUserId)
     .maybeSingle();
   if (userErr) return errorResponse(`DB error: ${userErr.message}`, 500);
@@ -333,14 +353,15 @@ async function handleCreateCheckout(
 
   // Con código promocional mandan sus días (aunque el usuario ya haya tenido prueba:
   // ese es el sentido del código). Sin código, la regla de siempre: 30 días solo si
-  // nunca tuvo una.
+  // nunca tuvo una. "Ya tuvo prueba" = users.trial_used_at (se escribe una vez, en el webhook,
+  // y nunca se borra); plan_trial_end NO sirve: el webhook lo pone a null al acabar la prueba.
   const alreadyUsedTrial =
-    (userRow as { plan_trial_end: string | null } | null)?.plan_trial_end != null;
+    (userRow as { trial_used_at: string | null } | null)?.trial_used_at != null;
   const trialDays = promoTrialDays ?? (alreadyUsedTrial ? null : 30);
 
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     mode: "subscription",
-    line_items: [{ price: plan.stripe_price_id, quantity: 1 }],
+    line_items: [{ price: priceId, quantity: 1 }],
     customer: customerId,
     success_url: successUrl,
     cancel_url: cancelUrl,
@@ -350,12 +371,16 @@ async function handleCreateCheckout(
     metadata: {
       user_id: authUserId,
       plan: planId,
+      interval,
+      ...(trialDays ? { trial: "1" } : {}),
       ...(promoCodeId ? { promo_code_id: promoCodeId } : {}),
     },
     subscription_data: {
       metadata: {
         user_id: authUserId,
         plan: planId,
+        interval,
+        ...(trialDays ? { trial: "1" } : {}),
         ...(promoCodeId ? { promo_code_id: promoCodeId } : {}),
       },
       ...(trialDays ? { trial_period_days: trialDays } : {}),
@@ -475,7 +500,9 @@ async function accrueAffiliateCommission(
   let planKey: string | null = null;
   try {
     const sub = await stripe.subscriptions.retrieve(stripeSubId);
-    planKey = (sub.metadata?.plan as string) ?? null;
+    // El plan sale del PRECIO (metadata del precio → metadata de la suscripción → ids configurados): un cambio de plan
+    // desde el portal cambia el precio pero no la metadata de la suscripción.
+    planKey = planFromPrice(sub.items?.data?.[0]?.price, sub.metadata?.plan, PRICE_IDS);
   } catch (err) {
     console.warn("[affiliate] no se pudo recuperar la suscripción para el plan:", err);
     return;
@@ -484,9 +511,11 @@ async function accrueAffiliateCommission(
 
   // 6) Base = SOLO membresía. Mapea cada plan comisionable a su price ID de Stripe.
   const commissionablePriceIds = new Set(
-    commissionablePlans
-      .map((p) => PLANS[p as PlanId]?.stripe_price_id ?? null)
-      .filter((id): id is string => !!id),
+    commissionablePlans.flatMap((p) => {
+      // business/pro: los 3 intervalos (la comisión es sobre el pago completo de 6 meses / 1 año); verified: el mensual.
+      const ids = priceIdsOfPlan(PRICE_IDS, p);
+      return ids.length > 0 ? ids : [PLANS[p as PlanId]?.stripe_price_id ?? ""].filter(Boolean);
+    }),
   );
   let baseCents = 0;
   for (const line of invoice.lines?.data ?? []) {
@@ -588,7 +617,6 @@ async function handleWebhook(req: Request): Promise<Response> {
       const session = event.data.object as Stripe.Checkout.Session;
       const customerId = customerIdOf(session.customer);
       const userId = await resolveUserId(db, session.metadata?.user_id, customerId);
-      const plan = (session.metadata?.plan as PlanId) ?? "regular";
 
       if (!userId) {
         console.warn(`checkout.session.completed: cannot resolve user for session ${session.id}`);
@@ -603,6 +631,8 @@ async function handleWebhook(req: Request): Promise<Response> {
       let periodEnd: string | null = null;
       let trialEnd: string | null = null;
       let planStatus: "active" | "trialing" = "active";
+      let price: Stripe.Price | null = null;
+      let subMetaPlan: unknown = null;
 
       if (stripeSubId) {
         try {
@@ -610,22 +640,43 @@ async function handleWebhook(req: Request): Promise<Response> {
           periodEnd = new Date(sub.current_period_end * 1000).toISOString();
           trialEnd = sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null;
           planStatus = trialEnd ? "trialing" : "active";
+          price = sub.items?.data?.[0]?.price ?? null;
+          subMetaPlan = sub.metadata?.plan;
         } catch (err) {
           console.warn("Could not retrieve subscription:", err);
         }
       }
 
+      // Plan from the PRICE (price.metadata.plan → subscription metadata → configured ids → the checkout session metadata).
+      // If none is valid we log and KEEP the user's current plan: never degrade to 'regular' because of a metadata gap.
+      const plan = planFromPrice(price, subMetaPlan ?? session.metadata?.plan, PRICE_IDS);
+      if (!plan) {
+        console.error(`[subscriptions] checkout ${session.id}: no valid plan on price ${price?.id ?? "(none)"} nor on metadata; plan left unchanged`);
+      }
+
       const upd: Record<string, unknown> = {
-        plan,
         plan_status: planStatus,
         plan_trial_end: trialEnd,
         plan_renews_at: periodEnd,
         stripe_subscription_id: stripeSubId,
+        plan_interval: intervalFromPrice(price),
       };
+      if (plan) upd.plan = plan;
       if (customerId) upd.stripe_customer_id = customerId;
 
       const { error: updErr } = await db.from("users").update(upd).eq("id", userId);
       if (updErr) console.error("[subscriptions] users.update failed", { event: event.type, error: updErr });
+
+      // trial_used_at: written ONCE, never overwritten or cleared (the `is null` filter makes it atomic and idempotent
+      // when Stripe resends the event). It is the "already had a free trial" criterion of create_checkout.
+      if (trialEnd || session.metadata?.trial === "1") {
+        const { error: trialErr } = await db
+          .from("users")
+          .update({ trial_used_at: new Date().toISOString() })
+          .eq("id", userId)
+          .is("trial_used_at", null);
+        if (trialErr) console.error("[subscriptions] trial_used_at update failed", { event: event.type, error: trialErr });
+      }
 
       // Consumir el código promocional AQUÍ, no al crear la sesión: un checkout
       // abandonado no debe quemar el código. El `.is("redeemed_by", null)` hace la
@@ -646,7 +697,7 @@ async function handleWebhook(req: Request): Promise<Response> {
         }
       }
 
-      console.log(`[subscriptions] checkout completed: user=${userId} plan=${plan} status=${planStatus}`);
+      console.log(`[subscriptions] checkout completed: user=${userId} plan=${plan ?? "(unchanged)"} interval=${upd.plan_interval ?? "?"} status=${planStatus}`);
       break;
     }
 
@@ -661,7 +712,12 @@ async function handleWebhook(req: Request): Promise<Response> {
         break;
       }
 
-      const plan = (sub.metadata?.plan as PlanId) ?? "regular";
+      // Plan from the price, not only from the subscription metadata (a portal plan change swaps the price and leaves the metadata stale).
+      const price = sub.items?.data?.[0]?.price ?? null;
+      const plan = planFromPrice(price, sub.metadata?.plan, PRICE_IDS);
+      if (!plan) {
+        console.error(`[subscriptions] sub ${sub.id}: no valid plan on price ${price?.id ?? "(none)"} nor on metadata; plan left unchanged`);
+      }
       const planStatus = mapStripeStatus(sub.status);
       const periodEnd = new Date(sub.current_period_end * 1000).toISOString();
       const trialEnd = sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null;
@@ -671,14 +727,15 @@ async function handleWebhook(req: Request): Promise<Response> {
         plan_renews_at: periodEnd,
         plan_trial_end: trialEnd,
         stripe_subscription_id: sub.id,
+        plan_interval: intervalFromPrice(price),
       };
       // past_due already loses dashboard access via the gate (plan_status). Do NOT
       // downgrade the plan itself — keep what they had. Otherwise apply the plan change.
-      if (planStatus !== "past_due") upd.plan = plan;
+      if (planStatus !== "past_due" && plan) upd.plan = plan;
 
       const { error: updErr } = await db.from("users").update(upd).eq("id", userId);
       if (updErr) console.error("[subscriptions] users.update failed", { event: event.type, error: updErr });
-      console.log(`[subscriptions] sub updated: user=${userId} plan=${plan} status=${planStatus}`);
+      console.log(`[subscriptions] sub updated: user=${userId} plan=${plan ?? "(unchanged)"} interval=${upd.plan_interval ?? "?"} status=${planStatus}`);
       break;
     }
 
@@ -701,6 +758,7 @@ async function handleWebhook(req: Request): Promise<Response> {
           plan_renews_at: null,
           plan_trial_end: null,
           stripe_subscription_id: null,
+          plan_interval: null,
         })
         .eq("id", userId);
       if (updErr) console.error("[subscriptions] users.update failed", { event: event.type, error: updErr });
