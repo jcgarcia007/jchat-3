@@ -70,7 +70,7 @@ export type Database = {
           stripe_invoice_id: string | null
           stripe_subscription_id: string | null
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           affiliate_id: string
@@ -88,7 +88,7 @@ export type Database = {
           stripe_invoice_id?: string | null
           stripe_subscription_id?: string | null
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           affiliate_id?: string
@@ -106,7 +106,7 @@ export type Database = {
           stripe_invoice_id?: string | null
           stripe_subscription_id?: string | null
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -151,7 +151,7 @@ export type Database = {
           affiliate_id: string
           amount_cents: number
           created_at: string
-          created_by: string
+          created_by: string | null
           currency: string
           id: string
           method: string | null
@@ -163,7 +163,7 @@ export type Database = {
           affiliate_id: string
           amount_cents: number
           created_at?: string
-          created_by: string
+          created_by?: string | null
           currency?: string
           id?: string
           method?: string | null
@@ -175,7 +175,7 @@ export type Database = {
           affiliate_id?: string
           amount_cents?: number
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           currency?: string
           id?: string
           method?: string | null
@@ -212,7 +212,7 @@ export type Database = {
           affiliate_number: string
           commission_pct: number
           created_at: string
-          created_by: string
+          created_by: string | null
           email: string | null
           id: string
           name: string
@@ -230,7 +230,7 @@ export type Database = {
           affiliate_number: string
           commission_pct?: number
           created_at?: string
-          created_by: string
+          created_by?: string | null
           email?: string | null
           id?: string
           name: string
@@ -248,7 +248,7 @@ export type Database = {
           affiliate_number?: string
           commission_pct?: number
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           email?: string | null
           id?: string
           name?: string
@@ -337,6 +337,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      apple_tokens: {
+        Row: {
+          client_id: string
+          created_at: string
+          refresh_token_enc: string
+          user_id: string
+        }
+        Insert: {
+          client_id?: string
+          created_at?: string
+          refresh_token_enc: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          refresh_token_enc?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       bans: {
         Row: {
@@ -554,6 +575,8 @@ export type Database = {
           affiliate_attribution_source: string | null
           brand_kit: Json
           category: string | null
+          category_extras: string[]
+          category_primary: string | null
           city: string | null
           country: string
           cover_url: string | null
@@ -588,7 +611,7 @@ export type Database = {
           menu_primary_language: string
           menu_template_id: string
           name: string
-          owner_id: string
+          owner_id: string | null
           payout_frequency: string
           phone: string | null
           pickup_enabled: boolean
@@ -625,6 +648,8 @@ export type Database = {
           affiliate_attribution_source?: string | null
           brand_kit?: Json
           category?: string | null
+          category_extras?: string[]
+          category_primary?: string | null
           city?: string | null
           country?: string
           cover_url?: string | null
@@ -659,7 +684,7 @@ export type Database = {
           menu_primary_language?: string
           menu_template_id?: string
           name: string
-          owner_id: string
+          owner_id?: string | null
           payout_frequency?: string
           phone?: string | null
           pickup_enabled?: boolean
@@ -696,6 +721,8 @@ export type Database = {
           affiliate_attribution_source?: string | null
           brand_kit?: Json
           category?: string | null
+          category_extras?: string[]
+          category_primary?: string | null
           city?: string | null
           country?: string
           cover_url?: string | null
@@ -730,7 +757,7 @@ export type Database = {
           menu_primary_language?: string
           menu_template_id?: string
           name?: string
-          owner_id?: string
+          owner_id?: string | null
           payout_frequency?: string
           phone?: string | null
           pickup_enabled?: boolean
@@ -3498,6 +3525,39 @@ export type Database = {
           },
         ]
       }
+      outbound_emails: {
+        Row: {
+          attempts: number
+          created_at: string
+          id: string
+          kind: string
+          payload: Json
+          sent_at: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          kind: string
+          payload?: Json
+          sent_at?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          kind?: string
+          payload?: Json
+          sent_at?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       pending_order_carts: {
         Row: {
           business_id: string
@@ -4517,6 +4577,116 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      review_bypass_log: {
+        Row: {
+          at: string
+          business_id: string
+          fn: string
+          id: number
+          user_id: string
+        }
+        Insert: {
+          at?: string
+          business_id: string
+          fn: string
+          id?: never
+          user_id: string
+        }
+        Update: {
+          at?: string
+          business_id?: string
+          fn?: string
+          id?: never
+          user_id?: string
+        }
+        Relationships: []
+      }
+      review_group_businesses: {
+        Row: {
+          business_id: string
+          created_at: string
+          status: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          status?: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_group_businesses_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: true
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      review_group_members: {
+        Row: {
+          created_at: string
+          kind: string
+          note: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          kind: string
+          note?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          kind?: string
+          note?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_group_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_group_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      review_mode: {
+        Row: {
+          enabled_by: string | null
+          enabled_until: string | null
+          id: boolean
+          updated_at: string
+        }
+        Insert: {
+          enabled_by?: string | null
+          enabled_until?: string | null
+          id?: boolean
+          updated_at?: string
+        }
+        Update: {
+          enabled_by?: string | null
+          enabled_until?: string | null
+          id?: boolean
+          updated_at?: string
+        }
+        Relationships: []
       }
       reviews: {
         Row: {
@@ -6394,12 +6564,18 @@ export type Database = {
         Returns: undefined
       }
       block_user: { Args: { p_target: string }; Returns: undefined }
+      business_category_extras_valid: {
+        Args: { p_extras: string[]; p_primary: string }
+        Returns: boolean
+      }
+      business_category_keys: { Args: never; Returns: string[] }
       business_hours_day: { Args: { p_entry: Json }; Returns: number[] }
       business_hours_minutes: { Args: { p_time: string }; Returns: number }
       business_is_open_now: {
         Args: { p_at?: string; p_business_id: string }
         Returns: boolean
       }
+      business_visible_to: { Args: { p_business_id: string }; Returns: boolean }
       can_access_room: { Args: { _room_id: string }; Returns: boolean }
       can_employee_see_table: { Args: { p_table_id: string }; Returns: boolean }
       can_publish_business_post: {
@@ -6917,6 +7093,19 @@ export type Database = {
         Args: { p_kind: string; p_note?: string; p_order_id: string }
         Returns: Json
       }
+      owner_close_business: {
+        Args: { p_business_id: string; p_owner: string }
+        Returns: Json
+      }
+      owner_open_orders: {
+        Args: { p_owner: string }
+        Returns: {
+          business_id: string
+          business_name: string
+          kind: string
+          n: number
+        }[]
+      }
       owns_business: { Args: { p_business: string }; Returns: boolean }
       owns_business_of_table: { Args: { p_table_id: string }; Returns: boolean }
       owns_room_business: { Args: { p_room: string }; Returns: boolean }
@@ -7269,7 +7458,7 @@ export type Database = {
           affiliate_id: string
           amount_cents: number
           created_at: string
-          created_by: string
+          created_by: string | null
           currency: string
           id: string
           method: string | null
@@ -7368,6 +7557,35 @@ export type Database = {
           table_qr_token: string
         }[]
       }
+      review_bypass: {
+        Args: { p_business_id: string; p_fn: string; p_user_id: string }
+        Returns: boolean
+      }
+      review_bypass_businesses: { Args: never; Returns: string[] }
+      review_group_add_business: { Args: { p_slug: string }; Returns: string }
+      review_group_add_member: {
+        Args: { p_kind: string; p_username: string }
+        Returns: string
+      }
+      review_group_overview: { Args: never; Returns: Json }
+      review_group_set_status: {
+        Args: { p_ref: string; p_status: string; p_target: string }
+        Returns: undefined
+      }
+      review_is_group_business: {
+        Args: { p_business_id: string }
+        Returns: boolean
+      }
+      review_is_member: { Args: { p_user_id: string }; Returns: boolean }
+      review_join_room: { Args: { _room_id: string }; Returns: boolean }
+      review_member_sees: { Args: { p_business_id: string }; Returns: boolean }
+      review_member_sees_as: {
+        Args: { p_business_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      review_mode_active: { Args: never; Returns: boolean }
+      review_mode_off: { Args: never; Returns: undefined }
+      review_mode_set: { Args: { p_days: number }; Returns: string }
       search_reservation_customers: {
         Args: { p_business_id: string; p_query: string }
         Returns: {
@@ -7591,12 +7809,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -7620,11 +7838,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -7645,11 +7863,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -7670,11 +7888,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -7687,11 +7905,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -7701,11 +7919,7 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },
 } as const
-
