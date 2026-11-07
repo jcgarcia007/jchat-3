@@ -54,6 +54,8 @@ const FOREGROUND_BANNER_TYPES: ReadonlySet<string> = new Set([
   'gift_response',
   'order_status',
   'match_match',
+  'business_closed',
+  'reservation_cancelled',
 ]);
 
 // Web has no foreground OS banners or push (the browser build lists notifications through Realtime only).

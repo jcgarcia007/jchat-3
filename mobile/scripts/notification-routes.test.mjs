@@ -25,12 +25,12 @@ const union = service.slice(service.indexOf('export type NotificationType ='), s
 const TYPES = [...union.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
 const B = 'biz-1';
 
-test('there are 14 types, and the hook accepts every one (derived from SOCIAL_NOTIFICATION_TYPES, not a hand-kept list)', () => {
-  assert.equal(TYPES.length, 14);
+test('there are 16 types, and the hook accepts every one (derived from SOCIAL_NOTIFICATION_TYPES, not a hand-kept list)', () => {
+  assert.equal(TYPES.length, 16);
   assert.match(hook, /new Set\(SOCIAL_NOTIFICATION_TYPES\)/);
   const social = service.slice(service.indexOf('export const SOCIAL_NOTIFICATION_TYPES'), service.indexOf('export function isSocialNotificationType'));
   for (const t of ['dm', 'follower', 'like', 'comment', 'work_alert']) assert.ok(social.includes(`'${t}'`), t);
-  for (const g of ['MATCH_NOTIFICATION_TYPES', 'ORDER_NOTIFICATION_TYPES', 'MATCH_PHOTO_NOTIFICATION_TYPES']) assert.ok(social.includes(`...${g}`), g);
+  for (const g of ['MATCH_NOTIFICATION_TYPES', 'ORDER_NOTIFICATION_TYPES', 'MATCH_PHOTO_NOTIFICATION_TYPES', 'VENUE_CLOSED_NOTIFICATION_TYPES']) assert.ok(social.includes(`...${g}`), g);
   const matchPhoto = service.match(/MATCH_PHOTO_NOTIFICATION_TYPES[^=]*=\s*\[([^\]]*)\]/)[1];
   assert.ok(matchPhoto.includes('match_photo_approved') && matchPhoto.includes('match_photo_rejected'));
 });
@@ -56,7 +56,10 @@ test('the route of every type', () => {
   }
   // work_alert has no route ON PURPOSE: it is an alert for the staff, shown in the list only.
   assert.equal(routeForNotification('work_alert', { anything: 1 }), null);
-  assert.deepEqual(Object.keys(table).concat('work_alert').sort(), [...TYPES].sort());
+  // D4: a closed venue / a cancelled reservation have nothing to open either (the venue is gone for the client): the list shows them, a tap does nothing.
+  assert.equal(routeForNotification('business_closed', { business_id: B }), null);
+  assert.equal(routeForNotification('reservation_cancelled', { business_id: B }), null);
+  assert.deepEqual(Object.keys(table).concat('work_alert', 'business_closed', 'reservation_cancelled').sort(), [...TYPES].sort());
 });
 
 test('a type this build does not know opens nothing', () => {

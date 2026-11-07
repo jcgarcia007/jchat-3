@@ -6,12 +6,17 @@
  * The 409 owner code used to be "owns_business"; the function now sends "owner_has_business": both are accepted while the update rolls out.
  */
 
-export type DeleteAccountResult = 'ok' | 'owns_business' | 'error';
+import { blockerFromBody, type OwnerBlocker } from './ownerDelete';
+
+/** 'blocked' (D4): a venue owner's delete was refused because of open orders / tabs or money still at Stripe; nothing was closed. */
+export type DeleteAccountResult = 'ok' | 'owns_business' | 'blocked' | 'error';
 
 export interface DeleteAccountOutcome {
   result: DeleteAccountResult;
   /** A short machine code of the failure (never user text), or null when the account was deleted. */
   code: string | null;
+  /** Set when result is 'blocked': what to show instead of an error. */
+  blocker?: OwnerBlocker;
 }
 
 const OWNER_CODES = ['owner_has_business', 'owns_business'];
@@ -25,6 +30,8 @@ export function deleteOutcomeFromResponse(status: number, ok: boolean, body: unk
   if (ok) return { result: 'ok', code: null };
   const record = body && typeof body === 'object' ? (body as { code?: unknown; error?: unknown }) : null;
   const raw = record?.code ?? record?.error;
+  const blocker = blockerFromBody(status, body);
+  if (blocker) return { result: 'blocked', code: typeof raw === 'string' ? sanitizeCode(raw) : null, blocker };
   if (status === 409 && typeof raw === 'string' && OWNER_CODES.includes(raw)) return { result: 'owns_business', code: 'owner_has_business' };
   const code = sanitizeCode(raw);
   return { result: 'error', code: code === 'unknown' ? `http_${status}` : code };

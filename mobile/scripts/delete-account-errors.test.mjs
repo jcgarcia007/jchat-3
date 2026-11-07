@@ -9,9 +9,14 @@ const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const readRepo = (p) => readFileSync(new URL(`../../${p}`, import.meta.url), 'utf8');
 const json = (lang, ns) => JSON.parse(read(`i18n/locales/${lang}/${ns}.json`));
 
-const js = ts.transpileModule(read('utils/deleteAccountOutcome.ts'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
-const mod = { exports: {} };
-new Function('module', 'exports', js)(mod, mod.exports);
+// deleteAccountOutcome.ts imports ./ownerDelete (D4): a tiny CommonJS loader resolves the relative import.
+function loadCjs(rel) {
+  const out = ts.transpileModule(read(rel), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
+  const m = { exports: {} };
+  new Function('module', 'exports', 'require', out)(m, m.exports, (spec) => loadCjs(`utils/${spec.replace('./', '')}.ts`).exports);
+  return m;
+}
+const mod = loadCjs('utils/deleteAccountOutcome.ts');
 const { deleteOutcomeFromResponse, sanitizeCode, NETWORK_FAILURE, NOT_CONFIGURED } = mod.exports;
 
 test('ok → result ok, no code', () => {
@@ -43,7 +48,7 @@ test('nothing but a short snake_case code is ever shown (sentences, HTML, stacks
 test('Settings shows "Write to us at <contact> … <code>" for every failure but the owner one, with the real contact', () => {
   const screen = read('screens/settings/SettingsScreen.tsx');
   assert.match(screen, /const failed = \(code: string\) =>\s+showAlert\(\s+t\('alerts\.deleteErrorTitle'\),\s+t\(code === 'storage_purge_failed' \? 'alerts\.deleteStorageErrorMessage' : 'alerts\.deleteErrorMessage', \{ contact: ACCOUNT_SUPPORT_EMAIL, code \}\),/);
-  assert.match(screen, /deleteMyAccountWithCode\(\)/);
+  assert.match(screen, /deleteMyAccountWithCode\(\{ confirmOwnerClose: owner \}\)/);
   assert.equal(read('constants/contact.ts').includes("ACCOUNT_SUPPORT_EMAIL = 'soporte@jchat.cloud'"), true, 'the delete error points to support, not to the safety mailbox');
   for (const lang of ['en', 'es']) {
     const msg = json(lang, 'settings').alerts.deleteErrorMessage;
@@ -76,8 +81,8 @@ test('storage_purge_failed has its own es/en message with the contact and the co
 test('B2-11: while the account is being deleted a blocking overlay says "Borrando tu cuenta…" and the delete row does nothing', () => {
   const screen = read('screens/settings/SettingsScreen.tsx');
   assert.match(screen, /const \[deleting, setDeleting\] = useState\(false\)/);
-  assert.match(screen, /setDeleting\(true\);\n\s+try \{\n\s+const \{ result, code \} = await deleteMyAccountWithCode\(\);\n\s+setDeleting\(false\);/);
-  assert.match(screen, /onPress=\{deleting \? undefined : handleDeleteAccount\}/);
+  assert.match(screen, /setDeleting\(true\);\n\s+try \{\n\s+const \{ result, code, blocker \} = await deleteMyAccountWithCode\(\{ confirmOwnerClose: owner \}\);\n\s+setDeleting\(false\);/);
+  assert.match(screen, /onPress=\{deleting \|\| checkingOwner \? undefined : \(\) => void handleDeleteAccount\(\)\}/);
   assert.match(screen, /testID="settings-deleting"/);
   assert.match(screen, /accessibilityViewIsModal/);
   assert.equal(json('es', 'settings').alerts.deleting, 'Borrando tu cuenta…');

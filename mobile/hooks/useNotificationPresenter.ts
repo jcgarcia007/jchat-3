@@ -9,6 +9,8 @@ import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   IconBell,
+  IconBuildingStore,
+  IconCalendarX,
   IconGift,
   IconHeart,
   IconMessage,
@@ -19,6 +21,7 @@ import {
   type Icon,
 } from '@tabler/icons-react-native';
 
+import { formatReservationWhen } from '../utils/reservationWhen';
 import { useMatchNotificationLabels } from './useMatchNotificationLabels';
 import {
   isMatchNotificationType,
@@ -43,7 +46,15 @@ export const NOTIFICATION_ICONS: Record<NotificationType, Icon> = {
   gift_response: IconGift,
   match_photo_approved: IconHeart,
   match_photo_rejected: IconBell,
+  business_closed: IconBuildingStore,
+  reservation_cancelled: IconCalendarX,
 };
+
+/** The venue name a D4 notice carries in its own payload (the venue is no longer readable by the client once closed). */
+function businessNameFromPayload(payload: Record<string, unknown> | null): string {
+  const name = payload?.business_name;
+  return typeof name === 'string' && name.trim() ? name.trim() : 'JChat';
+}
 
 function actorName(payload: Record<string, unknown> | null, fallback: string): string {
   for (const key of ['actor_name', 'from_name', 'username', 'display_name'] as const) {
@@ -69,7 +80,7 @@ export function openNotificationRoute(
 
 export function useNotificationPresenter(notifications: NotificationRow[]) {
   const translation = useTranslation('social');
-  const { t } = translation;
+  const { t, i18n } = translation;
   const matchLabels = useMatchNotificationLabels(notifications);
 
   /** Rows that are shown (social + order/gift types; Match rows of venues with Match off are hidden). */
@@ -133,6 +144,17 @@ export function useNotificationPresenter(notifications: NotificationRow[]) {
         return t('messages.notif.orderGeneric', { n });
       }
 
+      if (notification.type === 'business_closed') {
+        return t('messages.notif.businessClosed', { business: businessNameFromPayload(payload) });
+      }
+
+      if (notification.type === 'reservation_cancelled') {
+        const when = formatReservationWhen(payload?.reserved_at, payload?.timezone, i18n.language);
+        return when
+          ? t('messages.notif.reservationCancelled', { business: businessNameFromPayload(payload), date: when.date, time: when.time })
+          : t('messages.notif.reservationCancelledNoDate', { business: businessNameFromPayload(payload) });
+      }
+
       if (notification.type === 'gift_offer') {
         return t('messages.notif.giftOffer', { name: nameOf(payload?.from_user_id), business: businessName });
       }
@@ -150,7 +172,7 @@ export function useNotificationPresenter(notifications: NotificationRow[]) {
         name: actorName(payload, t('messages.someone')),
       });
     },
-    [t, matchLabels],
+    [t, i18n.language, matchLabels],
   );
 
   return { visible, textFor, translation, matchLabels };

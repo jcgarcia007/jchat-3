@@ -228,7 +228,7 @@ test('interests are optional with a maximum of 5', () => {
 
 test('verdict notifications: own texts in the list, a tap opens the result, an unknown type never breaks the list', () => {
   const service = read('services/notifications.ts');
-  assert.match(service, /\| 'match_photo_approved'\s*\| 'match_photo_rejected';/);
+  assert.match(service, /\| 'match_photo_approved'\s*\| 'match_photo_rejected'\s*(;|\|)/);
   assert.match(service, /case 'match_photo_approved':\s*case 'match_photo_rejected':\s*\/\/[^\n]*\n\s*return \{ screen: 'MatchMyProfile', params: \{ focus: 'result' \} \};/);
   assert.match(service, /default:\s*return null; \/\/ a type this build does not know/);
   assert.match(service, /default:\s*\/\/ A type this build does not know[^\n]*\n\s*return \{ icon: IconBell/);

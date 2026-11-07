@@ -52,7 +52,10 @@
       "giftGeneric": "Novedad en tu regalo",
       "matchPhotoApprovedHere": "Ya apareces en Match en {{business}}",
       "matchPhotoApproved": "Tu foto de Match fue aprobada",
-      "matchPhotoRejected": "Tu foto no cumple las normas. Sube otra para aparecer."
+      "matchPhotoRejected": "Tu foto no cumple las normas. Sube otra para aparecer.",
+      "businessClosed": "Tu local {{business}} cerró. Ya no tienes acceso al punto de venta.",
+      "reservationCancelled": "{{business}} cerró y tu reserva del {{date}} a las {{time}} se canceló.",
+      "reservationCancelledNoDate": "{{business}} cerró y tu reserva se canceló."
     },
     "pinnedOrderTitle": "Pedido #{{n}} · {{status}}",
     "pinnedOrderSub": "{{business}} · toca para ver",

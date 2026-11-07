@@ -27,7 +27,9 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import {
   IconBell,
+  IconBuildingStore,
   IconBriefcase,
+  IconCalendarX,
   IconGift,
   IconHeart,
   IconMessageCircle,
@@ -62,7 +64,9 @@ export type NotificationType =
   | 'gift_offer'
   | 'gift_response'
   | 'match_photo_approved'
-  | 'match_photo_rejected';
+  | 'match_photo_rejected'
+  | 'business_closed'
+  | 'reservation_cancelled';
 
 export const MATCH_NOTIFICATION_TYPES: readonly NotificationType[] = [
   'match_like',
@@ -89,6 +93,9 @@ export function isMatchPhotoNotificationType(value: unknown): value is Notificat
   return typeof value === 'string' && MATCH_PHOTO_NOTIFICATION_TYPES.includes(value as NotificationType);
 }
 
+/** D4 (migration 265): a venue closed because its owner deleted the account. To its employees / to customers with a future reservation. Transactional. */
+export const VENUE_CLOSED_NOTIFICATION_TYPES: readonly NotificationType[] = ['business_closed', 'reservation_cancelled'];
+
 export const SOCIAL_NOTIFICATION_TYPES: readonly NotificationType[] = [
   'dm',
   'follower',
@@ -98,6 +105,7 @@ export const SOCIAL_NOTIFICATION_TYPES: readonly NotificationType[] = [
   ...MATCH_NOTIFICATION_TYPES,
   ...ORDER_NOTIFICATION_TYPES,
   ...MATCH_PHOTO_NOTIFICATION_TYPES,
+  ...VENUE_CLOSED_NOTIFICATION_TYPES,
 ];
 
 export function isSocialNotificationType(value: unknown): value is NotificationType {
@@ -302,6 +310,12 @@ export function getNotificationStyle(type: NotificationType): NotificationStyle 
 
     case 'order_status':
       return { icon: IconReceipt, accent: palette.brand };
+
+    case 'business_closed':
+      return { icon: IconBuildingStore, accent: palette.warning };
+
+    case 'reservation_cancelled':
+      return { icon: IconCalendarX, accent: palette.warning };
 
     case 'gift_offer':
     case 'gift_response':

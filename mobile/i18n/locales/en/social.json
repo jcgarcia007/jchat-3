@@ -52,7 +52,10 @@
       "giftGeneric": "Update on your gift",
       "matchPhotoApprovedHere": "You're now in Match at {{business}}",
       "matchPhotoApproved": "Your Match photo was approved",
-      "matchPhotoRejected": "Your photo doesn't meet the rules. Upload another one to appear."
+      "matchPhotoRejected": "Your photo doesn't meet the rules. Upload another one to appear.",
+      "businessClosed": "{{business}} has closed. You no longer have access to the point of sale.",
+      "reservationCancelled": "{{business}} has closed and your reservation for {{date}} at {{time}} was cancelled.",
+      "reservationCancelledNoDate": "{{business}} has closed and your reservation was cancelled."
     },
     "pinnedOrderTitle": "Order #{{n}} · {{status}}",
     "pinnedOrderSub": "{{business}} · tap to view",

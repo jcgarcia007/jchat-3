@@ -24,6 +24,7 @@ export { default as IconBriefcase } from '@tabler/icons-react-native/IconBriefca
 export { default as IconBuilding } from '@tabler/icons-react-native/IconBuilding';
 export { default as IconBuildingStore } from '@tabler/icons-react-native/IconBuildingStore';
 export { default as IconCalendarEvent } from '@tabler/icons-react-native/IconCalendarEvent';
+export { default as IconCalendarX } from '@tabler/icons-react-native/IconCalendarX';
 export { default as IconCamera } from '@tabler/icons-react-native/IconCamera';
 export { default as IconCards } from '@tabler/icons-react-native/IconCards';
 export { default as IconCash } from '@tabler/icons-react-native/IconCash';

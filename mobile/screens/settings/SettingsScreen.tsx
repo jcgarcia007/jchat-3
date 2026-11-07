@@ -25,6 +25,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import * as WebBrowser from 'expo-web-browser';
 import {
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -70,7 +71,9 @@ import { applyAppearance, type AppearancePreference } from '../../theme/appearan
 import { useAuth } from '../../context/AuthContext';
 import { isSupabaseConfigured } from '../../services/supabase';
 import { ACCOUNT_SUPPORT_EMAIL } from '../../constants/contact';
-import { deleteMyAccountWithCode } from '../../services/account';
+import { checkOwnerDeletion, deleteMyAccountWithCode, getStripeDashboardUrl } from '../../services/account';
+import { OwnerDeleteModal, type OwnerDeleteView } from '../../components/settings/OwnerDeleteModal';
+import type { OwnerBusiness } from '../../utils/ownerDelete';
 import {
   canUseBiometrics,
   isBiometricEnabled,
@@ -278,6 +281,10 @@ export default function SettingsScreen() {
   const [hasPosAccess, setHasPosAccess] = useState(false);
   // B2-11: the delete call can take ~30 s; while it runs a blocking overlay shows "Deleting your account…" and nothing else can be tapped.
   const [deleting, setDeleting] = useState(false);
+  // D4: a venue owner's delete: the dry run ("checking"), the full-screen sheet (A / B / G) and whether the running delete is the owner one.
+  const [checkingOwner, setCheckingOwner] = useState(false);
+  const [ownerView, setOwnerView] = useState<OwnerDeleteView | null>(null);
+  const [deletingOwner, setDeletingOwner] = useState(false);
 
   // ── Load settings from Supabase on mount ──────────────────────────────────
   useEffect(() => {
@@ -406,7 +413,7 @@ export default function SettingsScreen() {
   // ── Delete account (M6 — hard delete via Edge Function) ────────────────────
   // Calls the `delete-account` Edge Function, which verifies the caller's JWT
   // server-side and hard-deletes auth.users (cascades all personal data).
-  const performDeleteAccount = useCallback(async () => {
+  const performDeleteAccount = useCallback(async (owner: boolean = false) => {
     const failed = (code: string) =>
       showAlert(
         t('alerts.deleteErrorTitle'),
@@ -416,22 +423,30 @@ export default function SettingsScreen() {
       failed('not_configured');
       return;
     }
+    setDeletingOwner(owner);
     setDeleting(true);
     try {
-      const { result, code } = await deleteMyAccountWithCode();
+      const { result, code, blocker } = await deleteMyAccountWithCode({ confirmOwnerClose: owner });
       setDeleting(false);
       if (result === 'owns_business') {
-        // Nothing was deleted: the owner has to close or transfer the business first.
+        // Nothing was deleted: an older server answered the legacy owner code.
         showAlert(t('alerts.deleteOwnerTitle'), t('alerts.deleteOwnerMessage'));
         return;
       }
+      if (result === 'blocked' && blocker) {
+        // D4: something changed since the dry run (an order came in, money arrived): nothing was closed; show what blocks.
+        setOwnerView(blocker.kind === 'balance' ? { kind: 'balance', balances: blocker.balances } : { kind: 'open', open: blocker.open });
+        return;
+      }
       if (result !== 'ok') {
-        failed(code ?? 'unknown');
+        // The owner flow answers its own codes (subscription / Stripe / close failed): screen G with the code and the support contact.
+        if (owner) setOwnerView({ kind: 'error', code: code ?? 'unknown' });
+        else failed(code ?? 'unknown');
         return;
       }
 
       // Success — confirm, then sign out (AuthContext routes to Welcome/Login).
-      showAlert(t('alerts.deleteSuccessTitle'), t('alerts.deleteSuccessMessage'), [
+      showAlert(owner ? t('ownerDelete.successTitle') : t('alerts.deleteSuccessTitle'), owner ? t('ownerDelete.successMessage') : t('alerts.deleteSuccessMessage'), [
         {
           text: t('actions.ok', { ns: 'common' }),
           onPress: () => {
@@ -445,7 +460,8 @@ export default function SettingsScreen() {
     }
   }, [signOut, t]);
 
-  const handleDeleteAccount = useCallback(() => {
+  // The generic flow of any account that owns no venue: two confirmations, then the delete.
+  const runGenericDeleteFlow = useCallback(() => {
     // Confirmation 1 — explain that deletion is permanent and irreversible.
     void confirm(t('alerts.deleteTitle'), t('alerts.deleteMessage'), { confirmText: t('alerts.deleteContinue'), cancelText: t('actions.cancel', { ns: 'common' }), destructive: true }).then((accepted) => {
       if (!accepted) return;
@@ -456,6 +472,57 @@ export default function SettingsScreen() {
       });
     });
   }, [performDeleteAccount, t]);
+
+  // D4: ask the server first (a dry run that changes nothing). An owner sees the venues that will close (A), the money still at Stripe (B) or the open
+  // orders (G); anyone else, and any answer this screen cannot read, goes the generic way (an owner there gets the server's legacy refusal, nothing is deleted).
+  const handleDeleteAccount = useCallback(async () => {
+    if (checkingOwner) return;
+    setCheckingOwner(true);
+    const check = await checkOwnerDeletion();
+    setCheckingOwner(false);
+    switch (check.kind) {
+      case 'owner':
+        setOwnerView({ kind: 'confirm', businesses: check.businesses });
+        return;
+      case 'balance':
+        setOwnerView({ kind: 'balance', balances: check.balances });
+        return;
+      case 'open_orders':
+        setOwnerView({ kind: 'open', open: check.open });
+        return;
+      case 'error':
+        if (check.code === 'stripe_balance_check_failed') {
+          setOwnerView({ kind: 'error', code: check.code });
+          return;
+        }
+        runGenericDeleteFlow();
+        return;
+      default:
+        runGenericDeleteFlow();
+    }
+  }, [checkingOwner, runGenericDeleteFlow]);
+
+  // Screen A → "Continuar y eliminar": the owner's second confirmation (C), then the delete with confirmOwnerClose.
+  const continueOwnerDelete = useCallback(
+    (businesses: OwnerBusiness[]) => {
+      setOwnerView(null);
+      const n = businesses.length;
+      void confirm(t('ownerDelete.confirmTitle', { count: n, business: businesses[0]?.name ?? '' }), t('ownerDelete.confirmMessage'), {
+        confirmText: t('ownerDelete.confirmAction'),
+        cancelText: t('actions.cancel', { ns: 'common' }),
+        destructive: true,
+      }).then((accepted) => {
+        if (!accepted) return;
+        void performDeleteAccount(true);
+      });
+    },
+    [performDeleteAccount, t],
+  );
+
+  const openStripeDashboard = useCallback(async (businessId: string | null) => {
+    const url = (businessId ? await getStripeDashboardUrl(businessId) : null) ?? 'https://dashboard.stripe.com';
+    Linking.openURL(url).catch(() => null);
+  }, []);
 
   // ── Change password ────────────────────────────────────────────────────────
   const handleChangePassword = useCallback(() => {
@@ -900,20 +967,33 @@ export default function SettingsScreen() {
           icon={<IconTrash size={20} color={c.dangerText} strokeWidth={2} />}
           label={t('main.deleteAccount')}
           sublabel={t('main.deleteAccountSub')}
-          onPress={deleting ? undefined : handleDeleteAccount}
+          onPress={deleting || checkingOwner ? undefined : () => void handleDeleteAccount()}
           destructive
           testID="settings-delete-account"
         />
       </ScrollView>
 
-      {deleting ? (
+      {deleting || checkingOwner ? (
         <View style={[styles.deletingOverlay, { backgroundColor: c.scrim }]} accessibilityViewIsModal testID="settings-deleting">
-          <Spinner size="large" color={palette.onImage} accessibilityLabel={t('alerts.deleting')} />
+          <Spinner size="large" color={palette.onImage} accessibilityLabel={t(checkingOwner ? 'ownerDelete.checking' : deletingOwner ? 'ownerDelete.deleting' : 'alerts.deleting')} />
           <Text style={[styles.deletingText, { color: palette.onImage }]} accessibilityLiveRegion="polite">
-            {t('alerts.deleting')}
+            {t(checkingOwner ? 'ownerDelete.checking' : deletingOwner ? 'ownerDelete.deleting' : 'alerts.deleting')}
           </Text>
         </View>
       ) : null}
+
+      <OwnerDeleteModal
+        view={ownerView}
+        onClose={() => setOwnerView(null)}
+        onContinue={() => {
+          if (ownerView?.kind === 'confirm') continueOwnerDelete(ownerView.businesses);
+        }}
+        onRetry={() => {
+          setOwnerView(null);
+          void handleDeleteAccount();
+        }}
+        onOpenStripe={() => void openStripeDashboard(ownerView?.kind === 'balance' ? ownerView.balances[0]?.businessId ?? null : null)}
+      />
     </View>
   );
 }

@@ -22,6 +22,7 @@
  *
  * Errors answer with a CODED reason (never the raw error text): the body is { error: <code>, code: <code> } and the app shows
  * "We couldn't delete your account. Write to us at <contact> (code: <code>)". Codes:
+ *   GET (dry run, changes nothing): 200 { owner: false } | 200 { owner: true, businesses: [{id, name, city}] } | the owner blockers below.
  *   401 missing_auth · 401 invalid_session · 405 method_not_allowed
  *   409 owner_has_business   — LEGACY: the caller owns a venue and did not send confirmOwnerClose (old app); nothing was deleted
  *   409 owner_open_orders    — (owner) orders in progress / open tables: { open: [{business_id, business_name, kind, n}] }; nothing was closed
@@ -61,7 +62,7 @@ import { getPublishableKey, getSecretKey } from "../_shared/supabaseAdmin.ts";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
@@ -168,7 +169,10 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: CORS_HEADERS });
   }
-  if (req.method !== "POST") {
+  // GET = dry run for the owner screens (changes NOTHING). It must be a GET on purpose: an older deployed version of this function rejects every
+  // non-POST with 405, so an app that asks first can never trigger a deletion by accident when the app is updated before the function.
+  const checkOnly = req.method === "GET";
+  if (req.method !== "POST" && !checkOnly) {
     return failure("method_not_allowed", 405);
   }
 
@@ -203,11 +207,10 @@ Deno.serve(async (req) => {
 
     // 2b. Business owner (D4). Their venues are CLOSED (not deleted) before the account goes: businesses.owner_id is ON DELETE CASCADE, so
     //     closing sets owner_id to NULL first and the cascade never reaches the venue, its orders or its payments.
-    //     Body: { check: true } = dry run for the app's screens (nothing changes; answers the owner's venues or the blocker);
-    //           { confirmOwnerClose: true } = the person confirmed the owner screen. A request WITHOUT it (an old app version that only
-    //           showed the generic text) still gets the legacy 409 owner_has_business and nothing is touched.
-    const reqBody = await req.json().catch(() => null) as { check?: unknown; confirmOwnerClose?: unknown } | null;
-    const checkOnly = reqBody?.check === true;
+    //     GET = dry run for the app's screens (nothing changes; answers the owner's venues or the blocker).
+    //     POST { confirmOwnerClose: true } = the person confirmed the owner screen. A POST WITHOUT it (an old app version that only
+    //     showed the generic text) still gets the legacy 409 owner_has_business and nothing is touched.
+    const reqBody = checkOnly ? null : await req.json().catch(() => null) as { confirmOwnerClose?: unknown } | null;
     const confirmOwnerClose = reqBody?.confirmOwnerClose === true;
     const ownerDeps = buildOwnerDeps(admin, userId);
 
