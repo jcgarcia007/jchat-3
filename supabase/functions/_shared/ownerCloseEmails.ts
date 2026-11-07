@@ -69,7 +69,8 @@ export interface EmailDeps {
   loadRows(ids: string[]): Promise<EmailRow[]>;
   /** The person's e-mail and language, or null when the account has no e-mail. */
   recipient(userId: string): Promise<{ email: string; language: Language } | null>;
-  markRow(id: string, status: "sent" | "failed" | "skipped", attempts: number): Promise<void>;
+  /** `error` is a short generic code (never provider text or addresses); only the retry function stores it. */
+  markRow(id: string, status: "sent" | "failed" | "skipped", attempts: number, error?: string): Promise<void>;
   resendKey: string | undefined;
   from?: string;
   fetchFn?: (input: string, init?: RequestInit) => Promise<Response>;
@@ -102,7 +103,7 @@ export async function deliverClosedReservationEmails(deps: EmailDeps, ids: strin
     try {
       const who = row.user_id ? await deps.recipient(row.user_id) : null;
       if (!who || !row.payload.business_name || !row.payload.reserved_at) {
-        await deps.markRow(row.id, "skipped", row.attempts + 1);
+        await deps.markRow(row.id, "skipped", row.attempts + 1, "no_recipient_or_payload");
         report.skipped += 1;
         continue;
       }
@@ -118,12 +119,12 @@ export async function deliverClosedReservationEmails(deps: EmailDeps, ids: strin
         report.sent += 1;
       } else {
         // Only the status: the provider body may echo addresses.
-        await deps.markRow(row.id, "failed", row.attempts + 1);
+        await deps.markRow(row.id, "failed", row.attempts + 1, `resend_http_${res.status}`);
         report.failed += 1;
       }
     } catch {
       try {
-        await deps.markRow(row.id, "failed", row.attempts + 1);
+        await deps.markRow(row.id, "failed", row.attempts + 1, "send_exception");
       } catch { /* nothing else to do */ }
       report.failed += 1;
     }
