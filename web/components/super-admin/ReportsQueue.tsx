@@ -11,6 +11,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import UnbanEmail from "@/components/super-admin/UnbanEmail";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { formatRelativeTime } from "@/lib/relativeTime";
 
@@ -336,6 +337,8 @@ export default function ReportsQueue({ onPendingCount }: { onPendingCount?: (n: 
           </div>
         </div>
       )}
+
+      <UnbanEmail />
     </div>
   );
 }
