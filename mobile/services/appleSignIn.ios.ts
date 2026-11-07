@@ -6,12 +6,14 @@
  * display name yet the name is saved there. Console side: the Apple provider in Supabase needs the BUNDLE ID
  * (com.otunitylabs.jchat) in "Client IDs" — the native flow uses it, not the Service ID.
  *
- * Nothing sensitive is logged (no token, nonce, e-mail).
+ * The authorizationCode also goes to the `apple-token` Edge Function (see below) so the deletion can revoke Apple's token.
+ * Nothing sensitive is logged (no token, nonce, code, e-mail).
  */
 
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Crypto from 'expo-crypto';
 
+import { pickAuthorizationCode } from '../utils/appleAuthCode';
 import { createAppleNonce } from '../utils/appleNonce';
 import { displayNameFromApple, shouldSaveAppleName } from '../utils/appleName';
 import { supabase } from './supabase';
@@ -42,6 +44,17 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
 
   const { data, error } = await supabase.auth.signInWithIdToken({ provider: 'apple', token: credential.identityToken, nonce: nonce.raw });
   if (error) throw error;
+
+  // D3 (App Review 5.1.1(v)): hand Apple's one-time code to the server, which keeps the refresh token (encrypted) so the account deletion can
+  // revoke it. Best effort: a failure never blocks the sign-in (the account then just cannot be revoked at deletion, and is logged there).
+  const authorizationCode = pickAuthorizationCode(credential);
+  if (authorizationCode) {
+    try {
+      await supabase.functions.invoke('apple-token', { body: { authorizationCode } });
+    } catch {
+      /* best effort */
+    }
+  }
 
   // Apple's name arrives only now: keep it when the profile has none (best effort, never blocks the sign-in).
   const appleName = displayNameFromApple(credential.fullName);

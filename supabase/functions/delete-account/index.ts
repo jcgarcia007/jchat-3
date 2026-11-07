@@ -31,6 +31,10 @@
  *   500 unexpected
  * Old name of the 409 code: "owns_business" (the clients accept both while the app update rolls out).
  *
+ * Sign in with Apple: before the delete the person's Apple refresh token (stored by `apple-token`) is revoked with Apple's REST API;
+ * a failure is logged in security_logs and never blocks the deletion (_shared/appleRevoke.ts). Secrets: APPLE_TEAM_ID, APPLE_KEY_ID,
+ * APPLE_PRIVATE_KEY, APPLE_CLIENT_ID, APPLE_TOKEN_KEY (without them the revoke is skipped and logged as not_configured).
+ *
  * Deploy:
  *   supabase functions deploy delete-account
  *
@@ -43,6 +47,7 @@
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.44.4";
 import { classifyDeleteError } from "../_shared/deleteAccountErrors.ts";
 import { purgeUserObjects, type PurgeAdmin } from "../_shared/deleteAccountStorage.ts";
+import { revokeAppleOnDelete, type RevokeAdmin } from "../_shared/appleRevoke.ts";
 import { getPublishableKey, getSecretKey } from "../_shared/supabaseAdmin.ts";
 
 const CORS_HEADERS = {
@@ -148,6 +153,17 @@ Deno.serve(async (req) => {
       console.error("[delete-account] storage purge failed", purgeErr);
       return failure("storage_purge_failed");
     }
+
+    // 3c. Sign in with Apple (guideline 5.1.1(v)): revoke the person's Apple token. It runs after the storage purge (a failed purge aborts
+    //     the delete with the account intact, so nothing must be revoked yet) and NEVER blocks the deletion: it logs to security_logs
+    //     (apple_revoked / apple_revoke_skipped_no_token / apple_revoke_failed) and the delete goes on.
+    const apple = await revokeAppleOnDelete({
+      admin: admin as unknown as RevokeAdmin,
+      userId,
+      hasAppleIdentity: (user.identities ?? []).some((i) => i.provider === "apple"),
+      getEnv: (name) => Deno.env.get(name),
+    });
+    console.log(`[delete-account] apple revoke: ${apple}`);
 
     // 4. Hard delete auth.users → cascades public.users and all personal content.
     const { error: delErr } = await admin.auth.admin.deleteUser(userId);

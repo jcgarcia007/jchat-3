@@ -5,6 +5,10 @@
 project_id = "klfsgcfoahdtkojyqspd"
 
 # App-invoked functions: called from the client with a Supabase JWT → verify.
+# Sign in with Apple: stores the refresh token (encrypted) so delete-account can revoke it (D3, migration 264).
+[functions.apple-token]
+verify_jwt = true
+
 [functions.payments]
 verify_jwt = true
 
