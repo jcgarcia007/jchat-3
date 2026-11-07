@@ -1,5 +1,7 @@
 # App Privacy (App Store Connect) — datos que recoge JChat
 
+> **Sustituido por `docs/store-submission/01_app_privacy_apple.md`** (2026-11-07), que añade Sensitive Info, Device ID y Other Diagnostic Data y es la tabla que ahora compara `mobile/scripts/privacy-manifest.test.mjs`. Este archivo queda solo como historial.
+
 Misma tabla que `COLLECTED_DATA_TYPES` en `mobile/app.config.ts` (el privacy manifest de la app). Un test (`mobile/scripts/privacy-manifest.test.mjs`) las mantiene iguales. Copiar tal cual en App Store Connect → App Privacy → "Yes, we collect data".
 
 **Seguimiento (tracking): ninguno.** La app no usa publicidad, ni ID de publicidad, ni comparte datos con corredores de datos. En todas las filas: vinculado al usuario = **Sí**, tracking = **No**.

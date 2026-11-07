@@ -15,7 +15,7 @@ import type { ExpoConfig } from 'expo/config';
 const ANDROID_GOOGLE_SERVICES = process.env.GOOGLE_SERVICES_JSON ?? './google-services.json';
 const IOS_GOOGLE_SERVICES = process.env.GOOGLE_SERVICE_INFO_PLIST ?? './GoogleService-Info.plist';
 
-// What the app collects, as App Store Connect's "App Privacy" asks for it (same table as docs/store-listing/app-privacy-labels.md; they must match).
+// What the app collects, as App Store Connect's "App Privacy" asks for it (same table as docs/store-submission/01_app_privacy_apple.md; scripts/privacy-manifest.test.mjs keeps them equal).
 // Everything is linked to the user's account and nothing is used for tracking. Card numbers are typed into Stripe's own fields.
 const P = 'NSPrivacyCollectedDataTypePurpose';
 const collected = (type: string, purpose: 'AppFunctionality' | 'Analytics' = 'AppFunctionality') => ({
@@ -38,6 +38,9 @@ const COLLECTED_DATA_TYPES = [
   collected('CrashData', 'Analytics'), // Sentry
   collected('PerformanceData', 'Analytics'), // Sentry
   collected('OtherDataTypes'), // year of birth (age confirmation)
+  collected('SensitiveInfo'), // Match: gender and who you want to meet (sexual orientation, Apple's definition)
+  collected('DeviceID'), // push token (Expo / APNs / FCM) that identifies the device
+  collected('OtherDiagnosticData', 'Analytics'), // Sentry Session Replay on errors (services/monitoring.ts: mobileReplayIntegration)
 ];
 
 // iOS permission texts (English default in Info.plist; the Spanish ones live in assets/locales/es.json and are written to
