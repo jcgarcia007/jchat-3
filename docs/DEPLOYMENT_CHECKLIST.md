@@ -55,7 +55,7 @@ Create `.env` from `.env.example`. Keys are split by where they run. **Never com
 |---|---|
 | `STRIPE_SECRET_KEY` | payments, stripe-connect, stripe-webhook, subscriptions |
 | `STRIPE_WEBHOOK_SECRET` | stripe-webhook, subscriptions (signature verification) |
-| `STRIPE_PRICE_VERIFIED` / `STRIPE_PRICE_BUSINESS` / `STRIPE_PRICE_PRO` | subscriptions (Stripe Price IDs) |
+| `STRIPE_PRICE_VERIFIED` / `STRIPE_PRICE_BUSINESS` / `STRIPE_PRICE_PRO` (+ `_BUSINESS_6M`, `_BUSINESS_1Y`, `_PRO_6M`, `_PRO_1Y`) | subscriptions (Stripe Price IDs) |
 | `SUPABASE_URL` | all functions (service-role client) |
 | `SB_SECRET_KEY` | all functions (secret key) |
 | `SB_PUBLISHABLE_KEY` | functions that verify the caller's JWT (publishable key) |
@@ -100,6 +100,16 @@ Create `.env` from `.env.example`. Keys are split by where they run. **Never com
 - [ ] Create a Stripe account; enable **Stripe Connect** (Express accounts)
 - [ ] Create the **subscription Products/Prices** and capture the Price IDs:
       Verified ($1.99), Business ($49), Pro ($99) → set `STRIPE_PRICE_*` secrets
+- [ ] Create the **6-month / 1-year prices** of Business and Pro with the script (never by hand), then set the 4 secrets it prints
+      (`STRIPE_PRICE_BUSINESS_6M`, `_BUSINESS_1Y`, `STRIPE_PRICE_PRO_6M`, `_PRO_1Y`):
+  ```bash
+  # test mode first (dry run, then --apply; a second run must say "ya existe" ×4)
+  STRIPE_SECRET_KEY=sk_test_… STRIPE_PRICE_BUSINESS=price_… STRIPE_PRICE_PRO=price_… \
+    deno run --allow-env --allow-net supabase/scripts/stripe_create_interval_prices.ts [--apply]
+  # live (done once, with Juan): live key + the LIVE monthly price ids, plus both guards
+  CONFIRM_LIVE=yes STRIPE_SECRET_KEY=sk_live_… STRIPE_PRICE_BUSINESS=price_… STRIPE_PRICE_PRO=price_… \
+    deno run --allow-env --allow-net supabase/scripts/stripe_create_interval_prices.ts --apply --live
+  ```
 - [ ] Deploy the Edge Functions (each in its own folder):
   ```bash
   supabase functions deploy payments

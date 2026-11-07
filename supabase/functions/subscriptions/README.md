@@ -20,6 +20,20 @@ Set these in the Supabase dashboard under **Edge Functions → Secrets** (or via
 | `STRIPE_PRICE_VERIFIED` | Stripe Price ID for the Verified plan ($1.99/mo) |
 | `STRIPE_PRICE_BUSINESS` | Stripe Price ID for the Business plan ($49/mo) |
 | `STRIPE_PRICE_PRO` | Stripe Price ID for the Pro plan ($99/mo) |
+| `STRIPE_PRICE_BUSINESS_6M` | Business, billed every 6 months ($264) |
+| `STRIPE_PRICE_BUSINESS_1Y` | Business, billed yearly ($468) |
+| `STRIPE_PRICE_PRO_6M` | Pro, billed every 6 months ($534) |
+| `STRIPE_PRICE_PRO_1Y` | Pro, billed yearly ($948) |
+
+The four 6-month / 1-year prices are created by a script (never by hand), on the same Stripe products as the monthly prices:
+
+```bash
+# Test mode. Dry run by default (writes nothing); add --apply to create. Re-running prints "ya existe" for each price.
+STRIPE_SECRET_KEY=sk_test_… STRIPE_PRICE_BUSINESS=price_… STRIPE_PRICE_PRO=price_… \
+  deno run --allow-env --allow-net supabase/scripts/stripe_create_interval_prices.ts [--apply]
+```
+
+It prints the four `supabase secrets set STRIPE_PRICE_*=…` lines to paste. The script refuses an `sk_live_` key unless run with `--live` and `CONFIRM_LIVE=yes`.
 
 `SUPABASE_URL` is injected automatically by the Supabase runtime.
 
