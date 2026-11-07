@@ -10,7 +10,7 @@
 --   B. message_under_retention_hold cuenta el año del hold NCMEC desde la RESOLUCIÓN (coalesce(resolved_at, created_at)); lo demás, igual.
 --   C. retention_purge() returns jsonb: borra por lotes (máx. 5000 filas por tabla y pasada) según los plazos de la política, en este orden:
 --        outbound_emails (enviados 30 d; fallidos/omitidos 90 d) · photo_moderation_log (90 d desde la última fecha que tenga; sin fechas, no se toca)
---        · review_bypass_log (90 d) · security_logs (90 d; 365 d las acciones report_%, user_suspended, user_unsuspended, retention_purge)
+--        · review_bypass_log (90 d) · security_logs (90 d; 365 d las acciones report_%, user_suspended, user_unsuspended, retention_purge, email_unbanned)
 --        · moderation_logs y tod_moderation_log (1 año) · table_reservation_log (1 año)
 --        · reports (cerrados: 1 año desde resolved_at; seguridad infantil o escalados a NCMEC: 2 años desde resolved_at; los pendientes NUNCA)
 --        · banned_emails (expires_at vencido).
@@ -124,7 +124,7 @@ begin
     delete from public.security_logs where id in (
       select id from public.security_logs
        where created_at < now() - case
-         when action like 'report\_%' or action in ('user_suspended', 'user_unsuspended', 'retention_purge') then interval '365 days'
+         when action like 'report\_%' or action in ('user_suspended', 'user_unsuspended', 'retention_purge', 'email_unbanned') then interval '365 days'
          else interval '90 days' end
        limit 5000) returning 1
   ) select count(*) into n from d;

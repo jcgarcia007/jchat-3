@@ -80,7 +80,8 @@ insert into public.security_logs (action, created_at, detail) values
   ('general_old', now() - interval '100 days', 'g1'), ('general_new', now() - interval '10 days', 'g2'),
   ('report_resolved', now() - interval '100 days', 'g3'), ('report_resolved', now() - interval '400 days', 'g4'),
   ('user_suspended', now() - interval '200 days', 'g5'), ('user_suspended', now() - interval '400 days', 'g6'),
-  ('user_unsuspended', now() - interval '400 days', 'g7'), ('retention_purge', now() - interval '400 days', 'g8');
+  ('user_unsuspended', now() - interval '400 days', 'g7'), ('retention_purge', now() - interval '400 days', 'g8'),
+  ('email_unbanned', now() - interval '200 days', 'g9'), ('email_unbanned', now() - interval '400 days', 'g10');
 insert into public.moderation_logs (action, created_at) values ('mute', now() - interval '400 days'), ('mute', now() - interval '100 days');
 insert into public.tod_moderation_log (business_id, action, created_at) values
   ('f2670000-0000-4000-8000-0000000000b1', 'hide', now() - interval '400 days'), ('f2670000-0000-4000-8000-0000000000b1', 'hide', now() - interval '100 days');
@@ -102,9 +103,10 @@ select pg_temp.chk((select (r->>'outbound_emails')::int = 3 from t_p1), 'C: outb
 select pg_temp.chk((select count(*) = 3 from public.outbound_emails), 'C: outbound_emails: 3 rows left');
 select pg_temp.chk((select (r->>'photo_moderation_log')::int = 1 from t_p1) and (select count(*) = 3 from public.photo_moderation_log), 'C: photo_moderation_log: only the row whose latest date is > 90 d; a recent notified_at or no dates at all stay');
 select pg_temp.chk((select (r->>'review_bypass_log')::int = 1 from t_p1) and (select count(*) = 1 from public.review_bypass_log), 'C: review_bypass_log: 90 d');
-select pg_temp.chk((select (r->>'security_logs')::int = 5 from t_p1), 'C: security_logs: general 100 d + report_% 400 d + user_suspended / user_unsuspended / retention_purge 400 d go (5)');
+select pg_temp.chk((select (r->>'security_logs')::int = 6 from t_p1), 'C: security_logs: general 100 d + report_% 400 d + user_suspended / user_unsuspended / retention_purge / email_unbanned 400 d go (6)');
 select pg_temp.chk((select count(*) = 1 from public.security_logs where detail = 'g2') and (select count(*) = 1 from public.security_logs where detail = 'g3') and (select count(*) = 1 from public.security_logs where detail = 'g5'), 'C: security_logs: 10 d general, report_% 100 d and user_suspended 200 d stay (365 d class)');
-select pg_temp.chk((select count(*) = 0 from public.security_logs where detail in ('g1', 'g4', 'g6', 'g7', 'g8')), 'C: security_logs: the old ones are gone');
+select pg_temp.chk((select count(*) = 0 from public.security_logs where detail in ('g1', 'g4', 'g6', 'g7', 'g8', 'g10')), 'C: security_logs: the old ones are gone');
+select pg_temp.chk((select count(*) = 1 from public.security_logs where detail = 'g9'), 'C: security_logs: email_unbanned of 200 days is NOT deleted (365 d class); of 400 days it is');
 select pg_temp.chk((select (r->>'moderation_logs')::int = 1 from t_p1) and (select count(*) = 1 from public.moderation_logs), 'C: moderation_logs: 1 year');
 select pg_temp.chk((select (r->>'tod_moderation_log')::int = 1 from t_p1) and (select count(*) = 1 from public.tod_moderation_log), 'C: tod_moderation_log: 1 year');
 select pg_temp.chk((select (r->>'table_reservation_log')::int = 1 from t_p1) and (select count(*) = 1 from public.table_reservation_log), 'C: table_reservation_log: 1 year');
@@ -199,7 +201,7 @@ reset role;
 select set_config('request.jwt.claims', '', true);
 select pg_temp.chk((select r1 from t_unban), 'D: the admin unbans (any way of writing the mailbox) → true');
 select pg_temp.chk((select count(*) = 0 from public.banned_emails where fingerprint = public.email_fingerprint('badactor@gmail.com')), 'D: the fingerprint is gone');
-select pg_temp.chk((select count(*) = 1 and bool_and(length(detail) = 8 and detail not like '%@%') from public.security_logs where action = 'email_unbanned'), 'D: security_logs email_unbanned stores 8 characters of the fingerprint, never the e-mail');
+select pg_temp.chk((select count(*) = 1 and bool_and(length(detail) = 8 and detail not like '%@%') from public.security_logs where action = 'email_unbanned' and detail <> 'g9'), 'D: security_logs email_unbanned stores 8 characters of the fingerprint, never the e-mail');
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"f2670000-0000-4000-8000-000000000005","role":"authenticated"}', true);
 select pg_temp.chk(not public.admin_unban_email('bad.actor@gmail.com'), 'D: unbanning again → false');
