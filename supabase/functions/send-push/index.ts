@@ -19,6 +19,7 @@
 
 import { createAdminClient } from "../_shared/supabaseAdmin.ts";
 import { safeEqual } from "../_shared/safeEqual.ts";
+import { formatWhen } from "../_shared/ownerCloseEmails.ts";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 const EXPO_TIMEOUT_MS = 8_000;
@@ -45,6 +46,8 @@ const PUSH_TYPES = [
   "match_photo_approved",
   "match_photo_rejected",
   "admin_alert",
+  "business_closed",
+  "reservation_cancelled",
 ] as const;
 type PushType = typeof PUSH_TYPES[number];
 type Language = "en" | "es";
@@ -259,6 +262,28 @@ function localizedContent(
           : "Tu foto no cumple las normas. Sube otra para aparecer.",
         data: { type, payload: { photo_id: payload.photo_id } },
       };
+    case "business_closed": {
+      // D4 (migration 265): a venue closed because its owner deleted the account. Sent to the venue's employees. Transactional: always shown.
+      const name = nonEmptyString(payload.business_name) ?? "JChat";
+      return {
+        title: english ? `${name} has closed` : `${name} cerró`,
+        body: english ? "You no longer have access to the point of sale." : "Ya no tienes acceso al punto de venta.",
+        data: { type, payload: { business_id: payload.business_id } },
+      };
+    }
+    case "reservation_cancelled": {
+      // D4: a future reservation cancelled because the venue closed. Names nobody but the venue. Transactional: always shown.
+      const name = nonEmptyString(payload.business_name) ?? "JChat";
+      const reservedAt = nonEmptyString(payload.reserved_at);
+      const when = reservedAt ? formatWhen(reservedAt, nonEmptyString(payload.timezone), english ? "en" : "es") : null;
+      return {
+        title: english ? "Reservation cancelled" : "Reserva cancelada",
+        body: when
+          ? (english ? `${name} has closed and your reservation for ${when.date} at ${when.time} was cancelled.` : `${name} cerró y tu reserva del ${when.date} a las ${when.time} se canceló.`)
+          : (english ? `${name} has closed and your reservation was cancelled.` : `${name} cerró y tu reserva se canceló.`),
+        data: { type, payload: { business_id: payload.business_id, reservation_id: payload.reservation_id } },
+      };
+    }
     case "admin_alert": {
       // Sent to platform admins by photo_moderation_alert() (migration 254): photos waiting for moderation more than 10 minutes.
       const count = typeof payload.count === "number" ? payload.count : Number(payload.count) || 0;

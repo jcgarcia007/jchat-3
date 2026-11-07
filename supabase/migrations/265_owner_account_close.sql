@@ -205,10 +205,10 @@ begin
     if r.user_id is not null then
       insert into public.notifications (user_id, type, payload)
       values (r.user_id, 'reservation_cancelled',
-              jsonb_build_object('business_id', p_business_id, 'business_name', b.name, 'reservation_id', r.id, 'reserved_at', r.reserved_at));
+              jsonb_build_object('business_id', p_business_id, 'business_name', b.name, 'reservation_id', r.id, 'reserved_at', r.reserved_at, 'timezone', b.timezone));
       insert into public.outbound_emails (kind, user_id, payload)
       values ('reservation_cancelled_business_closed', r.user_id,
-              jsonb_build_object('business_name', b.name, 'reserved_at', r.reserved_at, 'reservation_id', r.id))
+              jsonb_build_object('business_name', b.name, 'reserved_at', r.reserved_at, 'reservation_id', r.id, 'timezone', b.timezone))
       returning id into v_email_id;
       v_email_ids := v_email_ids || v_email_id;
     end if;
