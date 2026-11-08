@@ -1,5 +1,6 @@
 /**
- * JChat 3.0 — D5: delivery of queued e-mails (public.outbound_emails). Import-free apart from the shared renderer, so a Deno test can drive it with fakes.
+ * JChat 3.0 — D5 / E2: delivery of queued e-mails (public.outbound_emails), one template per `kind` (reservation, subscription_started, trial_will_end,
+ * business_plan_request). Import-free apart from the shared renderer, so a Deno test can drive it with fakes.
  *
  * Called only by the database (outbound_emails_retry(), migration 266) through pg_net with { ids: [...] } and the x-push-secret header.
  * The retry function already counted the attempt (attempts + 1, last_attempt_at = now()) before calling, so nothing here touches `attempts`.
@@ -7,7 +8,7 @@
  * Without RESEND_API_KEY the answer is 503 and NO row is touched (it will be retried; once it reaches 6 attempts the database gives up).
  */
 
-import { deliverClosedReservationEmails, type EmailDeps } from "../_shared/ownerCloseEmails.ts";
+import { deliverQueuedEmails, type EmailDeps } from "../_shared/ownerCloseEmails.ts";
 import { safeEqual } from "../_shared/safeEqual.ts";
 
 export const MAX_IDS = 50;
@@ -58,14 +59,15 @@ export async function handleOutboundEmails(req: Request, deps: HandlerDeps): Pro
   }
 
   try {
-    const report = await deliverClosedReservationEmails({
+    const report = await deliverQueuedEmails({
       loadRows: async (wanted) => (await deps.loadRows(wanted)).filter((r) => wanted.includes(r.id)),
       recipient: deps.recipient,
       markRow: (id, status, _attempts, error) => deps.markRow(id, status, error),
       resendKey: deps.resendKey,
       from: deps.from,
       fetchFn: deps.fetchFn,
-    }, ids);
+    // index.ts always selects `kind` (NOT NULL in the table); a row without it can only come from a pre-E2 loader, and those carried reservation e-mails.
+    }, ids, { defaultKind: "reservation_cancelled_business_closed" });
     console.log(`[outbound-emails] sent ${report.sent} failed ${report.failed} skipped ${report.skipped}`);
     return json(report);
   } catch {

@@ -5,6 +5,8 @@
  * Deploy:
  *   supabase functions deploy outbound-emails --project-ref klfsgcfoahdtkojyqspd --no-verify-jwt
  *
+ * Needs migration 272 applied FIRST (it adds the kind values, to_email and reply_to this function selects).
+ *
  * Secrets: PUSH_WEBHOOK_SECRET (shared with send-push), RESEND_API_KEY, optional NOTIFICATIONS_FROM; SUPABASE_URL / SB_SECRET_KEY are injected.
  */
 
@@ -20,7 +22,7 @@ Deno.serve((req: Request): Promise<Response> => {
     async loadRows(ids) {
       const { data, error } = await admin
         .from("outbound_emails")
-        .select("id, user_id, payload, attempts")
+        .select("id, kind, user_id, to_email, reply_to, payload, attempts")
         .in("id", ids)
         .in("status", ["pending", "failed"]);
       if (error) throw new Error("emails_load_failed");

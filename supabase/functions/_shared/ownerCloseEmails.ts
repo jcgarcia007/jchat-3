@@ -1,67 +1,30 @@
 /**
- * JChat 3.0 — email to a customer whose future reservation was cancelled because the venue closed (D4, mockup E).
- * Queued by owner_close_business() in public.outbound_emails (same transaction as the cancellation) and delivered here with Resend right after.
- * Best effort: a failure leaves the row 'failed' (or 'pending' if Resend is not configured) and never blocks the deletion.
- * No owner data anywhere: only the venue name, the date/time (in the venue's time zone) and the support contact.
+ * JChat 3.0 — delivery of queued e-mails (public.outbound_emails) with Resend. Started in D4 for the "venue closed → reservation cancelled" e-mail and
+ * generalized in E2 (spec 4): one row = one e-mail, rendered by kind in ./emails/render.ts (reservation, subscription_started, trial_will_end,
+ * business_plan_request). The recipient is the account's e-mail when the row has a user_id, otherwise the row's to_email; reply_to goes to Resend when present.
+ * Best effort: a failure leaves the row 'failed' (or 'pending' if Resend is not configured) and never blocks the caller (e.g. an account deletion).
+ *
+ * This module keeps every export it had before E2 (the constants, formatWhen, buildClosedReservationEmail, deliverClosedReservationEmails), so
+ * delete-account and send-push are untouched.
  */
 
-export const RESEND_URL = "https://api.resend.com/emails";
-export const DEFAULT_FROM = "JChat <noreply@jchat.cloud>";
-export const SUPPORT_CONTACT = "soporte@jchat.cloud";
+import { DEFAULT_FROM, type Language, RESEND_URL } from "./emails/common.ts";
+import { isEmailKind, renderEmail } from "./emails/render.ts";
 
-export type Language = "es" | "en";
+export { buildClosedReservationEmail } from "./emails/templates/closedReservation.ts";
+export { DEFAULT_FROM, formatWhen, type Language, RESEND_URL, SUPPORT_CONTACT } from "./emails/common.ts";
 
-export function formatWhen(reservedAtIso: string, timezone: string | null | undefined, language: Language): { date: string; time: string } {
-  const locale = language === "en" ? "en-US" : "es-US";
-  const d = new Date(reservedAtIso);
-  const tz = timezone || "America/New_York";
-  let date: string;
-  let time: string;
-  try {
-    date = new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone: tz }).format(d);
-    time = new Intl.DateTimeFormat(locale, { timeStyle: "short", timeZone: tz }).format(d);
-  } catch {
-    date = new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone: "UTC" }).format(d);
-    time = new Intl.DateTimeFormat(locale, { timeStyle: "short", timeZone: "UTC" }).format(d);
-  }
-  return { date, time };
-}
-
-export function buildClosedReservationEmail(args: {
-  language: Language;
-  businessName: string;
-  reservedAt: string;
-  timezone?: string | null;
-}): { subject: string; text: string } {
-  const { date, time } = formatWhen(args.reservedAt, args.timezone, args.language);
-  if (args.language === "en") {
-    return {
-      subject: "Reservation cancelled",
-      text: [
-        `${args.businessName} has closed and your reservation for ${date} at ${time} was cancelled. We're sorry for the inconvenience.`,
-        "",
-        `If you paid anything in advance, write to ${SUPPORT_CONTACT} with your reservation number.`,
-        "",
-        "— JChat",
-      ].join("\n"),
-    };
-  }
-  return {
-    subject: "Reserva cancelada",
-    text: [
-      `${args.businessName} cerró y tu reserva del ${date} a las ${time} se canceló. Lamentamos las molestias.`,
-      "",
-      `Si pagaste algo por adelantado, escríbenos a ${SUPPORT_CONTACT} con el número de la reserva.`,
-      "",
-      "— JChat",
-    ].join("\n"),
-  };
-}
+const RESERVATION_KIND = "reservation_cancelled_business_closed";
 
 export interface EmailRow {
   id: string;
+  /** Missing = the caller's default kind (the reservation e-mail for delete-account, which does not select it). */
+  kind?: string;
   user_id: string | null;
-  payload: { business_name?: string; reserved_at?: string; timezone?: string | null };
+  /** External recipient, used when user_id is null (e.g. ventas@jchat.cloud). */
+  to_email?: string | null;
+  reply_to?: string | null;
+  payload: Record<string, unknown>;
   attempts: number;
 }
 
@@ -83,8 +46,14 @@ export interface DeliveryReport {
   pending: number;
 }
 
-/** Never throws. Without RESEND_API_KEY the rows stay 'pending' (nothing is lost; they can be delivered later). */
-export async function deliverClosedReservationEmails(deps: EmailDeps, ids: string[]): Promise<DeliveryReport> {
+const REPLY_TO_RE = /^[^\s@,;<>]+@[^\s@,;<>]+$/;
+
+/**
+ * Delivers the given rows. Never throws. Without RESEND_API_KEY the rows stay 'pending' (nothing is lost; they can be delivered later).
+ * An unknown kind is skipped as 'unknown_kind' (never sent); a known kind whose payload lacks what its text needs is skipped as 'invalid_payload'
+ * ('no_recipient_or_payload' for the reservation e-mail, as before E2).
+ */
+export async function deliverQueuedEmails(deps: EmailDeps, ids: string[], options: { defaultKind?: string } = {}): Promise<DeliveryReport> {
   const report: DeliveryReport = { sent: 0, failed: 0, skipped: 0, pending: 0 };
   if (ids.length === 0) return report;
   if (!deps.resendKey) {
@@ -101,17 +70,33 @@ export async function deliverClosedReservationEmails(deps: EmailDeps, ids: strin
   const doFetch = deps.fetchFn ?? fetch;
   for (const row of rows) {
     try {
-      const who = row.user_id ? await deps.recipient(row.user_id) : null;
-      if (!who || !row.payload.business_name || !row.payload.reserved_at) {
+      const kind = row.kind ?? options.defaultKind;
+      if (!kind || !isEmailKind(kind)) {
+        await deps.markRow(row.id, "skipped", row.attempts + 1, "unknown_kind");
+        report.skipped += 1;
+        continue;
+      }
+      const who = row.user_id
+        ? await deps.recipient(row.user_id)
+        : row.to_email
+          ? { email: row.to_email, language: (row.payload?.locale === "en" ? "en" : "es") as Language }
+          : null;
+      if (!who) {
         await deps.markRow(row.id, "skipped", row.attempts + 1, "no_recipient_or_payload");
         report.skipped += 1;
         continue;
       }
-      const mail = buildClosedReservationEmail({ language: who.language, businessName: row.payload.business_name, reservedAt: row.payload.reserved_at, timezone: row.payload.timezone });
+      const mail = renderEmail(kind, who.language, row.payload);
+      if (!mail) {
+        await deps.markRow(row.id, "skipped", row.attempts + 1, kind === RESERVATION_KIND ? "no_recipient_or_payload" : "invalid_payload");
+        report.skipped += 1;
+        continue;
+      }
+      const replyTo = row.reply_to && REPLY_TO_RE.test(row.reply_to) ? row.reply_to : null;
       const res = await doFetch(RESEND_URL, {
         method: "POST",
         headers: { Authorization: `Bearer ${deps.resendKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from: deps.from ?? DEFAULT_FROM, to: [who.email], subject: mail.subject, text: mail.text }),
+        body: JSON.stringify({ from: deps.from ?? DEFAULT_FROM, to: [who.email], subject: mail.subject, text: mail.text, ...(replyTo ? { reply_to: replyTo } : {}) }),
         signal: AbortSignal.timeout(15_000),
       });
       if (res.ok) {
@@ -130,4 +115,9 @@ export async function deliverClosedReservationEmails(deps: EmailDeps, ids: strin
     }
   }
   return report;
+}
+
+/** The pre-E2 entry point (delete-account): rows that carry no `kind` are reservation e-mails. Same behavior as before. */
+export function deliverClosedReservationEmails(deps: EmailDeps, ids: string[]): Promise<DeliveryReport> {
+  return deliverQueuedEmails(deps, ids, { defaultKind: RESERVATION_KIND });
 }
