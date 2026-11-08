@@ -11,13 +11,13 @@ export function ContactES() {
   return (
     <>
       <h1 style={H1}>Contacto</h1>
-      <p style={DATE}>Última actualización: 8 de octubre de 2026</p>
+      <p style={DATE}>Última actualización: 7 de noviembre de 2026</p>
 
       <h2 style={H2}>Reportes de seguridad y abuso</h2>
       <p style={P}><a href="mailto:safety@jchat.cloud" style={LINK}>safety@jchat.cloud</a> — revisamos cada reporte en un máximo de 24 horas. Consulta <a href="/safety" style={LINK}>Seguridad y normas de la comunidad</a>.</p>
 
       <h2 style={H2}>Ayuda con tu cuenta, pedidos o pagos</h2>
-      <p style={P}><a href="mailto:jgarcia@otunitylabs.com" style={LINK}>jgarcia@otunitylabs.com</a> — respondemos en 1–2 días hábiles. Indica el correo de tu cuenta y, en pedidos, el código del recibo. Más respuestas en <a href="/support" style={LINK}>Ayuda y soporte</a>.</p>
+      <p style={P}><a href="mailto:soporte@jchat.cloud" style={LINK}>soporte@jchat.cloud</a> — respondemos en 1–2 días hábiles. Indica el correo de tu cuenta y, en pedidos, el código del recibo. Más respuestas en <a href="/support" style={LINK}>Ayuda y soporte</a>.</p>
 
       <h2 style={H2}>Solicitudes de privacidad</h2>
       <p style={P}>Eliminar tu cuenta o tus datos: <a href="/support#delete-account" style={LINK}>cómo hacerlo</a>. Nuestra <a href="/privacy" style={LINK}>Política de privacidad</a> explica qué conservamos.</p>

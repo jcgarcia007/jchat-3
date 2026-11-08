@@ -11,7 +11,7 @@ export function TermsES() {
         Términos de servicio
       </h1>
       <p style={{ color: "var(--gray-500)", fontSize: "14px", marginTop: "0", marginBottom: "32px" }}>
-        Última actualización: 21 de septiembre de 2026
+        Última actualización: 7 de noviembre de 2026
       </p>
 
       <p style={P}>
@@ -193,7 +193,7 @@ export function TermsES() {
       <h2 id="contact-terms" style={H2}>18. Contacto</h2>
       <p style={P}>
         Otunity Labs LLC · 6000 Palm Trace Landings Dr APT 312, Davie, FL 33314, EE. UU. ·{" "}
-        <a href="mailto:jgarcia@otunitylabs.com" style={LINK}>jgarcia@otunitylabs.com</a>
+        <a href="mailto:soporte@jchat.cloud" style={LINK}>soporte@jchat.cloud</a>
       </p>
     </>
   );

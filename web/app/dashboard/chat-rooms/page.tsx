@@ -282,7 +282,9 @@ export default function ChatRoomsPage() {
       setNewEmoji("💬");
       setShowForm(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("chatRoomsCreateError"));
+      // The text filter (migration 259) answers message_not_allowed (a plain object from PostgREST, not an Error).
+      const refused = typeof (e as { message?: unknown } | null)?.message === "string" && String((e as { message: string }).message).includes("message_not_allowed");
+      setError(refused ? t("chatRoomsTextNotAllowed") : e instanceof Error ? e.message : t("chatRoomsCreateError"));
     } finally {
       setCreating(false);
     }

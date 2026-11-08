@@ -91,6 +91,9 @@ export default async function LegalLayout({ children }: { children: React.ReactN
             <Link href="/safety" style={{ color: "var(--gray-500)", textDecoration: "none" }}>
               {isEs ? "Seguridad" : "Safety"}
             </Link>
+            <Link href="/safety#csae" style={{ color: "var(--gray-500)", textDecoration: "none" }}>
+              {isEs ? "Seguridad infantil (CSAE)" : "Child safety (CSAE)"}
+            </Link>
             <Link href="/contact" style={{ color: "var(--gray-500)", textDecoration: "none" }}>
               {isEs ? "Contacto" : "Contact"}
             </Link>

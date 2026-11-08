@@ -359,7 +359,8 @@ export default function TablesPage() {
         p_enable: true,
       });
       if (rpcErr) {
-        setSubchatWarn(t("tablesSubchatAutoCreateWarning"));
+        // The text filter (migration 259) refuses an objectionable table name for the chat room.
+        setSubchatWarn(rpcErr.message.includes("message_not_allowed") ? t("chatRoomsTextNotAllowed") : t("tablesSubchatAutoCreateWarning"));
       }
     }
 
@@ -1053,9 +1054,11 @@ function SubchatToggle({
       setError(
         m.includes("NO_MAIN_ROOM")
           ? t("tablesSubchatNoMainRoom")
-          : m.includes("NOT_ALLOWED")
-            ? t("tablesNoPermission")
-            : t("tablesSubchatUpdateError"),
+          : m.includes("message_not_allowed")
+            ? t("chatRoomsTextNotAllowed")
+            : m.includes("NOT_ALLOWED")
+              ? t("tablesNoPermission")
+              : t("tablesSubchatUpdateError"),
       );
       return;
     }

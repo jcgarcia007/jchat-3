@@ -12,7 +12,7 @@ export function PrivacyES() {
         Política de privacidad
       </h1>
       <p style={{ color: "var(--gray-500)", fontSize: "14px", marginTop: "0", marginBottom: "32px" }}>
-        Última actualización: 6 de noviembre de 2026
+        Última actualización: 7 de noviembre de 2026
       </p>
 
       <p style={P}>
@@ -64,8 +64,15 @@ export function PrivacyES() {
       <ul style={UL}>
         <li>
           <em>Cuenta:</em> correo, contraseña (guardada cifrada por nuestro proveedor de autenticación),
-          nombre, usuario, foto de perfil, biografía, idioma y ajustes. Si inicias sesión con Apple o Google,
-          recibimos el nombre y correo que esos servicios comparten.
+          nombre, usuario, foto de perfil, biografía, idioma y ajustes, y el <strong>año de nacimiento</strong> que
+          nos das para confirmar que tienes 18 años o más (solo guardamos el año). Si inicias sesión con Apple o
+          Google, recibimos el nombre y correo que esos servicios comparten.
+        </li>
+        <li>
+          <em>Perfil de Match (opcional):</em> si usas Match, tu sexo (mujer, hombre o no binario), a quién quieres
+          conocer (mujeres, hombres o todos), tus intereses y tus fotos. Es información sensible: se usa solo para
+          mostrarte personas que encajan y mostrarte a ellas. Tus likes, matches y chats de Match se borran
+          cuando sales del local (salvo con quienes te siguen mutuamente).
         </li>
         <li>
           <em>Ubicación precisa, solo mientras usas la app:</em> para mostrarte lugares cercanos, permitirte
@@ -96,7 +103,7 @@ export function PrivacyES() {
         </li>
         <li>
           <em>Datos del dispositivo y diagnóstico:</em> tipo de dispositivo, sistema operativo, versión de
-          la app, token de notificaciones push, registros de errores.
+          la app, token de notificaciones push, registros de errores (vinculados solo a tu id de cuenta, nunca a tu nombre, correo ni IP).
         </li>
         <li>
           <em>Datos de seguridad:</em> reportes que envías, usuarios que bloqueas, acciones de moderación de
@@ -115,12 +122,23 @@ export function PrivacyES() {
       <h2 id="who-we-share" style={H2}>4. Con quién compartimos la información</h2>
       <p style={P}>
         No vendemos tu información personal. Solo la compartimos con proveedores que la procesan para
-        nosotros bajo contrato y en la medida necesaria: <strong>Supabase</strong> (base de datos,
-        autenticación y archivos, alojados en Estados Unidos), <strong>Stripe</strong> (procesamiento de
-        pagos, pagos a negocios y lectores de tarjeta), <strong>Google</strong> (Maps en Android, Firebase
-        Cloud Messaging para notificaciones), <strong>Apple</strong> (notificaciones push, Apple Maps en
-        iOS), <strong>hCaptcha</strong> (protección contra bots), <strong>Expo</strong> (compilación y
-        actualizaciones de la app) y <strong>Vercel</strong> (alojamiento web). Los dueños que usan el
+        nosotros bajo contrato y en la medida necesaria:
+      </p>
+      {/* BORRADOR PARA REVISIÓN LEGAL (A6, 2026-11): la lista de proveedores y los plazos de conservación de abajo son decisiones de Juan y NO los ha revisado un abogado. */}
+      <ul style={UL}>
+        <li><strong>Supabase</strong> — base de datos, autenticación y archivos, alojados en Estados Unidos.</li>
+        <li><strong>Stripe</strong> — procesamiento de pagos, pagos a negocios y lectores de tarjeta. Nunca vemos ni guardamos el número de tu tarjeta.</li>
+        <li><strong>Google Cloud Vision</strong> — revisión de seguridad de las fotos que envías en Match y en mensajes directos: los bytes de la foto se envían a Google para detectar contenido que incumple nuestras reglas.</li>
+        <li><strong>Google Maps</strong> y <strong>Firebase Cloud Messaging</strong> (Google) — mapas en Android y notificaciones push. <strong>Apple</strong> — notificaciones push y Apple Maps en iOS.</li>
+        <li><strong>Expo</strong> — notificaciones push (el título y el texto de una notificación pasan por el servicio push de Expo antes de llegar a tu teléfono) y compilación y actualizaciones de la app.</li>
+        <li><strong>Sentry</strong> — diagnósticos técnicos (informes de errores y cierres inesperados), vinculados solo a tu id de cuenta, sin tu nombre, correo ni dirección IP.</li>
+        <li><strong>hCaptcha</strong> — protección contra bots al iniciar sesión, registrarte o recuperar la contraseña.</li>
+        <li><strong>Have I Been Pwned</strong> — al crear tu cuenta comprobamos si tu contraseña ha aparecido en una filtración de datos conocida. Solo se envían los 5 primeros caracteres del hash SHA-1 de la contraseña (k-anonimato), junto con tu dirección IP como en cualquier petición web, y solo al registrarte. Tu contraseña y el resto del hash nunca salen de tu dispositivo.</li>
+        <li><strong>Resend</strong> — envío de correos de la cuenta (confirmación de registro, recuperación de contraseña, recibos).</li>
+        <li><strong>Vercel</strong> — alojamiento web.</li>
+      </ul>
+      <p style={P}>
+        Los dueños que usan el
         asistente de menús con IA envían su propio contenido de menú a un proveedor de IA (Anthropic /
         Claude); no se envían datos de miembros. Cuando pides en un local, el local recibe los detalles de
         tu pedido (y, en reservas, el nombre y contacto que indiques). También podemos divulgar información
@@ -137,11 +155,26 @@ export function PrivacyES() {
 
       <h2 id="data-retention" style={H2}>6. Conservación</h2>
       <p style={P}>
-        Conservamos tu información mientras tu cuenta esté activa. Los registros de pedidos y pagos se
-        conservan según exigen la contabilidad y la normativa fiscal (en general, hasta 7 años). Los
-        identificadores de pedidos de invitado se conservan un tiempo limitado por seguridad. Al eliminar tu
-        cuenta, borramos definitivamente tu perfil, contenido y datos personales, salvo los registros que la
-        ley nos obliga a conservar.
+        Conservamos tu información mientras tu cuenta esté activa. Cuando eliminas tu cuenta borramos{" "}
+        <strong>al momento</strong> tu perfil, fotos, mensajes, perfil de Match y publicaciones. Algunos
+        registros se conservan después, durante estos plazos:
+      </p>
+      <ul style={UL}>
+        <li><strong>Pedidos y pagos:</strong> 7 años, sin tus datos personales, por obligaciones fiscales y contables.</li>
+        <li><strong>Registros de seguridad:</strong> 90 días. El registro de acciones de moderación y de suspensiones de cuentas: 1 año.</li>
+        <li><strong>Reportes cerrados</strong> (con la evidencia que llevan): 1 año desde que se resuelven. Reportes de seguridad infantil o enviados a las autoridades (NCMEC): 2 años desde que se resuelven. Los reportes abiertos se conservan hasta que se resuelven.</li>
+        <li><strong>Registros de moderación</strong> de chats y juegos de los locales, y <strong>registros de reservas de mesa</strong>: 1 año.</li>
+        <li><strong>Registros del escaneo de fotos</strong> y <strong>registros de entrega de correos</strong>: 90 días (30 días los correos entregados).</li>
+        <li><strong>Regalos</strong> que enviaste o recibiste: se conservan sin tu identidad.</li>
+      </ul>
+      <p style={P}>
+        Los identificadores de pedidos de invitados se conservan un tiempo limitado por seguridad.
+      </p>
+      <p style={P}>
+        Cuando eliminas tu cuenta, los reportes que hiciste o recibiste se conservan <strong>sin tu identidad</strong> hasta que termine
+        su plazo de arriba. Si tu cuenta estaba suspendida por una infracción confirmada, guardamos una huella cifrada de tu correo
+        (no el correo) hasta 2 años para impedir que se abran cuentas nuevas. Para apelar, escribe a{" "}
+        <a href="mailto:soporte@jchat.cloud" style={LINK}>soporte@jchat.cloud</a>.
       </p>
 
       <h2 id="delete-account" style={H2}>7. Eliminar tu cuenta</h2>
@@ -150,7 +183,7 @@ export function PrivacyES() {
         <strong>Ajustes → Eliminar cuenta</strong>, o en la web en{" "}
         <a href="/account/delete" style={LINK}>jchat.cloud/account/delete</a>. La eliminación es inmediata e irreversible. Si no puedes
         acceder a la app, escríbenos a{" "}
-        <a href="mailto:jgarcia@otunitylabs.com" style={LINK}>jgarcia@otunitylabs.com</a> desde el correo
+        <a href="mailto:soporte@jchat.cloud" style={LINK}>soporte@jchat.cloud</a> desde el correo
         de tu cuenta y la eliminaremos.
       </p>
       <p style={P}>
@@ -204,7 +237,7 @@ export function PrivacyES() {
       <h2 id="contact" style={H2}>14. Contacto</h2>
       <p style={P}>
         Otunity Labs LLC · 6000 Palm Trace Landings Dr APT 312, Davie, FL 33314, EE. UU. ·{" "}
-        <a href="mailto:jgarcia@otunitylabs.com" style={LINK}>jgarcia@otunitylabs.com</a>
+        <a href="mailto:soporte@jchat.cloud" style={LINK}>soporte@jchat.cloud</a>
       </p>
     </>
   );

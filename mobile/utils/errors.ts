@@ -27,6 +27,16 @@ export class AppError extends Error {
   }
 }
 
+/**
+ * The text filter (migration 259, and the older chat filter) refuses a text with `message_not_allowed` (SQLSTATE 22023).
+ * PostgREST hands it over as { code: '22023', message: 'message_not_allowed' }, a plain object (not an Error), so it is matched by message.
+ */
+export function isMessageNotAllowedError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const message = (err as { message?: unknown }).message;
+  return typeof message === 'string' && message.includes('message_not_allowed');
+}
+
 function tr(key: string, params?: Record<string, unknown>): string | null {
   return i18n.exists(key) ? (i18n.t(key, params) as string) : null;
 }
@@ -76,6 +86,8 @@ export function toUserMessage(err: unknown, fallbackKey = 'errors:generic'): str
     if (!message && /banned/i.test(err.message)) message = tr('errors:auth.user_banned');
     if (!message && err.status === 429) message = tr('errors:auth.over_request_rate_limit');
     if (!message && isNetworkFailure(err)) message = tr('errors:network');
+  } else if (isMessageNotAllowedError(err)) {
+    message = tr('errors:app.message_not_allowed');
   } else if (isNetworkFailure(err)) {
     message = tr('errors:network');
   } else if (err && typeof err === 'object') {

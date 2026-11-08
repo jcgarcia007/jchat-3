@@ -32,7 +32,7 @@ import {
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { confirmAge, deleteMyAccount } from "@/lib/account";
 import { useTranslations } from "next-intl";
-import { authErrorKey } from "@/lib/authErrors";
+import { authErrorKey, isSignupBlocked } from "@/lib/authErrors";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { isPasswordValid, passwordRules } from "@/lib/password";
 import { checkPwnedPassword, type PwnedResult } from "@/lib/pwned";
@@ -880,7 +880,7 @@ export default function RegisterPage() {
         flagLeaked();
         return;
       }
-      setError(te(authErrorKey(signUpErr)));
+      setError(te(isSignupBlocked(signUpErr) ? "signupBlocked" : authErrorKey(signUpErr)));
       return;
     }
 

@@ -223,7 +223,7 @@ export default function DashboardTruthOrDarePage() {
   const [termsError, setTermsError] = useState<string | null>(null);
 
   const displayName = useCallback(
-    (userId: string | null): string => (userId ? names[userId] : undefined) ?? t("todUnknownUser"),
+    (userId: string | null): string => (userId ? names[userId] ?? t("todUnknownUser") : t("deletedAccount")), // null = the account was deleted (the report stays)
     [names, t],
   );
 

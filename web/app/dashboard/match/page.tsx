@@ -71,7 +71,7 @@ export default function DashboardMatchPage() {
 
   const displayName = useCallback(
     (userId: string | null): string => {
-      if (!userId) return t("matchUnknownUser");
+      if (!userId) return t("deletedAccount"); // the account was deleted: the report stays, without its owner
       return names[userId] ?? t("matchUnknownUser");
     },
     [names, t],

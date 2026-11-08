@@ -11,7 +11,7 @@ export function SafetyEN() {
   return (
     <>
       <h1 style={H1}>Safety &amp; Community Standards</h1>
-      <p style={DATE}>Last updated: October 8, 2026</p>
+      <p style={DATE}>Last updated: November 7, 2026</p>
 
       <p style={P}>
         JChat is for adults (18+) who want to meet and talk at real places. Everyone should feel safe doing it.
@@ -28,7 +28,7 @@ export function SafetyEN() {
       </ul>
       <p style={P}>Accounts that break these rules are suspended or deleted. Serious cases may be reported to the authorities.</p>
 
-      <h2 style={H2}>Child safety (CSAE)</h2>
+      <h2 id="csae" style={H2}>Child safety (CSAE)</h2>
       <p style={P}>
         JChat is only for people aged 18 or older: we check age at sign-up and delete accounts that turn out to belong to
         a minor. Child sexual abuse and exploitation material (CSAM) and any behaviour that endangers children are

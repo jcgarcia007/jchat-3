@@ -12,7 +12,7 @@ export function PrivacyEN() {
         Privacy Policy
       </h1>
       <p style={{ color: "var(--gray-500)", fontSize: "14px", marginTop: "0", marginBottom: "32px" }}>
-        Last updated: November 6, 2026
+        Last updated: November 7, 2026
       </p>
 
       <p style={P}>
@@ -64,8 +64,15 @@ export function PrivacyEN() {
       <ul style={UL}>
         <li>
           <em>Account information:</em> email address, password (stored hashed by our authentication
-          provider), name, username, profile photo, bio, language and app settings. If you sign in with Apple
-          or Google, we receive the name and email those services share with us.
+          provider), name, username, profile photo, bio, language and app settings, and the <strong>year of
+          birth</strong> you give us to confirm you are 18 or older (we keep only the year). If you sign in
+          with Apple or Google, we receive the name and email those services share with us.
+        </li>
+        <li>
+          <em>Match profile (optional):</em> if you use Match, your gender (woman, man or non-binary), who you
+          want to meet (women, men or everyone), your interests and your photos. This is sensitive information:
+          it is used only to show you people who fit and to show you to them. Your likes, matches and Match chats are
+          erased when you leave the venue (except with people who follow each other).
         </li>
         <li>
           <em>Precise location, only while you use the app:</em> to show venues near you, to let you join a
@@ -95,7 +102,8 @@ export function PrivacyEN() {
         </li>
         <li>
           <em>Device and diagnostic data:</em> device type, operating system, app version,
-          push-notification token, crash and error logs.
+          push-notification token, crash and error logs (attached to your account ID only, never to your name,
+          email or IP address).
         </li>
         <li>
           <em>Safety data:</em> reports you submit, users you block, moderation actions taken by venue owners,
@@ -114,12 +122,23 @@ export function PrivacyEN() {
       <h2 id="who-we-share" style={H2}>4. Who we share information with</h2>
       <p style={P}>
         We do not sell your personal information. We share it only with service providers who process it for
-        us under contract, and only as needed: <strong>Supabase</strong> (database, authentication and file
-        storage, hosted in the United States), <strong>Stripe</strong> (payment processing, business payouts
-        and card readers), <strong>Google</strong> (Maps on Android, Firebase Cloud Messaging for
-        notifications), <strong>Apple</strong> (push notifications, Apple Maps on iOS),{" "}
-        <strong>hCaptcha</strong> (bot protection), <strong>Expo</strong> (app builds and updates) and{" "}
-        <strong>Vercel</strong> (website hosting). Venue owners who use the optional AI menu assistant send
+        us under contract, and only as needed:
+      </p>
+      {/* DRAFT FOR LEGAL REVIEW (A6, 2026-11): the provider list and the retention periods below are Juan's decisions and have NOT been reviewed by a lawyer. */}
+      <ul style={UL}>
+        <li><strong>Supabase</strong> — database, authentication and file storage, hosted in the United States.</li>
+        <li><strong>Stripe</strong> — payment processing, business payouts and card readers. We never see or store your card number.</li>
+        <li><strong>Google Cloud Vision</strong> — safety review of photos you send in Match and in direct messages: the bytes of the photo are sent to Google to detect content that breaks our rules.</li>
+        <li><strong>Google Maps</strong> and <strong>Firebase Cloud Messaging</strong> (Google) — maps on Android and push notifications. <strong>Apple</strong> — push notifications and Apple Maps on iOS.</li>
+        <li><strong>Expo</strong> — push notifications (the title and text of a notification pass through Expo&apos;s push service on their way to your phone) and app builds and updates.</li>
+        <li><strong>Sentry</strong> — technical diagnostics (crash and error reports), linked only to your account ID, without your name, email or IP address.</li>
+        <li><strong>hCaptcha</strong> — protection against bots when you sign in, sign up or recover a password.</li>
+        <li><strong>Have I Been Pwned</strong> — when you create an account we check whether your password has appeared in a known data breach. Only the first 5 characters of the password&apos;s SHA-1 hash are sent (k-anonymity), together with your IP address as in any web request, and only when you sign up. Your password and the rest of the hash never leave your device.</li>
+        <li><strong>Resend</strong> — sending account emails (sign-up confirmation, password recovery, receipts).</li>
+        <li><strong>Vercel</strong> — website hosting.</li>
+      </ul>
+      <p style={P}>
+        Venue owners who use the optional AI menu assistant send
         their own menu content to an AI provider (Anthropic / Claude); no member data is sent. When you order
         at a venue, the venue receives your order details (and, for reservations, the name and contact you
         provide). We may also disclose information if required by law or to protect the rights and safety of
@@ -135,10 +154,26 @@ export function PrivacyEN() {
 
       <h2 id="data-retention" style={H2}>6. Data retention</h2>
       <p style={P}>
-        We keep your information while your account is active. Order and payment records are kept as required
-        for accounting and tax purposes (generally up to 7 years). Guest ordering identifiers are kept for a
-        limited period for security. When you delete your account we permanently delete your profile, content
-        and personal data, except records we are legally required to keep.
+        We keep your information while your account is active. When you delete your account we delete{" "}
+        <strong>right away</strong> your profile, photos, messages, Match profile and posts. Some records
+        are kept after that, for these periods:
+      </p>
+      <ul style={UL}>
+        <li><strong>Orders and payments:</strong> 7 years, without your personal data, for tax and accounting obligations.</li>
+        <li><strong>Security logs:</strong> 90 days. The record of moderation actions and account suspensions: 1 year.</li>
+        <li><strong>Closed reports</strong> (with the evidence attached to them): 1 year after they are resolved. Reports about child safety, or sent to the authorities (NCMEC): 2 years after they are resolved. Open reports are kept until they are resolved.</li>
+        <li><strong>Moderation records</strong> of venue chats and games, and <strong>table reservation records</strong>: 1 year.</li>
+        <li><strong>Photo-scan records</strong> and <strong>e-mail delivery records</strong>: 90 days (30 days for e-mails that were delivered).</li>
+        <li><strong>Gifts</strong> you sent or received: kept without your identity.</li>
+      </ul>
+      <p style={P}>
+        Guest ordering identifiers are kept for a limited period for security.
+      </p>
+      <p style={P}>
+        When you delete your account, the reports you made or received stay <strong>without your identity</strong> until their
+        term above ends. If your account was suspended for a confirmed violation, we keep an encrypted fingerprint of your e-mail
+        address (not the address itself) for up to 2 years to prevent new accounts from being opened. To appeal, write to{" "}
+        <a href="mailto:soporte@jchat.cloud" style={LINK}>soporte@jchat.cloud</a>.
       </p>
 
       <h2 id="delete-account" style={H2}>7. Deleting your account</h2>
@@ -147,7 +182,7 @@ export function PrivacyEN() {
         <strong>Settings → Delete account</strong>, or on the web at{" "}
         <a href="/account/delete" style={LINK}>jchat.cloud/account/delete</a>. Deletion is immediate and irreversible. If you cannot
         access the app, email{" "}
-        <a href="mailto:jgarcia@otunitylabs.com" style={LINK}>jgarcia@otunitylabs.com</a> from the address
+        <a href="mailto:soporte@jchat.cloud" style={LINK}>soporte@jchat.cloud</a> from the address
         on your account and we will delete it.
       </p>
       <p style={P}>
@@ -201,7 +236,7 @@ export function PrivacyEN() {
       <h2 id="contact" style={H2}>14. Contact</h2>
       <p style={P}>
         Otunity Labs LLC · 6000 Palm Trace Landings Dr APT 312, Davie, FL 33314, USA ·{" "}
-        <a href="mailto:jgarcia@otunitylabs.com" style={LINK}>jgarcia@otunitylabs.com</a>
+        <a href="mailto:soporte@jchat.cloud" style={LINK}>soporte@jchat.cloud</a>
       </p>
     </>
   );

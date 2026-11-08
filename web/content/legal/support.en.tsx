@@ -11,12 +11,12 @@ export function SupportEN() {
         Help &amp; Support
       </h1>
       <p style={{ color: "var(--gray-500)", fontSize: "14px", marginTop: "0", marginBottom: "32px" }}>
-        Last updated: September 21, 2026
+        Last updated: November 7, 2026
       </p>
 
       <p style={P}>
         Need help? Email{" "}
-        <a href="mailto:jgarcia@otunitylabs.com" style={LINK}>jgarcia@otunitylabs.com</a>. We answer within
+        <a href="mailto:soporte@jchat.cloud" style={LINK}>soporte@jchat.cloud</a>. We answer within
         1–2 business days. Include the email on your account and, for order issues, the receipt code.
       </p>
 

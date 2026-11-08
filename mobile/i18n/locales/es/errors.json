@@ -55,7 +55,8 @@
     "WRITE_FAILED": "Falló la impresión. Inténtalo de nuevo.",
     "VOICE_UPLOAD_FAILED": "No pudimos enviar el mensaje de voz. Inténtalo de nuevo.",
     "VOICE_UNAVAILABLE": "Este mensaje de voz no está disponible.",
-    "venue_closed": "Este local está cerrado; podrás pedir cuando abra."
+    "venue_closed": "Este local está cerrado; podrás pedir cuando abra.",
+    "message_not_allowed": "Ese texto no está permitido. Revísalo e inténtalo de nuevo."
   },
   "stripe": {
     "Canceled": "Pago cancelado.",

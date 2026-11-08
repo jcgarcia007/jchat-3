@@ -1,35 +1,31 @@
 "use client";
 
 /**
- * /account/delete — delete your JChat account without the app (Google Play "account deletion URL").
+ * Action area of /account/delete (the explanation is rendered on the server in page.tsx, so it is public).
  *
- * Needs a session (no session → login and back here). Venue owners CAN delete (D4): their venues are closed, not deleted (orders and
- * payments stay 7 years without personal data), the subscription is cancelled and Stripe is disconnected. The page asks the delete-account
- * function first (GET, changes nothing): an owner sees what will happen and a required checkbox; money still at Stripe or open orders block
- * with a message. Confirmation = typing DELETE / ELIMINAR, then the delete-account Edge Function (the caller's JWT identifies the account)
- * and sign-out.
+ * No session → a "sign in to delete my account" button that comes back here (no redirect: the page must stay public).
+ * Session → venue owners CAN delete (D4): their venues are closed, not deleted (orders and payments stay 7 years without personal data),
+ * the subscription is cancelled and Stripe is disconnected. The page asks the delete-account function first (GET, changes nothing): an
+ * owner sees what will happen and a required checkbox; money still at Stripe or open orders block with a message. Confirmation = typing
+ * DELETE / ELIMINAR, then the delete-account Edge Function (the caller's JWT identifies the account) and sign-out.
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { checkOwnerDeletion, deleteMyAccountDetailed, deleteOwnerAccount, formatMoney, type OwnerBlocker } from "@/lib/account";
 
-type Phase = "checking" | "blocked" | "form" | "deleting" | "done";
+type Phase = "checking" | "public" | "form" | "deleting" | "done";
 
 /** What the owner block shows instead of the form: the venues that close, or the thing that blocks. */
 interface OwnerState { names: string[]; blocker: OwnerBlocker | null }
 
-const H1: React.CSSProperties = { fontSize: "28px", fontWeight: 800, color: "var(--gray-900)", marginBottom: "6px", letterSpacing: "-0.5px" };
 const P: React.CSSProperties = { lineHeight: "1.7", marginTop: 0, marginBottom: "14px", color: "var(--gray-700)" };
-const UL: React.CSSProperties = { lineHeight: "1.8", paddingLeft: "20px", marginTop: 0, marginBottom: "14px", color: "var(--gray-700)" };
 const LINK: React.CSSProperties = { color: "var(--color-brand)", textDecoration: "underline" };
 
 export function DeleteAccountClient() {
   const t = useTranslations("accountDelete");
-  const router = useRouter();
   const [phase, setPhase] = useState<Phase>("checking");
   const [email, setEmail] = useState<string | null>(null);
   const locale = useLocale();
@@ -45,7 +41,7 @@ export function DeleteAccountClient() {
       if (!isSupabaseConfigured) { if (alive) setPhase("form"); return; }
       const { data: { user } } = await supabase.auth.getUser();
       if (!alive) return;
-      if (!user) { router.replace(`/auth/login?next=${encodeURIComponent("/account/delete")}`); return; }
+      if (!user) { setPhase("public"); return; }
       setEmail(user.email ?? null);
       const check = await checkOwnerDeletion();
       if (!alive) return;
@@ -55,7 +51,7 @@ export function DeleteAccountClient() {
       setPhase("form");
     })();
     return () => { alive = false; };
-  }, [router, t]);
+  }, [t]);
 
   const isOwner = !!owner && owner.names.length > 0;
   const blocker = owner?.blocker ?? null;
@@ -81,10 +77,27 @@ export function DeleteAccountClient() {
 
   if (phase === "checking") return <p style={P}>{t("checking")}</p>;
 
+  if (phase === "public") {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "flex-start" }}>
+        <p style={{ ...P, marginBottom: 0 }}>{t("loginPrompt")}</p>
+        <Link
+          href={`/auth/login?next=${encodeURIComponent("/account/delete")}`}
+          style={{
+            display: "inline-flex", alignItems: "center", justifyContent: "center", minHeight: 46, padding: "0 20px", borderRadius: 10,
+            background: "var(--color-danger)", color: "var(--bg-surface-light)", fontSize: 15, fontWeight: 700, textDecoration: "none",
+          }}
+        >
+          {t("loginButton")}
+        </Link>
+      </div>
+    );
+  }
+
   if (phase === "done") {
     return (
       <>
-        <h1 style={H1}>{t("doneTitle")}</h1>
+        <h2 style={{ fontSize: "22px", fontWeight: 800, color: "var(--gray-900)", margin: "0 0 8px" }}>{t("doneTitle")}</h2>
         <p style={P}>{t("doneBody")}</p>
         <Link href="/" style={LINK}>{t("goHome")}</Link>
       </>
@@ -93,18 +106,6 @@ export function DeleteAccountClient() {
 
   return (
     <>
-      <h1 style={H1}>{t("title")}</h1>
-      <p style={P}>{t("intro")}</p>
-
-      <h2 style={{ fontSize: "18px", fontWeight: 700, margin: "24px 0 10px", color: "var(--gray-900)" }}>{t("whatTitle")}</h2>
-      <ul style={UL}>
-        <li>{t("what1")}</li>
-        <li>{t("what2")}</li>
-        <li>{t("what3")}</li>
-        <li>{t("what4")}</li>
-      </ul>
-      <p style={P}>{t("irreversible")}</p>
-
       {blocker ? (
         <div role="alert" style={{ padding: 14, borderRadius: 10, border: "1px solid var(--color-danger)", color: "var(--gray-900)" }}>
           <p style={{ ...P, marginBottom: 0 }}>
@@ -153,7 +154,7 @@ export function DeleteAccountClient() {
           <Link href="/" style={{ ...LINK, textAlign: "center", fontSize: 14 }}>{t("cancel")}</Link>
           {isOwner ? (
             <p style={{ ...P, marginBottom: 0, fontSize: 14 }}>
-              {t("ownerHelp")} <a href="mailto:safety@jchat.cloud" style={LINK}>safety@jchat.cloud</a> · <Link href="/contact" style={LINK}>{t("contact")}</Link>
+              {t("ownerHelp")} <a href="mailto:soporte@jchat.cloud" style={LINK}>soporte@jchat.cloud</a> · <Link href="/contact" style={LINK}>{t("contact")}</Link>
             </p>
           ) : null}
         </div>
