@@ -52,7 +52,7 @@ It prints the four `supabase secrets set STRIPE_PRICE_*=…` lines to paste. The
 - `users.trial_used_at` is written once in `checkout.session.completed` (when the subscription has a trial) and never overwritten or cleared.
 - Affiliate commission (A2) recognises the three price ids of each commissionable plan and applies to the full amount paid (6 months / 1 year included).
 
-Helpers live in `billing.ts` (tests: `deno test supabase/functions/subscriptions/billing_test.ts`). **Apply migrations 267 and 268 before deploying this version.**
+Helpers live in `billing.ts` (tests: `deno test supabase/functions/subscriptions/billing_test.ts`). **Apply migrations 271 (`users_plan_status_check` admits `past_due`; renamed from 267) and 268 before deploying this version.**
 
 ## Stripe webhook configuration
 

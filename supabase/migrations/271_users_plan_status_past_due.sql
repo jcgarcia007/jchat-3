@@ -1,4 +1,4 @@
--- 267: users.plan_status admite 'past_due'.
+-- 271: users.plan_status admite 'past_due'. (Antes se llamaba 267_users_plan_status_past_due.sql; se renumeró a 271 porque main ya tiene 267_retention_and_report_evidence.sql. El contenido no cambió y ya está aplicada en producción: solo cambió el nombre del archivo.)
 --
 -- Por qué: la Edge Function `subscriptions` escribe plan_status = 'past_due' (mapStripeStatus, customer.subscription.updated e
 -- invoice.payment_failed; index.ts) y el dashboard/billing lo espera, pero users_plan_status_check (baseline 245) solo permitía
