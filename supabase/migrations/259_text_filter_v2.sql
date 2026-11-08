@@ -47,8 +47,8 @@ declare
     'nigger|niggers|nigga|niggas|faggot|faggots|fag|fags|spic|spics|chink|chinks|gook|gooks|wetback|wetbacks|beaner|beaners|towelhead|towelheads|'
     'raghead|ragheads|zipperhead|zipperheads|paki|pakis|tranny|trannies|retard|retards|retarded|'
     -- insultos graves (inglés)
-    'cunt|cunts|motherfucker|motherfuckers|cocksucker|cocksuckers|whore|whores|slut|sluts|skank|skanks|asshole|assholes|dickhead|dickheads|'
-    'douchebag|douchebags|scumbag|scumbags|shithead|shitheads|dumbass|dumbasses|fuckface|wanker|wankers|twat|twats|kys|'
+    'cunt|cunts|motherfucker|motherfuckers|cocksucker|cocksuckers|whore|whores|slut|sluts|skank|skanks|'
+    'shithead|shitheads|fuckface|wanker|wankers|twat|twats|kys|'
     -- slurs e insultos graves (español)
     'hdp|hijueputa|hijueputas|hijoeputa|hijoeputas|hijodeputa|hijosdeputa|hijoputa|hijoputas|maricon|maricones|joto|jotos|marimacha|marimachas|marimacho|marimachos|'
     'mariposon|mariposones|sidoso|sidosa|sidosos|sidosas|malparido|malparida|malparidos|malparidas|comemierda|comemierdas|chupapollas|chupapijas|'
