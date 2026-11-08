@@ -52,6 +52,7 @@ import {
   buildPriceIds,
   checkoutInterval,
   intervalFromPrice,
+  periodEndOf,
   planFromPrice,
   priceIdsOfPlan,
 } from "./billing.ts";
@@ -637,7 +638,7 @@ async function handleWebhook(req: Request): Promise<Response> {
       if (stripeSubId) {
         try {
           const sub = await stripe.subscriptions.retrieve(stripeSubId);
-          periodEnd = new Date(sub.current_period_end * 1000).toISOString();
+          periodEnd = periodEndOf(sub);
           trialEnd = sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null;
           planStatus = trialEnd ? "trialing" : "active";
           price = sub.items?.data?.[0]?.price ?? null;
@@ -703,7 +704,9 @@ async function handleWebhook(req: Request): Promise<Response> {
 
     // ── Subscription updated (upgrade/downgrade/renew/past_due) ───────────────
     case "customer.subscription.updated": {
-      const sub = event.data.object as Stripe.Subscription;
+      // The endpoint's API version (2026+) differs from the client's (2024-06-20): re-read the object with our pinned client so the
+      // fields (current_period_end on the root, invoice.subscription…) have the shape this code expects. A failed retrieve throws → 500 → Stripe retries.
+      const sub = await stripe.subscriptions.retrieve((event.data.object as { id: string }).id);
       const customerId = customerIdOf(sub.customer);
       const userId = await resolveUserId(db, sub.metadata?.user_id, customerId);
 
@@ -719,7 +722,7 @@ async function handleWebhook(req: Request): Promise<Response> {
         console.error(`[subscriptions] sub ${sub.id}: no valid plan on price ${price?.id ?? "(none)"} nor on metadata; plan left unchanged`);
       }
       const planStatus = mapStripeStatus(sub.status);
-      const periodEnd = new Date(sub.current_period_end * 1000).toISOString();
+      const periodEnd = periodEndOf(sub);
       const trialEnd = sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null;
 
       const upd: Record<string, unknown> = {
@@ -741,7 +744,16 @@ async function handleWebhook(req: Request): Promise<Response> {
 
     // ── Subscription deleted / canceled → back to free ───────────────────────
     case "customer.subscription.deleted": {
-      const sub = event.data.object as Stripe.Subscription;
+      // Re-read with the pinned client; if the subscription is gone (resource_missing) the event's own object is enough
+      // (only id, customer and metadata.user_id are used here).
+      const evSub = event.data.object as Stripe.Subscription;
+      let sub: Stripe.Subscription = evSub;
+      try {
+        sub = await stripe.subscriptions.retrieve(evSub.id);
+      } catch (err) {
+        if ((err as { code?: string }).code !== "resource_missing") throw err;
+        console.warn(`customer.subscription.deleted: sub ${evSub.id} not retrievable, using the event object`);
+      }
       const customerId = customerIdOf(sub.customer);
       const userId = await resolveUserId(db, sub.metadata?.user_id, customerId);
 
@@ -768,7 +780,7 @@ async function handleWebhook(req: Request): Promise<Response> {
 
     // ── Payment failed → past_due (Stripe retries on its own; no grace column) ─
     case "invoice.payment_failed": {
-      const invoice = event.data.object as Stripe.Invoice;
+      const invoice = await stripe.invoices.retrieve((event.data.object as { id: string }).id);
       const customerId = customerIdOf(invoice.customer);
       const userId = await resolveUserId(db, undefined, customerId);
 
@@ -786,7 +798,8 @@ async function handleWebhook(req: Request): Promise<Response> {
 
     // ── Payment recovered → clear past_due + refresh renewal date ─────────────
     case "invoice.payment_succeeded": {
-      const invoice = event.data.object as Stripe.Invoice;
+      // Re-read with the pinned client: from API 2025+ `invoice.subscription` moved to invoice.parent.subscription_details.subscription.
+      const invoice = await stripe.invoices.retrieve((event.data.object as { id: string }).id);
       const customerId = customerIdOf(invoice.customer);
       const userId = await resolveUserId(db, undefined, customerId);
 
@@ -813,7 +826,7 @@ async function handleWebhook(req: Request): Promise<Response> {
       if (stripeSubId) {
         try {
           const sub = await stripe.subscriptions.retrieve(stripeSubId);
-          periodEnd = new Date(sub.current_period_end * 1000).toISOString();
+          periodEnd = periodEndOf(sub);
         } catch (err) {
           console.warn("Could not retrieve subscription for period end:", err);
         }
@@ -847,7 +860,7 @@ async function handleWebhook(req: Request): Promise<Response> {
 
     // ── Trial ending reminder (notification is a separate TODO — log only) ────
     case "customer.subscription.trial_will_end": {
-      const sub = event.data.object as Stripe.Subscription;
+      const sub = await stripe.subscriptions.retrieve((event.data.object as { id: string }).id);
       const customerId = customerIdOf(sub.customer);
       const userId = await resolveUserId(db, sub.metadata?.user_id, customerId);
       console.log(`[subscriptions] trial ending soon: user=${userId ?? "(unresolved)"}`);
@@ -858,21 +871,15 @@ async function handleWebhook(req: Request): Promise<Response> {
     // ── A2: Reembolso → revierte la comisión de esa factura ──────────────────
     case "charge.refunded": {
       const charge = event.data.object as Stripe.Charge;
-      // El payload usa la versión de API de la cuenta (2025+), que ya no trae
-      // charge.invoice. Si falta, recuperamos el charge con nuestro cliente
-      // (anclado a apiVersion 2024-06-20), cuyo formato sí lo incluye —
-      // mismo patrón que el case de disputa.
-      let invoiceId =
-        typeof charge.invoice === "string" ? charge.invoice : charge.invoice?.id ?? null;
-      if (!invoiceId) {
-        try {
-          const full = await stripe.charges.retrieve(charge.id);
-          invoiceId =
-            typeof full.invoice === "string" ? full.invoice : full.invoice?.id ?? null;
-        } catch (err) {
-          console.error(`[affiliate] no se pudo recuperar charge ${charge.id} del refund:`, err);
-          break;
-        }
+      // El payload usa la versión de API del endpoint (2026+), que ya no trae charge.invoice. Siempre recuperamos el charge con nuestro
+      // cliente (anclado a apiVersion 2024-06-20), cuyo formato sí lo incluye; mismo patrón que el case de disputa.
+      let invoiceId: string | null = null;
+      try {
+        const full = await stripe.charges.retrieve(charge.id, { expand: ["invoice"] });
+        invoiceId = typeof full.invoice === "string" ? full.invoice : full.invoice?.id ?? null;
+      } catch (err) {
+        console.error(`[affiliate] no se pudo recuperar charge ${charge.id} del refund:`, err);
+        break;
       }
       if (!invoiceId) break;
       const { error } = await db
@@ -893,7 +900,7 @@ async function handleWebhook(req: Request): Promise<Response> {
       if (!chargeId) break;
       let invoiceId: string | null = null;
       try {
-        const charge = await stripe.charges.retrieve(chargeId);
+        const charge = await stripe.charges.retrieve(chargeId, { expand: ["invoice"] });
         invoiceId =
           typeof charge.invoice === "string" ? charge.invoice : charge.invoice?.id ?? null;
       } catch (err) {

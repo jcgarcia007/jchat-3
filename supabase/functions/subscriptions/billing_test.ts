@@ -1,5 +1,5 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { buildPriceIds, checkoutInterval, intervalFromPrice, planFromPrice, priceIdsOfPlan } from "./billing.ts";
+import { buildPriceIds, checkoutInterval, intervalFromPrice, periodEndOf, planFromPrice, priceIdsOfPlan } from "./billing.ts";
 
 const env: Record<string, string> = {
   STRIPE_PRICE_BUSINESS: "pb", STRIPE_PRICE_BUSINESS_6M: "pb6", STRIPE_PRICE_BUSINESS_1Y: "pb1",
@@ -77,4 +77,27 @@ Deno.test("planFromPrice: nothing valid → null (never 'regular')", () => {
   assertEquals(planFromPrice({ id: "x", metadata: { plan: "enterprise" } }, undefined, ids), null);
   assertEquals(planFromPrice(null, undefined, ids), null);
   assertEquals(planFromPrice({ id: "x" }, 42, undefined), null);
+});
+
+Deno.test("periodEndOf reads the root (API 2024-06-20)", () => {
+  assertEquals(periodEndOf({ id: "sub_1", current_period_end: 1_800_000_000 }), new Date(1_800_000_000 * 1000).toISOString());
+});
+
+Deno.test("periodEndOf falls back to items.data[0] (API 2025+, root field removed)", () => {
+  const sub = { id: "sub_2", items: { data: [{ current_period_end: 1_800_000_000 }] } };
+  assertEquals(periodEndOf(sub), new Date(1_800_000_000 * 1000).toISOString());
+});
+
+Deno.test("periodEndOf prefers the root over the item", () => {
+  const sub = { current_period_end: 1_800_000_000, items: { data: [{ current_period_end: 1_900_000_000 }] } };
+  assertEquals(periodEndOf(sub), new Date(1_800_000_000 * 1000).toISOString());
+});
+
+Deno.test("periodEndOf never builds an invalid Date: null + warning", () => {
+  const warnings: string[] = [];
+  const warn = (m: string) => warnings.push(m);
+  for (const bad of [undefined, null, {}, { id: "sub_3" }, { items: { data: [] } }, { current_period_end: NaN }, { current_period_end: null, items: { data: [{}] } }]) {
+    assertEquals(periodEndOf(bad as never, warn), null);
+  }
+  assertEquals(warnings.length, 7);
 });

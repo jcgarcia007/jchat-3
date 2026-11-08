@@ -85,3 +85,28 @@ export function planFromPrice(
   }
   return null;
 }
+
+/** The bits of a Stripe.Subscription `periodEndOf` reads. */
+export interface SubscriptionLike {
+  id?: string | null;
+  current_period_end?: number | null;
+  /** Items are opaque here (a Stripe.SubscriptionItem has no `current_period_end` in the 2024 typings); read defensively below. */
+  items?: { data?: ReadonlyArray<unknown> | null } | null;
+}
+
+/**
+ * ISO end of the current billing period. API 2024-06-20 keeps `current_period_end` on the subscription root; from API 2025+ (the webhook
+ * endpoint is on 2026-05-27.dahlia) it only exists on `items.data[0]`. Reads the root, then the first item. Never builds a Date from a
+ * missing/invalid value (that threw `RangeError: Invalid time value` and 500'd the webhook): no date → null + a warning.
+ */
+export function periodEndOf(
+  sub: SubscriptionLike | null | undefined,
+  warn: (msg: string) => void = console.warn,
+): string | null {
+  const candidates = [sub?.current_period_end, (sub?.items?.data?.[0] as { current_period_end?: number | null } | undefined)?.current_period_end];
+  for (const seconds of candidates) {
+    if (typeof seconds === "number" && Number.isFinite(seconds) && seconds > 0) return new Date(seconds * 1000).toISOString();
+  }
+  warn(`[subscriptions] no current_period_end on subscription ${sub?.id ?? "(unknown)"}`);
+  return null;
+}
