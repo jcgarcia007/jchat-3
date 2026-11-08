@@ -27,9 +27,10 @@ import {
   IconTicket,
 } from "@tabler/icons-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import CustomPlanForm from "@/components/pricing/CustomPlanForm";
 import { useBusinessCheckout } from "@/hooks/useBusinessCheckout";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { SALES_EMAIL, type CheckoutPlanId } from "@/lib/plans";
+import type { CheckoutPlanId } from "@/lib/plans";
 import {
   BILLING_INTERVALS,
   BUSINESS_INTERVALS,
@@ -63,11 +64,12 @@ const USD_EXACT = new Intl.NumberFormat("en-US", { style: "currency", currency: 
 export default function PricingBusinessPage() {
   const t = useTranslations("pricingBusiness");
   const tp = useTranslations("pricing");
-  const tPlans = useTranslations("plans");
   const locale = useLocale();
   const reduceMotion = useReducedMotion();
 
   const [period, setPeriod] = useState<BillingInterval>("month");
+  // The Custom card opens the request form (phase D) instead of a mailto.
+  const [formOpen, setFormOpen] = useState(false);
   // Clock-dependent bits render after mount (no hydration mismatch).
   const [nowMs, setNowMs] = useState<number | null>(null);
   // True when the signed-in user already had a free trial (users.trial_used_at): then the trial is not offered.
@@ -317,13 +319,13 @@ export default function PricingBusinessPage() {
 
                 {/* CTA */}
                 {isCustom ? (
-                  // Temporary: phase D replaces this mailto with the request form.
-                  <a
-                    href={`mailto:${SALES_EMAIL}?subject=${encodeURIComponent(tPlans("customSubject"))}`}
-                    style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 48, borderRadius: 10, border: "2px solid var(--land-text)", color: "var(--land-text)", background: "transparent", fontSize: 15, fontWeight: 700, textDecoration: "none" }}
+                  <button
+                    type="button"
+                    onClick={() => setFormOpen(true)}
+                    style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 48, borderRadius: 10, border: "2px solid var(--land-text)", color: "var(--land-text)", background: "transparent", fontSize: 15, fontWeight: 700, cursor: "pointer" }}
                   >
                     {t("ctaProposal")}
-                  </a>
+                  </button>
                 ) : (
                   <>
                     <button
@@ -439,6 +441,8 @@ export default function PricingBusinessPage() {
           </div>
         </section>
       </main>
+
+      <CustomPlanForm open={formOpen} onClose={() => setFormOpen(false)} />
 
       <footer style={{ position: "relative", borderTop: "1px solid rgb(var(--ink-rgb) / .10)", padding: "20px 16px", display: "flex", justifyContent: "center", gap: 24, flexWrap: "wrap", fontSize: 14 }}>
         <Link href="/terms" style={{ color: "var(--land-sub)", minHeight: 44, display: "inline-flex", alignItems: "center" }}>{tp("footer.terms")}</Link>
