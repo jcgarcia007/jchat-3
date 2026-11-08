@@ -88,10 +88,13 @@ export default function PricingBusinessPage() {
     promoChecking,
     checkPromo,
     handleSubscribe,
-  } = useBusinessCheckout({ nextPath: "/pricing/business" });
+  } = useBusinessCheckout({ nextPath: `/pricing/business?interval=${period}` });
 
   useEffect(() => {
     setNowMs(Date.now());
+    // The period chosen before logging in comes back as ?interval= (the hook puts it in the login's `next`).
+    const back = new URLSearchParams(window.location.search).get("interval");
+    if (back && (BILLING_INTERVALS as readonly string[]).includes(back)) setPeriod(back as BillingInterval);
     if (!isSupabaseConfigured) return;
     let alive = true;
     void (async () => {
@@ -212,9 +215,7 @@ export default function PricingBusinessPage() {
         <div style={{ maxWidth: 720, margin: "0 auto 24px", background: "var(--land-glass)", border: "1px solid rgb(var(--ink-rgb) / .08)", borderRadius: 14, padding: "16px 18px", boxShadow: "0 4px 20px rgb(var(--ink-rgb) / .06)" }}>
           <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>{tp("business.consentTitle")}</div>
           <p style={{ fontSize: 13, color: "var(--land-sub)", margin: "0 0 8px", lineHeight: 1.6 }}>{tp("business.consentBody")}</p>
-          {period !== "month" && (
-            <p style={{ fontSize: 13, color: "var(--land-sub)", margin: "0 0 12px", lineHeight: 1.6 }}>{t("consentPeriodNote", { cadence })}</p>
-          )}
+          <p style={{ fontSize: 13, color: "var(--land-sub)", margin: "0 0 12px", lineHeight: 1.6 }}>{t("consentPeriodNote", { cadence })}</p>
           <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", fontSize: 13, lineHeight: 1.5, minHeight: 44 }}>
             <input
               type="checkbox"

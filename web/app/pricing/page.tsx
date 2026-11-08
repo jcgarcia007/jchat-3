@@ -83,6 +83,7 @@ const SOCIAL_ICONS: Record<SocialPlanId, React.ReactNode> = {
 export default function PricingPage() {
   const router = useRouter();
   const t = useTranslations("pricing");
+  const tb = useTranslations("pricingBusiness");
   const tp = useTranslations("plans");
   const offeredPlans = getOfferedPlans(tp);
 
@@ -399,6 +400,10 @@ export default function PricingPage() {
             </div>
             <p style={{ fontSize:"13px", color:"var(--land-sub)", margin:"0 0 14px", lineHeight:1.6 }}>
               {t("business.consentBody")}
+            </p>
+            {/* This page only sells the monthly period; the line below is the one that names the period. */}
+            <p style={{ fontSize:"13px", color:"var(--land-sub)", margin:"0 0 14px", lineHeight:1.6 }}>
+              {tb("consentPeriodNote", { cadence: tb("cadenceMonth") })}
             </p>
             <label style={{ display:"flex", alignItems:"flex-start", gap:"10px", cursor:"pointer", fontSize:"13px", color:"var(--land-text)", lineHeight:1.5 }}>
               <input
