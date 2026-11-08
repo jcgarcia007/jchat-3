@@ -1,7 +1,7 @@
 /**
  * JChat 3.0 — D7: deletion of expired report evidence copies (bucket report-evidence). Import-free apart from safeEqual, so a Deno test can drive it with fakes.
  *
- * Called only by the database (evidence_purge_retry(), migration 268) through pg_net with { ids: [...] } (rows of public.evidence_purge_queue) and the
+ * Called only by the database (evidence_purge_retry(), migration 272) through pg_net with { ids: [...] } (rows of public.evidence_purge_queue) and the
  * x-push-secret header. The retry function already counted the attempt before calling. For each row that still exists: the object is removed from the
  * report-evidence bucket and the queue row is deleted; if the removal fails the row stays with a GENERIC last_error (never a path) and the database retries
  * with backoff (6 attempts, then it gives up and writes security_logs 'evidence_purge_gave_up'). Only the report-evidence bucket is ever touched.

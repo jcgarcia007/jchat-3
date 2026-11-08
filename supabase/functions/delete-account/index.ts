@@ -311,7 +311,7 @@ Deno.serve(async (req) => {
     // 3a. Evidence (D7): files of reported content in hold (a pending report, or child safety / NCMEC inside its term) are COPIED to the private
     //     report-evidence bucket and recorded in reports.evidence BEFORE the purge below removes the originals. The reports themselves survive the
     //     deletion (migration 267: reporter_id / reported_user_id SET NULL). If a copy fails nothing is deleted: the law says to keep it, the person retries.
-    //     Needs migration 268 (user_held_evidence, reports.evidence, the bucket) before this function is deployed.
+    //     Needs migration 272 (user_held_evidence, reports.evidence, the bucket) before this function is deployed.
     const evidence = await runEvidenceStep({
       copy: () => copyHeldEvidence(buildEvidenceDeps(admin), userId),
       log: async (action, detail) => {

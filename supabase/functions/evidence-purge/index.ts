@@ -1,5 +1,5 @@
 /**
- * JChat 3.0 — D7: evidence-purge Edge Function. Removes the copies of report evidence whose report was purged (retention_purge, migration 268).
+ * JChat 3.0 — D7: evidence-purge Edge Function. Removes the copies of report evidence whose report was purged (retention_purge, migration 272).
  * Runtime: Deno (Supabase Edge Functions). JWT verification is off (config.toml): every POST must carry x-push-secret = PUSH_WEBHOOK_SECRET.
  *
  * Deploy:

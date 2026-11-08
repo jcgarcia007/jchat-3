@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Prueba LOCAL de la migración 268 (evidencia de reportes en archivos y DMs). TODO dentro de UNA transacción que termina en ROLLBACK
-# (la 258, 262, 265, 266 y 267 se aplican dentro; la 268 dos veces: idempotente). Solo contra el contenedor local.   bash supabase/scripts/test_268_local.sh
+# Prueba LOCAL de la migración 272 (evidencia de reportes en archivos y DMs). TODO dentro de UNA transacción que termina en ROLLBACK
+# (la 258, 262, 265–271 y la 272 se aplican dentro; la 272 dos veces: idempotente). Solo contra el contenedor local.   bash supabase/scripts/test_272_local.sh
 set -u
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 export PATH="/Applications/Docker.app/Contents/Resources/bin:$PATH"
@@ -15,7 +15,7 @@ cat <<'SQL'
 \set ON_ERROR_STOP on
 begin;
 SQL
-for m in 258_storage_user_objects 262_review_mode 265_owner_account_close 266_stale_orders_and_email_retry 267_retention_and_report_evidence 268_report_evidence 268_report_evidence; do
+for m in 258_storage_user_objects 262_review_mode 265_owner_account_close 266_stale_orders_and_email_retry 267_retention_and_report_evidence 268_users_plan_interval_trial_used 269_business_plan_requests 270_business_owner_is_pro 271_users_plan_status_past_due 272_report_evidence 272_report_evidence; do
   cat "$ROOT/supabase/migrations/$m.sql"
 done
 cat <<'SQL'
@@ -207,7 +207,7 @@ insert into public.evidence_purge_queue (bucket, path) select 'report-evidence',
 select pg_temp.chk(public.evidence_purge_retry() = 50, 'F: 50 per batch');
 select pg_temp.chk(public.evidence_purge_retry() = 10, 'F: the rest on the next pass');
 
-select pg_temp.chk((select count(*) = 1 from pg_trigger where tgname = 'trg_auth_user_ban_check') and (select count(*) = 1 from cron.job where jobname = 'retention-purge'), 'G: the 267 triggers and cron survive; 268 applied twice without error');
+select pg_temp.chk((select count(*) = 1 from pg_trigger where tgname = 'trg_auth_user_ban_check') and (select count(*) = 1 from cron.job where jobname = 'retention-purge'), 'G: the 267 triggers and cron survive; 272 applied twice without error');
 
 select 'RESULT|' || (case when ok then 'ok' else 'FAIL' end) || '|' || name from t_out order by 1;
 rollback;

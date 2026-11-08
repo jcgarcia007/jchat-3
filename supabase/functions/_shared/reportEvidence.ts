@@ -2,7 +2,7 @@
  * JChat 3.0 — delete-account (D7): copy the files of reported content to the private `report-evidence` bucket before the person's
  * Storage objects are purged (import-free, so a Node test and a Deno test can drive it).
  *
- * Which files are in hold comes from the DATABASE (RPC user_held_evidence, migration 268: reports of this person that are pending or inside
+ * Which files are in hold comes from the DATABASE (RPC user_held_evidence, migration 272: reports of this person that are pending or inside
  * the NCMEC term, their snapshot files that really exist in storage.objects and are the person's own). This module copies each one to
  *   report-evidence/<report_id>/<src_bucket>/<basename>
  * and records the copy in reports.evidence ({bucket, path, src_bucket, src_path, copied_at}) and reports.evidence_copied_at.

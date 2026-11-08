@@ -1,6 +1,6 @@
--- JChat 3.0 — D7 (2026-11-08): la evidencia de un reporte sobrevive en archivos y DMs. NO APLICADA (la aplica Juan Carlos / el asistente por MCP; nunca `supabase db push`).
+-- JChat 3.0 — D7 (2026-11-08): la evidencia de un reporte sobrevive en archivos y DMs. Aplicada en producción el 2026-11-08 como 272_report_evidence (por MCP; nunca `supabase db push`).
 -- Spec aprobada: docs/handoff/SPEC_D7_evidencia_archivos.md (decisiones A, B y C aprobadas por Juan el 2026-11-08).
--- Reversión: supabase/rollbacks/268_report_evidence_rollback.sql · Pruebas locales: supabase/scripts/test_268_local.sh
+-- Reversión: supabase/rollbacks/272_report_evidence_rollback.sql · Pruebas locales: supabase/scripts/test_272_local.sh
 -- Idempotente y no destructiva (CREATE OR REPLACE, IF NOT EXISTS, ON CONFLICT DO NOTHING).
 --
 -- Problema: con la 267 el REPORTE sobrevive al borrado de la cuenta, pero el ARCHIVO reportado (foto, audio) y los mensajes directos no
@@ -29,7 +29,7 @@
 --      50 por lote, backoff 10 min × 2^attempts con tope 6 h, 6 intentos; al llegar a 6 una fila security_logs 'evidence_purge_gave_up') que llama a la
 --      edge function evidence-purge con {ids}.
 --
--- Despliegue (Juan): 268 → `supabase functions deploy evidence-purge --no-verify-jwt`, `report-evidence`, `delete-account` → merge + push (web).
+-- Despliegue (Juan): 272 → `supabase functions deploy evidence-purge --no-verify-jwt`, `report-evidence`, `delete-account` → merge + push (web).
 
 -- ───────── A. Hold por tipo ─────────
 create or replace function public.report_in_hold(p_status text, p_reason text, p_resolution text, p_resolved_at timestamptz, p_created_at timestamptz)

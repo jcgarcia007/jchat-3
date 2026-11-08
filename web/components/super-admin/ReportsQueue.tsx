@@ -7,7 +7,7 @@
  * the content type, the reported person, the venue and the SNAPSHOT the server took when the report was made. For
  * child_safety / sexual_content reports no image or media of the snapshot is loaded by itself: every element is hidden
  * behind "Show". Actions go through the admin_* RPCs (they check is_platform_admin() and leave a security_logs record).
- * "View evidence (n)" (D7, migration 268) shows the copies of the reported files kept for the report: the report-evidence Edge Function checks
+ * "View evidence (n)" (D7, migration 272) shows the copies of the reported files kept for the report: the report-evidence Edge Function checks
  * the admin, signs 10-minute URLs and logs every view. Sensitive reports keep each file behind "Show", like the snapshot.
  */
 
@@ -32,7 +32,7 @@ interface Report {
   admin_note: string | null;
   business_id: string | null;
   created_at: string;
-  /** Copies of the reported files kept in the private report-evidence bucket (migration 268); absent before it is applied. */
+  /** Copies of the reported files kept in the private report-evidence bucket (migration 272); absent before it is applied. */
   evidence?: { path?: string }[] | null;
 }
 
@@ -92,7 +92,7 @@ export default function ReportsQueue({ onPendingCount }: { onPendingCount?: (n: 
       return showResolved ? base : base.eq("status", "pending");
     };
     let { data, error: loadError } = await query(`${columns}, evidence`);
-    // reports.evidence comes with migration 268: until it is applied the queue still loads (without the evidence button).
+    // reports.evidence comes with migration 272: until it is applied the queue still loads (without the evidence button).
     if (loadError && (loadError.code === "42703" || loadError.message.includes("evidence"))) ({ data, error: loadError } = await query(columns));
     if (loadError) { setError(loadError.message); setLoading(false); return; }
     setError(null);

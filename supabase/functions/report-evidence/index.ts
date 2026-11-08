@@ -5,7 +5,7 @@
  * Deploy:
  *   supabase functions deploy report-evidence --project-ref klfsgcfoahdtkojyqspd
  *
- * Needs migration 268 (reports.evidence, the report-evidence bucket). SUPABASE_URL / SB_PUBLISHABLE_KEY / SB_SECRET_KEY are injected.
+ * Needs migration 272 (reports.evidence, the report-evidence bucket). SUPABASE_URL / SB_PUBLISHABLE_KEY / SB_SECRET_KEY are injected.
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.44.4";

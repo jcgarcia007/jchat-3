@@ -1,4 +1,4 @@
--- ROLLBACK de 268_report_evidence (destructivo: borra la cola de copias, las columnas de evidencia y el cron). Juan lo aplica a mano en el SQL Editor.
+-- ROLLBACK de 272_report_evidence (destructivo: borra la cola de copias, las columnas de evidencia y el cron). Juan lo aplica a mano en el SQL Editor.
 -- Antes: vaciar el bucket report-evidence desde Storage si tiene copias (una evidencia aún dentro del plazo se pierde si se hace sin copiarla antes).
 -- Restaura los cuerpos anteriores (producción 2026-11-08): message_under_retention_hold y retention_purge (267), match_remove_pair, match_wipe_user_venue y venue_exits_purge (245).
 select cron.unschedule('evidence-purge-retry');
