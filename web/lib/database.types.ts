@@ -6615,7 +6615,10 @@ export type Database = {
         Args: { p_at?: string; p_business_id: string }
         Returns: boolean
       }
-      business_owner_is_pro: { Args: { p_business_id: string }; Returns: boolean }
+      business_owner_is_pro: {
+        Args: { p_business_id: string }
+        Returns: boolean
+      }
       business_visible_to: { Args: { p_business_id: string }; Returns: boolean }
       can_access_room: { Args: { _room_id: string }; Returns: boolean }
       can_employee_see_table: { Args: { p_table_id: string }; Returns: boolean }

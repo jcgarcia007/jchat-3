@@ -61,6 +61,7 @@ interface Subscription {
   status: PlanStatus;
   current_period_end: string | null; // ← users.plan_renews_at
   trial_end: string | null;          // ← users.plan_trial_end
+  plan_interval: string | null;      // ← users.plan_interval (month | 6month | year; null = monthly)
   stripe_subscription_id: string | null;
 }
 
@@ -233,6 +234,7 @@ const DEMO_SUB: Subscription = {
   status: "trialing",
   current_period_end: new Date(Date.now() + 25 * 86_400_000).toISOString(),
   trial_end: new Date(Date.now() + 5 * 86_400_000).toISOString(),
+  plan_interval: null,
   stripe_subscription_id: null,
 };
 
@@ -291,7 +293,7 @@ export default function BillingPage() {
 
       const { data, error } = await supabase
         .from("users")
-        .select("plan, plan_status, plan_trial_end, plan_renews_at, stripe_subscription_id")
+        .select("plan, plan_status, plan_trial_end, plan_renews_at, plan_interval, stripe_subscription_id")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -302,6 +304,7 @@ export default function BillingPage() {
         plan_status: PlanStatus | null;
         plan_trial_end: string | null;
         plan_renews_at: string | null;
+        plan_interval: string | null;
         stripe_subscription_id: string | null;
       } | null;
 
@@ -310,6 +313,7 @@ export default function BillingPage() {
         status: row?.plan_status ?? "active",
         current_period_end: row?.plan_renews_at ?? null,
         trial_end: row?.plan_trial_end ?? null,
+        plan_interval: row?.plan_interval ?? null,
         stripe_subscription_id: row?.stripe_subscription_id ?? null,
       });
     } catch (err) {
@@ -572,6 +576,23 @@ export default function BillingPage() {
                           {t("billingDaysLeftParenthetical", { count: daysLeft(sub.trial_end) ?? 0 })}
                         </span>
                       )}
+                    </div>
+                  </div>
+                )}
+                {(sub.plan === "business" || sub.plan === "pro") && (
+                  <div>
+                    <div
+                      style={{ fontSize: "11px", color: "var(--db-text-tertiary)", marginBottom: "2px" }}
+                    >
+                      {t("billingChargeLabel")}
+                    </div>
+                    <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--db-text-primary)" }}>
+                      {/* plan_interval null (older subscriptions, before the column) = monthly */}
+                      {sub.plan_interval === "6month"
+                        ? t("billingInterval6Month")
+                        : sub.plan_interval === "year"
+                          ? t("billingIntervalYear")
+                          : t("billingIntervalMonth")}
                     </div>
                   </div>
                 )}

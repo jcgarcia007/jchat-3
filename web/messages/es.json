@@ -995,6 +995,10 @@
     "billingTrialEndsLabel": "La prueba termina",
     "billingDaysLeftParenthetical": "({count, plural, one {queda # día} other {quedan # días}})",
     "billingRenewsLabel": "Se renueva",
+    "billingChargeLabel": "Cobro",
+    "billingIntervalMonth": "Cada mes",
+    "billingInterval6Month": "Cada 6 meses",
+    "billingIntervalYear": "Cada año",
     "billingPastDueWarning": "Hay un problema con tu pago. Actualiza tu método de pago para mantener tu plan activo.",
     "billingTrialReminderText": "Tu prueba gratis termina en {count, plural, one {# día} other {# días}}. Añade un método de pago para continuar sin interrupciones.",
     "billingNoBusinessPlanTitle": "No tienes un plan de negocio activo",
@@ -3323,6 +3327,78 @@
       "btnSec": "Ver planes para negocios"
     }
   },
+  "pricingBusiness": {
+    "forBusiness": "JChat para negocios",
+    "heroTitle1": "Elige el plan de tu",
+    "heroTitle2": "negocio",
+    "heroSubtitle": "Prueba 30 días gratis. JChat no cobra comisión por tus ventas: solo pagas la tarifa de Stripe.",
+    "periodLabel": "Periodo de cobro",
+    "periodMonth": "Mensual",
+    "periodSixMonths": "6 meses",
+    "periodYear": "1 año",
+    "saveSixMonths": "−10%",
+    "saveYear": "−20%",
+    "stamp": "MÁS PEDIDO",
+    "business": {
+      "name": "Business",
+      "tagline": "Para un local o evento",
+      "f1": "POS completo con cocina (KDS) y mesas",
+      "f2": "Menú digital con código QR en cada mesa",
+      "f3": "Cobros con tarjeta en tu local, sin comisión de JChat",
+      "f4": "Lealtad, ofertas, reservas e inventario",
+      "f5": "Hasta 10 empleados por local, con roles",
+      "f6": "1 local o evento"
+    },
+    "pro": {
+      "name": "Pro",
+      "tagline": "Para crecer con varios locales",
+      "f1": "Todo lo de Business",
+      "f2": "Asistente de menú con IA y traducción de descripciones",
+      "f3": "Analíticas e ROI de tu programa de lealtad",
+      "f4": "Hasta 50 empleados por local",
+      "f5": "Detalles de cada plato para tu equipo",
+      "f6": "Hasta 10 locales o eventos en total"
+    },
+    "custom": {
+      "name": "Custom",
+      "tagline": "Para cadenas y necesidades a medida",
+      "f1": "Todo lo de Pro",
+      "f2": "Configuración guiada 1 a 1",
+      "f3": "Soporte prioritario",
+      "f4": "Locales y eventos a medida",
+      "f5": "Recibos con tu marca",
+      "f6": "Acompañamiento en el lanzamiento"
+    },
+    "perMonth": "/mes",
+    "customPrice": "A tu medida",
+    "customHint": "Cuéntanos qué necesitas y te preparamos una propuesta.",
+    "billedMonth": "Se cobra cada mes",
+    "billedSixMonths": "Se cobra {amount} cada 6 meses",
+    "billedYear": "Se cobra {amount} cada año",
+    "cadenceMonth": "cada mes",
+    "cadenceSixMonths": "cada 6 meses",
+    "cadenceYear": "cada año",
+    "ctaTrial": "Empezar 30 días gratis",
+    "ctaTrialDays": "Empezar {days} días gratis",
+    "ctaSubscribe": "Suscribirme",
+    "ctaProposal": "Solicitar una propuesta",
+    "ctaRedirecting": "Redirigiendo…",
+    "legalTrial": "Hoy pagas $0. El {date} se cobran {amount} {cadence}. Cancela antes y no pagas nada.",
+    "legalRenews": "Se renueva {cadence} hasta que canceles.",
+    "totalToday": "Total hoy: {amount}",
+    "consentPeriodNote": "Con el periodo que elegiste, tu plan se renueva automáticamente {cadence}.",
+    "faqTitle": "Preguntas frecuentes",
+    "faq": {
+      "q1": "¿Cómo funciona la prueba gratis?",
+      "a1": "Empiezas con 30 días gratis. Necesitamos una tarjeta, pero hoy no se cobra nada. Si cancelas antes de que termine la prueba, no pagas nada. La prueba es solo para la primera suscripción de cada cuenta.",
+      "q2": "¿Cómo cancelo?",
+      "a2": "Desde tu panel, en Facturación, con dos clics en el portal de Stripe. Conservas el acceso hasta el final del periodo que ya pagaste. Terminada la prueba no hay reembolso del periodo en curso.",
+      "q3": "¿JChat cobra comisiones?",
+      "a3": "No. JChat no cobra comisión por tus ventas; solo pagas la tarifa de procesamiento de Stripe.",
+      "q4": "¿Puedo cambiar de plan o de periodo?",
+      "a4": "Sí, desde el portal de facturación. Stripe prorratea la diferencia automáticamente."
+    }
+  },
   "pricing": {
     "social": {
       "sectionTitle": "Planes para ti",
@@ -3593,6 +3669,10 @@
     "b4": "Juegos en el local: Match y Verdad o Reto"
   },
   "meta": {
+    "pricingBusiness": {
+      "title": "Planes para negocios — JChat",
+      "description": "Business o Pro, con 30 días gratis y sin comisión de JChat. Elige cada mes, cada 6 meses o cada año."
+    },
     "download": {
       "title": "Descargar JChat",
       "description": "Descarga la app de JChat para ver locales con gente ahora y entrar a su chat."

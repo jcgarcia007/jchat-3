@@ -25,7 +25,11 @@ export interface OfferedPlan {
   cta: "checkout" | "contact";
 }
 
-export const SALES_EMAIL = "ventas@jchat.cloud"; // TODO(confirm): correo real de ventas
+/** Destino de las solicitudes del plan Custom (decisión de Juan, 2026-11-07). El envío automático del correo es del spec 4. */
+export const SALES_EMAIL = "ventas@jchat.cloud";
+
+export { BUSINESS_INTERVALS, BILLING_INTERVALS } from "./businessPricing";
+export type { BillingInterval, IntervalPrice, PricedPlanId } from "./businessPricing";
 
 /** Static data of each offered plan. All visible text lives in the `plans` i18n namespace. */
 const OFFERED_PLAN_DEFS: ReadonlyArray<{ id: OfferedPlanId; featureCount: number; cta: OfferedPlan["cta"] }> = [
@@ -75,3 +79,6 @@ export const SOCIAL_PLANS: SocialPlan[] = [
 
 /** Destino de "Ver planes para negocios" (bienvenida). El spec 3 lo cambiará a la página nueva de planes de negocio. */
 export const BUSINESS_PLANS_HREF = "/pricing";
+
+/** Página nueva de planes de negocio (/pricing/business). Sin usar todavía: activar en spec 4 (cambia BUSINESS_PLANS_HREF y los enlaces de la landing a la vez). */
+export const BUSINESS_PLANS_HREF_NEXT = "/pricing/business";
