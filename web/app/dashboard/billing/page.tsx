@@ -551,7 +551,8 @@ export default function BillingPage() {
                   flexWrap: "wrap",
                 }}
               >
-                {sub.trial_end && (
+                {/* Trial info only while the status is 'trialing': an 'active' plan can keep an old plan_trial_end and must not show it. */}
+                {sub.status === "trialing" && sub.trial_end && (
                   <div>
                     <div
                       style={{ fontSize: "11px", color: "var(--db-text-tertiary)", marginBottom: "2px" }}
@@ -574,7 +575,7 @@ export default function BillingPage() {
                     </div>
                   </div>
                 )}
-                {sub.current_period_end && !sub.trial_end && (
+                {sub.current_period_end && !(sub.status === "trialing" && sub.trial_end) && (
                   <div>
                     <div
                       style={{ fontSize: "11px", color: "var(--db-text-tertiary)", marginBottom: "2px" }}

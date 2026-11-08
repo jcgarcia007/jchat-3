@@ -3,7 +3,7 @@
  *
  * Lets business owners:
  *   - View the full staff roster (pending + accepted + declined).
- *   - See plan-limit usage (N / 10 for the default plan; Pro = unlimited).
+ *   - See plan-limit usage (N / 10 on Business, N / 50 on Pro — per venue, same as the DB trigger).
  *   - Remove an employee (hard-delete; revokes access immediately).
  *
  * Data: queries the `employees` table via @/lib/supabase — no import from the
@@ -19,8 +19,7 @@
  *   - Role determines chat actions available (Task 2.10).
  *   - Physical-presence check for Chat Moderator: Stage 4 (geofence).
  *     // TODO(Stage 4): geofence enforcement for Chat Moderator
- *   - Plan limit: max 10 active+pending; Pro = unlimited.
- *     // TODO: read real plan from billing; default cap is 10.
+ *   - Plan limit per venue: Business 10, Pro 50 (lib/planLimits.ts EMPLOYEE_LIMITS = trigger enforce_employee_plan_limit).
  */
 
 "use client";
@@ -43,6 +42,8 @@ import {
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
 import { resolveActiveBusiness } from "@/lib/business";
+import { EMPLOYEE_LIMITS, employeeLimitFor } from "@/lib/planLimits";
+import { getOwnerPlan } from "@/lib/roles";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
 import type { TFn } from "@/lib/tabSemantics";
 
@@ -83,8 +84,8 @@ interface CustomRole {
 
 // ─── Plan limit constant ──────────────────────────────────────────────────────
 
-/** Default cap for non-Pro plans. Pro = unlimited (null). */
-const DEFAULT_PLAN_CAP = 10;
+/** Cap shown in demo mode / while the plan is loading (the Business limit). */
+const DEFAULT_PLAN_CAP = EMPLOYEE_LIMITS.business;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -203,7 +204,7 @@ function PlanUsageBar({
   cap: number;
   t: TFn;
 }) {
-  const pct = Math.min(100, Math.round((used / cap) * 100));
+  const pct = cap > 0 ? Math.min(100, Math.round((used / cap) * 100)) : 100;
   const atLimit = used >= cap;
   return (
     <div style={{ marginBottom: "20px" }}>
@@ -226,7 +227,6 @@ function PlanUsageBar({
           }}
         >
           {used} / {cap}
-          {/* TODO: read real plan; Pro = unlimited */}
         </span>
       </div>
       <div
@@ -597,6 +597,7 @@ export default function EmployeesPage() {
   const tCommon = useTranslations("common");
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [loadingBiz, setLoadingBiz] = useState(true);
+  const [planCap, setPlanCap] = useState<number>(DEFAULT_PLAN_CAP);
 
   const [employees, setEmployees] = useState<EmployeeWithProfile[]>([]);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
@@ -637,6 +638,8 @@ export default function EmployeesPage() {
         return;
       }
       setBusinessId(res.business.id);
+      const owner = await getOwnerPlan();
+      if (owner) setPlanCap(employeeLimitFor(owner.plan));
     } catch {
       // business not found — keep null
     } finally {
@@ -845,9 +848,8 @@ export default function EmployeesPage() {
 
   // ── Derived counts ─────────────────────────────────────────────────────────
 
-  const activeCount = employees.filter(
-    (e) => e.status === "accepted" || e.status === "pending"
-  ).length;
+  // The DB trigger counts EVERY employees row of the venue (accepted, pending and declined), so the bar does too.
+  const activeCount = employees.length;
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -1027,7 +1029,7 @@ export default function EmployeesPage() {
           {!isSupabaseConfigured ? (
             <PlanUsageBar used={0} cap={DEFAULT_PLAN_CAP} t={t} />
           ) : (
-            <PlanUsageBar used={activeCount} cap={DEFAULT_PLAN_CAP} t={t} />
+            <PlanUsageBar used={activeCount} cap={planCap} t={t} />
           )}
 
           {/* Employee list */}

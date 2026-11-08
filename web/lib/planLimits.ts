@@ -21,6 +21,22 @@ export const PLAN_LIMITS: Record<Plan, { businesses: number; events: number }> =
   pro:      { businesses: 10, events: 10 },
 };
 
+/**
+ * Employees allowed PER BUSINESS, as enforced by the DB trigger `enforce_employee_plan_limit` (D-42): business 10, pro 50.
+ * The trigger counts every row of `employees` for that business (accepted, pending and declined). Keep in sync with it.
+ */
+export const EMPLOYEE_LIMITS: Record<Plan, number> = {
+  regular:  0,
+  verified: 0,
+  business: 10,
+  pro:      50,
+};
+
+/** Employees-per-business cap for a plan value read from the DB; unknown → "regular" (0), like the trigger. */
+export function employeeLimitFor(plan: string | null | undefined): number {
+  return EMPLOYEE_LIMITS[normalizePlan(plan)];
+}
+
 const VALID_PLANS: readonly Plan[] = ["regular", "verified", "business", "pro"];
 
 /** Coerce an arbitrary DB value into a known Plan; unknown → "regular". */

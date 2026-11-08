@@ -15,7 +15,7 @@
  *
  * Pro logo embedding
  * ──────────────────
- * When business.plan === 'pro' and business.logo_url is set, the logo is
+ * When the owner's plan is 'pro' (users.plan, active/trialing) and business.logo_url is set, the logo is
  * rendered as an absolutely-positioned <img> over the center of the QR SVG.
  * This is a visual overlay only — the QR uses errorCorrectionLevel "H" (30 %
  * redundancy) so the center modules can be obscured without breaking scanning.
@@ -38,6 +38,7 @@ import {
   IconCheck,
 } from "@tabler/icons-react";
 import { getChatTheme } from "@/constants/chatThemes";
+import { isProPlan } from "@/lib/roles";
 import {
   roomQrUrl,
   generateQrSvg,
@@ -60,7 +61,10 @@ export interface QRModalRoom {
 export interface QRModalBusiness {
   slug: string;
   logo_url?: string | null;
+  /** The OWNER's plan (users.plan), not businesses.plan. */
   plan: string;
+  /** The owner's users.plan_status; the logo needs an active/trialing Pro subscription. */
+  planStatus?: string | null;
 }
 
 export interface QRModalProps {
@@ -83,7 +87,7 @@ export function QRModal({ room, business, open, onClose }: QRModalProps) {
   const theme = getChatTheme(room.chat_theme_id);
   const accentColor = theme.accent;
 
-  const isPro = business.plan === "pro";
+  const isPro = isProPlan(business.plan, business.planStatus);
 
   const deepLink = roomQrUrl(room.qr_token);
   const filename = safeFilename(`qr-${room.qr_token}`);

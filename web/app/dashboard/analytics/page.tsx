@@ -20,6 +20,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import {
   Bar,
@@ -479,6 +480,7 @@ function LoyaltyTab({ data }: { data: LoyaltyROI }) {
 
 function UpgradePrompt() {
   const t = useTranslations("dashboardCommon");
+  const router = useRouter();
   return (
     <div
       style={{
@@ -500,8 +502,8 @@ function UpgradePrompt() {
           strong: (chunks) => <strong style={{ color: "var(--db-accent)" }}>{chunks}</strong>,
         })}
       </p>
-      {/* TODO(plan gate): wire onClick to stripe-connect Edge Function upgrade flow */}
       <button
+        onClick={() => router.push("/dashboard/billing")}
         style={{
           padding: "12px 28px",
           borderRadius: "var(--db-radius)",
@@ -515,12 +517,6 @@ function UpgradePrompt() {
       >
         {t("analyticsUpgradeButton")}
       </button>
-      <p style={{ fontSize: "12px", color: "var(--db-text-tertiary)", margin: 0 }}>
-        {/* TODO(plan gate): read businesses.plan from Supabase and remove this prompt when plan === 'pro' */}
-        {t.rich("analyticsGateDevNote", {
-          code: (chunks) => <code>{chunks}</code>,
-        })}
-      </p>
     </div>
   );
 }
@@ -793,7 +789,7 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
 
-  // Plan gate: Analytics Pro is gated to the Business Pro plan (demo → allowed).
+  // Plan gate: Analytics is Pro-only. Reads the OWNER's users.plan + plan_status (lib/roles.ts), never businesses.plan (demo → allowed).
   const [isPro, setIsPro] = useState(true);
   useEffect(() => {
     let cancelled = false;
@@ -946,7 +942,6 @@ export default function AnalyticsPage() {
     );
   }
 
-  // TODO(plan gate): read businesses.plan from Supabase and gate here
   if (!isPro) {
     return <UpgradePrompt />;
   }
