@@ -19,7 +19,8 @@ begin
     ('class of 2024'), ('assassin''s creed'), ('Essex'), ('grass'), ('cocktail hour'), ('Mississippi'), ('analytics'), ('bassline'), ('Dickinson'),
     ('mesa 5 para 4'), ('2 for 1 until 10'), ('hasta las 5'), ('te espero en la puerta'), ('nos vemos a las 7'),
     ('Hello! How are you?'), ('hola, ¿cómo estás?'), ('thanks a lot'), ('gracias por todo'), ('I love this bar'), ('esta canción me mata'),
-    ('pastel de choclo'), ('mi hijo es de puerto rico'), ('hijo de la vecina'), ('puta madre qué rico')
+    ('pastel de choclo'), ('mi hijo es de puerto rico'), ('hijo de la vecina'), ('puta madre qué rico'),
+    ('you asshole'), ('dickheads'), ('what a douchebag'), ('scumbags'), ('dumbass'), ('assholes'), ('dickhead'), ('douchebags'), ('scumbag'), ('dumbasses')
   ) as v(txt) loop
     n := n + 1;
     perform pg_temp.t_ok(not public.message_is_objectionable(r.txt), 'passes: ' || r.txt);
@@ -28,7 +29,7 @@ begin
   -- ── B. Must be BLOCKED (plain, uppercase, 0→o / 4→a / @→a / 1→i / 3→e, separated letters, repeated letters, accents) ───────────────────────
   for r in select * from (values
     ('you are a faggot'), ('F4GG0T'), ('f@ggot'), ('f a g g o t'), ('faaaaggot'), ('N1GGER'), ('niiiigger'), ('n i g g e r'), ('niggas'),
-    ('sluts'), ('wh0re'), ('what a cunt'), ('K Y S'), ('kys'), ('you asshole'), ('dickheads'), ('scumbags'),
+    ('sluts'), ('wh0re'), ('what a cunt'), ('K Y S'), ('kys'), ('shitheads'), ('fuckface'),
     ('hijo de puta'), ('h1j0 d3 put4'), ('HIJOS DE PUTA'), ('hdp'), ('hijueputa'), ('maricón'), ('MARICONES'), ('m4r1c0n'), ('sudaca'), ('negro de mierda'),
     ('negras de mierda'), ('malparido'), ('sidoso'), ('chupapollas'), ('comemierda'), ('suicídate'), ('mátate'), ('matate'),
     ('te voy a matar'), ('te v0y a m4t4r'), ('te voy a violar'), ('te voy a degollar'), ('ojalá te mueras'), ('sé dónde vives'), ('se donde vives'),
