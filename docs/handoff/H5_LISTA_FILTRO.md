@@ -1,6 +1,6 @@
 # H5 — Lista del filtro de texto v2 (migración 259) para decisión de Juan
 
-Fuente: `supabase/migrations/259_text_filter_v2.sql` (md5 al final del informe). Nada aplicado. Marca ⚠️ = dudoso para un bar/restaurante: **decide si queda o sale**.
+Fuente: `supabase/migrations/259_text_filter_v2.sql` (md5 al final del informe). Nada aplicado. ⚠️ = era dudoso para un bar/restaurante; **decisión de Juan 2026-11-08: todos los ⚠️ se quedan (aprobado por Juan 2026-11-08), salvo asshole, dickhead, douchebag, scumbag y dumbass, que SALEN de la lista** (shithead y fuckface se quedan).
 El filtro busca **palabras completas** tras normalizar (minúsculas, sin acentos/ñ, `0→o 1→i 3→e 4→a 5→s 7→t @→a $→s`, letras repetidas 3+ → una, signos → espacio, letras sueltas unidas: "f a g g o t"). Por eso "Scunthorpe", "Essex" o "cocktail" pasan.
 
 ## 1. Palabras sueltas (bloquean por sí solas, con sus plurales)
@@ -10,7 +10,7 @@ El filtro busca **palabras completas** tras normalizar (minúsculas, sin acentos
 | Slurs raciales / étnicos | nigger(s), nigga(s), chink(s) ⚠️, gook(s), spic(s), wetback(s), beaner(s) ⚠️, towelhead(s), raghead(s), zipperhead(s), paki(s) ⚠️ | sudaca(s) |
 | Slurs homófobos / transfóbicos / capacitistas | faggot(s), fag(s) ⚠️, tranny/trannies, retard(s)/retarded | maricón/maricones, joto(s), marimacha(s)/marimacho(s), mariposón/mariposones, sidoso/a(s), mongólico/a, subnormal(es) |
 | Insultos sexuales / graves | cunt(s), motherfucker(s), cocksucker(s), whore(s) ⚠️, slut(s) ⚠️, skank(s), twat(s) ⚠️, fuckface | malparido/a(s), comemierda(s), chupapollas, chupapijas, chupaverga(s), mamaguevo(s), mamaverga(s), hijueputa(s), hijoeputa(s), hijodeputa, hijosdeputa, hijoputa(s), hdp ⚠️ |
-| Insultos comunes (tono bar) | asshole(s) ⚠️, dickhead(s) ⚠️, douchebag(s) ⚠️, scumbag(s) ⚠️, shithead(s), dumbass(es) ⚠️, wanker(s) ⚠️ | — |
+| Insultos comunes (tono bar) | shithead(s), wanker(s) ⚠️ | — |
 | Incitación al suicidio / daño | kys | mátate, suicídate, ahorcate |
 
 ## 2. Frases (solo bloquean la frase completa)
@@ -40,17 +40,17 @@ Limitación a conocer: el nombre de Apple se guarda con un UPDATE posterior al a
 
 ## 5. Falsos positivos conocidos que la batería (135 casos) confirma que PASAN
 Kike, Enrique, Kike Hernández, Dolores, Concha, Chucho, Nacho, Pepe, Paco, Jesús; "me muero de risa", "matar a risas", "está de muerte", "te voy a matar de risa / a risas", "me matas de risa", "esta canción me mata"; Scunthorpe, Essex, grass, cocktail hour, Mississippi, analytics, bassline, Dickinson, Dick, Cockburn, Penistone, class of 2024, assassin's creed; "I will kill it at karaoke tonight", "killer playlist", "this place is the bomb", "a dyke is a dam"; "mesa 5 para 4", "2 for 1 until 10", "hasta las 5", "nos vemos a las 7"; "pastel de choclo", "hijo de la vecina", "mi hijo es de Puerto Rico", "puta madre qué rico".
-Ninguna bebida o plato de la batería choca. Riesgos que la batería NO cubre (por eso están marcados ⚠️):
+Ninguna bebida o plato de la batería choca. Riesgos que la batería NO cubre (marcados ⚠️; **aprobados por Juan 2026-11-08**, se quedan):
 - **paki**: apodo español de Paco/Francisco ("Paki") — se bloquearía como nombre de usuario o en un mensaje.
 - **chink**: modismo inglés "a chink in the armor"; **beaner**: nombre de cafeterías/apodo ("Beaner's coffee"); **fag**: "fag" = cigarrillo en inglés británico; **hdp**: sigla que puede aparecer en otros usos; **joto**: sin otro uso común.
 - **whore / slut / twat / wanker / skank**: aparecen en nombres de chupitos y cócteles ("Slippery slut" etc.) y en la jerga del bar; si un local los pone en `rooms.name` se bloqueará.
-- **asshole, dickhead, douchebag, scumbag, dumbass**: insultos corrientes entre amigos en un bar; la v1 no los tenía. Si el objetivo de Apple 1.2 es solo odio y amenazas, se pueden quitar sin tocar el resto.
-- **nigga(s)**: uso intragrupo frecuente en letras de canciones citadas en el chat; decisión de política.
-- **i know where you live / sé dónde vives**: puede ser broma amistosa.
+- ~~asshole, dickhead, douchebag, scumbag, dumbass~~: **quitados de la lista por Juan 2026-11-08** (insultos corrientes entre amigos en un bar); la batería los comprueba ahora como textos que PASAN (con sus plurales). shithead(s) y fuckface se quedan.
+- **nigga(s)** (aprobado por Juan 2026-11-08): uso intragrupo frecuente en letras de canciones citadas en el chat; decisión de política.
+- **i know where you live / sé dónde vives** (aprobado por Juan 2026-11-08): puede ser broma amistosa.
 - Números y símbolos se traducen a letras: "5pic" → "spic", "$lut" → "slut" (intencional contra evasión); un texto con símbolos pegados a una palabra de la lista puede bloquearse.
 
 ## 6. Qué ve el usuario cuando se bloquea
 El servidor responde `message_not_allowed` (22023). La app lo traduce (`toUserMessage`, `errors:app.message_not_allowed`) en: editar perfil, nueva publicación y perfil del registro; la web, en la creación de salas del dashboard (`chatRoomsTextNotAllowed`). Texto:
 - **es:** «Ese texto no está permitido. Revísalo e inténtalo de nuevo.»
 - **en:** "That text isn't allowed. Please review it and try again."
-No dice qué palabra falló. (Las salas editadas y las cartas de Truth or Dare caen en el mensaje de error genérico si la pantalla no lo traduce: pendiente de decidir si hace falta.)
+No dice qué palabra falló. Dónde se traduce: perfil, publicación, registro (app); creación de salas y chat de mesa en `dashboard/tables` (web). No existe pantalla de edición de nombre/descripción de salas ni de creación de cartas de Truth or Dare en la app ni en la web: esas columnas solo las escriben el servidor y los scripts de siembra.
