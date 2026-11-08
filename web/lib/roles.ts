@@ -30,7 +30,23 @@ export async function getOwnerPlan(): Promise<{ plan: string; planStatus: string
   return { plan: data.plan, planStatus: data.plan_status };
 }
 
-/** True when the current owner is on the Pro plan with an active/trialing subscription. Demo → true. */
+/**
+ * True when THIS business has the Pro features: the caller is its owner or an accepted employee, and the OWNER's plan is Pro with an active/trialing
+ * subscription (RPC `business_owner_is_pro`, migration 270). Use it for any Pro gate that depends on the selected business. Anything else —
+ * no business id, no session, a stranger, an RPC error — is false. Demo → true.
+ */
+export async function isBusinessProFor(businessId: string | null | undefined): Promise<boolean> {
+  if (!isSupabaseConfigured) return true;
+  if (!businessId) return false;
+  const { data, error } = await supabase.rpc('business_owner_is_pro', { p_business_id: businessId });
+  return !error && data === true;
+}
+
+/**
+ * True when the CURRENT USER's own plan is Pro with an active/trialing subscription. Demo → true.
+ * Only for ACCOUNT screens (billing…). For anything tied to the selected business use isBusinessProFor(businessId): a manager or employee
+ * uses the Pro features their owner paid for, and their own plan says nothing about that.
+ */
 export async function isBusinessPro(): Promise<boolean> {
   if (!isSupabaseConfigured) return true;
   const owner = await getOwnerPlan();

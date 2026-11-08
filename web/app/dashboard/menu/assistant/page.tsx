@@ -65,6 +65,7 @@ import {
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { Json } from "@/lib/database.types";
 import { resolveActiveBusiness } from "@/lib/business";
+import { isBusinessProFor } from "@/lib/roles";
 import { readFunctionError } from "@/lib/functionError";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
 import { makeMenuPhotoVariants, thumbPathFor } from "@/lib/menuPhotos";
@@ -572,10 +573,9 @@ function Stepper({ step }: { step: WizardStep }) {
 export default function MenuAssistantPage() {
   const t = useTranslations("menuAssistant");
 
-  // Business resolution + plan gate (plan is per-USER, not per-business — migration 106)
+  // Business resolution + Pro gate (billing is per-USER — migration 106 — but the gate asks about the business: its OWNER's plan, RPC business_owner_is_pro)
   const [businessId, setBusinessId] = useState<string | null>(null);
-  const [plan, setPlan] = useState<string | null>(null);
-  const [planStatus, setPlanStatus] = useState<string | null>(null);
+  const [isPro, setIsPro] = useState(false);
   const [bootLoading, setBootLoading] = useState(true);
   const [noBusiness, setNoBusiness] = useState(false);
 
@@ -652,8 +652,7 @@ export default function MenuAssistantPage() {
       if (!isSupabaseConfigured) {
         // Demo mode mirrors isBusinessPro(): treat as Pro so the UI is reviewable.
         if (alive) {
-          setPlan("pro");
-          setPlanStatus("active");
+          setIsPro(true);
           setBootLoading(false);
         }
         return;
@@ -668,20 +667,10 @@ export default function MenuAssistantPage() {
       }
       setBusinessId(res.business.id);
 
-      // Read the Pro gate from the USER, not the business (billing is per-user).
-      // resolveActiveBusiness() already verified authentication, so getUser() is cheap.
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!alive || !user) return;
-      const { data: planRow } = await supabase
-        .from("users")
-        .select("plan, plan_status")
-        .eq("id", user.id)
-        .maybeSingle();
+      // The Pro gate asks about THIS business (its owner's plan), not about the signed-in user's own plan.
+      const pro = await isBusinessProFor(res.business.id);
       if (!alive) return;
-      if (planRow) {
-        setPlan((planRow as { plan: string; plan_status: string }).plan);
-        setPlanStatus((planRow as { plan: string; plan_status: string }).plan_status);
-      }
+      setIsPro(pro);
 
       // resolveActiveBusiness() doesn't select country or brand_kit — read them
       // separately. Country prefills step 1; brand_kit is the AI reference kit.
@@ -713,9 +702,6 @@ export default function MenuAssistantPage() {
       alive = false;
     };
   }, []);
-
-  const isPro =
-    plan === "pro" && (planStatus === "active" || planStatus === "trialing");
 
   // ── Edge Function caller ───────────────────────────────────────────────────
   // Same pattern as dashboard/payments + dashboard/billing: invoke() signs the

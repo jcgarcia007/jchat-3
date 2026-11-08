@@ -66,6 +66,7 @@ import MenuTemplateRenderer from "@/app/m/[slug]/templates/MenuTemplateRenderer"
 import { MenuPaletteContext } from "@/app/m/[slug]/templates/shared/paletteContext";
 import { resolvePalette, type MenuPalette } from "@/app/m/[slug]/templates/shared/palettes";
 import { resolveActiveBusiness } from "@/lib/business";
+import { isBusinessProFor } from "@/lib/roles";
 import type { Json } from "@/lib/database.types";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
 import { makeMenuPhotoVariants, thumbPathFor } from "@/lib/menuPhotos";
@@ -3416,10 +3417,8 @@ export default function MenuPage() {
   // Category card selector: null = "Todas" (show every category).
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   const [businessId, setBusinessId] = useState<string>("demo-biz");
-  /** Plan of the owner (users.plan) — "pro" enables Pro-gated fields. */
-  const [bizPlan, setBizPlan] = useState<string | null>(null);
-  /** Subscription status of the owner (users.plan_status) — must be active/trialing. */
-  const [bizPlanStatus, setBizPlanStatus] = useState<string | null>(null);
+  /** The business has the Pro features: its OWNER is on an active/trialing Pro plan (RPC business_owner_is_pro). Enables Pro-gated fields. */
+  const [bizIsPro, setBizIsPro] = useState(false);
   const [menuEnabled, setMenuEnabled] = useState(false);
   const [togglingMenu, setTogglingMenu] = useState(false);
   const [menuMode, setMenuMode] = useState<"none" | "external" | "web">("none");
@@ -3518,8 +3517,7 @@ export default function MenuPage() {
       setCategories(DEMO_CATEGORIES);
       setItems(DEMO_ITEMS);
       // Demo mode has no auth session — unlock Pro-gated UI so it stays previewable.
-      setBizPlan("pro");
-      setBizPlanStatus("active");
+      setBizIsPro(true);
       return;
     }
     setLoading(true);
@@ -3538,19 +3536,8 @@ export default function MenuPage() {
       setNoBusiness(false);
       const bid: string = res.business.id;
       setBusinessId(bid);
-      // Read plan from the USER, not the business (billing is per-user — migration 106).
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: planRow } = await supabase
-          .from("users")
-          .select("plan, plan_status")
-          .eq("id", user.id)
-          .maybeSingle();
-        if (planRow) {
-          setBizPlan((planRow as { plan: string; plan_status: string }).plan);
-          setBizPlanStatus((planRow as { plan: string; plan_status: string }).plan_status);
-        }
-      }
+      // Pro features follow the business's OWNER plan (billing is per-user — migration 106), also for a manager/employee of that business.
+      setBizIsPro(await isBusinessProFor(bid));
       setMenuEnabled(res.business.menu_enabled ?? false);
       const mode = res.business.menu_mode ?? "none";
       setMenuMode(mode);
@@ -4553,8 +4540,7 @@ export default function MenuPage() {
         <div style={{ display: "flex", alignItems: "center", gap: "16px", flexShrink: 0 }}>
           {/* AI Menu Assistant (Pro) — the real plan gate lives server-side in the
               menu-assistant Edge Function; this only avoids a dead-end click. */}
-          {(bizPlan === "pro" && (bizPlanStatus === "active" || bizPlanStatus === "trialing")) ||
-          !isSupabaseConfigured ? (
+          {bizIsPro || !isSupabaseConfigured ? (
             <Link href="/dashboard/menu/assistant" style={assistantEntryStyle}>
               <IconSparkles size={16} />
               {tAssistant("entryButton")}
@@ -5593,7 +5579,7 @@ export default function MenuPage() {
               }
               onItemSave={handleSaveItem}
               onItemEditCancel={() => setActiveItemEdit(null)}
-              isPro={bizPlan === "pro" && (bizPlanStatus === "active" || bizPlanStatus === "trialing")}
+              isPro={bizIsPro}
             />
           ))}
         </div>

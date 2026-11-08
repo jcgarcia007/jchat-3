@@ -49,7 +49,7 @@ import {
   IconUsers,
 } from "@tabler/icons-react";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
-import { isBusinessPro } from "@/lib/roles";
+import { isBusinessProFor } from "@/lib/roles";
 import { resolveActiveBusiness, type ActiveBusiness } from "@/lib/business";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
 import { formatCents, formatDollars } from "@/lib/currency";
@@ -789,13 +789,16 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
 
-  // Plan gate: Analytics is Pro-only. Reads the OWNER's users.plan + plan_status (lib/roles.ts), never businesses.plan (demo → allowed).
+  // Plan gate: Analytics is Pro-only. Reads the active business's OWNER plan via isBusinessProFor (RPC business_owner_is_pro), never businesses.plan (demo → allowed).
   const [isPro, setIsPro] = useState(true);
   useEffect(() => {
     let cancelled = false;
-    isBusinessPro().then((pro) => {
-      if (!cancelled) setIsPro(pro);
-    });
+    // Pro is decided per BUSINESS (its owner's plan), not by the signed-in user's own plan.
+    void resolveActiveBusiness()
+      .then((res) => isBusinessProFor(res.ok ? res.business.id : null))
+      .then((pro) => {
+        if (!cancelled) setIsPro(pro);
+      });
     return () => {
       cancelled = true;
     };
