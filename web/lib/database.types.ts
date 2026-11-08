@@ -542,6 +542,45 @@ export type Database = {
           },
         ]
       }
+      business_plan_requests: {
+        Row: {
+          business_name: string
+          created_at: string
+          email: string
+          id: string
+          ip_hash: string | null
+          locale: string | null
+          locations_count: number
+          message: string | null
+          phone: string | null
+          user_id: string | null
+        }
+        Insert: {
+          business_name: string
+          created_at?: string
+          email: string
+          id?: string
+          ip_hash?: string | null
+          locale?: string | null
+          locations_count: number
+          message?: string | null
+          phone?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          business_name?: string
+          created_at?: string
+          email?: string
+          id?: string
+          ip_hash?: string | null
+          locale?: string | null
+          locations_count?: number
+          message?: string | null
+          phone?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       business_verifications: {
         Row: {
           business_id: string
