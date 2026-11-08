@@ -359,6 +359,30 @@ export type Database = {
         }
         Relationships: []
       }
+      banned_emails: {
+        Row: {
+          created_at: string
+          expires_at: string
+          fingerprint: string
+          reason: string | null
+          source_report_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          fingerprint: string
+          reason?: string | null
+          source_report_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          fingerprint?: string
+          reason?: string | null
+          source_report_id?: string | null
+        }
+        Relationships: []
+      }
       bans: {
         Row: {
           banned_by: string | null
@@ -3296,6 +3320,7 @@ export type Database = {
           approval_status: string | null
           approved_at: string | null
           approved_by: string | null
+          auto_settled_at: string | null
           business_id: string
           canceled_at: string | null
           comanda_claimed_at: string | null
@@ -3339,6 +3364,7 @@ export type Database = {
           approval_status?: string | null
           approved_at?: string | null
           approved_by?: string | null
+          auto_settled_at?: string | null
           business_id: string
           canceled_at?: string | null
           comanda_claimed_at?: string | null
@@ -3382,6 +3408,7 @@ export type Database = {
           approval_status?: string | null
           approved_at?: string | null
           approved_by?: string | null
+          auto_settled_at?: string | null
           business_id?: string
           canceled_at?: string | null
           comanda_claimed_at?: string | null
@@ -3531,6 +3558,8 @@ export type Database = {
           created_at: string
           id: string
           kind: string
+          last_attempt_at: string | null
+          last_error: string | null
           payload: Json
           sent_at: string | null
           status: string
@@ -3541,6 +3570,8 @@ export type Database = {
           created_at?: string
           id?: string
           kind: string
+          last_attempt_at?: string | null
+          last_error?: string | null
           payload?: Json
           sent_at?: string | null
           status?: string
@@ -3551,6 +3582,8 @@ export type Database = {
           created_at?: string
           id?: string
           kind?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
           payload?: Json
           sent_at?: string | null
           status?: string
@@ -6268,6 +6301,7 @@ export type Database = {
           language: string
           onboarding_completed: boolean
           plan: string
+          plan_interval: string | null
           plan_renews_at: string | null
           plan_status: string
           plan_trial_end: string | null
@@ -6283,6 +6317,7 @@ export type Database = {
           suspended_until: string | null
           terms_accepted_at: string | null
           terms_version: string | null
+          trial_used_at: string | null
           updated_at: string
           username: string
         }
@@ -6307,6 +6342,7 @@ export type Database = {
           language?: string
           onboarding_completed?: boolean
           plan?: string
+          plan_interval?: string | null
           plan_renews_at?: string | null
           plan_status?: string
           plan_trial_end?: string | null
@@ -6322,6 +6358,7 @@ export type Database = {
           suspended_until?: string | null
           terms_accepted_at?: string | null
           terms_version?: string | null
+          trial_used_at?: string | null
           updated_at?: string
           username: string
         }
@@ -6346,6 +6383,7 @@ export type Database = {
           language?: string
           onboarding_completed?: boolean
           plan?: string
+          plan_interval?: string | null
           plan_renews_at?: string | null
           plan_status?: string
           plan_trial_end?: string | null
@@ -6361,6 +6399,7 @@ export type Database = {
           suspended_until?: string | null
           terms_accepted_at?: string | null
           terms_version?: string | null
+          trial_used_at?: string | null
           updated_at?: string
           username?: string
         }
@@ -6507,6 +6546,7 @@ export type Database = {
         }
         Returns: string
       }
+      admin_unban_email: { Args: { p_email: string }; Returns: boolean }
       admin_unsuspend_user: { Args: { p_user_id: string }; Returns: undefined }
       affiliate_summary: {
         Args: never
@@ -6699,6 +6739,7 @@ export type Database = {
           source: string
         }[]
       }
+      email_fingerprint: { Args: { p_email: string }; Returns: string }
       gen_short_code: { Args: { p_len?: number }; Returns: string }
       generate_room_qr_token: {
         Args: { _business_id: string; _is_sub_room: boolean }
@@ -7093,6 +7134,8 @@ export type Database = {
         Args: { p_kind: string; p_note?: string; p_order_id: string }
         Returns: Json
       }
+      orders_auto_settle: { Args: never; Returns: number }
+      outbound_emails_retry: { Args: never; Returns: number }
       owner_close_business: {
         Args: { p_business_id: string; p_owner: string }
         Returns: Json
@@ -7557,6 +7600,7 @@ export type Database = {
           table_qr_token: string
         }[]
       }
+      retention_purge: { Args: never; Returns: Json }
       review_bypass: {
         Args: { p_business_id: string; p_fn: string; p_user_id: string }
         Returns: boolean
