@@ -4109,7 +4109,17 @@
       "content_removed": "Contenido retirado",
       "user_suspended": "Usuario suspendido",
       "escalated_ncmec": "Escalado al NCMEC"
-    }
+    },
+    "viewEvidence": "Ver evidencia ({n})",
+    "evidenceTitle": "Evidencia guardada",
+    "evidenceNote": "Copias de los archivos reportados, guardadas por este reporte. Los enlaces caducan en 10 minutos y cada vista queda registrada.",
+    "evidenceLoading": "Cargando evidencia…",
+    "evidenceError": "No se pudo cargar la evidencia. Inténtalo de nuevo en un momento.",
+    "evidenceForbidden": "Solo los administradores de la plataforma pueden ver la evidencia.",
+    "evidenceEmpty": "Este reporte no tiene archivos de evidencia.",
+    "evidenceImageAlt": "Imagen de evidencia {n}",
+    "evidenceAudioLabel": "Audio de evidencia {n}",
+    "evidenceFile": "Archivo de evidencia {n}"
   },
   "accountDelete": {
     "title": "Eliminar tu cuenta",

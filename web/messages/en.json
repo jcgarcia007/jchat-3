@@ -4109,7 +4109,17 @@
       "content_removed": "Content removed",
       "user_suspended": "User suspended",
       "escalated_ncmec": "Escalated to NCMEC"
-    }
+    },
+    "viewEvidence": "View evidence ({n})",
+    "evidenceTitle": "Saved evidence",
+    "evidenceNote": "Copies of the reported files, kept because of this report. The links expire in 10 minutes and every view is recorded.",
+    "evidenceLoading": "Loading evidence…",
+    "evidenceError": "Couldn't load the evidence. Try again in a moment.",
+    "evidenceForbidden": "Only platform admins can view the evidence.",
+    "evidenceEmpty": "No evidence files for this report.",
+    "evidenceImageAlt": "Evidence image {n}",
+    "evidenceAudioLabel": "Evidence audio {n}",
+    "evidenceFile": "Evidence file {n}"
   },
   "accountDelete": {
     "title": "Delete your account",

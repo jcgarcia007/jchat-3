@@ -7,6 +7,8 @@
  * the content type, the reported person, the venue and the SNAPSHOT the server took when the report was made. For
  * child_safety / sexual_content reports no image or media of the snapshot is loaded by itself: every element is hidden
  * behind "Show". Actions go through the admin_* RPCs (they check is_platform_admin() and leave a security_logs record).
+ * "View evidence (n)" (D7, migration 268) shows the copies of the reported files kept for the report: the report-evidence Edge Function checks
+ * the admin, signs 10-minute URLs and logs every view. Sensitive reports keep each file behind "Show", like the snapshot.
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -30,7 +32,12 @@ interface Report {
   admin_note: string | null;
   business_id: string | null;
   created_at: string;
+  /** Copies of the reported files kept in the private report-evidence bucket (migration 268); absent before it is applied. */
+  evidence?: { path?: string }[] | null;
 }
+
+interface EvidenceItem { url: string; kind: "image" | "audio" | "file"; label: string }
+type EvidenceView = { report: Report; status: "loading" | "ok" | "error" | "forbidden"; items: EvidenceItem[] };
 
 type Tab = "all" | "urgent" | "match";
 const PRIORITY_RANK: Record<string, number> = { urgent: 0, high: 1, normal: 2 };
@@ -70,6 +77,8 @@ export default function ReportsQueue({ onPendingCount }: { onPendingCount?: (n: 
   const [note, setNote] = useState<Record<string, string>>({});
   // Reports whose reported content no longer exists (purged): the saved copy is all that is left.
   const [expired, setExpired] = useState<Set<string>>(new Set());
+  // Evidence panel (D7): the report whose copies are being shown.
+  const [evidenceView, setEvidenceView] = useState<EvidenceView | null>(null);
   // Report waiting for the explicit "I already sent it to NCMEC" confirmation.
   const [ncmecAsk, setNcmecAsk] = useState<Report | null>(null);
   // Set once the existence RPC (migration 219) turns out not to be there: then only a failed "hide" marks a report as expired.
@@ -77,12 +86,14 @@ export default function ReportsQueue({ onPendingCount }: { onPendingCount?: (n: 
 
   const load = useCallback(async () => {
     if (!isSupabaseConfigured) return;
-    const base = supabase
-      .from("reports")
-      .select("id, reporter_id, reported_user_id, content_type, content_id, reason, details, snapshot, priority, status, resolution, admin_note, business_id, created_at")
-      .order("created_at", { ascending: false })
-      .limit(150);
-    const { data, error: loadError } = await (showResolved ? base : base.eq("status", "pending"));
+    const columns = "id, reporter_id, reported_user_id, content_type, content_id, reason, details, snapshot, priority, status, resolution, admin_note, business_id, created_at";
+    const query = (cols: string) => {
+      const base = supabase.from("reports").select(cols).order("created_at", { ascending: false }).limit(150);
+      return showResolved ? base : base.eq("status", "pending");
+    };
+    let { data, error: loadError } = await query(`${columns}, evidence`);
+    // reports.evidence comes with migration 268: until it is applied the queue still loads (without the evidence button).
+    if (loadError && (loadError.code === "42703" || loadError.message.includes("evidence"))) ({ data, error: loadError } = await query(columns));
     if (loadError) { setError(loadError.message); setLoading(false); return; }
     setError(null);
     const rows = (data ?? []) as unknown as Report[];
@@ -192,6 +203,26 @@ export default function ReportsQueue({ onPendingCount }: { onPendingCount?: (n: 
     if (r) void resolve(r, "escalated_ncmec");
   };
 
+  const openEvidence = async (r: Report) => {
+    setEvidenceView({ report: r, status: "loading", items: [] });
+    const { data, error: fnError } = await supabase.functions.invoke("report-evidence", { body: { report_id: r.id } });
+    const status = (fnError as { context?: { status?: number } } | null)?.context?.status;
+    setEvidenceView((cur) => {
+      if (!cur || cur.report.id !== r.id) return cur;
+      if (fnError) return { ...cur, status: status === 403 ? "forbidden" : "error" };
+      const items = ((data as { items?: EvidenceItem[] } | null)?.items ?? []).filter((i) => typeof i?.url === "string");
+      return { ...cur, status: "ok", items };
+    });
+  };
+  const closeEvidence = () => setEvidenceView(null);
+
+  useEffect(() => {
+    if (!evidenceView) return undefined;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setEvidenceView(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [evidenceView]);
+
   useEffect(() => {
     if (!ncmecAsk) return undefined;
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setNcmecAsk(null); };
@@ -284,6 +315,12 @@ export default function ReportsQueue({ onPendingCount }: { onPendingCount?: (n: 
               </div>
             )}
 
+            {Array.isArray(r.evidence) && r.evidence.length > 0 && (
+              <div>
+                <button type="button" onClick={() => void openEvidence(r)} style={smallBtn}>{t("viewEvidence", { n: r.evidence.length })}</button>
+              </div>
+            )}
+
             {pending ? (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
                 {HIDEABLE.includes(r.content_type ?? "") && r.content_id && (
@@ -319,6 +356,48 @@ export default function ReportsQueue({ onPendingCount }: { onPendingCount?: (n: 
           </div>
         );
       })}
+
+      {evidenceView && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="evidence-title"
+          onClick={(e) => { if (e.target === e.currentTarget) closeEvidence(); }}
+          style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, background: "color-mix(in srgb, var(--bg-base) 70%, transparent)" }}
+        >
+          <div style={{ maxWidth: 560, width: "100%", maxHeight: "90vh", overflowY: "auto", background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: 12, padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+              <h2 id="evidence-title" style={{ margin: 0, fontSize: 16, color: "var(--text-primary)" }}>{t("evidenceTitle")}</h2>
+              <button type="button" autoFocus onClick={closeEvidence} aria-label={t("close")} style={smallBtn}>{t("close")}</button>
+            </div>
+            <p style={{ margin: 0, fontSize: 12, color: "var(--text-secondary)" }}>{t("evidenceNote")}</p>
+            {evidenceView.status === "loading" && <div role="status" style={{ fontSize: 13, color: "var(--text-secondary)" }}>{t("evidenceLoading")}</div>}
+            {evidenceView.status === "error" && <div role="alert" style={{ fontSize: 13, color: "var(--color-danger)" }}>{t("evidenceError")}</div>}
+            {evidenceView.status === "forbidden" && <div role="alert" style={{ fontSize: 13, color: "var(--color-danger)" }}>{t("evidenceForbidden")}</div>}
+            {evidenceView.status === "ok" && evidenceView.items.length === 0 && <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{t("evidenceEmpty")}</div>}
+            {evidenceView.status === "ok" && evidenceView.items.map((item, i) => {
+              const key = `ev:${evidenceView.report.id}:${i}`;
+              const hide = SENSITIVE_REASONS.includes((evidenceView.report.reason ?? "").split(":")[0]) && !revealed.has(key);
+              if (hide) {
+                return (
+                  <div key={key} style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 13, color: "var(--text-secondary)" }}>
+                    <span>{t("sensitiveHidden")}</span>
+                    <button type="button" onClick={() => reveal(key)} style={smallBtn}>{t("show")}</button>
+                  </div>
+                );
+              }
+              if (item.kind === "image") {
+                // eslint-disable-next-line @next/next/no-img-element
+                return <img key={key} src={item.url} alt={t("evidenceImageAlt", { n: i + 1 })} loading="lazy" style={{ maxWidth: "100%", maxHeight: 360, borderRadius: 8, objectFit: "contain" }} />;
+              }
+              if (item.kind === "audio") {
+                return <audio key={key} controls preload="none" src={item.url} aria-label={t("evidenceAudioLabel", { n: i + 1 })} style={{ width: "100%" }} />;
+              }
+              return <a key={key} href={item.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: "var(--color-brand)" }}>{t("evidenceFile", { n: i + 1 })}</a>;
+            })}
+          </div>
+        </div>
+      )}
 
       {ncmecAsk && (
         <div
