@@ -18,6 +18,8 @@ export interface MyReservationRow {
   party_size: number;
   status: string;
   is_waitlist: boolean;
+  /** Request chip KEYS ("birthday,terrace"), or free text on reservations made before the keyboard-free flow (utils/reservationFlow.parseRequests). */
+  special_requests?: string | null;
   /** Joined venue (PostgREST may return one object or a one-element array). */
   businesses?: EmbeddedBusiness | EmbeddedBusiness[];
 }
@@ -46,7 +48,7 @@ export async function listMyReservations(): Promise<MyReservationRow[]> {
   if (!userId) return [];
   const { data, error } = await supabase
     .from('reservations')
-    .select('id, business_id, reserved_at, party_size, status, is_waitlist, businesses(name, logo_url, address)')
+    .select('id, business_id, reserved_at, party_size, status, is_waitlist, special_requests, businesses(name, logo_url, address)')
     .eq('user_id', userId)
     .order('reserved_at', { ascending: false })
     .limit(100);

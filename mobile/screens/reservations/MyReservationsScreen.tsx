@@ -38,6 +38,7 @@ import {
 } from '../../services/reservations';
 import { confirm } from '../../utils/dialog';
 import { colorIndex, initials } from '../../utils/mapPin';
+import { parseRequests } from '../../utils/reservationFlow';
 import {
   canCancel,
   formatReservationWhen,
@@ -144,10 +145,13 @@ export default function MyReservationsScreen(): React.ReactElement {
     const tone = toneColor(statusTone(item.status));
     const cancellable = canCancel(item, new Date());
     const busy = cancellingId === item.id;
+    // chip keys are translated; free text from older reservations is shown as it is
+    const parsed = parseRequests(item.special_requests);
+    const requests = parsed.keys.length > 0 ? parsed.keys.map((k) => t(`request.${k}`)).join(' · ') : parsed.legacy;
     return (
       <View
         accessible
-        accessibilityLabel={t('rowA11y', { business: name, when, people, status: statusText })}
+        accessibilityLabel={`${t('rowA11y', { business: name, when, people, status: statusText })}${requests ? `, ${t('requestsLabel')}: ${requests}` : ''}`}
         style={[styles.row, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}
       >
         <View style={styles.rowTop}>
@@ -162,6 +166,7 @@ export default function MyReservationsScreen(): React.ReactElement {
             <Text style={[styles.rowTitle, { color: c.textPrimary }]} numberOfLines={1}>{name}</Text>
             <Text style={[styles.rowMeta, { color: c.textSecondary }]}>{when}</Text>
             <Text style={[styles.rowMeta, { color: c.textTertiary }]}>{people}</Text>
+            {requests ? <Text style={[styles.rowMeta, { color: c.textTertiary }]}>{t('requestsLabel')}: {requests}</Text> : null}
           </View>
           <View style={styles.chips}>
             <View style={[styles.chip, { borderColor: tone }]}>
