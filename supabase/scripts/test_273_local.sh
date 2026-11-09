@@ -127,10 +127,13 @@ delete from public.notifications;
 insert into public.employees (id, business_id, user_id, role, status) values ('e2730000-0000-4000-8000-000000000e01', 'e2730000-0000-4000-8000-0000000000b3', 'e2730000-0000-4000-8000-000000000002', 'staff', 'accepted');
 select pg_temp.chk((select count(*) = 1 from public.notifications where type = 'staff_added' and user_id = 'e2730000-0000-4000-8000-000000000002'
   and payload->>'business_id' = 'e2730000-0000-4000-8000-0000000000b3' and payload->>'business_name' = 'Night' and payload->>'role_label' = 'staff'), 'staff: INSERT accepted → staff_added with {business_id, business_name, role_label = role}');
+select pg_temp.chk((select not (payload ? 'room_id') from public.notifications where type = 'staff_added' and user_id = 'e2730000-0000-4000-8000-000000000002'), 'staff: no main room → the payload has no room_id (a tap opens nothing)');
 update public.employees set custom_role_id = 'e2730000-0000-4000-8000-0000000000c1' where id = 'e2730000-0000-4000-8000-000000000e01';
 select pg_temp.chk((select count(*) = 1 from public.notifications), 'staff: changing the role does not notify');
+insert into public.rooms (id, business_id, name, is_main, is_active) values ('e2730000-0000-4000-8000-0000000000a1', 'e2730000-0000-4000-8000-0000000000b3', 'Main', true, true);
 insert into public.employees (id, business_id, user_id, role, status, custom_role_id) values ('e2730000-0000-4000-8000-000000000e02', 'e2730000-0000-4000-8000-0000000000b3', 'e2730000-0000-4000-8000-000000000003', 'staff', 'pending', 'e2730000-0000-4000-8000-0000000000c1');
 select pg_temp.chk((select payload->>'role_label' = 'Cajero' from public.notifications where user_id = 'e2730000-0000-4000-8000-000000000003' and type = 'staff_added'), 'staff: INSERT pending with a custom role → staff_added with the role name');
+select pg_temp.chk((select payload->>'room_id' = 'e2730000-0000-4000-8000-0000000000a1' from public.notifications where user_id = 'e2730000-0000-4000-8000-000000000003' and type = 'staff_added'), 'staff: the payload carries the venue''s main room id when there is one');
 update public.employees set status = 'accepted' where id = 'e2730000-0000-4000-8000-000000000e02';
 select pg_temp.chk((select count(*) = 1 from public.notifications where user_id = 'e2730000-0000-4000-8000-000000000003'), 'staff: pending → accepted does not notify twice');
 update public.employees set status = 'removed' where id = 'e2730000-0000-4000-8000-000000000e02';

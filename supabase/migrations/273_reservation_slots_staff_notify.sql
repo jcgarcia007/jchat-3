@@ -11,7 +11,8 @@
 --   M2. Trigger trg_employees_notify en employees → notifications:
 --         staff_added   INSERT con status accepted/pending, o UPDATE a accepted (no si ya venía de pending: ese aviso salió al invitarlo)
 --         staff_removed UPDATE a 'removed' desde accepted/active
---       payload {business_id, business_name, role_label} (role_label = nombre del rol personalizado, si no `role`). Nunca para el dueño del local.
+--       payload {business_id, business_name, role_label} (role_label = nombre del rol personalizado, si no `role`) + room_id (la sala principal activa del
+--       local, solo si existe: es lo que abre el toque en la app). Nunca para el dueño del local.
 --       El cierre del local (D4) no manda staff_removed: owner_close_business enciende jchat.silent_staff_notify mientras quita al personal y sigue mandando
 --       solo business_closed (único cambio a esa función: el cuerpo de producción + 2 líneas).
 --       trg_push_on_notification_insert: la lista actual + staff_added, staff_removed (send-push los renderiza).
@@ -115,6 +116,7 @@ declare
   v_owner  uuid;
   v_label  text;
   v_type   text;
+  v_room   uuid;
 begin
   if coalesce(current_setting('jchat.silent_staff_notify', true), '') = 'on' then return new; end if;
 
@@ -133,8 +135,9 @@ begin
   if new.user_id is not distinct from v_owner then return new; end if;   -- nunca para el propio dueño
 
   v_label := coalesce((select cr.name from public.custom_roles cr where cr.id = new.custom_role_id), new.role);
+  select ro.id into v_room from public.rooms ro where ro.business_id = new.business_id and ro.is_main and ro.is_active order by ro.created_at limit 1;
   insert into public.notifications (user_id, type, payload)
-  values (new.user_id, v_type, jsonb_build_object('business_id', new.business_id, 'business_name', v_name, 'role_label', v_label));
+  values (new.user_id, v_type, jsonb_strip_nulls(jsonb_build_object('business_id', new.business_id, 'business_name', v_name, 'role_label', v_label, 'room_id', v_room)));
   return new;
 end;
 $$;
