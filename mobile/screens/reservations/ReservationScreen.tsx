@@ -1,63 +1,57 @@
 /**
- * JChat 3.0 — Reservation Screen (Task 3.11)
+ * JChat 3.0 — Reservation Screen (M1: reserve without a keyboard, with a review step)
  *
- * Customer-facing reservation booking form:
- *  - Pick date and time (controlled inputs via TextInput + date string).
- *  - Set party size (stepper).
- *  - Optional special requests (multiline TextInput).
- *  - Submit inserts a `reservations` row with status='pending'.
- *  - Waitlist offer: if the slot appears full (heuristic — daily count vs
- *    businesses.reservation_capacity, counted by the server), customer is offered to join the waitlist.
- *    is_waitlist=true is set in that case.
+ * The customer only SELECTS: a date (strip of 14 days + calendar up to 60), a time slot (the server's reservation_slots, in the venue's zone),
+ * the party size (1–8, "9+" opens 9–20) and optional request chips. A review screen shows everything with "Change" links; "Confirm reservation"
+ * inserts a `reservations` row (status 'pending', is_waitlist when the slot was full). special_requests stores chip KEYS, never free text.
+ * No TextInput anywhere in this flow. Pure rules: utils/reservationFlow.ts. Pickers: components/reservations/FlowPickers.tsx.
  *
- * TODO(server): Push notification sent to business owner on new request
- *               (Edge Function trigger on reservations INSERT).
- * TODO(server): Scheduled reminders to customer at 24h + 2h before
- *               reserved_at (Edge Function / pg_cron job).
- * TODO(Task 3.12): No-show tracking feeds loyalty deduction — note only.
+ * The slots come from the server because the customer's own client cannot see other people's reservations (RLS): the server knows the venue's
+ * hours, zone and daily capacity. Right before confirming the slots are asked again: if the venue closed that day or the slot is gone, nothing is
+ * sent and the person goes back to the step that needs a new choice.
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { Spinner } from '../../components/common/Spinner';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import {
-  IconCalendarEvent,
-  IconClock,
-  IconUsers,
-  IconNotes,
-  IconCheck,
-  IconAlertCircle,
-  IconChevronUp,
-  IconChevronDown,
-  IconListCheck,
-} from '@tabler/icons-react-native';
+import { IconAlertCircle, IconCheck, IconListCheck } from '@tabler/icons-react-native';
 
+import AppText from '../../components/common/AppText';
+import { Spinner } from '../../components/common/Spinner';
+import { DayStrip, MonthCalendar, PartyPicker, RequestChips, SlotGrid } from '../../components/reservations/FlowPickers';
 import { useAuth } from '../../context/AuthContext';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
+import { controlMinHeight, sectionGap, space } from '../../theme/spacing';
 import { supabase, isSupabaseConfigured, channelTopic } from '../../services/supabase';
 import { toUserMessage } from '../../utils/errors';
-import { isSlotFull, slotRequestInstant } from '../../utils/reservationSlot';
-import { isFutureReservation, reservedAtIso } from '../../utils/reservationTime';
-
-// ── Types ─────────────────────────────────────────────────────────────────────
+import {
+  EMPTY_FLOW,
+  bookingName,
+  canContinue,
+  firstIncompleteStep,
+  longDateLabel,
+  nextStep,
+  pickDate,
+  pickSlot,
+  reservationPayload,
+  reviewReady,
+  safeZone,
+  slotStillAvailable,
+  slotTimeLabel,
+  slotsFromHours,
+  toggleRequest,
+  type FlowLocale,
+  type FlowState,
+  type FlowStep,
+  type HoursMap,
+  type RequestKey,
+  type Slot,
+} from '../../utils/reservationFlow';
 
 interface Props {
-  /**
-   * The business to book with. Required for a real reservation.
-   * Falls back to demo mode when absent or when Supabase is not configured.
-   */
+  /** The business to book with. Required for a real reservation; without it (or without Supabase) the flow runs in demo mode. */
   businessId?: string;
   /** Called after a successful submission. */
   onSuccess?: (reservationId: string, isWaitlist: boolean) => void;
@@ -67,911 +61,434 @@ interface Props {
   onViewMine?: () => void;
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-/** Returns today's date as YYYY-MM-DD. */
-function todayString(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+interface Venue {
+  name: string;
+  timezone: string;
+  hours: HoursMap;
 }
 
+const DEMO_HOURS: HoursMap = Object.fromEntries(['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'].map((k) => [k, { open: '12:00', close: '22:00', closed: false }]));
+const STEP_TITLE_KEY: Record<Exclude<FlowStep, 'done'>, string> = {
+  date: 'stepDate',
+  time: 'stepTime',
+  people: 'stepPeople',
+  requests: 'stepRequests',
+  review: 'stepReview',
+};
+const PROGRESS_STEPS: readonly FlowStep[] = ['date', 'time', 'people', 'requests', 'review'];
 
-/**
- * Is the day full? The SERVER counts (reservation_slot_load, migration 237): the customer's own client only sees their
- * own reservations (RLS), so counting here never reached the limit. The venue's capacity is
- * businesses.reservation_capacity; null = no limit = never full. If the function does not exist yet, or the call
- * fails, the day is NOT shown as full (the customer can still ask; the venue decides) and the failure is logged once.
- */
-let slotLoadWarned = false;
-
-async function isFull(businessId: string, date: string): Promise<boolean> {
-  if (!isSupabaseConfigured) return false;
-  const instant = slotRequestInstant(date);
-  if (!instant) return false;
-  try {
-    const { data, error } = await supabase.rpc('reservation_slot_load', { p_business_id: businessId, p_reserved_at: instant });
-    if (error || !Array.isArray(data) || data.length === 0) {
-      if (!slotLoadWarned) {
-        slotLoadWarned = true;
-        console.warn('[reservations] reservation_slot_load is not available yet (logged once):', error?.message ?? 'no data');
-      }
-      return false;
-    }
-    const row = data[0] as { reserved?: unknown; capacity?: unknown };
-    return isSlotFull(row.reserved, row.capacity);
-  } catch {
-    return false;
-  }
-}
-
-// ── Sub-components ────────────────────────────────────────────────────────────
-
-/** Small info row with icon. */
-function InfoRow({
-  icon,
-  label,
-  children,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  children: React.ReactNode;
-}) {
-  const c = useThemeColors();
-  return (
-    <View style={styles.infoRow}>
-      {icon}
-      <View style={{ flex: 1 }}>
-        <Text style={[styles.fieldLabel, { color: c.textTertiary }]}>{label}</Text>
-        {children}
-      </View>
-    </View>
-  );
-}
-
-/** Numeric stepper used for party size. */
-function Stepper({
-  value,
-  min,
-  max,
-  onChange,
-}: {
-  value: number;
-  min: number;
-  max: number;
-  onChange: (n: number) => void;
-}) {
+/** One labelled row of the review card / the success summary. */
+function SummaryRow({ label, value, onChange, changeLabel }: { label: string; value: string; onChange?: () => void; changeLabel?: string }) {
   const { t } = useTranslation('reservations');
   const c = useThemeColors();
   return (
-    <View style={styles.stepper}>
-      <Pressable
-        onPress={() => onChange(Math.max(min, value - 1))}
-        disabled={value <= min}
-        style={[
-          styles.stepperBtn,
-          {
-            backgroundColor: c.bgElevated,
-            borderColor: c.borderSubtle,
-            opacity: value <= min ? 0.4 : 1,
-          },
-        ]}
-        accessibilityLabel={t('decreasePartySizeA11y')}
-      >
-        <IconChevronDown size={16} color={c.textSecondary} />
-      </Pressable>
-      <View
-        style={[
-          styles.stepperValue,
-          { backgroundColor: c.bgElevated, borderColor: c.borderSubtle },
-        ]}
-      >
-        <Text
-          style={[styles.stepperValueText, { color: c.textPrimary }]}
+    <View style={styles.summaryRow}>
+      <View style={styles.flex}>
+        <AppText variant="label" color={c.textTertiary}>{label}</AppText>
+        <AppText variant="body">{value}</AppText>
+      </View>
+      {onChange && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={changeLabel ?? t('change')}
+          onPress={onChange}
+          hitSlop={8}
+          style={styles.changeBtn}
         >
-          {value}
-        </Text>
-      </View>
-      <Pressable
-        onPress={() => onChange(Math.min(max, value + 1))}
-        disabled={value >= max}
-        style={[
-          styles.stepperBtn,
-          {
-            backgroundColor: c.bgElevated,
-            borderColor: c.borderSubtle,
-            opacity: value >= max ? 0.4 : 1,
-          },
-        ]}
-        accessibilityLabel={t('increasePartySizeA11y')}
-      >
-        <IconChevronUp size={16} color={c.textSecondary} />
-      </Pressable>
+          <AppText variant="compact" color={c.brandText} style={styles.underline}>{t('change')}</AppText>
+        </Pressable>
+      )}
     </View>
   );
 }
 
-// ── ReservationScreen ─────────────────────────────────────────────────────────
-
-export default function ReservationScreen({
-  businessId,
-  onSuccess,
-  onCancel,
-  onViewMine,
-}: Props) {
-  const { t } = useTranslation('reservations');
+export default function ReservationScreen({ businessId, onSuccess, onCancel, onViewMine }: Props) {
+  const { t, i18n } = useTranslation('reservations');
   const { user } = useAuth();
   const c = useThemeColors();
+  const locale: FlowLocale = i18n.language?.startsWith('es') ? 'es' : 'en';
+  const live = isSupabaseConfigured && !!businessId;
 
-  // Form state
-  const [date, setDate] = useState(todayString());
-  const [time, setTime] = useState('19:00');
-  const [partySize, setPartySize] = useState(2);
-  const [specialRequests, setSpecialRequests] = useState('');
-
-  // Submission state
+  const [venue, setVenue] = useState<Venue | null>(live ? null : { name: '', timezone: safeZone(Intl.DateTimeFormat().resolvedOptions().timeZone), hours: DEMO_HOURS });
+  const [venueFailed, setVenueFailed] = useState(false);
+  const [profileName, setProfileName] = useState<string | null>(null);
+  const [step, setStep] = useState<FlowStep>('date');
+  const [editing, setEditing] = useState(false);
+  const [flow, setFlow] = useState<FlowState>(EMPTY_FLOW);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [slotsFailed, setSlotsFailed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [checkingFull, setCheckingFull] = useState(false);
-  const [slotFull, setSlotFull] = useState(false);
-  const [wantsWaitlist, setWantsWaitlist] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [submittedWaitlist, setSubmittedWaitlist] = useState(false);
-
   const [error, setError] = useState<string | null>(null);
-
-  // Realtime channel to watch own reservations (optional: could be used to
-  // detect same-day slot count changes in near-real-time).
+  const [doneWaitlist, setDoneWaitlist] = useState(false);
+  const submittingRef = useRef(false);
   const channelRef = useRef<RealtimeChannel | null>(null);
+  // the strip and the calendar only need today's date: read the clock once when the flow opens (the slots come from the server)
+  const nowMs = useMemo(() => Date.now(), []);
 
-  // ── Check slot availability when date changes ──────────────────────────────
+  // ── Venue (name, zone, hours) and the person's name ────────────────────────
+  const loadVenue = useCallback(async () => {
+    if (!live) return;
+    setVenueFailed(false);
+    const { data, error: venueError } = await supabase.from('businesses').select('name, timezone, hours').eq('id', businessId as string).maybeSingle();
+    if (venueError || !data) { setVenueFailed(true); return; }
+    const row = data as { name: string | null; timezone: string | null; hours: HoursMap };
+    setVenue({ name: row.name ?? '', timezone: safeZone(row.timezone), hours: row.hours ?? {} });
+  }, [live, businessId]);
+
+  useEffect(() => { void loadVenue(); }, [loadVenue]);
+
   useEffect(() => {
-    if (!businessId || !date) return;
-    setSlotFull(false);
-    setWantsWaitlist(false);
-
+    if (!isSupabaseConfigured || !user) return;
     let cancelled = false;
-    setCheckingFull(true);
-
-    isFull(businessId, date).then((full) => {
-      if (!cancelled) {
-        setSlotFull(full);
-        setCheckingFull(false);
-      }
+    supabase.from('users').select('display_name, username').eq('id', user.id).maybeSingle().then(({ data }) => {
+      if (!cancelled) setProfileName(bookingName(data as { display_name?: string | null; username?: string | null } | null));
     });
+    return () => { cancelled = true; };
+  }, [user]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [businessId, date]);
+  // ── Slots of the picked date (the server decides: hours, zone, notice, capacity) ──
+  const fetchSlots = useCallback(async (day: string): Promise<Slot[] | null> => {
+    if (!venue) return null;
+    if (!live) return slotsFromHours(venue.hours, venue.timezone, day, Date.now());
+    const { data, error: slotsError } = await supabase.rpc('reservation_slots', { p_business_id: businessId as string, p_date: day });
+    if (slotsError || !Array.isArray(data)) return null;
+    return (data as { slot_at: string; status: string }[])
+      .filter((r) => r.status === 'open' || r.status === 'full')
+      .map((r) => ({ slot_at: r.slot_at, status: r.status as 'open' | 'full' }));
+  }, [venue, live, businessId]);
 
-  // ── Realtime subscription for slot count (refresh on reservation changes) ──
+  const date = flow.date;
   useEffect(() => {
-    if (!isSupabaseConfigured || !businessId) return;
+    if (!date || !venue) { setSlots([]); return; }
+    let cancelled = false;
+    setSlotsLoading(true);
+    setSlotsFailed(false);
+    void fetchSlots(date).then((rows) => {
+      if (cancelled) return;
+      setSlotsLoading(false);
+      if (rows === null) { setSlotsFailed(true); setSlots([]); } else setSlots(rows);
+    });
+    return () => { cancelled = true; };
+  }, [date, venue, fetchSlots]);
 
+  // Realtime: a reservation change can fill the day. Subscribe on mount, unsubscribe on unmount.
+  useEffect(() => {
+    if (!live || !date) return;
     channelRef.current = supabase
       .channel(channelTopic(`reservation-slot-check-${businessId}`))
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'reservations',
-          filter: `business_id=eq.${businessId}`,
-        },
-        () => {
-          if (!date) return;
-          isFull(businessId, date).then((full) => {
-            setSlotFull(full);
-          });
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations', filter: `business_id=eq.${businessId}` }, () => {
+        void fetchSlots(date).then((rows) => { if (rows) setSlots(rows); });
+      })
       .subscribe();
-
     return () => {
-      // Unsubscribe on unmount — required per architecture rules
       if (channelRef.current) {
         void supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
     };
-  }, [businessId, date]);
+  }, [live, date, businessId, fetchSlots]);
 
-  // ── Validate form ─────────────────────────────────────────────────────────
-  const validate = useCallback((): string | null => {
-    if (!date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      return t('invalidDateError');
-    }
-    if (!time.match(/^\d{2}:\d{2}$/)) {
-      return t('invalidTimeError');
-    }
-    // The date and time are the PHONE's local ones: the instant keeps that zone (utils/reservationTime.ts).
-    if (reservedAtIso(date, time) === null) {
-      return t('invalidDateTimeError');
-    }
-    if (!isFutureReservation(date, time, new Date())) {
-      return t('reservationMustBeFutureError');
-    }
-    if (partySize < 1 || partySize > 20) {
-      return t('partySizeRangeError');
-    }
-    return null;
-  }, [date, time, partySize, t]);
-
-  // ── Submit reservation ────────────────────────────────────────────────────
-  const handleSubmit = useCallback(async () => {
+  // ── Navigation between steps ───────────────────────────────────────────────
+  const goAfter = useCallback((from: FlowStep, next: FlowState) => {
     setError(null);
-    const validationError = validate();
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
+    if (editing && reviewReady(next)) { setEditing(false); setStep('review'); return; }
+    setStep(nextStep(from));
+  }, [editing]);
 
-    if (!isSupabaseConfigured) {
-      // Demo mode — simulate success
-      setSubmitted(true);
-      setSubmittedWaitlist(wantsWaitlist);
-      onSuccess?.('demo-res-' + Date.now(), wantsWaitlist);
-      return;
-    }
+  const onPickDate = (d: string) => {
+    const next = pickDate(flow, d);
+    setFlow(next);
+    setError(null);
+    // a new date needs a new time; the same date (editing) goes straight back to the review
+    if (next.slotAt === null) setStep('time'); else goAfter('date', next);
+  };
+  const onPickSlot = (slot: Slot) => { const next = pickSlot(flow, slot); setFlow(next); goAfter('time', next); };
+  const onPickParty = (n: number) => { const next = { ...flow, party: n }; setFlow(next); goAfter('people', next); };
+  const onToggleRequest = (key: RequestKey) => setFlow((f) => ({ ...f, requests: toggleRequest(f.requests, key) }));
+  const change = (to: FlowStep) => { setEditing(true); setError(null); setStep(to); };
+  const back = () => {
+    setError(null);
+    if (step === 'date') { onCancel?.(); return; }
+    setEditing(false);
+    setStep(PROGRESS_STEPS[Math.max(0, PROGRESS_STEPS.indexOf(step) - 1)]);
+  };
 
-    if (!user) {
-      setError(t('mustSignInError'));
-      return;
-    }
-
-    if (!businessId) {
-      setError(t('noBusinessSelectedError'));
-      return;
-    }
-
+  // ── Confirm ────────────────────────────────────────────────────────────────
+  const confirm = useCallback(async () => {
+    if (submittingRef.current) return; // double submit blocked
+    const payload = reservationPayload(flow);
+    if (!payload || !flow.date) { setStep(firstIncompleteStep(flow)); return; }
+    submittingRef.current = true;
     setSubmitting(true);
+    setError(null);
     try {
-      const reserved_at = reservedAtIso(date, time);
-      if (reserved_at === null) {
-        setError(t('invalidDateTimeError'));
+      if (!live) {
+        setDoneWaitlist(payload.is_waitlist);
+        setStep('done');
+        onSuccess?.('demo-res-' + Date.now(), payload.is_waitlist);
         return;
       }
-      const is_waitlist = slotFull ? wantsWaitlist : false;
-
+      if (!user) { setError(t('mustSignInError')); return; }
+      // The venue may have closed that day, or the slot filled, since the person chose: ask again before sending anything.
+      const fresh = await fetchSlots(flow.date);
+      if (fresh !== null) {
+        if (fresh.length === 0) {
+          setSlots([]);
+          setFlow((f) => ({ ...f, date: null, slotAt: null, slotStatus: null }));
+          setError(t('dayClosedNowError'));
+          setEditing(false);
+          setStep('date');
+          return;
+        }
+        const still = slotStillAvailable(fresh, flow.slotAt);
+        if (!still) {
+          setSlots(fresh);
+          setFlow((f) => ({ ...f, slotAt: null, slotStatus: null }));
+          setError(t('slotGoneError'));
+          setEditing(false);
+          setStep('time');
+          return;
+        }
+        // the slot may have just filled (or freed up): the waitlist flag follows the server's current answer
+        payload.is_waitlist = still.status === 'full';
+      }
       const { data, error: insertErr } = await supabase
         .from('reservations')
         .insert({
-          business_id: businessId,
+          business_id: businessId as string,
           user_id: user.id,
-          reserved_at,
-          party_size: partySize,
-          special_requests: specialRequests.trim() || null,
+          reserved_at: payload.reserved_at,
+          party_size: payload.party_size,
+          special_requests: payload.special_requests,
           status: 'pending',
-          is_waitlist,
+          is_waitlist: payload.is_waitlist,
         })
         .select('id')
         .single();
-
-      if (insertErr || !data) {
-        throw insertErr ?? new Error(t('insertFailedError'));
-      }
-
-      // TODO(server): business owner push notification is sent server-side via
-      //               a Supabase Database Webhook / Edge Function on INSERT.
-      // TODO(server): schedule 24h + 2h reminder to customer via pg_cron or
-      //               Edge Function triggered on INSERT.
-
-      const resId = (data as { id: string }).id;
-      setSubmitted(true);
-      setSubmittedWaitlist(is_waitlist);
-      onSuccess?.(resId, is_waitlist);
+      if (insertErr || !data) throw insertErr ?? new Error(t('insertFailedError'));
+      setDoneWaitlist(payload.is_waitlist);
+      setStep('done');
+      onSuccess?.((data as { id: string }).id, payload.is_waitlist);
     } catch (e: unknown) {
-      const msg = toUserMessage(e);
-      setError(t('bookingFailedError', { msg }));
+      setError(t('bookingFailedError', { msg: toUserMessage(e) }));
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
-  }, [
-    validate,
-    user,
-    businessId,
-    date,
-    time,
-    partySize,
-    specialRequests,
-    slotFull,
-    wantsWaitlist,
-    onSuccess,
-    t,
-  ]);
+  }, [flow, live, user, fetchSlots, businessId, onSuccess, t]);
 
-  // ── Success screen ────────────────────────────────────────────────────────
-  if (submitted) {
+  // ── Derived labels ─────────────────────────────────────────────────────────
+  const tz = venue?.timezone;
+  const dateLabel = flow.date ? longDateLabel(flow.date, locale) : '';
+  const timeLabel = flow.slotAt ? slotTimeLabel(flow.slotAt, tz, locale) : '';
+  const requestsLabel = flow.requests.length > 0 ? flow.requests.map((k) => t(`request.${k}`)).join(' · ') : t('reviewNone');
+  const waitlist = flow.slotStatus === 'full';
+
+  const summary = (editable: boolean) => (
+    <View style={[styles.card, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
+      {venue?.name ? <AppText variant="headline" accessibilityRole="header">{venue.name}</AppText> : null}
+      <SummaryRow label={t('reviewDate')} value={dateLabel} onChange={editable ? () => change('date') : undefined} changeLabel={t('changeA11y', { what: t('reviewDate') })} />
+      <SummaryRow label={t('reviewTime')} value={timeLabel} onChange={editable ? () => change('time') : undefined} changeLabel={t('changeA11y', { what: t('reviewTime') })} />
+      <SummaryRow label={t('reviewPeople')} value={flow.party !== null ? t('people', { count: flow.party }) : ''} onChange={editable ? () => change('people') : undefined} changeLabel={t('changeA11y', { what: t('reviewPeople') })} />
+      <SummaryRow label={t('reviewRequests')} value={requestsLabel} onChange={editable ? () => change('requests') : undefined} changeLabel={t('changeA11y', { what: t('reviewRequests') })} />
+      {profileName ? <AppText variant="compact" color={c.textSecondary}>{t('reviewName', { name: profileName })}</AppText> : null}
+    </View>
+  );
+
+  // ── Success ────────────────────────────────────────────────────────────────
+  if (step === 'done') {
+    const tint = doneWaitlist ? palette.brandPurple : palette.success;
     return (
-      <View style={[styles.successContainer, { backgroundColor: c.bgBase }]}>
-        <View
-          style={[
-            styles.successIcon,
-            {
-              backgroundColor: submittedWaitlist
-                ? `${palette.brandPurple}20`
-                : `${palette.success}20`,
-            },
-          ]}
-        >
-          {submittedWaitlist ? (
-            <IconListCheck size={36} color={palette.brandPurple} />
-          ) : (
-            <IconCheck size={36} color={palette.success} />
-          )}
+      <ScrollView style={[styles.flex, { backgroundColor: c.bgBase }]} contentContainerStyle={styles.successContent}>
+        <View style={[styles.successIcon, { backgroundColor: `${tint}20` }]}>
+          {doneWaitlist ? <IconListCheck size={36} color={tint} /> : <IconCheck size={36} color={tint} />}
         </View>
-        <Text style={[styles.successTitle, { color: c.textPrimary }]}>
-          {submittedWaitlist ? t('waitlistSuccessTitle') : t('requestSentTitle')}
-        </Text>
-        <Text style={[styles.successSubtitle, { color: c.textSecondary }]}>
-          {submittedWaitlist
-            ? t('waitlistSuccessSubtitle')
-            : t('requestSentSubtitle')}
-        </Text>
-        {onCancel && (
-          <Pressable
-            onPress={onCancel}
-            style={[
-              styles.doneBtn,
-              {
-                backgroundColor: submittedWaitlist
-                  ? palette.brandPurple
-                  : palette.success,
-              },
-            ]}
-          >
-            <Text style={styles.doneBtnText}>{t('doneButton')}</Text>
-          </Pressable>
-        )}
+        <AppText variant="title" accessibilityRole="header" style={styles.center}>{doneWaitlist ? t('waitlistSuccessTitle') : t('requestSentTitle')}</AppText>
+        <AppText variant="body" color={c.textSecondary} style={styles.center}>{doneWaitlist ? t('waitlistSuccessSubtitle') : t('requestSentSubtitle')}</AppText>
+        <View style={styles.fullWidth}>{summary(false)}</View>
         {onViewMine && (
-          <Pressable
-            accessibilityRole="link"
-            accessibilityLabel={t('viewMine')}
-            hitSlop={8}
-            onPress={onViewMine}
-            style={styles.viewMineLink}
-          >
-            <Text style={[styles.viewMineText, { color: c.brandText }]}>{t('viewMine')}</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={t('viewMine')} onPress={onViewMine} style={[styles.primaryBtn, styles.fullWidth, { backgroundColor: tint }]}>
+            <AppText variant="button" color={palette.onBrand} style={styles.center}>{t('viewMine')}</AppText>
           </Pressable>
         )}
-      </View>
+        {onCancel && (
+          <Pressable accessibilityRole="button" accessibilityLabel={t('doneButton')} onPress={onCancel} style={[styles.secondaryBtn, styles.fullWidth, { borderColor: c.borderSubtle }]}>
+            <AppText variant="button" color={c.textSecondary} style={styles.center}>{t('doneButton')}</AppText>
+          </Pressable>
+        )}
+      </ScrollView>
     );
   }
 
-  // ── Main form ─────────────────────────────────────────────────────────────
+  // ── Steps ──────────────────────────────────────────────────────────────────
+  const stepIndex = PROGRESS_STEPS.indexOf(step) + 1;
+  const showContinue = step === 'requests';
+
   return (
-    <KeyboardAvoidingView
-      style={[styles.flex, { backgroundColor: c.bgBase }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView
-        style={styles.flex}
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header */}
+    <View style={[styles.flex, { backgroundColor: c.bgBase }]}>
+      <ScrollView style={styles.flex} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={[styles.title, { color: c.textPrimary }]}>
-            {t('headerTitle')}
-          </Text>
-          <Text style={[styles.subtitle, { color: c.textSecondary }]}>
-            {t('headerSubtitle')}
-          </Text>
+          <AppText variant="title" accessibilityRole="header">{t('headerTitle')}</AppText>
+          <AppText variant="compact" color={c.textSecondary}>
+            {venue?.name ? `${venue.name} · ` : ''}{t('stepCounter', { current: stepIndex, total: PROGRESS_STEPS.length })}
+          </AppText>
         </View>
 
-        {/* Demo mode notice */}
-        {!isSupabaseConfigured && (
-          <View
-            style={[
-              styles.bannerRow,
-              { backgroundColor: `${palette.warning}18` },
-            ]}
-          >
-            <IconAlertCircle size={14} color={palette.warning} />
-            <Text style={[styles.bannerText, { color: palette.warning }]}>
-              {t('demoModeMessage')}
-            </Text>
+        {!live && (
+          <View style={[styles.banner, { backgroundColor: `${palette.warning}18` }]}>
+            <IconAlertCircle size={16} color={palette.warning} />
+            <AppText variant="caption" color={palette.warning} style={styles.flex}>{t('demoModeMessage')}</AppText>
           </View>
         )}
-
-        {/* Error banner */}
         {error && (
-          <View
-            style={[
-              styles.bannerRow,
-              {
-                backgroundColor: `${palette.danger}15`,
-                borderColor: palette.danger,
-                borderWidth: 1,
-              },
-            ]}
-          >
-            <IconAlertCircle size={14} color={palette.danger} />
-            <Text style={[styles.bannerText, { color: palette.danger }]}>
-              {error}
-            </Text>
+          <View accessibilityRole="alert" style={[styles.banner, { backgroundColor: `${palette.danger}15`, borderColor: palette.danger, borderWidth: 1 }]}>
+            <IconAlertCircle size={16} color={palette.danger} />
+            <AppText variant="caption" color={palette.danger} style={styles.flex}>{error}</AppText>
           </View>
         )}
 
-        {/* Slot-full warning */}
-        {slotFull && !checkingFull && (
-          <View
-            style={[
-              styles.bannerRow,
-              { backgroundColor: `${palette.brandPurple}15` },
-            ]}
-          >
-            <IconListCheck size={14} color={palette.brandPurple} />
-            <Text
-              style={[styles.bannerText, { color: palette.brandPurple }]}
-            >
-              {t('slotFullWarning')}
-            </Text>
+        {venueFailed && (
+          <View style={styles.block}>
+            <AppText variant="body" color={c.textSecondary}>{t('venueLoadError')}</AppText>
+            <Pressable accessibilityRole="button" accessibilityLabel={t('retry')} onPress={() => void loadVenue()} style={[styles.secondaryBtn, { borderColor: c.borderSubtle }]}>
+              <AppText variant="button" color={c.textPrimary} style={styles.center}>{t('retry')}</AppText>
+            </Pressable>
           </View>
         )}
+        {venue === null && !venueFailed && <Spinner />}
 
-        {/* ── Form fields ─────────────────────────────────────────────────── */}
-        <View
-          style={[
-            styles.card,
-            { backgroundColor: c.bgSurface, borderColor: c.borderSubtle },
-          ]}
-        >
-          {/* Date */}
-          <InfoRow
-            icon={
-              <IconCalendarEvent
-                size={18}
-                color={palette.brand}
-                style={styles.infoIcon}
-              />
-            }
-            label={t('dateFieldLabel')}
-          >
-            <TextInput
-              value={date}
-              onChangeText={setDate}
-              placeholder="2025-12-31"
-              placeholderTextColor={c.textTertiary}
-              keyboardType="numbers-and-punctuation"
-              returnKeyType="done"
-              style={[
-                styles.textInput,
-                {
-                  color: c.textPrimary,
-                  backgroundColor: c.bgElevated,
-                  borderColor: c.borderSubtle,
-                },
-              ]}
-              accessibilityLabel={t('dateAccessibilityLabel')}
-            />
-          </InfoRow>
-
-          <View style={[styles.divider, { backgroundColor: c.borderSubtle }]} />
-
-          {/* Time */}
-          <InfoRow
-            icon={
-              <IconClock
-                size={18}
-                color={palette.brand}
-                style={styles.infoIcon}
-              />
-            }
-            label={t('timeFieldLabel')}
-          >
-            <TextInput
-              value={time}
-              onChangeText={setTime}
-              placeholder="19:00"
-              placeholderTextColor={c.textTertiary}
-              keyboardType="numbers-and-punctuation"
-              returnKeyType="done"
-              style={[
-                styles.textInput,
-                {
-                  color: c.textPrimary,
-                  backgroundColor: c.bgElevated,
-                  borderColor: c.borderSubtle,
-                },
-              ]}
-              accessibilityLabel={t('timeAccessibilityLabel')}
-            />
-            {checkingFull && (
-              <Spinner
-                size="small"
-                color={palette.brand}
-                style={{ marginTop: 6 }}
-              />
-            )}
-          </InfoRow>
-
-          <View style={[styles.divider, { backgroundColor: c.borderSubtle }]} />
-
-          {/* Party size */}
-          <InfoRow
-            icon={
-              <IconUsers
-                size={18}
-                color={palette.brand}
-                style={styles.infoIcon}
-              />
-            }
-            label={t('partySizeFieldLabel')}
-          >
-            <Stepper
-              value={partySize}
-              min={1}
-              max={20}
-              onChange={setPartySize}
-            />
-          </InfoRow>
-
-          <View style={[styles.divider, { backgroundColor: c.borderSubtle }]} />
-
-          {/* Special requests */}
-          <InfoRow
-            icon={
-              <IconNotes
-                size={18}
-                color={palette.brand}
-                style={styles.infoIcon}
-              />
-            }
-            label={t('specialRequestsFieldLabel')}
-          >
-            <TextInput
-              value={specialRequests}
-              onChangeText={setSpecialRequests}
-              placeholder={t('specialRequestsPlaceholder')}
-              placeholderTextColor={c.textTertiary}
-              multiline
-              numberOfLines={3}
-              style={[
-                styles.textArea,
-                {
-                  color: c.textPrimary,
-                  backgroundColor: c.bgElevated,
-                  borderColor: c.borderSubtle,
-                },
-              ]}
-              accessibilityLabel={t('specialRequestsAccessibilityLabel')}
-            />
-          </InfoRow>
-        </View>
-
-        {/* Waitlist option */}
-        {slotFull && (
-          <Pressable
-            onPress={() => setWantsWaitlist((v) => !v)}
-            style={[
-              styles.waitlistRow,
-              {
-                backgroundColor: wantsWaitlist
-                  ? `${palette.brandPurple}15`
-                  : c.bgSurface,
-                borderColor: wantsWaitlist
-                  ? palette.brandPurple
-                  : c.borderSubtle,
-              },
-            ]}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: wantsWaitlist }}
-          >
-            <View
-              style={[
-                styles.checkbox,
-                {
-                  backgroundColor: wantsWaitlist
-                    ? palette.brandPurple
-                    : c.bgElevated,
-                  borderColor: wantsWaitlist
-                    ? palette.brandPurple
-                    : c.borderSubtle,
-                },
-              ]}
-            >
-              {wantsWaitlist && <IconCheck size={12} color={palette.onBrand} />}
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text
-                style={[styles.waitlistTitle, { color: c.textPrimary }]}
-              >
-                {t('waitlistTitle')}
-              </Text>
-              <Text
-                style={[styles.waitlistSub, { color: c.textSecondary }]}
-              >
-                {t('waitlistSubtitle')}
-              </Text>
-            </View>
-          </Pressable>
+        {venue !== null && step !== 'review' && (
+          <AppText variant="headline" accessibilityRole="header" style={styles.stepTitle}>{t(STEP_TITLE_KEY[step as Exclude<FlowStep, 'done'>])}</AppText>
         )}
 
-        {/* Submit / cancel */}
-        <View style={styles.actionRow}>
-          {onCancel && (
+        {venue !== null && step === 'date' && (
+          <View style={styles.block}>
+            <DayStrip hours={venue.hours} tz={tz} nowMs={nowMs} selected={flow.date} locale={locale} onPick={onPickDate} />
             <Pressable
-              onPress={onCancel}
-              style={[
-                styles.cancelBtn,
-                { borderColor: c.borderSubtle },
-              ]}
-              disabled={submitting}
+              accessibilityRole="button"
+              accessibilityLabel={showCalendar ? t('hideCalendar') : t('moreDates')}
+              accessibilityState={{ expanded: showCalendar }}
+              onPress={() => setShowCalendar((s) => !s)}
+              style={[styles.secondaryBtn, { borderColor: c.borderSubtle }]}
             >
-              <Text style={[styles.cancelBtnText, { color: c.textSecondary }]}>
-                {t('actions.cancel', { ns: 'common' })}
-              </Text>
+              <AppText variant="button" color={c.textPrimary} style={styles.center}>{showCalendar ? t('hideCalendar') : t('moreDates')}</AppText>
+            </Pressable>
+            {showCalendar && <MonthCalendar hours={venue.hours} tz={tz} nowMs={nowMs} selected={flow.date} locale={locale} onPick={onPickDate} />}
+          </View>
+        )}
+
+        {venue !== null && step === 'time' && (
+          <View style={styles.block}>
+            <AppText variant="compact" color={c.textSecondary}>{dateLabel}</AppText>
+            {slotsLoading && <Spinner />}
+            {!slotsLoading && slotsFailed && (
+              <>
+                <AppText variant="body" color={c.textSecondary}>{t('slotsError')}</AppText>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t('retry')}
+                  onPress={() => { if (flow.date) void fetchSlots(flow.date).then((rows) => { if (rows) { setSlots(rows); setSlotsFailed(false); } }); }}
+                  style={[styles.secondaryBtn, { borderColor: c.borderSubtle }]}
+                >
+                  <AppText variant="button" color={c.textPrimary} style={styles.center}>{t('retry')}</AppText>
+                </Pressable>
+              </>
+            )}
+            {!slotsLoading && !slotsFailed && slots.length === 0 && <AppText variant="body" color={c.textSecondary}>{t('noSlots')}</AppText>}
+            {!slotsLoading && slots.length > 0 && (
+              <>
+                {slots.some((s) => s.status === 'full') && <AppText variant="caption" color={palette.brandPurple}>{t('slotFullWarning')}</AppText>}
+                <SlotGrid slots={slots} tz={tz} selected={flow.slotAt} locale={locale} onPick={onPickSlot} />
+              </>
+            )}
+          </View>
+        )}
+
+        {venue !== null && step === 'people' && (
+          <View style={styles.block}>
+            <PartyPicker value={flow.party} onPick={onPickParty} />
+          </View>
+        )}
+
+        {venue !== null && step === 'requests' && (
+          <View style={styles.block}>
+            <AppText variant="compact" color={c.textSecondary}>{t('requestsHint')}</AppText>
+            <RequestChips selected={flow.requests} onToggle={onToggleRequest} />
+            {flow.requests.includes('allergies') && (
+              <View style={[styles.banner, { backgroundColor: `${palette.warning}18` }]}>
+                <IconAlertCircle size={16} color={palette.warning} />
+                <AppText variant="caption" color={c.textPrimary} style={styles.flex}>{t('allergiesNote')}</AppText>
+              </View>
+            )}
+          </View>
+        )}
+
+        {venue !== null && step === 'review' && (
+          <View style={styles.block}>
+            <AppText variant="title" accessibilityRole="header">{t('reviewTitle')}</AppText>
+            {summary(true)}
+            {waitlist && <AppText variant="compact" color={palette.brandPurple}>{t('waitlistNote')}</AppText>}
+          </View>
+        )}
+      </ScrollView>
+
+      {/* Footer: Back (Cancel on the first step), Continue on the optional step, Confirm on the review */}
+      {venue !== null && (
+        <View style={[styles.footer, { borderTopColor: c.borderSubtle, backgroundColor: c.bgBase }]}>
+          {step === 'review' && (
+            <>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={waitlist ? t('confirmWaitlistButton') : t('confirmButton')}
+                accessibilityState={{ disabled: submitting || !reviewReady(flow), busy: submitting }}
+                disabled={submitting || !reviewReady(flow)}
+                onPress={() => void confirm()}
+                style={[styles.primaryBtn, { backgroundColor: waitlist ? palette.brandPurple : palette.brand, opacity: submitting ? 0.6 : 1 }]}
+              >
+                {submitting ? <Spinner /> : <AppText variant="button" color={palette.onBrand} style={styles.center}>{waitlist ? t('confirmWaitlistButton') : t('confirmButton')}</AppText>}
+              </Pressable>
+              <AppText variant="caption" color={c.textSecondary} style={styles.center}>{t('venueConfirms')}</AppText>
+            </>
+          )}
+          {showContinue && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('continueButton')}
+              accessibilityState={{ disabled: !canContinue(flow, step) }}
+              disabled={!canContinue(flow, step)}
+              onPress={() => goAfter('requests', flow)}
+              style={[styles.primaryBtn, { backgroundColor: palette.brand }]}
+            >
+              <AppText variant="button" color={palette.onBrand} style={styles.center}>{t('continueButton')}</AppText>
             </Pressable>
           )}
-
-          <Pressable
-            onPress={() => void handleSubmit()}
-            disabled={submitting}
-            style={[
-              styles.submitBtn,
-              {
-                backgroundColor: submitting
-                  ? c.textTertiary
-                  : slotFull && wantsWaitlist
-                  ? palette.brandPurple
-                  : palette.brand,
-                flex: onCancel ? 1 : undefined,
-              },
-            ]}
-          >
-            {submitting ? (
-              <Spinner color={palette.onBrand} size="small" />
-            ) : (
-              <Text style={styles.submitBtnText}>
-                {slotFull && wantsWaitlist
-                  ? t('joinWaitlistButton')
-                  : t('requestReservationButton')}
-              </Text>
-            )}
+          <Pressable accessibilityRole="button" accessibilityLabel={step === 'date' ? t('closeFlow') : t('back')} onPress={back} style={[styles.secondaryBtn, { borderColor: c.borderSubtle }]}>
+            <AppText variant="button" color={c.textSecondary} style={styles.center}>{step === 'date' ? t('closeFlow') : t('back')}</AppText>
           </Pressable>
         </View>
-
-        {/* Footer note */}
-        <Text style={[styles.footerNote, { color: c.textTertiary }]}>
-          {t('footerNote')}
-          {/* TODO(server): reminders sent 24h and 2h before via server job */}
-        </Text>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      )}
+    </View>
   );
 }
 
-// ── Styles ────────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-
-  // Header
-  header: {
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-
-  // Banners
-  bannerRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 12,
-  },
-  bannerText: {
-    fontSize: 13,
-    flex: 1,
-    lineHeight: 18,
-  },
-
-  // Card
-  card: {
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 16,
-    overflow: 'hidden',
-  },
-  divider: {
-    height: 1,
-    marginHorizontal: 16,
-  },
-
-  // Info row
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    padding: 16,
-    gap: 12,
-  },
-  infoIcon: {
-    marginTop: 2,
-  },
-  fieldLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 6,
-  },
-
-  // Text inputs
-  textInput: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 10,
-    fontSize: 15,
-  },
-  textArea: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 10,
-    fontSize: 14,
-    minHeight: 72,
-    textAlignVertical: 'top',
-  },
-
-  // Stepper
-  stepper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 0,
-  },
-  stepperBtn: {
-    width: 36,
-    height: 36,
-    borderWidth: 1,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepperValue: {
-    minWidth: 48,
-    minHeight: 36,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderLeftWidth: 0,
-    borderRightWidth: 0,
-    borderColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 2,
-    borderRadius: 4,
-  },
-  stepperValueText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-
-  // Waitlist
-  waitlistRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    marginBottom: 20,
-  },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderWidth: 1.5,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2,
-    flexShrink: 0,
-  },
-  waitlistTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  waitlistSub: {
-    fontSize: 12,
-    lineHeight: 17,
-  },
-
-  // Actions
-  actionRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
-  },
-  cancelBtn: {
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cancelBtnText: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  submitBtn: {
-    flex: 1,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 50,
-  },
-  submitBtnText: {
-    color: palette.onBrand,
-    fontSize: 15,
-    fontWeight: '700',
-  },
-
-  // Footer
-  footerNote: {
-    fontSize: 12,
-    textAlign: 'center',
-    lineHeight: 17,
-    paddingHorizontal: 8,
-  },
-
-  // Success
-  viewMineLink: { alignItems: 'center', justifyContent: 'center', marginTop: 8, minHeight: 44, paddingHorizontal: 16 },
-  viewMineText: { fontSize: 15, fontWeight: '700', textDecorationLine: 'underline' },
-  successContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 32,
-  },
-  successIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-  },
-  successTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  successSubtitle: {
-    fontSize: 15,
-    textAlign: 'center',
-    lineHeight: 22,
-    maxWidth: 300,
-    marginBottom: 32,
-  },
-  doneBtn: {
-    paddingVertical: 14,
-    paddingHorizontal: 48,
-    borderRadius: 12,
-  },
-  doneBtnText: {
-    color: palette.onBrand,
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  flex: { flex: 1 },
+  center: { textAlign: 'center' },
+  underline: { textDecorationLine: 'underline' },
+  fullWidth: { alignSelf: 'stretch' },
+  scrollContent: { padding: space.lg, gap: space.lg },
+  header: { gap: space.xs },
+  stepTitle: { marginTop: space.xs },
+  block: { gap: space.md },
+  banner: { flexDirection: 'row', alignItems: 'center', gap: space.sm, padding: space.md, borderRadius: 10 },
+  card: { borderRadius: 12, borderWidth: 1, padding: space.lg, gap: space.md },
+  summaryRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  changeBtn: { minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center' },
+  footer: { padding: space.lg, gap: space.sm, borderTopWidth: StyleSheet.hairlineWidth },
+  primaryBtn: { minHeight: controlMinHeight, paddingHorizontal: space.xl, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  secondaryBtn: { minHeight: controlMinHeight, paddingHorizontal: space.xl, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  successContent: { padding: space.xl, gap: sectionGap, alignItems: 'center', flexGrow: 1, justifyContent: 'center' },
+  successIcon: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center' },
 });
