@@ -600,9 +600,12 @@ export default function ChatRoomScreen() {
   const sheetGift = useGiftAvailable(userSheet.visible ? userSheet.userId : null);
 
   const handleOpenNotificationRoute = useCallback(
-    (route: NotificationRoute) =>
-      openNotificationRoute(navigation as unknown as { navigate: (screen: string, params?: unknown) => void }, route),
-    [navigation],
+    (route: NotificationRoute) => {
+      // M2: a staff notice for THIS venue's chat has nowhere to go (already here); ChatRoom cannot switch rooms without remounting
+      if (route.screen === 'ChatRoom' && route.params.id === rootRoomId) return;
+      openNotificationRoute(navigation as unknown as { navigate: (screen: string, params?: unknown) => void }, route);
+    },
+    [navigation, rootRoomId],
   );
 
   // "Salir del local" is the only way (besides leaving the area) to end the venue session.

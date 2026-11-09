@@ -249,6 +249,7 @@ function navigateNotificationRoute(route: NotificationRoute): void {
   else if (route.screen === 'MatchMyProfile') navigationRef.navigate('MatchMyProfile', route.params);
   else if (route.screen === 'OrderTracking') navigationRef.navigate('OrderTracking', route.params);
   else if (route.screen === 'MyOrders') navigationRef.navigate('MyOrders');
+  else if (route.screen === 'ChatRoom') openVenueChat(route.params.id);
   else navigationRef.navigate('PostDetail', route.params);
 }
 
