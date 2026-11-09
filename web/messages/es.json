@@ -2578,7 +2578,16 @@
     "configurationHoursOvernight": "Cierra al día siguiente",
     "configurationSaveNoPermission": "No tienes permiso para guardar este cambio. Si crees que es un error, contáctanos.",
     "configurationSaveOffline": "Sin conexión. Reintenta.",
-    "configurationSaveFailed": "No pudimos guardar los cambios. Inténtalo de nuevo."
+    "configurationSaveFailed": "No pudimos guardar los cambios. Inténtalo de nuevo.",
+    "resRequest_birthday": "Cumpleaños",
+    "resRequest_anniversary": "Aniversario",
+    "resRequest_terrace": "Terraza",
+    "resRequest_indoor": "Interior",
+    "resRequest_high_chair": "Silla alta para bebé",
+    "resRequest_accessibility": "Accesibilidad",
+    "resRequest_allergies": "Alergias (avisará al llegar)",
+    "resRequest_quiet": "Zona tranquila",
+    "resRequest_near_tv": "Cerca de la pantalla / TV"
   },
   "superAdmin": {
     "shell": {

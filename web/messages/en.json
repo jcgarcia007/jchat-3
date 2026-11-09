@@ -2578,7 +2578,16 @@
     "configurationHoursOvernight": "Closes the next day",
     "configurationSaveNoPermission": "You don't have permission to save this change. If you think this is a mistake, contact us.",
     "configurationSaveOffline": "No connection. Try again.",
-    "configurationSaveFailed": "We couldn't save your changes. Try again."
+    "configurationSaveFailed": "We couldn't save your changes. Try again.",
+    "resRequest_birthday": "Birthday",
+    "resRequest_anniversary": "Anniversary",
+    "resRequest_terrace": "Terrace",
+    "resRequest_indoor": "Indoors",
+    "resRequest_high_chair": "High chair for a baby",
+    "resRequest_accessibility": "Accessibility",
+    "resRequest_allergies": "Allergies (tell the venue on arrival)",
+    "resRequest_quiet": "Quiet area",
+    "resRequest_near_tv": "Near the screen / TV"
   },
   "superAdmin": {
     "shell": {
