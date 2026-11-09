@@ -1,5 +1,18 @@
-import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { buildPriceIds, checkoutInterval, intervalFromPrice, periodEndOf, planFromPrice, priceIdsOfPlan } from "./billing.ts";
+import { assert, assertEquals, assertFalse, assertStringIncludes } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import {
+  buildPriceIds,
+  buildSubscriptionEmailPayload,
+  checkoutInterval,
+  emailDedupeKey,
+  enqueueOutboundEmail,
+  intervalFromPrice,
+  periodEndOf,
+  planFromPrice,
+  priceIdsOfPlan,
+  type QueuedEmail,
+} from "./billing.ts";
+import { readSubscriptionPayload } from "../_shared/emails/common.ts";
+import { renderEmail } from "../_shared/emails/render.ts";
 
 const env: Record<string, string> = {
   STRIPE_PRICE_BUSINESS: "pb", STRIPE_PRICE_BUSINESS_6M: "pb6", STRIPE_PRICE_BUSINESS_1Y: "pb1",
@@ -100,4 +113,132 @@ Deno.test("periodEndOf never builds an invalid Date: null + warning", () => {
     assertEquals(periodEndOf(bad as never, warn), null);
   }
   assertEquals(warnings.length, 7);
+});
+
+// ── E3: subscription e-mail payload, dedupe key and queueing ────────────────────────────────────────────────────────────────────────────────
+
+const TRIAL_END_S = Date.UTC(2026, 11, 8, 15, 0, 0) / 1000; // 2026-12-08T15:00:00Z
+const PERIOD_END_S = Date.UTC(2027, 5, 8, 15, 0, 0) / 1000; // 2027-06-08T15:00:00Z
+const subOf = (over: Record<string, unknown> = {}) => ({ id: "sub_TEST1", current_period_end: TRIAL_END_S, trial_end: TRIAL_END_S, ...over });
+const priceOf = (cents: number) => ({ unit_amount: cents, currency: "usd" });
+
+Deno.test("buildSubscriptionEmailPayload: the three intervals, with a free trial", () => {
+  const cases: [import("./billing.ts").Interval, "business" | "pro", number][] = [["month", "business", 4900], ["6month", "pro", 53400], ["year", "pro", 94800]];
+  for (const [interval, plan, cents] of cases) {
+    const p = buildSubscriptionEmailPayload(subOf(), priceOf(cents), plan, interval, noWarn)!;
+    assertEquals(p, {
+      plan,
+      interval,
+      amount_cents: cents,
+      currency: "usd",
+      trial_end: "2026-12-08T15:00:00.000Z",
+      period_end: "2026-12-08T15:00:00.000Z",
+      subscription_id: "sub_TEST1",
+    });
+  }
+});
+
+Deno.test("buildSubscriptionEmailPayload: without a trial (trial_end null/absent/0) → trial_end null, period end kept", () => {
+  for (const trial_end of [null, undefined, 0]) {
+    const p = buildSubscriptionEmailPayload(subOf({ trial_end, current_period_end: PERIOD_END_S }), priceOf(46800), "business", "year", noWarn)!;
+    assertEquals(p.trial_end, null);
+    assertEquals(p.period_end, "2027-06-08T15:00:00.000Z");
+  }
+});
+
+Deno.test("buildSubscriptionEmailPayload: period end from items[0] (API 2025+), currency lower-cased", () => {
+  const p = buildSubscriptionEmailPayload(
+    { id: "sub_T", trial_end: null, items: { data: [{ current_period_end: PERIOD_END_S }] } },
+    { unit_amount: 9900, currency: "USD" },
+    "pro",
+    "month",
+    noWarn,
+  )!;
+  assertEquals(p.period_end, "2027-06-08T15:00:00.000Z");
+  assertEquals(p.currency, "usd");
+});
+
+Deno.test("buildSubscriptionEmailPayload: last4 only when the payment method came expanded (and is four digits)", () => {
+  const expanded = buildSubscriptionEmailPayload(subOf({ default_payment_method: { id: "pm_1", card: { last4: "4242" } } }), priceOf(9900), "pro", "month", noWarn)!;
+  assertEquals(expanded.last4, "4242");
+  for (const pm of ["pm_123", null, undefined, {}, { card: {} }, { card: { last4: "42" } }, { card: { last4: "42; x" } }, { card: { last4: 4242 } }]) {
+    assertFalse("last4" in buildSubscriptionEmailPayload(subOf({ default_payment_method: pm }), priceOf(9900), "pro", "month", noWarn)!);
+  }
+});
+
+Deno.test("buildSubscriptionEmailPayload: nothing honest to send → null", () => {
+  const ok = [subOf(), priceOf(9900), "pro", "month"] as const;
+  assertEquals(buildSubscriptionEmailPayload(null, ok[1], "pro", "month", noWarn), null);
+  assertEquals(buildSubscriptionEmailPayload(subOf({ id: "" }), ok[1], "pro", "month", noWarn), null);
+  assertEquals(buildSubscriptionEmailPayload(subOf({ id: undefined }), ok[1], "pro", "month", noWarn), null);
+  assertEquals(buildSubscriptionEmailPayload(ok[0], ok[1], "verified", "month", noWarn), null); // only business/pro get these e-mails
+  assertEquals(buildSubscriptionEmailPayload(ok[0], ok[1], null, "month", noWarn), null);
+  assertEquals(buildSubscriptionEmailPayload(ok[0], ok[1], "pro", null, noWarn), null);
+  assertEquals(buildSubscriptionEmailPayload(ok[0], null, "pro", "month", noWarn), null);
+  assertEquals(buildSubscriptionEmailPayload(ok[0], { unit_amount: null, currency: "usd" }, "pro", "month", noWarn), null);
+  assertEquals(buildSubscriptionEmailPayload(ok[0], { unit_amount: 99.5, currency: "usd" }, "pro", "month", noWarn), null);
+  assertEquals(buildSubscriptionEmailPayload(ok[0], { unit_amount: 9900, currency: "dollars" }, "pro", "month", noWarn), null);
+  assertEquals(buildSubscriptionEmailPayload(subOf({ current_period_end: undefined, items: { data: [] } }), ok[1], "pro", "month", noWarn), null);
+});
+
+Deno.test("the payload satisfies the E2 templates: readSubscriptionPayload accepts it and both e-mails render (3 intervals, with/without trial)", () => {
+  for (const [interval, cents] of [["month", 9900], ["6month", 53400], ["year", 94800]] as const) {
+    for (const trial_end of [TRIAL_END_S, null]) {
+      const p = buildSubscriptionEmailPayload(subOf({ trial_end, current_period_end: TRIAL_END_S }), priceOf(cents), "pro", interval, noWarn)!;
+      assert(readSubscriptionPayload(p) !== null, `${interval} ${trial_end}`);
+      const started = renderEmail("subscription_started", "es", p)!;
+      assertStringIncludes(started.text, "Tu plan Pro está activo.");
+      assertFalse(started.text.includes("sub_TEST1"));
+      const ends = renderEmail("trial_will_end", "en", p);
+      assertEquals(ends === null, trial_end === null); // the trial notice needs a trial end
+      if (ends) assertStringIncludes(ends.text, `$${cents / 100}.00`);
+    }
+  }
+});
+
+Deno.test("emailDedupeKey: one key per kind and subscription", () => {
+  assertEquals(emailDedupeKey("subscription_started", "sub_1"), "subscription_started:sub_1");
+  assertEquals(emailDedupeKey("trial_will_end", "sub_1"), "trial_will_end:sub_1");
+  assert(emailDedupeKey("subscription_started", "sub_1") !== emailDedupeKey("trial_will_end", "sub_1"));
+});
+
+function fakeOutbox(result: () => Promise<{ error: unknown }> | { error: unknown }) {
+  const calls: { table: string; row: Record<string, unknown>; options: { onConflict: string; ignoreDuplicates: boolean } }[] = [];
+  const db = { from: (table: string) => ({ upsert: (row: Record<string, unknown>, options: { onConflict: string; ignoreDuplicates: boolean }) => { calls.push({ table, row, options }); return Promise.resolve(result()); } }) };
+  return { db, calls };
+}
+
+const queued = (): QueuedEmail => ({
+  kind: "subscription_started",
+  user_id: "00000000-0000-4000-8000-000000000001",
+  payload: buildSubscriptionEmailPayload(subOf(), priceOf(9900), "pro", "month", noWarn)!,
+  dedupe_key: "subscription_started:sub_TEST1",
+});
+
+Deno.test("enqueueOutboundEmail: upserts into outbound_emails on dedupe_key with ignoreDuplicates (a resent event queues nothing new)", async () => {
+  const f = fakeOutbox(() => ({ error: null }));
+  assertEquals(await enqueueOutboundEmail(f.db, queued(), () => {}), true);
+  assertEquals(f.calls.length, 1);
+  assertEquals(f.calls[0].table, "outbound_emails");
+  assertEquals(f.calls[0].options, { onConflict: "dedupe_key", ignoreDuplicates: true });
+  assertEquals(f.calls[0].row.kind, "subscription_started");
+  assertEquals(f.calls[0].row.user_id, "00000000-0000-4000-8000-000000000001");
+  assertEquals(f.calls[0].row.dedupe_key, "subscription_started:sub_TEST1");
+  assertEquals((f.calls[0].row.payload as { plan: string }).plan, "pro");
+});
+
+Deno.test("enqueueOutboundEmail never throws: a queue error or exception is logged (generic, no payload) and reported as false", async () => {
+  const logs: string[] = [];
+  const log = (m: string, d?: unknown) => logs.push(m + JSON.stringify(d ?? ""));
+  assertEquals(await enqueueOutboundEmail(fakeOutbox(() => ({ error: { code: "23514", message: "boom" } })).db, queued(), log), false);
+  const throwing = { from: () => ({ upsert: () => { throw new Error("db down"); } }) };
+  assertEquals(await enqueueOutboundEmail(throwing, queued(), log), false);
+  const rejecting = { from: () => ({ upsert: () => Promise.reject(new Error("net")) }) };
+  assertEquals(await enqueueOutboundEmail(rejecting, queued(), log), false);
+  assertEquals(logs.length, 3);
+  for (const line of logs) {
+    assertStringIncludes(line, "could not queue e-mail");
+    assertFalse(line.includes("amount_cents")); // the payload is never logged
+    assertFalse(line.includes("@"));
+  }
 });

@@ -50,7 +50,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.44.4";
 import { createAdminClient, getPublishableKey } from "../_shared/supabaseAdmin.ts";
 import {
   buildPriceIds,
+  buildSubscriptionEmailPayload,
   checkoutInterval,
+  emailDedupeKey,
+  enqueueOutboundEmail,
   intervalFromPrice,
   periodEndOf,
   planFromPrice,
@@ -634,10 +637,12 @@ async function handleWebhook(req: Request): Promise<Response> {
       let planStatus: "active" | "trialing" = "active";
       let price: Stripe.Price | null = null;
       let subMetaPlan: unknown = null;
+      let subForEmail: Stripe.Subscription | null = null;
 
       if (stripeSubId) {
         try {
           const sub = await stripe.subscriptions.retrieve(stripeSubId);
+          subForEmail = sub;
           periodEnd = periodEndOf(sub);
           trialEnd = sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null;
           planStatus = trialEnd ? "trialing" : "active";
@@ -655,12 +660,13 @@ async function handleWebhook(req: Request): Promise<Response> {
         console.error(`[subscriptions] checkout ${session.id}: no valid plan on price ${price?.id ?? "(none)"} nor on metadata; plan left unchanged`);
       }
 
+      const interval = intervalFromPrice(price);
       const upd: Record<string, unknown> = {
         plan_status: planStatus,
         plan_trial_end: trialEnd,
         plan_renews_at: periodEnd,
         stripe_subscription_id: stripeSubId,
-        plan_interval: intervalFromPrice(price),
+        plan_interval: interval,
       };
       if (plan) upd.plan = plan;
       if (customerId) upd.stripe_customer_id = customerId;
@@ -677,6 +683,22 @@ async function handleWebhook(req: Request): Promise<Response> {
           .eq("id", userId)
           .is("trial_used_at", null);
         if (trialErr) console.error("[subscriptions] trial_used_at update failed", { event: event.type, error: trialErr });
+      }
+
+      // Confirmation e-mail ("your plan is active", what is charged and when). Queued in outbound_emails (delivered by the outbound-emails function / its
+      // retry cron), one per subscription (dedupe_key). A failure is only logged: the subscription is already saved and the webhook must not fail for it.
+      if (subForEmail && plan) {
+        const payload = buildSubscriptionEmailPayload(subForEmail, price, plan, interval);
+        if (payload) {
+          await enqueueOutboundEmail(db, {
+            kind: "subscription_started",
+            user_id: userId,
+            payload,
+            dedupe_key: emailDedupeKey("subscription_started", payload.subscription_id),
+          });
+        } else {
+          console.warn(`[subscriptions] checkout ${session.id}: no subscription_started e-mail (plan/price/period not usable)`);
+        }
       }
 
       // Consumir el código promocional AQUÍ, no al crear la sesión: un checkout
@@ -858,13 +880,30 @@ async function handleWebhook(req: Request): Promise<Response> {
       break;
     }
 
-    // ── Trial ending reminder (notification is a separate TODO — log only) ────
+    // ── Trial ending (Stripe fires it 3 days before the end) → the legal "your trial ends, you will be charged" e-mail ────
     case "customer.subscription.trial_will_end": {
       const sub = await stripe.subscriptions.retrieve((event.data.object as { id: string }).id);
       const customerId = customerIdOf(sub.customer);
       const userId = await resolveUserId(db, sub.metadata?.user_id, customerId);
       console.log(`[subscriptions] trial ending soon: user=${userId ?? "(unresolved)"}`);
-      // TODO(notifications): tell the user their trial ends soon. Not implemented.
+      if (!userId) {
+        console.warn(`customer.subscription.trial_will_end: cannot resolve user for sub ${sub.id}`);
+        break;
+      }
+      const price = sub.items?.data?.[0]?.price ?? null;
+      const plan = planFromPrice(price, sub.metadata?.plan, PRICE_IDS);
+      const payload = buildSubscriptionEmailPayload(sub, price, plan, intervalFromPrice(price));
+      // Without a trial end there is nothing to announce (the template would not render): queue nothing.
+      if (payload && payload.trial_end) {
+        await enqueueOutboundEmail(db, {
+          kind: "trial_will_end",
+          user_id: userId,
+          payload,
+          dedupe_key: emailDedupeKey("trial_will_end", payload.subscription_id),
+        });
+      } else {
+        console.warn(`[subscriptions] sub ${sub.id}: no trial_will_end e-mail (plan/price/trial end not usable)`);
+      }
       break;
     }
 

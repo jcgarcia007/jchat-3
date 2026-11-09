@@ -110,3 +110,108 @@ export function periodEndOf(
   warn(`[subscriptions] no current_period_end on subscription ${sub?.id ?? "(unknown)"}`);
   return null;
 }
+
+// ── E3 (spec 4): subscription e-mails queued in public.outbound_emails ─────────────────────────────────────────────────────────────────────
+
+export type SubscriptionEmailKind = "subscription_started" | "trial_will_end";
+
+/** The bits of a Stripe.Subscription the e-mail payload reads (the same object the webhook already re-read with the pinned client). */
+export interface SubscriptionEmailSource extends SubscriptionLike {
+  id?: string | null;
+  /** Unix seconds; null/absent = no free trial. */
+  trial_end?: number | null;
+  /** A string id (the usual case) or, only when the caller expanded it, the PaymentMethod with `card.last4`. */
+  default_payment_method?: unknown;
+}
+
+/** The bits of a Stripe.Price it reads. */
+export interface PriceEmailSource {
+  unit_amount?: number | null;
+  currency?: string | null;
+}
+
+/** What outbound_emails.payload holds for 'subscription_started' and 'trial_will_end'. Must satisfy readSubscriptionPayload (_shared/emails/common.ts). */
+export interface SubscriptionEmailPayload {
+  plan: PaidPlan;
+  interval: Interval;
+  amount_cents: number;
+  currency: string;
+  /** ISO end of the free trial, or null when the subscription has none. */
+  trial_end: string | null;
+  /** ISO end of the current billing period. */
+  period_end: string;
+  /** Only an id for the support trail: the e-mail text never prints it. */
+  subscription_id: string;
+  /** Card's last four digits, only when the payment method came expanded (no extra Stripe call is made for it). */
+  last4?: string;
+}
+
+/**
+ * Payload of a subscription e-mail, or null when it cannot be built honestly (the caller logs and queues nothing): a plan other than business/pro,
+ * an unknown interval, a price without a fixed amount or currency, a subscription without id or period end.
+ * `amount_cents` is the price's unit amount: what the next charge will be (it ignores discounts, which this checkout never applies).
+ */
+export function buildSubscriptionEmailPayload(
+  sub: SubscriptionEmailSource | null | undefined,
+  price: PriceEmailSource | null | undefined,
+  plan: KnownPlan | null,
+  interval: Interval | null,
+  warn: (msg: string) => void = console.warn,
+): SubscriptionEmailPayload | null {
+  if (!sub || typeof sub.id !== "string" || sub.id === "") return null;
+  if (plan !== "business" && plan !== "pro") return null;
+  if (!interval) return null;
+  if (!price || typeof price.unit_amount !== "number" || !Number.isInteger(price.unit_amount) || price.unit_amount < 0) return null;
+  if (typeof price.currency !== "string" || !/^[a-z]{3}$/i.test(price.currency)) return null;
+  const periodEnd = periodEndOf(sub, warn);
+  if (!periodEnd) return null;
+  const trialEnd = typeof sub.trial_end === "number" && Number.isFinite(sub.trial_end) && sub.trial_end > 0 ? new Date(sub.trial_end * 1000).toISOString() : null;
+  const pm = sub.default_payment_method;
+  const last4 = pm && typeof pm === "object" ? (pm as { card?: { last4?: unknown } }).card?.last4 : undefined;
+  return {
+    plan,
+    interval,
+    amount_cents: price.unit_amount,
+    currency: price.currency.toLowerCase(),
+    trial_end: trialEnd,
+    period_end: periodEnd,
+    subscription_id: sub.id,
+    ...(typeof last4 === "string" && /^\d{4}$/.test(last4) ? { last4 } : {}),
+  };
+}
+
+/** One e-mail per event: `subscription_started:sub_…` / `trial_will_end:sub_…` (unique index outbound_emails_dedupe_key_uq, migration 272). */
+export const emailDedupeKey = (kind: SubscriptionEmailKind, subscriptionId: string): string => `${kind}:${subscriptionId}`;
+
+/** The bit of the Supabase client `enqueueOutboundEmail` uses (kept structural so a Deno test can fake it). */
+export interface OutboxClient {
+  from(table: string): {
+    upsert(row: Record<string, unknown>, options: { onConflict: string; ignoreDuplicates: boolean }): PromiseLike<{ error: unknown }>;
+  };
+}
+
+export interface QueuedEmail {
+  kind: SubscriptionEmailKind;
+  user_id: string;
+  payload: SubscriptionEmailPayload;
+  dedupe_key: string;
+}
+
+/**
+ * Queues the e-mail: `insert … on conflict (dedupe_key) do nothing`, so a resent Stripe event (or a second event for the same subscription) never queues a
+ * second e-mail. NEVER throws and never reports to the caller as a failure of the webhook: the subscription state is already saved; on any error it
+ * logs a generic line (no addresses, no payload) and returns false.
+ */
+export async function enqueueOutboundEmail(db: OutboxClient, email: QueuedEmail, error: (msg: string, detail?: unknown) => void = console.error): Promise<boolean> {
+  try {
+    const { error: err } = await db.from("outbound_emails").upsert({ ...email }, { onConflict: "dedupe_key", ignoreDuplicates: true });
+    if (err) {
+      error("[subscriptions] could not queue e-mail", { kind: email.kind, dedupe_key: email.dedupe_key, error: err });
+      return false;
+    }
+    return true;
+  } catch (e) {
+    error("[subscriptions] could not queue e-mail (exception)", { kind: email.kind, dedupe_key: email.dedupe_key, error: String(e) });
+    return false;
+  }
+}
