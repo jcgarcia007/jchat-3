@@ -17,7 +17,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "weekly",
       priority: 0.8,
     },
-    // /pricing/business is NOT listed until spec 4 publishes it (it also carries robots noindex, see app/pricing/business/layout.tsx).
+    {
+      url: `${BASE}/pricing/business`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
     {
       url: `${BASE}/download`,
       lastModified: new Date(),

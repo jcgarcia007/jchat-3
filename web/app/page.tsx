@@ -15,6 +15,7 @@
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { BUSINESS_PLANS_HREF } from "@/lib/plans";
 import {
   motion,
   useMotionValue,
@@ -506,7 +507,7 @@ export default function LandingPage() {
             JChat
           </span>
           <div style={{ display:"flex", alignItems:"center", gap:"20px" }}>
-            <Link href="/pricing" style={{ fontSize:"14px", fontWeight:500, color:"var(--land-sub)", textDecoration:"none" }}>
+            <Link href={BUSINESS_PLANS_HREF} style={{ fontSize:"14px", fontWeight:500, color:"var(--land-sub)", textDecoration:"none" }}>
               {t("pricing.cta")}
             </Link>
             <LanguageSwitcher/>
@@ -696,7 +697,7 @@ export default function LandingPage() {
               </motion.p>
               <motion.div variants={fadeUp}>
                 <MotionLink
-                  href="/pricing"
+                  href={BUSINESS_PLANS_HREF}
                   className="btn-peach"
                   whileTap={prefersReduced ? undefined : { scale:0.97 }}
                 >
@@ -819,7 +820,7 @@ export default function LandingPage() {
                 <IconArrowRight size={16}/>
               </motion.a>
               <motion.a
-                href="/pricing"
+                href={BUSINESS_PLANS_HREF}
                 className="btn-ghost"
                 whileTap={prefersReduced ? undefined : { scale:0.97 }}
               >
@@ -835,7 +836,7 @@ export default function LandingPage() {
             <span className="sg" style={{ fontWeight:800, color:"var(--land-text)", fontSize:"15px" }}>JChat</span>
             <span>
               {t("footer.business")}{" "}
-              <a href="/pricing" style={{ color:"var(--land-peach)", fontWeight:600, textDecoration:"none" }}>
+              <a href={BUSINESS_PLANS_HREF} style={{ color:"var(--land-peach)", fontWeight:600, textDecoration:"none" }}>
                 {t("footer.businessLink")}
               </a>
             </span>

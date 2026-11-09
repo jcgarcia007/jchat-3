@@ -2,19 +2,17 @@
  * JChat 3.0 — Public pricing page (/pricing).
  *
  * PUBLIC: outside /dashboard, so the dashboard auth gate never touches it. Anyone can
- * view the plans without a session. "Suscribirme" checks for a session: with one →
- * Stripe Checkout (via the `subscriptions` Edge Function); without one → send to login
- * and return here (?next=/pricing) — the EF needs a JWT, so we never checkout logged-out.
+ * view the plans without a session.
  *
  * TWO SECTIONS:
  *   §1 "Para ti"     — SOCIAL_PLANS (free/verified/pro_social). Checkout fase 2; por
  *                       ahora: free→registro, verified/pro→"próximamente" (disabled).
- *   §2 "Para tu negocio" — OFFERED_PLANS (business/pro/custom). Checkout YA funciona.
+ *   §2 "Para tu negocio" — a short block that sends to /pricing/business (BUSINESS_PLANS_HREF),
+ *                       the single source of truth for business prices, billing periods, the
+ *                       free trial, checkout and the Custom request form (spec 4, E5).
  *
- * Plans come from the shared catalogue web/lib/plans.ts. This page maps its OWN
- * color/icon per plan id (see ACCENT/ICONS) because it uses GLOBAL tokens
- * (--bg-*, --text-*, --color-*, --border-subtle); the --db-* dashboard vars do not
- * exist on a public page.
+ * This page uses GLOBAL tokens (--bg-*, --text-*, --color-*, --border-subtle); the --db-*
+ * dashboard vars do not exist on a public page.
  *
  * Bilingüe via next-intl (cookie jchat-lang, namespace "pricing").
  */
@@ -25,44 +23,16 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import {
-  IconBuildingStore,
-  IconBolt,
+  IconArrowRight,
   IconCrown,
   IconCheck,
-  IconLoader2,
-  IconExternalLink,
-  IconAlertCircle,
-  IconTicket,
   IconUser,
   IconBadge,
-  IconSparkles,
 } from "@tabler/icons-react";
-import {
-  getOfferedPlans,
-  SALES_EMAIL,
-  SOCIAL_PLANS,
-  type SocialPlanId,
-  type OfferedPlanId,
-  type CheckoutPlanId,
-} from "@/lib/plans";
+import { BUSINESS_PLANS_HREF, SOCIAL_PLANS, type SocialPlanId } from "@/lib/plans";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
-import { useBusinessCheckout } from "@/hooks/useBusinessCheckout";
-
-// ── Business plan presentation: color + icon per plan id ──────────────────
-// GLOBAL tokens only (--color-*, --bg-*, --text-*). No --db-*.
-
-const ACCENT: Record<OfferedPlanId, string> = {
-  business: "var(--color-success)",
-  pro: "var(--color-gold)",
-  custom: "var(--color-brand)",
-};
-
-const ICONS: Record<OfferedPlanId, React.ReactNode> = {
-  business: <IconBolt size={22} />,
-  pro: <IconCrown size={22} />,
-  custom: <IconBuildingStore size={22} />,
-};
 
 // ── Social plan presentation ───────────────────────────────────────────────
 
@@ -83,28 +53,6 @@ const SOCIAL_ICONS: Record<SocialPlanId, React.ReactNode> = {
 export default function PricingPage() {
   const router = useRouter();
   const t = useTranslations("pricing");
-  const tb = useTranslations("pricingBusiness");
-  const tp = useTranslations("plans");
-  const offeredPlans = getOfferedPlans(tp);
-
-
-  // Consent, promo validation and Stripe Checkout live in the shared hook (also used by /pricing/business). This page keeps sending "month".
-  const {
-    loadingPlan,
-    error,
-    setError,
-    consentAccepted,
-    setConsentAccepted,
-    promoCode,
-    setPromoCode,
-    promoInfo,
-    setPromoInfo,
-    promoError,
-    setPromoError,
-    promoChecking,
-    checkPromo,
-    handleSubscribe,
-  } = useBusinessCheckout({ nextPath: "/pricing" });
 
   // ── Social plan content (all text from translations) ────────────────────
   const socialContent: Record<
@@ -347,267 +295,46 @@ export default function PricingPage() {
         </motion.div>
 
         {/* ══════════════════════════════════════════════════════
-            §2 — PLANES DE NEGOCIO (Para tu negocio)
-            Todo el checkout ya funciona — NO modificar lógica.
+            §2 — PLANES PARA NEGOCIOS: remite a /pricing/business, la única fuente de
+            precios, periodos de cobro, prueba gratis y checkout de los planes de negocio.
             ══════════════════════════════════════════════════════ */}
         <section id="negocios">
-          {/* Header */}
-          <motion.header
-            initial="hidden" whileInView="show" viewport={{ once:true, margin:"-60px" }}
-            variants={stagger}
-            style={{ textAlign:"center", marginBottom:"40px" }}
-          >
-            <motion.p variants={fadeUp} style={{
-              fontSize:"11px", fontWeight:700, textTransform:"uppercase",
-              letterSpacing:".1em", color:"var(--land-teal)",
-              marginBottom:"12px", fontFamily:"var(--font-grotesk), 'Space Grotesk', sans-serif",
-            }}>
-              Venue POS
-            </motion.p>
-            <motion.h2 variants={fadeUp} className="sg" style={{ fontSize:"clamp(26px,3.2vw,38px)", fontWeight:800, margin:"0 0 12px", letterSpacing:"-.03em", color:"var(--land-text)" }}>
-              {t("business.sectionTitle")}
-            </motion.h2>
-            <motion.p variants={fadeUp} style={{ fontSize:"15px", color:"var(--land-sub)", maxWidth:"560px", margin:"0 auto", lineHeight:1.6 }}>
-              {t("business.sectionSubtitle")}
-            </motion.p>
-          </motion.header>
-
-          {/* Error */}
-          {error && (
-            <div role="alert" style={{
-              display:"flex", alignItems:"center", gap:"10px",
-              maxWidth:"560px", margin:"0 auto 24px",
-              padding:"12px 16px", borderRadius:"10px",
-              background:"color-mix(in srgb, var(--color-danger) 10%, transparent)",
-              border:"1px solid color-mix(in srgb, var(--color-danger) 25%, transparent)",
-              color:"var(--color-danger)", fontSize:"13px",
-            }}>
-              <IconAlertCircle size={16}/>
-              <span>{error}</span>
-            </div>
-          )}
-
-          {/* Consentimiento de renovación automática. Va ANTES de la grilla porque la ley
-              exige divulgar los términos de forma clara ANTES de recoger datos de pago. */}
-          <div style={{
-            maxWidth:"820px", margin:"0 auto 20px",
-            background:"var(--land-glass)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)",
-            border:"1px solid rgb(var(--ink-rgb) / .08)", borderRadius:"14px", padding:"18px 20px",
-            boxShadow:"0 4px 20px rgb(var(--ink-rgb) / .06)",
-          }}>
-            <div style={{ fontSize:"14px", fontWeight:700, marginBottom:"8px", color:"var(--land-text)" }}>
-              {t("business.consentTitle")}
-            </div>
-            <p style={{ fontSize:"13px", color:"var(--land-sub)", margin:"0 0 14px", lineHeight:1.6 }}>
-              {t("business.consentBody")}
-            </p>
-            {/* This page only sells the monthly period; the line below is the one that names the period. */}
-            <p style={{ fontSize:"13px", color:"var(--land-sub)", margin:"0 0 14px", lineHeight:1.6 }}>
-              {tb("consentPeriodNote", { cadence: tb("cadenceMonth") })}
-            </p>
-            <label style={{ display:"flex", alignItems:"flex-start", gap:"10px", cursor:"pointer", fontSize:"13px", color:"var(--land-text)", lineHeight:1.5 }}>
-              <input
-                type="checkbox"
-                checked={consentAccepted}
-                onChange={(e) => { setConsentAccepted(e.target.checked); setError(null); }}
-                style={{ marginTop:"2px", width:"16px", height:"16px", flexShrink:0, cursor:"pointer" }}
-              />
-              <span>{t("business.consentCheck")}</span>
-            </label>
-          </div>
-
-          {/* Plan grid */}
-          <div className="pr-grid" style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"16px", maxWidth:"820px", margin:"0 auto" }}>
-            {offeredPlans.map((plan, idx) => {
-              const busy = loadingPlan === plan.id;
-              // El plan Custom abre un mailto, no un checkout: NO exige consentimiento
-              // (pedir aceptar términos de cobro para mandar un correo no tendría sentido).
-              const needsConsent = plan.cta === "checkout" && !consentAccepted;
-              const isPopular   = plan.id === "pro";
-              return (
-                <motion.div
-                  key={plan.id}
-                  className={isPopular ? "pr-pop-pulse" : undefined}
-                  initial={{ opacity:0, y:24 }}
-                  whileInView={{ opacity:1, y:0 }}
-                  viewport={{ once:true, margin:"-40px" }}
-                  transition={{ delay: idx * 0.09, duration:.68, ease:[0.16,1,0.3,1] as [number,number,number,number] }}
-                  whileHover={isPopular
-                    ? { y:-5, boxShadow:"0 24px 56px rgba(92,124,250,.14)" }
-                    : { y:-4, boxShadow:"0 18px 48px rgba(0,0,0,.10)" }
-                  }
-                  style={{
-                    background: isPopular ? "rgb(var(--white-rgb) / .96)" : "var(--land-glass)",
-                    backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)",
-                    border: isPopular
-                      ? "1px solid rgb(var(--color-brand-rgb) / .32)"
-                      : "1px solid rgb(var(--ink-rgb) / .07)",
-                    borderRadius:"16px",
-                    padding: isPopular ? "24px" : "22px",
-                    display:"flex", flexDirection:"column", gap:"12px", position:"relative",
-                    boxShadow:"0 4px 20px rgb(var(--ink-rgb) / .06)",
-                  }}
-                >
-                  {/* Most popular badge */}
-                  {isPopular && (
-                    <div style={{
-                      position:"absolute", top:"-11px", left:"50%", transform:"translateX(-50%)",
-                      background:"linear-gradient(135deg,var(--color-brand),var(--color-brand-purple))",
-                      color:"var(--on-brand)", fontSize:"10px", fontWeight:800,
-                      letterSpacing:".08em", textTransform:"uppercase",
-                      padding:"3px 14px", borderRadius:"99px", whiteSpace:"nowrap",
-                      boxShadow:"0 4px 16px rgb(var(--color-brand-rgb) / .38)",
-                    }}>
-                      {t("business.popularBadge")}
-                    </div>
-                  )}
-                  {/* Header */}
-                  <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
-                    <span style={{ color: ACCENT[plan.id] }}>{ICONS[plan.id]}</span>
-                    <span style={{ fontSize:"17px", fontWeight:700, color:"var(--land-text)" }}>{plan.label}</span>
-                  </div>
-                  {/* Price */}
-                  <div style={{ fontSize:"22px", fontWeight:800, color:"var(--land-text)" }}>{plan.priceLabel}</div>
-                  {/* Description */}
-                  <p style={{ fontSize:"13px", color:"var(--land-sub)", margin:0, lineHeight:1.5 }}>
-                    {plan.description}
-                  </p>
-                  {/* Features */}
-                  <ul style={{ listStyle:"none", padding:0, margin:"4px 0 0", display:"flex", flexDirection:"column", gap:"6px" }}>
-                    {plan.features.map((f) => (
-                      <li key={f} style={{ display:"flex", alignItems:"flex-start", gap:"6px", fontSize:"12px", color:"var(--land-sub)" }}>
-                        <IconCheck size={13} style={{ color: ACCENT[plan.id], flexShrink:0, marginTop:"1px" }}/>
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                  {/* CTA */}
-                  <button
-                    onClick={() => {
-                      if (plan.cta === "contact") {
-                        window.location.href = `mailto:${SALES_EMAIL}?subject=${encodeURIComponent(tp("customSubject"))}`;
-                      } else {
-                        void handleSubscribe(plan.id as CheckoutPlanId);
-                      }
-                    }}
-                    disabled={busy || needsConsent}
-                    title={needsConsent ? t("business.consentRequiredHint") : undefined}
-                    style={{
-                      marginTop:"auto", display:"flex", alignItems:"center",
-                      justifyContent:"center", gap:"6px", padding:"10px 16px",
-                      borderRadius:"8px",
-                      border: plan.cta === "checkout" ? "none" : "1px solid rgb(var(--ink-rgb) / .12)",
-                      background: plan.cta === "checkout"
-                        ? isPopular
-                          ? "linear-gradient(135deg,var(--color-brand),var(--color-brand-purple))"
-                          : "linear-gradient(135deg,var(--land-peach),var(--land-peach-dark))"
-                        : "rgb(var(--ink-rgb) / .04)",
-                      color: plan.cta === "checkout" ? "var(--on-brand)" : "var(--land-sub)",
-                      fontSize:"13px", fontWeight:600,
-                      cursor: busy ? "wait" : needsConsent ? "not-allowed" : "pointer",
-                      opacity: busy ? 0.7 : needsConsent ? 0.45 : 1,
-                    }}
-                  >
-                    {busy ? (
-                      <>
-                        <IconLoader2 size={14} style={{ animation:"spin 1s linear infinite" }}/>
-                        {t("business.btnRedirecting")}
-                      </>
-                    ) : plan.cta === "checkout" ? (
-                      <>
-                        {t("business.btnSubscribe")}
-                        <IconExternalLink size={12} style={{ opacity:0.7 }}/>
-                      </>
-                    ) : (
-                      t("business.btnContact")
-                    )}
-                  </button>
-                </motion.div>
-              );
-            })}
-          </div>
-
-          {/* Promo code */}
           <motion.div
             initial={{ opacity:0, y:20 }}
             whileInView={{ opacity:1, y:0 }}
-            viewport={{ once:true, margin:"-30px" }}
+            viewport={{ once:true, margin:"-40px" }}
             transition={{ duration:.6, ease:[0.16,1,0.3,1] as [number,number,number,number] }}
             style={{
-              maxWidth:"560px", margin:"32px auto 0",
+              maxWidth:"640px", margin:"0 auto", textAlign:"center",
               background:"var(--land-glass)", backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)",
-              border:"1px solid rgb(var(--ink-rgb) / .08)", borderRadius:"14px", padding:"22px",
+              border:"1px solid rgb(var(--ink-rgb) / .08)", borderRadius:"18px", padding:"32px 28px",
               boxShadow:"0 4px 24px rgb(var(--ink-rgb) / .07)",
             }}
           >
-            <div style={{ display:"flex", alignItems:"center", gap:"8px", marginBottom:"6px" }}>
-              <IconTicket size={18} style={{ color:"var(--land-peach)" }}/>
-              <span style={{ fontSize:"15px", fontWeight:700, color:"var(--land-text)" }}>
-                {t("business.promoTitle")}
-              </span>
-            </div>
-            <p style={{ fontSize:"13px", color:"var(--land-sub)", margin:"0 0 14px", lineHeight:1.5 }}>
-              {t("business.promoBody")}
+            <p style={{
+              fontSize:"11px", fontWeight:700, textTransform:"uppercase", letterSpacing:".1em",
+              color:"var(--land-teal)", margin:"0 0 12px", fontFamily:"var(--font-grotesk), 'Space Grotesk', sans-serif",
+            }}>
+              Venue POS
             </p>
-
-            <div style={{ display:"flex", gap:"8px", flexWrap:"wrap" }}>
-              <input
-                value={promoCode}
-                onChange={(e) => {
-                  const v = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,12);
-                  setPromoCode(v); setPromoInfo(null); setPromoError(null);
-                }}
-                placeholder={t("business.promoPlaceholder")}
-                maxLength={12}
-                style={{
-                  flex:"1 1 200px", padding:"10px 12px", borderRadius:"8px",
-                  border:"1px solid rgb(var(--ink-rgb) / .12)", background:"rgb(var(--white-rgb))",
-                  color:"var(--land-text)", fontSize:"14px",
-                  fontFamily:"var(--font-mono, monospace)", letterSpacing:"1px",
-                }}
-              />
-              <button
-                onClick={() => void checkPromo(promoCode.trim())}
-                disabled={promoChecking || promoCode.trim().length === 0}
-                style={{
-                  display:"flex", alignItems:"center", justifyContent:"center", gap:"6px",
-                  padding:"10px 18px", borderRadius:"8px", border:"none",
-                  background:"linear-gradient(135deg,var(--land-peach),var(--land-peach-dark))",
-                  color:"var(--on-brand)", fontSize:"13px", fontWeight:600,
-                  cursor: promoChecking ? "wait" : "pointer",
-                  opacity: promoChecking || promoCode.trim().length === 0 ? 0.6 : 1,
-                }}
-              >
-                {promoChecking ? <IconLoader2 size={14} style={{ animation:"spin 1s linear infinite" }}/> : null}
-                {promoChecking ? t("business.promoChecking") : t("business.promoCheck")}
-              </button>
-            </div>
-
-            {promoInfo && (
-              <div style={{
-                display:"flex", alignItems:"center", gap:"8px",
-                marginTop:"12px", padding:"10px 14px", borderRadius:"8px",
-                background:"color-mix(in srgb, var(--color-success) 10%, transparent)",
-                border:"1px solid color-mix(in srgb, var(--color-success) 25%, transparent)",
-                color:"var(--color-success)", fontSize:"13px",
-              }}>
-                <IconCheck size={15}/>
-                <span>{t("business.promoValidText", { days: promoInfo.trial_days, plan: promoInfo.plan })}</span>
-              </div>
-            )}
-
-            {promoError && (
-              <div role="alert" style={{
-                display:"flex", alignItems:"center", gap:"8px",
-                marginTop:"12px", padding:"10px 14px", borderRadius:"8px",
-                background:"color-mix(in srgb, var(--color-danger) 10%, transparent)",
-                border:"1px solid color-mix(in srgb, var(--color-danger) 25%, transparent)",
-                color:"var(--color-danger)", fontSize:"13px",
-              }}>
-                <IconAlertCircle size={15}/>
-                <span>{promoError}</span>
-              </div>
-            )}
+            <h2 className="sg" style={{ fontSize:"clamp(26px,3.2vw,36px)", fontWeight:800, margin:"0 0 12px", letterSpacing:"-.03em", color:"var(--land-text)" }}>
+              {t("business.teaserTitle")}
+            </h2>
+            <p style={{ fontSize:"15px", color:"var(--land-sub)", margin:"0 auto 24px", maxWidth:"480px", lineHeight:1.6 }}>
+              {t("business.teaserBody")}
+            </p>
+            <Link
+              href={BUSINESS_PLANS_HREF}
+              style={{
+                display:"inline-flex", alignItems:"center", justifyContent:"center", gap:"8px",
+                minHeight:"48px", padding:"0 24px", borderRadius:"10px",
+                background:"var(--land-peach)", color:"var(--on-brand)",
+                fontSize:"15px", fontWeight:700, textDecoration:"none",
+              }}
+            >
+              {t("business.teaserCta")}
+              <IconArrowRight size={16} aria-hidden />
+            </Link>
           </motion.div>
         </section>
       </div>

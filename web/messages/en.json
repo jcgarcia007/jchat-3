@@ -3457,6 +3457,9 @@
     "business": {
       "sectionTitle": "Venue POS — For your business",
       "sectionSubtitle": "Choose the plan that fits your business. One subscription covers all your venues. Change or cancel anytime.",
+      "teaserTitle": "Plans for business",
+      "teaserBody": "Business and Pro, with 30 days free and no JChat commission. Choose to pay monthly, every 6 months or yearly.",
+      "teaserCta": "See business plans",
       "consentTitle": "Before you continue",
       "consentBody": "Your subscription renews automatically every billing period until you cancel. If you have free trial days, you won't be charged anything until they end; once they do, your card is charged the price of the period you chose, and then at the start of each new period. You can cancel anytime from your dashboard, and if you cancel during the trial you won't be charged anything.",
       "consentCheck": "I understand I will be charged automatically after the trial ends, and that I can cancel before without any charge.",

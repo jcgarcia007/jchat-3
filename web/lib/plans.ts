@@ -77,8 +77,5 @@ export const SOCIAL_PLANS: SocialPlan[] = [
   { id: "pro_social", priceLabel: "$4.99 / mes",  cta: "soon" },
 ];
 
-/** Destino de "Ver planes para negocios" (bienvenida). El spec 3 lo cambiará a la página nueva de planes de negocio. */
-export const BUSINESS_PLANS_HREF = "/pricing";
-
-/** Página nueva de planes de negocio (/pricing/business). Sin usar todavía: activar en spec 4 (cambia BUSINESS_PLANS_HREF y los enlaces de la landing a la vez). */
-export const BUSINESS_PLANS_HREF_NEXT = "/pricing/business";
+/** Destino de todos los enlaces a los planes de negocio (bienvenida, landing, /pricing): la página /pricing/business (spec 4, E5). */
+export const BUSINESS_PLANS_HREF = "/pricing/business";

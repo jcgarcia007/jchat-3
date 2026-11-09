@@ -3,8 +3,8 @@
 /**
  * JChat 3.0 — /pricing/business. Business and Pro with a billing-period selector (monthly / 6 months / year) and a Custom card.
  *
- * Built and tested but NOT LINKED yet: BUSINESS_PLANS_HREF and the landing links still point at /pricing (they change together in spec 4,
- * see BUSINESS_PLANS_HREF_NEXT in lib/plans.ts). PUBLIC: anyone can read it; paying needs a session (the hook sends the guest to
+ * Published (spec 4, E5): BUSINESS_PLANS_HREF (lib/plans.ts) points here — the landing, the welcome page and the "business" block of /pricing all link
+ * to it, and it is in the sitemap and indexable. PUBLIC: anyone can read it; paying needs a session (the hook sends the guest to
  * /auth/login?next=/pricing/business). Checkout, promo codes and consent come from the shared hook (hooks/useBusinessCheckout.ts).
  *
  * Money: the amounts shown come from lib/businessPricing.ts (compared by a unit test with the Stripe prices of the phase-A script). The legal
