@@ -1142,7 +1142,7 @@ Files: /web/app/dashboard/chat/page.tsx
 
 Type: **UI Component** | Effort: **M** | Dependencies: 2.7
 
-Files: /web/components/dashboard/QRModal.tsx, /web/services/qr.ts
+Files: /web/services/qr.ts (the standalone QR modal component was removed in spec 5, M3; the QR flow lives in /web/app/dashboard/chat-rooms/page.tsx)
 
 250. Generate QR code SVG for each room URL: jchat.app/r/\[business-slug\]/\[room-slug\]
 
