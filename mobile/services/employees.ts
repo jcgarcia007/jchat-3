@@ -4,7 +4,7 @@
  * Pure async functions wrapping the shared Supabase client.
  * DB tables (001_initial_schema.sql + 004_stage2_schema.sql):
  *   employees(id, business_id, user_id, role, status, last_active_at, created_at)
- *   status ∈ 'pending' | 'accepted' | 'declined'
+ *   status ∈ 'pending' | 'accepted' | 'declined' | 'removed' (the app and the web dashboard add people already 'accepted'; the other values are legacy / set by the owner)
  *
  * Plan limit: max 10 employees on the default plan; Pro = unlimited.
  * TODO: read real plan from the DB/billing service; default cap is 10.
@@ -73,7 +73,7 @@ export type AddEmployeeResult =
 // ─── countEmployees ───────────────────────────────────────────────────────────
 
 /**
- * Return the number of accepted + pending employees for a business.
+ * Return the number of accepted + pending employees for a business (pending rows only exist from before M2).
  * Used both for plan-limit enforcement and dashboard display.
  */
 export async function countEmployees(businessId: string): Promise<number> {
@@ -92,12 +92,12 @@ export async function countEmployees(businessId: string): Promise<number> {
 // ─── addEmployee ──────────────────────────────────────────────────────────────
 
 /**
- * Add a user to the business staff roster by creating an employee record
- * with status='pending'. (There is no accept / decline step in the app: the invitation code was removed in M2;
- * the owner's web dashboard adds people already 'accepted'.) The database notifies the person (staff_added, migration 273).
+ * Add a user to the business staff roster by creating an employee record with status='accepted', exactly like the owner's web dashboard:
+ * the owner adds the person directly and there is no invitation to accept (the accept / decline code was removed in M2).
+ * The database notifies the person (staff_added, migration 273).
  *
  * Plan limit: returns { ok: false, reason: 'plan_limit' } if the business has
- * reached DEFAULT_PLAN_CAP active/pending employees.
+ * reached DEFAULT_PLAN_CAP employees.
  * TODO: read real plan from billing; default cap is DEFAULT_PLAN_CAP.
  *
  * Notification: the employees trigger (migration 273) creates the staff_added notice and its push; nothing to do here.
@@ -125,7 +125,7 @@ export async function addEmployee(
       business_id: businessId,
       user_id: userId,
       role,
-      status: 'pending',
+      status: 'accepted',
     })
     .select('*')
     .single();
