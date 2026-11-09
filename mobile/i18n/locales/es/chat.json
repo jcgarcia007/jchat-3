@@ -173,7 +173,7 @@
     "sendInviteA11y": "Agregar empleado",
     "inviteAs": "Agregar como {{role}}",
     "selectRole": "Selecciona un rol",
-    "errorPlanLimit": "Has alcanzado el número máximo de empleados de tu plan actual.",
+    "errorPlanLimit": "Has alcanzado el máximo de empleados de tu plan ({{limit}} por local).",
     "errorAlreadyExists": "Este usuario ya está en tu equipo.",
     "errorNotConfigured": "Servicio no disponible. Inténtalo más tarde.",
     "errorGeneric": "Algo salió mal. Inténtalo de nuevo.",

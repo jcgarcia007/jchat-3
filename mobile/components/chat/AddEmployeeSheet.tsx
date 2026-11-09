@@ -133,7 +133,7 @@ export function AddEmployeeSheet({
       } else {
         switch (result.reason) {
           case 'plan_limit':
-            setErrorMsg(t('employee.errorPlanLimit'));
+            setErrorMsg(t('employee.errorPlanLimit', { limit: result.limit }));
             break;
           case 'already_exists':
             setErrorMsg(t('employee.errorAlreadyExists'));
