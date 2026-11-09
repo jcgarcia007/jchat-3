@@ -15,7 +15,6 @@
  * // TODO(i18n)
  */
 
-import { AppError } from '../utils/errors';
 import { supabase, isSupabaseConfigured } from './supabase';
 
 // ─── Roles ────────────────────────────────────────────────────────────────────
@@ -93,15 +92,15 @@ export async function countEmployees(businessId: string): Promise<number> {
 // ─── addEmployee ──────────────────────────────────────────────────────────────
 
 /**
- * Invite a user to the business staff roster by creating an employee record
- * with status='pending'. The invited user then calls acceptInvite() to confirm.
+ * Add a user to the business staff roster by creating an employee record
+ * with status='pending'. (There is no accept / decline step in the app: the invitation code was removed in M2;
+ * the owner's web dashboard adds people already 'accepted'.) The database notifies the person (staff_added, migration 273).
  *
  * Plan limit: returns { ok: false, reason: 'plan_limit' } if the business has
  * reached DEFAULT_PLAN_CAP active/pending employees.
  * TODO: read real plan from billing; default cap is DEFAULT_PLAN_CAP.
  *
- * Push notification: stubbed — the invited user is not yet notified.
- * TODO(push): notify invited user that they have been added as employeeRole
+ * Notification: the employees trigger (migration 273) creates the staff_added notice and its push; nothing to do here.
  */
 export async function addEmployee(
   businessId: string,
@@ -140,57 +139,7 @@ export async function addEmployee(
     return { ok: false, reason: 'db_error' };
   }
 
-  // TODO(push): notify invited user they have been invited as `role` at businessId
-  // e.g. await sendPushNotification(userId, { title: 'You have a job offer!', body: `You've been invited as ${role}` });
-
   return { ok: true, employee: data as EmployeeRow };
-}
-
-// ─── acceptInvite ─────────────────────────────────────────────────────────────
-
-/**
- * The invited user accepts their invitation.
- * Sets status='accepted'. After this the business appears in getLinkedBusinesses().
- *
- * Note: staff section on the business profile is visible only to linked
- * employees (status='accepted') — enforce at the UI layer with getLinkedBusinesses().
- */
-export async function acceptInvite(employeeId: string): Promise<EmployeeRow> {
-  if (!isSupabaseConfigured) {
-    throw new AppError('NOT_CONFIGURED');
-  }
-
-  const { data, error } = await supabase
-    .from('employees')
-    .update({ status: 'accepted' })
-    .eq('id', employeeId)
-    .select('*')
-    .single();
-
-  if (error) throw error;
-  return data as EmployeeRow;
-}
-
-// ─── declineInvite ────────────────────────────────────────────────────────────
-
-/**
- * The invited user declines their invitation.
- * Sets status='declined'. The record is kept for audit purposes.
- */
-export async function declineInvite(employeeId: string): Promise<EmployeeRow> {
-  if (!isSupabaseConfigured) {
-    throw new AppError('NOT_CONFIGURED');
-  }
-
-  const { data, error } = await supabase
-    .from('employees')
-    .update({ status: 'declined' })
-    .eq('id', employeeId)
-    .select('*')
-    .single();
-
-  if (error) throw error;
-  return data as EmployeeRow;
 }
 
 // ─── listEmployees ────────────────────────────────────────────────────────────
