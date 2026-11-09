@@ -186,7 +186,10 @@ export const emailDedupeKey = (kind: SubscriptionEmailKind, subscriptionId: stri
 /** The bit of the Supabase client `enqueueOutboundEmail` uses (kept structural so a Deno test can fake it). */
 export interface OutboxClient {
   from(table: string): {
-    upsert(row: Record<string, unknown>, options: { onConflict: string; ignoreDuplicates: boolean }): PromiseLike<{ error: unknown }>;
+    upsert(
+      row: Record<string, unknown>,
+      options: { onConflict: string; ignoreDuplicates: boolean },
+    ): { select(columns: string): PromiseLike<{ data: unknown; error: unknown }> };
   };
 }
 
@@ -198,20 +201,65 @@ export interface QueuedEmail {
 }
 
 /**
- * Queues the e-mail: `insert … on conflict (dedupe_key) do nothing`, so a resent Stripe event (or a second event for the same subscription) never queues a
- * second e-mail. NEVER throws and never reports to the caller as a failure of the webhook: the subscription state is already saved; on any error it
- * logs a generic line (no addresses, no payload) and returns false.
+ * Queues the e-mail: `insert … on conflict (dedupe_key) do nothing returning id`, so a resent Stripe event (or a second event for the same subscription)
+ * queues nothing new. Returns the id of the row it INSERTED, or null when nothing was inserted (a duplicate, or an error): the caller triggers the
+ * immediate delivery only for a new row. NEVER throws and never reports a failure to the webhook: the subscription state is already saved; on any
+ * error it logs a generic line (no addresses, no payload).
  */
-export async function enqueueOutboundEmail(db: OutboxClient, email: QueuedEmail, error: (msg: string, detail?: unknown) => void = console.error): Promise<boolean> {
+export async function enqueueOutboundEmail(db: OutboxClient, email: QueuedEmail, error: (msg: string, detail?: unknown) => void = console.error): Promise<string | null> {
   try {
-    const { error: err } = await db.from("outbound_emails").upsert({ ...email }, { onConflict: "dedupe_key", ignoreDuplicates: true });
+    const { data, error: err } = await db.from("outbound_emails").upsert({ ...email }, { onConflict: "dedupe_key", ignoreDuplicates: true }).select("id");
     if (err) {
       error("[subscriptions] could not queue e-mail", { kind: email.kind, dedupe_key: email.dedupe_key, error: err });
+      return null;
+    }
+    const id = Array.isArray(data) ? (data[0] as { id?: unknown } | undefined)?.id : undefined;
+    return typeof id === "string" && id !== "" ? id : null;
+  } catch (e) {
+    error("[subscriptions] could not queue e-mail (exception)", { kind: email.kind, dedupe_key: email.dedupe_key, error: String(e) });
+    return null;
+  }
+}
+
+export interface DeliveryTrigger {
+  /** Full URL of the outbound-emails function. */
+  url: string;
+  /** PUSH_WEBHOOK_SECRET of the function's environment; undefined = not configured. */
+  secret: string | undefined;
+  fetchFn?: (input: string, init?: RequestInit) => Promise<Response>;
+  /** Upper bound of the wait (default 8 s): the webhook must not hang on the e-mail. */
+  timeoutMs?: number;
+}
+
+/**
+ * Asks the outbound-emails function to deliver ONE queued row right now (the same call the database makes: POST { ids: [id] } with the x-push-secret
+ * header), so the customer does not wait for the 10-minute retry cron. Best effort and NEVER throws: without the secret it only logs (the cron delivers
+ * the row later); a timeout, a network error or a non-2xx answer is logged and left to the cron too. Returns true only when the function answered 2xx.
+ * Nothing sensitive is logged (never the secret, the address or the response body).
+ */
+export async function triggerEmailDelivery(
+  id: string,
+  trigger: DeliveryTrigger,
+  log: { warn: (msg: string, detail?: unknown) => void } = console,
+): Promise<boolean> {
+  if (!trigger.secret) {
+    log.warn("[subscriptions] PUSH_WEBHOOK_SECRET is not set: no immediate delivery; the retry cron will deliver the e-mail");
+    return false;
+  }
+  try {
+    const res = await (trigger.fetchFn ?? fetch)(trigger.url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-push-secret": trigger.secret },
+      body: JSON.stringify({ ids: [id] }),
+      signal: AbortSignal.timeout(trigger.timeoutMs ?? 8000),
+    });
+    if (!res.ok) {
+      log.warn(`[subscriptions] immediate e-mail delivery answered HTTP ${res.status}; the retry cron will retry`);
       return false;
     }
     return true;
   } catch (e) {
-    error("[subscriptions] could not queue e-mail (exception)", { kind: email.kind, dedupe_key: email.dedupe_key, error: String(e) });
+    log.warn("[subscriptions] immediate e-mail delivery did not complete; the retry cron will retry", String(e));
     return false;
   }
 }

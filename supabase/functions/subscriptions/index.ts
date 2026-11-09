@@ -54,6 +54,8 @@ import {
   checkoutInterval,
   emailDedupeKey,
   enqueueOutboundEmail,
+  type QueuedEmail,
+  triggerEmailDelivery,
   intervalFromPrice,
   periodEndOf,
   planFromPrice,
@@ -575,6 +577,21 @@ async function accrueAffiliateCommission(
 
 // ── Action: webhook (writes users.*) ────────────────────────────────────────────
 
+/**
+ * Queues a customer e-mail and, if the row is new, asks outbound-emails to deliver it right away (instead of waiting for the 10-minute retry cron).
+ * NEVER throws and never delays the webhook beyond a short bound: any problem is logged and the cron delivers the row later.
+ */
+async function queueEmailNow(db: ReturnType<typeof getAdminClient>, email: QueuedEmail): Promise<void> {
+  const id = await enqueueOutboundEmail(db, email);
+  if (!id) return; // duplicate (a resent event) or a queue error: nothing new to deliver
+  const base = Deno.env.get("SUPABASE_URL");
+  if (!base) {
+    console.warn("[subscriptions] SUPABASE_URL is not set: no immediate delivery; the retry cron will deliver the e-mail");
+    return;
+  }
+  await triggerEmailDelivery(id, { url: `${base}/functions/v1/outbound-emails`, secret: Deno.env.get("PUSH_WEBHOOK_SECRET") });
+}
+
 async function handleWebhook(req: Request): Promise<Response> {
   const stripe = getStripe();
   const db = getAdminClient();
@@ -690,7 +707,7 @@ async function handleWebhook(req: Request): Promise<Response> {
       if (subForEmail && plan) {
         const payload = buildSubscriptionEmailPayload(subForEmail, price, plan, interval);
         if (payload) {
-          await enqueueOutboundEmail(db, {
+          await queueEmailNow(db, {
             kind: "subscription_started",
             user_id: userId,
             payload,
@@ -895,7 +912,7 @@ async function handleWebhook(req: Request): Promise<Response> {
       const payload = buildSubscriptionEmailPayload(sub, price, plan, intervalFromPrice(price));
       // Without a trial end there is nothing to announce (the template would not render): queue nothing.
       if (payload && payload.trial_end) {
-        await enqueueOutboundEmail(db, {
+        await queueEmailNow(db, {
           kind: "trial_will_end",
           user_id: userId,
           payload,

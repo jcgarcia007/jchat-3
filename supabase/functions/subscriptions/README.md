@@ -56,7 +56,7 @@ Helpers live in `billing.ts` (tests: `deno test supabase/functions/subscriptions
 
 ## E-mails (spec 4, E3)
 
-The webhook queues two customer e-mails in `public.outbound_emails` (migration 272); it never calls Resend. Delivery is `outbound-emails` (right after a database-triggered call, or its retry cron every 10 minutes: rows are picked once they are 10 minutes old, so expect the e-mail within roughly 10-20 minutes).
+The webhook queues two customer e-mails in `public.outbound_emails` (migration 272); it never calls Resend. Right after queuing a NEW row it asks the `outbound-emails` function to deliver it now (`POST { ids: [id] }` with the `x-push-secret` header taken from `PUSH_WEBHOOK_SECRET` in this function's environment; the wait is bounded to 8 s), so the e-mail arrives within seconds. If `PUSH_WEBHOOK_SECRET` is not set, or the call fails or times out, it only logs and the retry cron (every 10 minutes, rows older than 10 minutes) delivers it later (10-20 minutes). A resent Stripe event queues nothing and triggers nothing (the upsert returns no row for a duplicate). Nothing here can fail the webhook.
 
 | Event | `kind` | `dedupe_key` | When |
 |---|---|---|---|

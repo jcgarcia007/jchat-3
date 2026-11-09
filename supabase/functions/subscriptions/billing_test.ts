@@ -5,6 +5,7 @@ import {
   checkoutInterval,
   emailDedupeKey,
   enqueueOutboundEmail,
+  triggerEmailDelivery,
   intervalFromPrice,
   periodEndOf,
   planFromPrice,
@@ -202,9 +203,17 @@ Deno.test("emailDedupeKey: one key per kind and subscription", () => {
   assert(emailDedupeKey("subscription_started", "sub_1") !== emailDedupeKey("trial_will_end", "sub_1"));
 });
 
-function fakeOutbox(result: () => Promise<{ error: unknown }> | { error: unknown }) {
-  const calls: { table: string; row: Record<string, unknown>; options: { onConflict: string; ignoreDuplicates: boolean } }[] = [];
-  const db = { from: (table: string) => ({ upsert: (row: Record<string, unknown>, options: { onConflict: string; ignoreDuplicates: boolean }) => { calls.push({ table, row, options }); return Promise.resolve(result()); } }) };
+function fakeOutbox(result: () => Promise<{ data: unknown; error: unknown }> | { data: unknown; error: unknown }) {
+  const calls: { table: string; row: Record<string, unknown>; options: { onConflict: string; ignoreDuplicates: boolean }; columns?: string }[] = [];
+  const db = {
+    from: (table: string) => ({
+      upsert: (row: Record<string, unknown>, options: { onConflict: string; ignoreDuplicates: boolean }) => {
+        const call: (typeof calls)[number] = { table, row, options };
+        calls.push(call);
+        return { select: (columns: string) => { call.columns = columns; return Promise.resolve(result()); } };
+      },
+    }),
+  };
   return { db, calls };
 }
 
@@ -215,30 +224,92 @@ const queued = (): QueuedEmail => ({
   dedupe_key: "subscription_started:sub_TEST1",
 });
 
-Deno.test("enqueueOutboundEmail: upserts into outbound_emails on dedupe_key with ignoreDuplicates (a resent event queues nothing new)", async () => {
-  const f = fakeOutbox(() => ({ error: null }));
-  assertEquals(await enqueueOutboundEmail(f.db, queued(), () => {}), true);
+Deno.test("enqueueOutboundEmail: upserts into outbound_emails on dedupe_key with ignoreDuplicates and returns the id of the NEW row", async () => {
+  const f = fakeOutbox(() => ({ data: [{ id: "11111111-1111-4111-8111-111111111111" }], error: null }));
+  assertEquals(await enqueueOutboundEmail(f.db, queued(), () => {}), "11111111-1111-4111-8111-111111111111");
   assertEquals(f.calls.length, 1);
   assertEquals(f.calls[0].table, "outbound_emails");
   assertEquals(f.calls[0].options, { onConflict: "dedupe_key", ignoreDuplicates: true });
+  assertEquals(f.calls[0].columns, "id");
   assertEquals(f.calls[0].row.kind, "subscription_started");
   assertEquals(f.calls[0].row.user_id, "00000000-0000-4000-8000-000000000001");
   assertEquals(f.calls[0].row.dedupe_key, "subscription_started:sub_TEST1");
   assertEquals((f.calls[0].row.payload as { plan: string }).plan, "pro");
 });
 
-Deno.test("enqueueOutboundEmail never throws: a queue error or exception is logged (generic, no payload) and reported as false", async () => {
+Deno.test("enqueueOutboundEmail: a duplicate (nothing inserted → no row comes back) returns null, so no delivery is triggered twice", async () => {
+  for (const data of [[], null, undefined, [{}], [{ id: "" }], "nope"]) {
+    assertEquals(await enqueueOutboundEmail(fakeOutbox(() => ({ data, error: null })).db, queued(), () => {}), null);
+  }
+});
+
+Deno.test("enqueueOutboundEmail never throws: a queue error or exception is logged (generic, no payload) and returns null", async () => {
   const logs: string[] = [];
   const log = (m: string, d?: unknown) => logs.push(m + JSON.stringify(d ?? ""));
-  assertEquals(await enqueueOutboundEmail(fakeOutbox(() => ({ error: { code: "23514", message: "boom" } })).db, queued(), log), false);
+  assertEquals(await enqueueOutboundEmail(fakeOutbox(() => ({ data: null, error: { code: "23514", message: "boom" } })).db, queued(), log), null);
   const throwing = { from: () => ({ upsert: () => { throw new Error("db down"); } }) };
-  assertEquals(await enqueueOutboundEmail(throwing, queued(), log), false);
-  const rejecting = { from: () => ({ upsert: () => Promise.reject(new Error("net")) }) };
-  assertEquals(await enqueueOutboundEmail(rejecting, queued(), log), false);
+  assertEquals(await enqueueOutboundEmail(throwing, queued(), log), null);
+  const rejecting = { from: () => ({ upsert: () => ({ select: () => Promise.reject(new Error("net")) }) }) };
+  assertEquals(await enqueueOutboundEmail(rejecting, queued(), log), null);
   assertEquals(logs.length, 3);
   for (const line of logs) {
     assertStringIncludes(line, "could not queue e-mail");
     assertFalse(line.includes("amount_cents")); // the payload is never logged
     assertFalse(line.includes("@"));
+  }
+});
+
+// ── E3.1: immediate delivery ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+const ROW_ID = "11111111-1111-4111-8111-111111111111";
+const FN_URL = "https://abc.supabase.co/functions/v1/outbound-emails";
+
+function fakeFetch(status = 200) {
+  const calls: { url: string; init: RequestInit }[] = [];
+  const fetchFn = (url: string, init?: RequestInit) => { calls.push({ url, init: init ?? {} }); return Promise.resolve(new Response("{}", { status })); };
+  return { fetchFn, calls };
+}
+const warnings = () => { const w: string[] = []; return { w, log: { warn: (m: string, d?: unknown) => { w.push(m + (d ? " " + String(d) : "")); } } }; };
+
+Deno.test("triggerEmailDelivery: POSTs { ids: [id] } with the x-push-secret header to the outbound-emails function", async () => {
+  const f = fakeFetch(200);
+  const { log } = warnings();
+  assertEquals(await triggerEmailDelivery(ROW_ID, { url: FN_URL, secret: "s3cret", fetchFn: f.fetchFn }, log), true);
+  assertEquals(f.calls.length, 1);
+  assertEquals(f.calls[0].url, FN_URL);
+  assertEquals(f.calls[0].init.method, "POST");
+  assertEquals(JSON.parse(String(f.calls[0].init.body)), { ids: [ROW_ID] });
+  const headers = new Headers(f.calls[0].init.headers);
+  assertEquals(headers.get("x-push-secret"), "s3cret");
+  assertEquals(headers.get("content-type"), "application/json");
+  assert(f.calls[0].init.signal instanceof AbortSignal); // bounded wait
+});
+
+Deno.test("triggerEmailDelivery: no PUSH_WEBHOOK_SECRET → only a log (the cron delivers), nothing is fetched", async () => {
+  for (const secret of [undefined, ""]) {
+    const f = fakeFetch(200);
+    const { w, log } = warnings();
+    assertEquals(await triggerEmailDelivery(ROW_ID, { url: FN_URL, secret, fetchFn: f.fetchFn }, log), false);
+    assertEquals(f.calls.length, 0);
+    assertEquals(w.length, 1);
+    assertStringIncludes(w[0], "PUSH_WEBHOOK_SECRET is not set");
+    assertStringIncludes(w[0], "retry cron");
+  }
+});
+
+Deno.test("triggerEmailDelivery never throws: non-2xx, network error, timeout and a synchronous throw only log and return false", async () => {
+  const { w, log } = warnings();
+  assertEquals(await triggerEmailDelivery(ROW_ID, { url: FN_URL, secret: "s3cret", fetchFn: fakeFetch(503).fetchFn }, log), false);
+  assertEquals(await triggerEmailDelivery(ROW_ID, { url: FN_URL, secret: "s3cret", fetchFn: () => Promise.reject(new Error("network")) }, log), false);
+  assertEquals(await triggerEmailDelivery(ROW_ID, { url: FN_URL, secret: "s3cret", fetchFn: () => { throw new Error("sync"); } }, log), false);
+  const slow = (_u: string, init?: RequestInit) => new Promise<Response>((_res, rej) => init?.signal?.addEventListener("abort", () => rej(new DOMException("timeout", "TimeoutError"))));
+  const started = Date.now();
+  assertEquals(await triggerEmailDelivery(ROW_ID, { url: FN_URL, secret: "s3cret", fetchFn: slow, timeoutMs: 40 }, log), false);
+  assert(Date.now() - started < 2000, "the wait is bounded");
+  assertEquals(w.length, 4);
+  assertStringIncludes(w[0], "HTTP 503");
+  for (const line of w) {
+    assertFalse(line.includes("s3cret")); // the secret is never logged
+    assertStringIncludes(line, "retry cron");
   }
 });
