@@ -8,8 +8,8 @@
  * UX flow:
  *   1. Owner long-presses a user in chat → parent passes targetUserId + businessId.
  *   2. This sheet opens (visible=true) — the role picker shows 6 available roles.
- *   3. Owner picks a role and taps "Send Invite".
- *   4a. Success → addEmployee() creates a pending record + stubs a push notification.
+ *   3. Owner picks a role and taps "Add as {role}".
+ *   4a. Success → addEmployee() creates an accepted record; the database notifies the person (staff_added).
  *        onAdded() is called; the sheet closes.
  *   4b. Plan limit hit → inline error shown (no dismiss).
  *   4c. Already exists → inline error.
@@ -133,7 +133,7 @@ export function AddEmployeeSheet({
       } else {
         switch (result.reason) {
           case 'plan_limit':
-            setErrorMsg(t('employee.errorPlanLimit'));
+            setErrorMsg(t('employee.errorPlanLimit', { limit: result.limit }));
             break;
           case 'already_exists':
             setErrorMsg(t('employee.errorAlreadyExists'));

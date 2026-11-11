@@ -20,6 +20,7 @@
 import { createAdminClient } from "../_shared/supabaseAdmin.ts";
 import { safeEqual } from "../_shared/safeEqual.ts";
 import { formatWhen } from "../_shared/ownerCloseEmails.ts";
+import { staffPushContent } from "../_shared/staffPush.ts";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 const EXPO_TIMEOUT_MS = 8_000;
@@ -48,6 +49,8 @@ const PUSH_TYPES = [
   "admin_alert",
   "business_closed",
   "reservation_cancelled",
+  "staff_added",
+  "staff_removed",
 ] as const;
 type PushType = typeof PUSH_TYPES[number];
 type Language = "en" | "es";
@@ -284,6 +287,10 @@ function localizedContent(
         data: { type, payload: { business_id: payload.business_id, reservation_id: payload.reservation_id } },
       };
     }
+    case "staff_added":
+    case "staff_removed":
+      // M2 (migration 273): the person was added to / removed from a venue's staff. Transactional: always shown.
+      return staffPushContent(type, payload, english);
     case "admin_alert": {
       // Sent to platform admins by photo_moderation_alert() (migration 254): photos waiting for moderation more than 10 minutes.
       const count = typeof payload.count === "number" ? payload.count : Number(payload.count) || 0;

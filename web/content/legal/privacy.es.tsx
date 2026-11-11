@@ -12,7 +12,7 @@ export function PrivacyES() {
         Política de privacidad
       </h1>
       <p style={{ color: "var(--gray-500)", fontSize: "14px", marginTop: "0", marginBottom: "32px" }}>
-        Última actualización: 7 de noviembre de 2026
+        Última actualización: 8 de noviembre de 2026
       </p>
 
       <p style={P}>
@@ -162,7 +162,7 @@ export function PrivacyES() {
       <ul style={UL}>
         <li><strong>Pedidos y pagos:</strong> 7 años, sin tus datos personales, por obligaciones fiscales y contables.</li>
         <li><strong>Registros de seguridad:</strong> 90 días. El registro de acciones de moderación y de suspensiones de cuentas: 1 año.</li>
-        <li><strong>Reportes cerrados</strong> (con la evidencia que llevan): 1 año desde que se resuelven. Reportes de seguridad infantil o enviados a las autoridades (NCMEC): 2 años desde que se resuelven. Los reportes abiertos se conservan hasta que se resuelven.</li>
+        <li><strong>Reportes cerrados</strong> (con la evidencia que llevan, incluidas copias del contenido reportado): 1 año desde que se resuelven. Reportes de seguridad infantil o enviados a las autoridades (NCMEC): 2 años desde que se resuelven. Los reportes abiertos se conservan hasta que se resuelven.</li>
         <li><strong>Registros de moderación</strong> de chats y juegos de los locales, y <strong>registros de reservas de mesa</strong>: 1 año.</li>
         <li><strong>Registros del escaneo de fotos</strong> y <strong>registros de entrega de correos</strong>: 90 días (30 días los correos entregados).</li>
         <li><strong>Regalos</strong> que enviaste o recibiste: se conservan sin tu identidad.</li>

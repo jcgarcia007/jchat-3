@@ -4,10 +4,10 @@
  * Pure async functions wrapping the shared Supabase client.
  * DB tables (001_initial_schema.sql + 004_stage2_schema.sql):
  *   employees(id, business_id, user_id, role, status, last_active_at, created_at)
- *   status ∈ 'pending' | 'accepted' | 'declined'
+ *   status ∈ 'pending' | 'accepted' | 'declined' | 'removed' (the app and the web dashboard add people already 'accepted'; the other values are legacy / set by the owner)
  *
- * Plan limit: max 10 employees on the default plan; Pro = unlimited.
- * TODO: read real plan from the DB/billing service; default cap is 10.
+ * Plan limit PER VENUE, from the OWNER's plan (users.plan): 10 on Business, 50 on Pro — the same numbers as the database trigger
+ * enforce_employee_plan_limit (D-42), kept in utils/planLimits.ts. The trigger is the authority; the app only answers before the insert.
  *
  * All types are co-located here.
  * Every function guards against unconfigured Supabase with isSupabaseConfigured.
@@ -15,8 +15,8 @@
  * // TODO(i18n)
  */
 
-import { AppError } from '../utils/errors';
 import { supabase, isSupabaseConfigured } from './supabase';
+import { employeeLimitFor } from '../utils/planLimits';
 
 // ─── Roles ────────────────────────────────────────────────────────────────────
 
@@ -42,11 +42,6 @@ export const EMPLOYEE_ROLES: EmployeeRole[] = [
 
 export type EmployeeStatus = 'pending' | 'accepted' | 'declined';
 
-// ─── Plan limits ──────────────────────────────────────────────────────────────
-
-/** Default max employees for non-Pro plans. Pro = unlimited (null). */
-const DEFAULT_PLAN_CAP = 10;
-
 // ─── Co-located types ─────────────────────────────────────────────────────────
 
 export interface EmployeeRow {
@@ -69,13 +64,15 @@ export interface EmployeeWithProfile extends EmployeeRow {
 /** Result returned by addEmployee. */
 export type AddEmployeeResult =
   | { ok: true; employee: EmployeeRow }
-  | { ok: false; reason: 'plan_limit' | 'already_exists' | 'not_configured' | 'db_error' };
+  /** `limit` is the venue's employee cap for the owner's plan (10 Business / 50 Pro), for the message. */
+  | { ok: false; reason: 'plan_limit'; limit: number }
+  | { ok: false; reason: 'already_exists' | 'not_configured' | 'db_error' };
 
 // ─── countEmployees ───────────────────────────────────────────────────────────
 
 /**
- * Return the number of accepted + pending employees for a business.
- * Used both for plan-limit enforcement and dashboard display.
+ * Return the number of employee rows of a business, whatever their status. That is what the database trigger counts against the plan limit
+ * (accepted, pending from before M2, declined and removed rows all take a slot), so the app's answer matches the trigger's.
  */
 export async function countEmployees(businessId: string): Promise<number> {
   if (!isSupabaseConfigured) return 0;
@@ -83,25 +80,40 @@ export async function countEmployees(businessId: string): Promise<number> {
   const { count, error } = await supabase
     .from('employees')
     .select('id', { count: 'exact', head: true })
-    .eq('business_id', businessId)
-    .in('status', ['pending', 'accepted']);
+    .eq('business_id', businessId);
 
   if (error) throw error;
   return count ?? 0;
 }
 
+/**
+ * The signed-in user's `users.plan`, or undefined when it could not be read (then the app skips its own pre-check and lets the trigger decide).
+ * Only the venue's OWNER adds staff in the app, so the signed-in user's plan is the owner's plan.
+ */
+async function readOwnPlan(): Promise<string | null | undefined> {
+  try {
+    const { data: auth } = await supabase.auth.getUser();
+    const uid = auth?.user?.id;
+    if (!uid) return undefined;
+    const { data, error } = await supabase.from('users').select('plan').eq('id', uid).maybeSingle();
+    if (error) return undefined;
+    return (data as { plan?: string | null } | null)?.plan ?? null;
+  } catch {
+    return undefined;
+  }
+}
+
 // ─── addEmployee ──────────────────────────────────────────────────────────────
 
 /**
- * Invite a user to the business staff roster by creating an employee record
- * with status='pending'. The invited user then calls acceptInvite() to confirm.
+ * Add a user to the business staff roster by creating an employee record with status='accepted', exactly like the owner's web dashboard:
+ * the owner adds the person directly and there is no invitation to accept (the accept / decline code was removed in M2).
+ * The database notifies the person (staff_added, migration 273).
  *
- * Plan limit: returns { ok: false, reason: 'plan_limit' } if the business has
- * reached DEFAULT_PLAN_CAP active/pending employees.
- * TODO: read real plan from billing; default cap is DEFAULT_PLAN_CAP.
+ * Plan limit: returns { ok: false, reason: 'plan_limit', limit } if the venue already has the employees its owner's plan allows
+ * (10 Business / 50 Pro); the same answer comes back if the database trigger refuses the insert (check_violation).
  *
- * Push notification: stubbed — the invited user is not yet notified.
- * TODO(push): notify invited user that they have been added as employeeRole
+ * Notification: the employees trigger (migration 273) creates the staff_added notice and its push; nothing to do here.
  */
 export async function addEmployee(
   businessId: string,
@@ -113,10 +125,11 @@ export async function addEmployee(
   }
 
   // ── Plan limit check ───────────────────────────────────────────────────────
-  // TODO: read real plan; default cap is DEFAULT_PLAN_CAP. Pro = unlimited.
-  const current = await countEmployees(businessId);
-  if (current >= DEFAULT_PLAN_CAP) {
-    return { ok: false, reason: 'plan_limit' };
+  // The cap comes from the owner's plan. If the plan cannot be read we skip this pre-check and the trigger decides (never guess a lower cap).
+  const plan = await readOwnPlan();
+  const limit = employeeLimitFor(plan);
+  if (plan !== undefined && (await countEmployees(businessId)) >= limit) {
+    return { ok: false, reason: 'plan_limit', limit };
   }
 
   // ── Insert ─────────────────────────────────────────────────────────────────
@@ -126,7 +139,7 @@ export async function addEmployee(
       business_id: businessId,
       user_id: userId,
       role,
-      status: 'pending',
+      status: 'accepted',
     })
     .select('*')
     .single();
@@ -136,61 +149,15 @@ export async function addEmployee(
     if (error.code === '23505') {
       return { ok: false, reason: 'already_exists' };
     }
+    // The database refused it: the venue is at the limit of the owner's plan (trigger enforce_employee_plan_limit).
+    if (error.code === '23514') {
+      return { ok: false, reason: 'plan_limit', limit };
+    }
     console.warn('[employees] addEmployee failed:', error.message);
     return { ok: false, reason: 'db_error' };
   }
 
-  // TODO(push): notify invited user they have been invited as `role` at businessId
-  // e.g. await sendPushNotification(userId, { title: 'You have a job offer!', body: `You've been invited as ${role}` });
-
   return { ok: true, employee: data as EmployeeRow };
-}
-
-// ─── acceptInvite ─────────────────────────────────────────────────────────────
-
-/**
- * The invited user accepts their invitation.
- * Sets status='accepted'. After this the business appears in getLinkedBusinesses().
- *
- * Note: staff section on the business profile is visible only to linked
- * employees (status='accepted') — enforce at the UI layer with getLinkedBusinesses().
- */
-export async function acceptInvite(employeeId: string): Promise<EmployeeRow> {
-  if (!isSupabaseConfigured) {
-    throw new AppError('NOT_CONFIGURED');
-  }
-
-  const { data, error } = await supabase
-    .from('employees')
-    .update({ status: 'accepted' })
-    .eq('id', employeeId)
-    .select('*')
-    .single();
-
-  if (error) throw error;
-  return data as EmployeeRow;
-}
-
-// ─── declineInvite ────────────────────────────────────────────────────────────
-
-/**
- * The invited user declines their invitation.
- * Sets status='declined'. The record is kept for audit purposes.
- */
-export async function declineInvite(employeeId: string): Promise<EmployeeRow> {
-  if (!isSupabaseConfigured) {
-    throw new AppError('NOT_CONFIGURED');
-  }
-
-  const { data, error } = await supabase
-    .from('employees')
-    .update({ status: 'declined' })
-    .eq('id', employeeId)
-    .select('*')
-    .single();
-
-  if (error) throw error;
-  return data as EmployeeRow;
 }
 
 // ─── listEmployees ────────────────────────────────────────────────────────────

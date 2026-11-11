@@ -37,6 +37,7 @@ import {
 } from "@tabler/icons-react";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
+import { requestsDisplay, type RequestKey } from "@/lib/reservationRequests";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
 import type { TFn } from "@/lib/tabSemantics";
 
@@ -441,8 +442,9 @@ function ReservationForm({
   const [eventType, setEventType] = useState(
     prefill ? (reservation.event_type ?? "") : ""
   );
+  // chips the customer picked in the app are stored as keys: the form shows them as words
   const [specialRequests, setSpecialRequests] = useState(
-    prefill ? (reservation.special_requests ?? "") : ""
+    prefill ? (requestsDisplay(reservation.special_requests, (k: RequestKey) => t(`resRequest_${k}`)) ?? "") : ""
   );
 
   const [submitting, setSubmitting] = useState(false);
@@ -1340,7 +1342,7 @@ function ReservationRow({
                 fontStyle: "italic",
               }}
             >
-              {r.special_requests}
+              {requestsDisplay(r.special_requests, (k: RequestKey) => t(`resRequest_${k}`))}
             </span>
           </div>
         )}

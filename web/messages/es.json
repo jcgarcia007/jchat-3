@@ -282,19 +282,8 @@
     "switchingState": "Cambiando…",
     "currentTimeAria": "Hora actual: {time}",
     "userAvatarAria": "Avatar del usuario",
-    "qrSubRoomNote": "Al escanear entras a la Sala Principal + [{name}] a la vez",
-    "qrGenerating": "Generando…",
-    "qrDownloadLabel": "Descargar",
-    "qrShareLabel": "Compartir",
-    "qrCopyLink": "Copiar enlace",
     "qrCopied": "¡Copiado!",
     "qrPrintLabel": "Imprimir",
-    "qrAriaClose": "Cerrar modal de QR",
-    "qrAriaPreview": "Vista previa del código QR",
-    "qrAriaCode": "Código QR de {name}",
-    "qrLogoAlt": "Logo de {slug}",
-    "qrShareTitle": "Únete a {name} en JChat",
-    "qrPrintPageTitle": "{name} — Código QR de JChat",
     "weekdays": [
       "Lun",
       "Mar",
@@ -2578,7 +2567,16 @@
     "configurationHoursOvernight": "Cierra al día siguiente",
     "configurationSaveNoPermission": "No tienes permiso para guardar este cambio. Si crees que es un error, contáctanos.",
     "configurationSaveOffline": "Sin conexión. Reintenta.",
-    "configurationSaveFailed": "No pudimos guardar los cambios. Inténtalo de nuevo."
+    "configurationSaveFailed": "No pudimos guardar los cambios. Inténtalo de nuevo.",
+    "resRequest_birthday": "Cumpleaños",
+    "resRequest_anniversary": "Aniversario",
+    "resRequest_terrace": "Terraza",
+    "resRequest_indoor": "Interior",
+    "resRequest_high_chair": "Silla alta para bebé",
+    "resRequest_accessibility": "Accesibilidad",
+    "resRequest_allergies": "Alergias (avisará al llegar)",
+    "resRequest_quiet": "Zona tranquila",
+    "resRequest_near_tv": "Cerca de la pantalla / TV"
   },
   "superAdmin": {
     "shell": {
@@ -4112,7 +4110,17 @@
       "content_removed": "Contenido retirado",
       "user_suspended": "Usuario suspendido",
       "escalated_ncmec": "Escalado al NCMEC"
-    }
+    },
+    "viewEvidence": "Ver evidencia ({n})",
+    "evidenceTitle": "Evidencia guardada",
+    "evidenceNote": "Copias de los archivos reportados, guardadas por este reporte. Los enlaces caducan en 10 minutos y cada vista queda registrada.",
+    "evidenceLoading": "Cargando evidencia…",
+    "evidenceError": "No se pudo cargar la evidencia. Inténtalo de nuevo en un momento.",
+    "evidenceForbidden": "Solo los administradores de la plataforma pueden ver la evidencia.",
+    "evidenceEmpty": "Este reporte no tiene archivos de evidencia.",
+    "evidenceImageAlt": "Imagen de evidencia {n}",
+    "evidenceAudioLabel": "Audio de evidencia {n}",
+    "evidenceFile": "Archivo de evidencia {n}"
   },
   "accountDelete": {
     "title": "Eliminar tu cuenta",

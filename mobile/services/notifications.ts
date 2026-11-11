@@ -35,6 +35,8 @@ import {
   IconMessageCircle,
   IconReceipt,
   IconStar,
+  IconUserCheck,
+  IconUserMinus,
   IconUserPlus,
   type Icon as TablerIcon,
 } from '@tabler/icons-react-native';
@@ -66,7 +68,9 @@ export type NotificationType =
   | 'match_photo_approved'
   | 'match_photo_rejected'
   | 'business_closed'
-  | 'reservation_cancelled';
+  | 'reservation_cancelled'
+  | 'staff_added'
+  | 'staff_removed';
 
 export const MATCH_NOTIFICATION_TYPES: readonly NotificationType[] = [
   'match_like',
@@ -96,6 +100,9 @@ export function isMatchPhotoNotificationType(value: unknown): value is Notificat
 /** D4 (migration 265): a venue closed because its owner deleted the account. To its employees / to customers with a future reservation. Transactional. */
 export const VENUE_CLOSED_NOTIFICATION_TYPES: readonly NotificationType[] = ['business_closed', 'reservation_cancelled'];
 
+/** M2 (migration 273): the person was added to / removed from a venue's staff. Transactional. A tap on "added" opens the venue's chat when the payload has its room. */
+export const STAFF_NOTIFICATION_TYPES: readonly NotificationType[] = ['staff_added', 'staff_removed'];
+
 export const SOCIAL_NOTIFICATION_TYPES: readonly NotificationType[] = [
   'dm',
   'follower',
@@ -106,6 +113,7 @@ export const SOCIAL_NOTIFICATION_TYPES: readonly NotificationType[] = [
   ...ORDER_NOTIFICATION_TYPES,
   ...MATCH_PHOTO_NOTIFICATION_TYPES,
   ...VENUE_CLOSED_NOTIFICATION_TYPES,
+  ...STAFF_NOTIFICATION_TYPES,
 ];
 
 export function isSocialNotificationType(value: unknown): value is NotificationType {
@@ -157,7 +165,8 @@ export type NotificationRoute =
   | { screen: 'MatchHome'; params: { businessId: string } }
   | { screen: 'MatchMyProfile'; params: { focus: 'result' } }
   | { screen: 'OrderTracking'; params: { orderId: string; roomId?: string } }
-  | { screen: 'MyOrders' };
+  | { screen: 'MyOrders' }
+  | { screen: 'ChatRoom'; params: { id: string } };
 
 // ── Push permission & token registration ──────────────────────────────────────
 
@@ -316,6 +325,12 @@ export function getNotificationStyle(type: NotificationType): NotificationStyle 
 
     case 'reservation_cancelled':
       return { icon: IconCalendarX, accent: palette.warning };
+
+    case 'staff_added':
+      return { icon: IconUserCheck, accent: palette.brand };
+
+    case 'staff_removed':
+      return { icon: IconUserMinus, accent: palette.warning };
 
     case 'gift_offer':
     case 'gift_response':
@@ -482,6 +497,13 @@ export function routeForNotification(
       };
 
     case 'work_alert':
+      return null;
+
+    case 'staff_added':
+      // M2: opens the venue's chat when the notice carries its room; otherwise nothing (the list shows it, a tap does nothing).
+      return typeof payload?.room_id === 'string' && payload.room_id ? { screen: 'ChatRoom', params: { id: payload.room_id } } : null;
+
+    case 'staff_removed':
       return null;
 
     case 'match_like':

@@ -55,6 +55,9 @@
       "matchPhotoRejected": "Your photo doesn't meet the rules. Upload another one to appear.",
       "businessClosed": "{{business}} has closed. You no longer have access to the point of sale.",
       "reservationCancelled": "{{business}} has closed and your reservation for {{date}} at {{time}} was cancelled.",
+      "staffAdded": "{{business}} added you as {{role}}",
+      "staffAddedNoRole": "{{business}} added you to the staff",
+      "staffRemoved": "You're no longer on the staff of {{business}}",
       "reservationCancelledNoDate": "{{business}} has closed and your reservation was cancelled."
     },
     "pinnedOrderTitle": "Order #{{n}} · {{status}}",

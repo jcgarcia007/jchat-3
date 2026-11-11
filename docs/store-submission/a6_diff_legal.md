@@ -64,3 +64,18 @@ Retención con borrado automático (`retention_purge`, migración 267), evidenci
 | Super-admin › Reportes | "Deleted account" / "Cuenta eliminada" cuando el reportante o el reportado borró su cuenta; sección "Remove an e-mail block" / "Quitar bloqueo de correo" |
 
 Fecha de "Last updated" de /privacy y de las páginas tocadas: 7 de noviembre de 2026 (hoy, ya puesta en a6).
+
+---
+
+# D7 — filas añadidas (2026-11-08, rama `fix/d7-report-evidence`)
+## /privacy § Conservación (`web/content/legal/privacy.{en,es}.tsx`)
+| Línea | Antes | Después |
+|---|---|---|
+| Fecha | Last updated: November 7, 2026 | **November 8, 2026** (es: 8 de noviembre de 2026) |
+| Reportes cerrados | "**Closed reports** (with the evidence attached to them): 1 year after they are resolved…" / "**Reportes cerrados** (con la evidencia que llevan): 1 año…" | "**Closed reports** (with the evidence attached to them, **including copies of the reported content**): 1 year after they are resolved…" / "**Reportes cerrados** (con la evidencia que llevan, **incluidas copias del contenido reportado**): 1 año…" (los plazos no cambian: 1 año; 2 años seguridad infantil / NCMEC) |
+
+## Panel super-admin › Reportes (no legal, inventario)
+| Dónde | Texto (EN / ES) |
+|---|---|
+| Botón en cada reporte con copias | "View evidence ({n})" / "Ver evidencia ({n})" |
+| Panel de evidencia | "Saved evidence" / "Evidencia guardada"; "Copies of the reported files, kept because of this report. The links expire in 10 minutes and every view is recorded." / "Copias de los archivos reportados, guardadas por este reporte. Los enlaces caducan en 10 minutos y cada vista queda registrada." |

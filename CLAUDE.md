@@ -322,7 +322,7 @@ Task 2.4  ✅ si: mobile/screens/chat/ChatRoomScreen.tsx existe
 Task 2.5  ✅ si: mobile/components/chat/PinMessageSheet.tsx + PinnedBanner.tsx existen
 Task 2.6  ✅ si: mobile/components/chat/CreateOfferSheet.tsx + OfferCard.tsx existen
 Task 2.7  ✅ si: web/app/dashboard/chat/page.tsx existe
-Task 2.8  ✅ si: web/components/dashboard/QRModal.tsx existe
+Task 2.8  ✅ si: web/services/qr.ts + web/components/dashboard/TableQrModal.tsx existen
 Task 2.9  ✅ si: mobile/components/chat/AddEmployeeSheet.tsx + mobile/services/employees.ts existen
 Task 2.10 ✅ si: mobile/components/chat/UserActionSheet.tsx existe
 Task 2.11 ✅ si: mobile/components/chat/IncognitoToggle.tsx existe

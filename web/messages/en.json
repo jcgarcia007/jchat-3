@@ -282,19 +282,8 @@
     "switchingState": "Switching…",
     "currentTimeAria": "Current time: {time}",
     "userAvatarAria": "User avatar",
-    "qrSubRoomNote": "Scanning enters Main Room + [{name}] simultaneously",
-    "qrGenerating": "Generating…",
-    "qrDownloadLabel": "Download",
-    "qrShareLabel": "Share",
-    "qrCopyLink": "Copy link",
     "qrCopied": "Copied!",
     "qrPrintLabel": "Print",
-    "qrAriaClose": "Close QR modal",
-    "qrAriaPreview": "QR code preview",
-    "qrAriaCode": "QR code for {name}",
-    "qrLogoAlt": "{slug} logo",
-    "qrShareTitle": "Join {name} on JChat",
-    "qrPrintPageTitle": "{name} — JChat QR Code",
     "weekdays": [
       "Mon",
       "Tue",
@@ -2578,7 +2567,16 @@
     "configurationHoursOvernight": "Closes the next day",
     "configurationSaveNoPermission": "You don't have permission to save this change. If you think this is a mistake, contact us.",
     "configurationSaveOffline": "No connection. Try again.",
-    "configurationSaveFailed": "We couldn't save your changes. Try again."
+    "configurationSaveFailed": "We couldn't save your changes. Try again.",
+    "resRequest_birthday": "Birthday",
+    "resRequest_anniversary": "Anniversary",
+    "resRequest_terrace": "Terrace",
+    "resRequest_indoor": "Indoors",
+    "resRequest_high_chair": "High chair for a baby",
+    "resRequest_accessibility": "Accessibility",
+    "resRequest_allergies": "Allergies (tell the venue on arrival)",
+    "resRequest_quiet": "Quiet area",
+    "resRequest_near_tv": "Near the screen / TV"
   },
   "superAdmin": {
     "shell": {
@@ -4112,7 +4110,17 @@
       "content_removed": "Content removed",
       "user_suspended": "User suspended",
       "escalated_ncmec": "Escalated to NCMEC"
-    }
+    },
+    "viewEvidence": "View evidence ({n})",
+    "evidenceTitle": "Saved evidence",
+    "evidenceNote": "Copies of the reported files, kept because of this report. The links expire in 10 minutes and every view is recorded.",
+    "evidenceLoading": "Loading evidence…",
+    "evidenceError": "Couldn't load the evidence. Try again in a moment.",
+    "evidenceForbidden": "Only platform admins can view the evidence.",
+    "evidenceEmpty": "No evidence files for this report.",
+    "evidenceImageAlt": "Evidence image {n}",
+    "evidenceAudioLabel": "Evidence audio {n}",
+    "evidenceFile": "Evidence file {n}"
   },
   "accountDelete": {
     "title": "Delete your account",

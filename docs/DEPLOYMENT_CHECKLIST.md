@@ -197,6 +197,7 @@ Create `.env` from `.env.example`. Keys are split by where they run. **Never com
 - [ ] Deploy; verify dashboard auth, KDS realtime, analytics charts, super-admin gate,
       and the public `b/[slug]` SEO/JSON-LD pages render
 - [ ] Run `npx tsc --noEmit` in `web/` as a CI gate (only check available — no test suite)
+- [ ] **Release requirement:** `npm audit` with no critical or high vulnerabilities in `web/` and `mobile/` (moderate lint/tooling ones are documented in `docs/handoff/INFORME_WEB_MANTENIMIENTO.md`)
 
 ---
 

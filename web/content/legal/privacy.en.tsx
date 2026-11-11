@@ -12,7 +12,7 @@ export function PrivacyEN() {
         Privacy Policy
       </h1>
       <p style={{ color: "var(--gray-500)", fontSize: "14px", marginTop: "0", marginBottom: "32px" }}>
-        Last updated: November 7, 2026
+        Last updated: November 8, 2026
       </p>
 
       <p style={P}>
@@ -161,7 +161,7 @@ export function PrivacyEN() {
       <ul style={UL}>
         <li><strong>Orders and payments:</strong> 7 years, without your personal data, for tax and accounting obligations.</li>
         <li><strong>Security logs:</strong> 90 days. The record of moderation actions and account suspensions: 1 year.</li>
-        <li><strong>Closed reports</strong> (with the evidence attached to them): 1 year after they are resolved. Reports about child safety, or sent to the authorities (NCMEC): 2 years after they are resolved. Open reports are kept until they are resolved.</li>
+        <li><strong>Closed reports</strong> (with the evidence attached to them, including copies of the reported content): 1 year after they are resolved. Reports about child safety, or sent to the authorities (NCMEC): 2 years after they are resolved. Open reports are kept until they are resolved.</li>
         <li><strong>Moderation records</strong> of venue chats and games, and <strong>table reservation records</strong>: 1 year.</li>
         <li><strong>Photo-scan records</strong> and <strong>e-mail delivery records</strong>: 90 days (30 days for e-mails that were delivered).</li>
         <li><strong>Gifts</strong> you sent or received: kept without your identity.</li>

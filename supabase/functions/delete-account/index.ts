@@ -30,6 +30,8 @@
  *   502 stripe_balance_check_failed · subscription_cancel_failed — (owner) Stripe failed; nothing was closed
  *   500 owner_close_failed   — (owner) a venue could not be closed: { state: { subscriptionCancelled, closed, total } }; retry is safe
  *   500 server_misconfigured · owner_check_failed · cleanup_failed
+ *   500 evidence_copy_failed — (D7) the files of reported content (a report pending or inside the NCMEC term) could not be copied to the private
+ *                              report-evidence bucket; NOTHING was deleted, the person can try again (security_logs 'evidence_copy_failed', no paths)
  *   500 storage_purge_failed — the person's files could not be removed; NOTHING else was deleted, the person can try again
  *   500 fk_violation         — the database refused the delete (a foreign key / NOT NULL stops the cascade; see migration 255)
  *   500 delete_failed        — the auth admin API failed for another reason
@@ -55,6 +57,7 @@
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.44.4";
 import { classifyDeleteError } from "../_shared/deleteAccountErrors.ts";
 import { purgeUserObjects, type PurgeAdmin } from "../_shared/deleteAccountStorage.ts";
+import { copyHeldEvidence, runEvidenceStep, type EvidenceDeps, type EvidenceEntry, type HeldEvidenceRow } from "../_shared/reportEvidence.ts";
 import { revokeAppleOnDelete, type RevokeAdmin } from "../_shared/appleRevoke.ts";
 import { closeOwnerBusinesses, ownerPreflight, type OwnerDeps } from "../_shared/ownerClose.ts";
 import { deliverClosedReservationEmails, type EmailDeps } from "../_shared/ownerCloseEmails.ts";
@@ -162,6 +165,28 @@ function buildEmailDeps(admin: SupabaseClient): EmailDeps {
     },
     resendKey: Deno.env.get("RESEND_API_KEY"),
     from: Deno.env.get("NOTIFICATIONS_FROM") ?? undefined,
+  };
+}
+
+/** D7: the admin client behind the interface _shared/reportEvidence.ts is tested with. */
+function buildEvidenceDeps(admin: SupabaseClient): EvidenceDeps {
+  return {
+    async heldEvidence(uid) {
+      const { data, error } = await admin.rpc("user_held_evidence", { p_user: uid });
+      if (error) throw new Error(`user_held_evidence: ${error.message}`);
+      return (data ?? []) as HeldEvidenceRow[];
+    },
+    async getEvidence(reportId) {
+      const { data, error } = await admin.from("reports").select("evidence").eq("id", reportId).maybeSingle();
+      if (error) throw new Error(`reports.evidence read: ${error.message}`);
+      const list = (data as { evidence?: unknown } | null)?.evidence;
+      return Array.isArray(list) ? (list as EvidenceEntry[]) : [];
+    },
+    async saveEvidence(reportId, entries) {
+      const { error } = await admin.from("reports").update({ evidence: entries, evidence_copied_at: new Date().toISOString() }).eq("id", reportId);
+      if (error) throw new Error(`reports.evidence write: ${error.message}`);
+    },
+    storage: admin.storage as unknown as EvidenceDeps["storage"],
   };
 }
 
@@ -281,6 +306,21 @@ Deno.serve(async (req) => {
     if (reqUpdErr) {
       console.error("[delete-account] radius_increase_requests reviewer unlink failed", reqUpdErr);
       return failure("cleanup_failed");
+    }
+
+    // 3a. Evidence (D7): files of reported content in hold (a pending report, or child safety / NCMEC inside its term) are COPIED to the private
+    //     report-evidence bucket and recorded in reports.evidence BEFORE the purge below removes the originals. The reports themselves survive the
+    //     deletion (migration 267: reporter_id / reported_user_id SET NULL). If a copy fails nothing is deleted: the law says to keep it, the person retries.
+    //     Needs migration 272 (user_held_evidence, reports.evidence, the bucket) before this function is deployed.
+    const evidence = await runEvidenceStep({
+      copy: () => copyHeldEvidence(buildEvidenceDeps(admin), userId),
+      log: async (action, detail) => {
+        await admin.from("security_logs").insert({ actor_id: null, action, target_type: "user", target_id: userId, detail });
+      },
+    });
+    if (!evidence.ok) return failure("evidence_copy_failed");
+    if (evidence.report.copied > 0 || evidence.report.skipped > 0) {
+      console.log(`[delete-account] report evidence: copied ${evidence.report.copied}, already copied ${evidence.report.skipped}`);
     }
 
     // 3b. Purge Storage BEFORE the cascade. Which objects are the person's comes from storage.objects itself (RPC

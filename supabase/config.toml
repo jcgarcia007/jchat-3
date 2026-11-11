@@ -100,3 +100,7 @@ content_path = "./supabase/templates/reauthentication.html"
 # D5: invoked by pg_net (outbound_emails_retry, migration 266) with x-push-secret, not a user JWT.
 [functions.outbound-emails]
 verify_jwt = false
+
+# D7: invoked by pg_net (evidence_purge_retry, migration 272) with x-push-secret, not a user JWT. Removes expired copies from the report-evidence bucket.
+[functions.evidence-purge]
+verify_jwt = false

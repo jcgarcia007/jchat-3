@@ -40,7 +40,15 @@
       "headerRow"
     ],
     "screens/reservations/ReservationScreen.tsx": [
-      "stepperValue"
+      "primaryBtn",
+      "secondaryBtn",
+      "changeBtn"
+    ],
+    "components/reservations/FlowPickers.tsx": [
+      "pill",
+      "dayCard",
+      "dayCell",
+      "monthBtn"
     ],
     "screens/onboarding/OnboardingScreen.tsx": [
       "ctaButton"

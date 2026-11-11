@@ -95,7 +95,6 @@ export { default as IconMoodSmile } from '@tabler/icons-react-native/IconMoodSmi
 export { default as IconMoon } from '@tabler/icons-react-native/IconMoon';
 export { default as IconMusic } from '@tabler/icons-react-native/IconMusic';
 export { default as IconNavigation } from '@tabler/icons-react-native/IconNavigation';
-export { default as IconNotes } from '@tabler/icons-react-native/IconNotes';
 export { default as IconPackage } from '@tabler/icons-react-native/IconPackage';
 export { default as IconPalette } from '@tabler/icons-react-native/IconPalette';
 export { default as IconPencil } from '@tabler/icons-react-native/IconPencil';

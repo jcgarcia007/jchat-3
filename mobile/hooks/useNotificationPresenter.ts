@@ -17,6 +17,8 @@ import {
   IconMessage2,
   IconReceipt,
   IconStar,
+  IconUserCheck,
+  IconUserMinus,
   IconUserPlus,
   type Icon,
 } from '@tabler/icons-react-native';
@@ -48,6 +50,8 @@ export const NOTIFICATION_ICONS: Record<NotificationType, Icon> = {
   match_photo_rejected: IconBell,
   business_closed: IconBuildingStore,
   reservation_cancelled: IconCalendarX,
+  staff_added: IconUserCheck,
+  staff_removed: IconUserMinus,
 };
 
 /** The venue name a D4 notice carries in its own payload (the venue is no longer readable by the client once closed). */
@@ -153,6 +157,17 @@ export function useNotificationPresenter(notifications: NotificationRow[]) {
         return when
           ? t('messages.notif.reservationCancelled', { business: businessNameFromPayload(payload), date: when.date, time: when.time })
           : t('messages.notif.reservationCancelledNoDate', { business: businessNameFromPayload(payload) });
+      }
+
+      if (notification.type === 'staff_added') {
+        const role = typeof payload?.role_label === 'string' ? payload.role_label.trim() : '';
+        return role
+          ? t('messages.notif.staffAdded', { business: businessNameFromPayload(payload), role })
+          : t('messages.notif.staffAddedNoRole', { business: businessNameFromPayload(payload) });
+      }
+
+      if (notification.type === 'staff_removed') {
+        return t('messages.notif.staffRemoved', { business: businessNameFromPayload(payload) });
       }
 
       if (notification.type === 'gift_offer') {
