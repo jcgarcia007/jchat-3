@@ -21,6 +21,7 @@ import { createAdminClient } from "../_shared/supabaseAdmin.ts";
 import { safeEqual } from "../_shared/safeEqual.ts";
 import { formatWhen } from "../_shared/ownerCloseEmails.ts";
 import { staffPushContent } from "../_shared/staffPush.ts";
+import { reservationPushContent } from "../_shared/reservationPush.ts";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 const EXPO_TIMEOUT_MS = 8_000;
@@ -51,6 +52,10 @@ const PUSH_TYPES = [
   "reservation_cancelled",
   "staff_added",
   "staff_removed",
+  "reservation_confirmed",
+  "reservation_rejected",
+  "reservation_requested",
+  "reservation_reminder",
 ] as const;
 type PushType = typeof PUSH_TYPES[number];
 type Language = "en" | "es";
@@ -291,6 +296,12 @@ function localizedContent(
     case "staff_removed":
       // M2 (migration 273): the person was added to / removed from a venue's staff. Transactional: always shown.
       return staffPushContent(type, payload, english);
+    case "reservation_confirmed":
+    case "reservation_rejected":
+    case "reservation_requested":
+    case "reservation_reminder":
+      // M3 (migration 274): the venue confirmed / rejected a reservation, a customer requested one (owner and staff) or the 24 h / 2 h reminder. Transactional: always shown.
+      return reservationPushContent(type, payload, english);
     case "admin_alert": {
       // Sent to platform admins by photo_moderation_alert() (migration 254): photos waiting for moderation more than 10 minutes.
       const count = typeof payload.count === "number" ? payload.count : Number(payload.count) || 0;
