@@ -96,3 +96,23 @@ test('formatReservationWhen: weekday, day, month and the time as 12 h am / pm', 
   assert.ok(formatReservationWhen(iso(new Date(2026, 9, 25, 12, 0, 0)), 'en').endsWith('· 12:00 pm'));
   assert.equal(formatReservationWhen('nope', 'en'), '');
 });
+
+// ── M3: rejected ──
+const { isRejectReasonKey, REJECT_REASON_KEYS } = await import(pathToFileURL(join(dir, 'reservationStatus.mjs')).href);
+
+test('rejected: its own label and a danger tone; it is never upcoming nor cancellable', () => {
+  assert.equal(statusLabelKey('rejected'), 'status.rejected');
+  assert.equal(statusTone('rejected'), 'danger');
+  assert.equal(isUpcoming(R('rejected', future), NOW), false);
+  assert.equal(canCancel(R('rejected', future), NOW), false);
+  const { upcoming, past } = splitReservations([R('rejected', future), R('pending', future)], NOW);
+  assert.equal(upcoming.length, 1);
+  assert.equal(past.length, 1);
+});
+
+test('reject reasons: the three keys of the venue, nothing else', () => {
+  assert.deepEqual([...REJECT_REASON_KEYS], ['no_availability', 'closed_that_day', 'group_too_large']);
+  assert.equal(isRejectReasonKey('group_too_large'), true);
+  assert.equal(isRejectReasonKey('other'), false);
+  assert.equal(isRejectReasonKey(undefined), false);
+});

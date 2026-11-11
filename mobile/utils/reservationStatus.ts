@@ -3,12 +3,12 @@
  *
  * The customer can cancel a reservation that is still pending or confirmed and has not happened yet (the database
  * agrees: reservations_customer_guard only lets a customer change status to 'cancelled'). The list is split into
- * "Upcoming" (in the future, not cancelled) and "Past" (already happened, or cancelled).
+ * "Upcoming" (in the future, not cancelled or rejected) and "Past" (already happened, cancelled or rejected).
  */
 
 import { format12h } from './hours';
 
-export type ReservationStatus = 'pending' | 'confirmed' | 'arrived' | 'no_show' | 'cancelled';
+export type ReservationStatus = 'pending' | 'confirmed' | 'arrived' | 'no_show' | 'cancelled' | 'rejected';
 
 export interface ReservationLike {
   status: string;
@@ -16,7 +16,15 @@ export interface ReservationLike {
   reserved_at: string;
 }
 
-const KNOWN_STATUSES: readonly string[] = ['pending', 'confirmed', 'arrived', 'no_show', 'cancelled'];
+const KNOWN_STATUSES: readonly string[] = ['pending', 'confirmed', 'arrived', 'no_show', 'cancelled', 'rejected'];
+
+/** Why the venue rejected a request (reservations.status_reason, migration 274). */
+export const REJECT_REASON_KEYS = ['no_availability', 'closed_that_day', 'group_too_large'] as const;
+export type RejectReasonKey = typeof REJECT_REASON_KEYS[number];
+
+export function isRejectReasonKey(value: unknown): value is RejectReasonKey {
+  return typeof value === 'string' && (REJECT_REASON_KEYS as readonly string[]).includes(value);
+}
 
 function asMillis(now: Date | number): number {
   return typeof now === 'number' ? now : now.getTime();
@@ -33,9 +41,9 @@ export function canCancel(reservation: ReservationLike, now: Date | number): boo
   return Number.isFinite(at) && at > asMillis(now);
 }
 
-/** In the future and not cancelled. */
+/** In the future and not cancelled or rejected. */
 export function isUpcoming(reservation: ReservationLike, now: Date | number): boolean {
-  if (reservation.status === 'cancelled') return false;
+  if (reservation.status === 'cancelled' || reservation.status === 'rejected') return false;
   const at = reservedMillis(reservation);
   return Number.isFinite(at) && at > asMillis(now);
 }
@@ -53,18 +61,21 @@ export function statusLabelKey(status: string): string {
       return 'status.noShow';
     case 'cancelled':
       return 'status.cancelled';
+    case 'rejected':
+      return 'status.rejected';
     default:
       return 'status.unknown';
   }
 }
 
-/** Which theme colour a status chip uses: pending = warning, confirmed = success, arrived = brand, the rest muted. */
-export type StatusTone = 'warning' | 'success' | 'brand' | 'muted';
+/** Which theme colour a status chip uses: pending = warning, confirmed = success, arrived = brand, rejected = danger, the rest muted. */
+export type StatusTone = 'warning' | 'success' | 'brand' | 'danger' | 'muted';
 
 export function statusTone(status: string): StatusTone {
   if (status === 'pending') return 'warning';
   if (status === 'confirmed') return 'success';
   if (status === 'arrived') return 'brand';
+  if (status === 'rejected') return 'danger';
   return 'muted';
 }
 
