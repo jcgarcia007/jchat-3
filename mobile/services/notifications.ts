@@ -28,7 +28,10 @@ import { Platform } from 'react-native';
 import {
   IconBell,
   IconBuildingStore,
+  IconBellRinging,
   IconBriefcase,
+  IconCalendarCheck,
+  IconCalendarPlus,
   IconCalendarX,
   IconGift,
   IconHeart,
@@ -70,7 +73,11 @@ export type NotificationType =
   | 'business_closed'
   | 'reservation_cancelled'
   | 'staff_added'
-  | 'staff_removed';
+  | 'staff_removed'
+  | 'reservation_confirmed'
+  | 'reservation_rejected'
+  | 'reservation_requested'
+  | 'reservation_reminder';
 
 export const MATCH_NOTIFICATION_TYPES: readonly NotificationType[] = [
   'match_like',
@@ -103,6 +110,17 @@ export const VENUE_CLOSED_NOTIFICATION_TYPES: readonly NotificationType[] = ['bu
 /** M2 (migration 273): the person was added to / removed from a venue's staff. Transactional. A tap on "added" opens the venue's chat when the payload has its room. */
 export const STAFF_NOTIFICATION_TYPES: readonly NotificationType[] = ['staff_added', 'staff_removed'];
 
+/**
+ * M3 (migration 274): the venue answered a reservation (confirmed / rejected), a customer asked for one (requested: to the owner and staff with the
+ * reservations permission) and the 24 h / 2 h reminder. Transactional. A tap opens "My reservations", except `requested`, which has no screen in the app.
+ */
+export const RESERVATION_NOTIFICATION_TYPES: readonly NotificationType[] = [
+  'reservation_confirmed',
+  'reservation_rejected',
+  'reservation_requested',
+  'reservation_reminder',
+];
+
 export const SOCIAL_NOTIFICATION_TYPES: readonly NotificationType[] = [
   'dm',
   'follower',
@@ -114,6 +132,7 @@ export const SOCIAL_NOTIFICATION_TYPES: readonly NotificationType[] = [
   ...MATCH_PHOTO_NOTIFICATION_TYPES,
   ...VENUE_CLOSED_NOTIFICATION_TYPES,
   ...STAFF_NOTIFICATION_TYPES,
+  ...RESERVATION_NOTIFICATION_TYPES,
 ];
 
 export function isSocialNotificationType(value: unknown): value is NotificationType {
@@ -166,6 +185,7 @@ export type NotificationRoute =
   | { screen: 'MatchMyProfile'; params: { focus: 'result' } }
   | { screen: 'OrderTracking'; params: { orderId: string; roomId?: string } }
   | { screen: 'MyOrders' }
+  | { screen: 'MyReservations' }
   | { screen: 'ChatRoom'; params: { id: string } };
 
 // ── Push permission & token registration ──────────────────────────────────────
@@ -331,6 +351,18 @@ export function getNotificationStyle(type: NotificationType): NotificationStyle 
 
     case 'staff_removed':
       return { icon: IconUserMinus, accent: palette.warning };
+
+    case 'reservation_confirmed':
+      return { icon: IconCalendarCheck, accent: palette.success };
+
+    case 'reservation_rejected':
+      return { icon: IconCalendarX, accent: palette.danger };
+
+    case 'reservation_requested':
+      return { icon: IconCalendarPlus, accent: palette.brand };
+
+    case 'reservation_reminder':
+      return { icon: IconBellRinging, accent: palette.brand };
 
     case 'gift_offer':
     case 'gift_response':
@@ -504,6 +536,16 @@ export function routeForNotification(
       return typeof payload?.room_id === 'string' && payload.room_id ? { screen: 'ChatRoom', params: { id: payload.room_id } } : null;
 
     case 'staff_removed':
+      return null;
+
+    case 'reservation_confirmed':
+    case 'reservation_rejected':
+    case 'reservation_reminder':
+      // M3: the guest's own reservations (the card and the list say the rest).
+      return { screen: 'MyReservations' };
+
+    case 'reservation_requested':
+      // M3: it is for the owner / staff, who answer it in the web dashboard: the app has no screen for it.
       return null;
 
     case 'match_like':

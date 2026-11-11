@@ -9,7 +9,10 @@ import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   IconBell,
+  IconBellRinging,
   IconBuildingStore,
+  IconCalendarCheck,
+  IconCalendarPlus,
   IconCalendarX,
   IconGift,
   IconHeart,
@@ -52,6 +55,10 @@ export const NOTIFICATION_ICONS: Record<NotificationType, Icon> = {
   reservation_cancelled: IconCalendarX,
   staff_added: IconUserCheck,
   staff_removed: IconUserMinus,
+  reservation_confirmed: IconCalendarCheck,
+  reservation_rejected: IconCalendarX,
+  reservation_requested: IconCalendarPlus,
+  reservation_reminder: IconBellRinging,
 };
 
 /** The venue name a D4 notice carries in its own payload (the venue is no longer readable by the client once closed). */
@@ -79,6 +86,7 @@ export function openNotificationRoute(
   route: NotificationRoute,
 ): void {
   if (route.screen === 'MyOrders') nav.navigate('MyOrders');
+  else if (route.screen === 'MyReservations') nav.navigate('MyReservations');
   else nav.navigate(route.screen, route.params);
 }
 
@@ -168,6 +176,39 @@ export function useNotificationPresenter(notifications: NotificationRow[]) {
 
       if (notification.type === 'staff_removed') {
         return t('messages.notif.staffRemoved', { business: businessNameFromPayload(payload) });
+      }
+
+      // M3 (migration 274): reservation answers, requests and reminders. Dates and times are the venue's (payload.timezone).
+      if (notification.type === 'reservation_confirmed') {
+        const when = formatReservationWhen(payload?.reserved_at, payload?.timezone, i18n.language);
+        return when
+          ? t('messages.notif.reservationConfirmed', { business: businessNameFromPayload(payload), date: when.date, time: when.time })
+          : t('messages.notif.reservationConfirmedNoDate', { business: businessNameFromPayload(payload) });
+      }
+
+      if (notification.type === 'reservation_rejected') {
+        return t('messages.notif.reservationRejected', { business: businessNameFromPayload(payload) });
+      }
+
+      if (notification.type === 'reservation_requested') {
+        const when = formatReservationWhen(payload?.reserved_at, payload?.timezone, i18n.language);
+        const count = Number(payload?.party_size);
+        return when && Number.isFinite(count) && count >= 1
+          ? t('messages.notif.reservationRequested', { count, date: when.date, time: when.time })
+          : t('messages.notif.reservationRequestedNoDate');
+      }
+
+      if (notification.type === 'reservation_reminder') {
+        const count = Number(payload?.party_size);
+        if (Number(payload?.hours_before) === 2) {
+          return Number.isFinite(count) && count >= 1
+            ? t('messages.notif.reservationReminder2h', { business: businessNameFromPayload(payload), count })
+            : t('messages.notif.reservationReminder2hNoCount', { business: businessNameFromPayload(payload) });
+        }
+        const when = formatReservationWhen(payload?.reserved_at, payload?.timezone, i18n.language);
+        return when
+          ? t('messages.notif.reservationReminder24h', { business: businessNameFromPayload(payload), time: when.time })
+          : t('messages.notif.reservationReminder24hNoTime', { business: businessNameFromPayload(payload) });
       }
 
       if (notification.type === 'gift_offer') {

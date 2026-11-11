@@ -25,12 +25,12 @@ const union = service.slice(service.indexOf('export type NotificationType ='), s
 const TYPES = [...union.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
 const B = 'biz-1';
 
-test('there are 18 types, and the hook accepts every one (derived from SOCIAL_NOTIFICATION_TYPES, not a hand-kept list)', () => {
-  assert.equal(TYPES.length, 18);
+test('there are 22 types, and the hook accepts every one (derived from SOCIAL_NOTIFICATION_TYPES, not a hand-kept list)', () => {
+  assert.equal(TYPES.length, 22);
   assert.match(hook, /new Set\(SOCIAL_NOTIFICATION_TYPES\)/);
   const social = service.slice(service.indexOf('export const SOCIAL_NOTIFICATION_TYPES'), service.indexOf('export function isSocialNotificationType'));
   for (const t of ['dm', 'follower', 'like', 'comment', 'work_alert']) assert.ok(social.includes(`'${t}'`), t);
-  for (const g of ['MATCH_NOTIFICATION_TYPES', 'ORDER_NOTIFICATION_TYPES', 'MATCH_PHOTO_NOTIFICATION_TYPES', 'VENUE_CLOSED_NOTIFICATION_TYPES', 'STAFF_NOTIFICATION_TYPES']) assert.ok(social.includes(`...${g}`), g);
+  for (const g of ['MATCH_NOTIFICATION_TYPES', 'ORDER_NOTIFICATION_TYPES', 'MATCH_PHOTO_NOTIFICATION_TYPES', 'VENUE_CLOSED_NOTIFICATION_TYPES', 'STAFF_NOTIFICATION_TYPES', 'RESERVATION_NOTIFICATION_TYPES']) assert.ok(social.includes(`...${g}`), g);
   const matchPhoto = service.match(/MATCH_PHOTO_NOTIFICATION_TYPES[^=]*=\s*\[([^\]]*)\]/)[1];
   assert.ok(matchPhoto.includes('match_photo_approved') && matchPhoto.includes('match_photo_rejected'));
 });
@@ -65,7 +65,13 @@ test('the route of every type', () => {
   assert.equal(routeForNotification('staff_added', null), null);
   assert.equal(routeForNotification('staff_added', { room_id: '' }), null);
   assert.equal(routeForNotification('staff_removed', { business_id: B, room_id: 'room-1' }), null);
-  assert.deepEqual(Object.keys(table).concat('work_alert', 'business_closed', 'reservation_cancelled', 'staff_added', 'staff_removed').sort(), [...TYPES].sort());
+  // M3: the guest's reservation notices open "My reservations"; reservation_requested is for the owner / staff and has no screen in the app
+  for (const type of ['reservation_confirmed', 'reservation_rejected', 'reservation_reminder']) {
+    assert.deepEqual(routeForNotification(type, { business_id: B, reservation_id: 'r1' }), { screen: 'MyReservations' }, type);
+    assert.deepEqual(routeForNotification(type, null), { screen: 'MyReservations' }, `${type} without payload`);
+  }
+  assert.equal(routeForNotification('reservation_requested', { business_id: B, reservation_id: 'r1' }), null);
+  assert.deepEqual(Object.keys(table).concat('work_alert', 'business_closed', 'reservation_cancelled', 'staff_added', 'staff_removed', 'reservation_confirmed', 'reservation_rejected', 'reservation_requested', 'reservation_reminder').sort(), [...TYPES].sort());
 });
 
 test('a type this build does not know opens nothing', () => {
