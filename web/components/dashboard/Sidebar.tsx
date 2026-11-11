@@ -9,6 +9,7 @@ import { IconShield } from "@tabler/icons-react";
 import { isSuperAdmin } from "@/lib/roles";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness, isBusinessOwner } from "@/lib/business";
+import { useReservationsPending } from "./useReservationsPending";
 import {
   NAV_MODULES,
   CONFIG_MODULE,
@@ -30,6 +31,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const [showAdmin, setShowAdmin] = useState(false);
   const [servicePending, setServicePending] = useState(0);
+  const reservationsPending = useReservationsPending();
   const [isOwner, setIsOwner] = useState(false);
   const [activeBiz, setActiveBiz] = useState<{ name: string; logo_url: string | null } | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
@@ -97,7 +99,7 @@ export function Sidebar() {
   function renderPage(page: NavPage) {
     const Icon = page.icon;
     const isActive = isNavPageActive(page.href, pathname);
-    const badge = page.badgeKey === "service_pending" ? servicePending : 0;
+    const badge = page.badgeKey === "service_pending" ? servicePending : page.badgeKey === "reservations_pending" ? reservationsPending : 0;
     const label = t(page.labelKey);
     const isNew = page.href === TABLES_HREF;
 

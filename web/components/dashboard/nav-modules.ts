@@ -51,8 +51,8 @@ export interface NavPage {
   labelKey: string;
   href: string;
   icon: NavIcon;
-  /** Live realtime badge; only "service_pending" exists today. */
-  badgeKey?: "service_pending";
+  /** Live realtime badge: "service_pending" (service calls) or "reservations_pending" (requests waiting for an answer). */
+  badgeKey?: "service_pending" | "reservations_pending";
 }
 
 export interface NavModule {
@@ -84,7 +84,7 @@ export const NAV_MODULES: NavModule[] = [
       { labelKey: "railBar",      href: "/dashboard/bar",     icon: IconGlass },
       { labelKey: "railMetricas", href: "/dashboard/metrics", icon: IconChartBar },
       { labelKey: "railServicio", href: "/dashboard/service", icon: IconBell, badgeKey: "service_pending" },
-      { labelKey: "railReservas", href: "/dashboard/reservations", icon: IconCalendar },
+      { labelKey: "railReservas", href: "/dashboard/reservations", icon: IconCalendar, badgeKey: "reservations_pending" },
     ],
   },
   {

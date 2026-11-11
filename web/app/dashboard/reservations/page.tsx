@@ -6,8 +6,8 @@
  *    tables reserved — atomic). No direct INSERT/UPDATE to reservations/
  *    reservation_customers/reservation_tables.
  *  - Phone-based customer auto-populate via search_reservation_customers RPC.
- *  - Status transitions: pending → cancelled / no_show (staff here);
- *    pending → arrived (floor page, F9-C — NOT here).
+ *  - Status transitions (staff here): pending → confirmed | rejected (M3: the venue answers a request; the guest is notified),
+ *    confirmed → rejected, pending | confirmed → cancelled / no_show; pending | confirmed → arrived (check-in).
  *  - Calendar + List views; filter by status; Realtime refresh.
  *
  * event_type values stored in DB are stable English keys:
@@ -38,15 +38,25 @@ import {
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
 import { requestsDisplay, type RequestKey } from "@/lib/reservationRequests";
+import {
+  REJECT_REASONS,
+  canConfirm,
+  canReject,
+  countPending,
+  isLive,
+  isRejectReason,
+  matchesFilter,
+  type FilterStatus,
+  type RejectReason,
+  type ReservationStatus,
+} from "@/lib/reservationStatus";
 import { NoBusinessCTA } from "@/components/dashboard/NoBusinessCTA";
 import type { TFn } from "@/lib/tabSemantics";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type FormMode = "create" | "edit" | "checkin";
-type ReservationStatus = "pending" | "arrived" | "no_show" | "cancelled";
 type ViewMode = "calendar" | "list";
-type FilterStatus = "all" | ReservationStatus;
 
 interface ReservationCustomer {
   id: string;
@@ -75,6 +85,7 @@ interface Reservation {
   event_type: string | null;
   special_requests: string | null;
   status: ReservationStatus;
+  status_reason?: string | null;
   is_waitlist: boolean;
   created_at: string;
   customer?: ReservationCustomer | null;
@@ -269,6 +280,16 @@ function getStatusMeta(t: TFn): Record<
       label: t("orderStatusPending"),
       bg: "rgba(245,158,11,0.15)",
       color: "var(--db-warning)",
+    },
+    confirmed: {
+      label: t("resStatusConfirmed"),
+      bg: "var(--db-accent-bg)",
+      color: "var(--db-accent)",
+    },
+    rejected: {
+      label: t("resStatusRejected"),
+      bg: "rgba(239,68,68,0.08)",
+      color: "var(--db-danger)",
     },
     arrived: {
       label: t("resStatusArrived"),
@@ -1180,6 +1201,8 @@ interface ReservationRowProps {
   actionLoading: string | null;
   onEdit: (r: Reservation) => void;
   onCheckIn: (r: Reservation) => void;
+  onConfirm: (r: Reservation) => void;
+  onReject: (r: Reservation, reason: RejectReason | null) => void;
   t: TFn;
 }
 
@@ -1189,9 +1212,13 @@ function ReservationRow({
   actionLoading,
   onEdit,
   onCheckIn,
+  onConfirm,
+  onReject,
   t,
 }: ReservationRowProps) {
   const busy = actionLoading === r.id;
+  const [rejecting, setRejecting] = useState(false);
+  const [reason, setReason] = useState<RejectReason | null>(null);
 
   return (
     <div
@@ -1321,6 +1348,12 @@ function ReservationRow({
           )}
         </div>
 
+        {r.status === "rejected" && isRejectReason(r.status_reason) && (
+          <div style={{ marginTop: "6px", fontSize: "12px", color: "var(--db-text-secondary)" }}>
+            {t("resRejectedReason", { reason: t(`resReject_${r.status_reason}`) })}
+          </div>
+        )}
+
         {r.special_requests && (
           <div
             style={{
@@ -1348,8 +1381,9 @@ function ReservationRow({
         )}
       </div>
 
-      {/* Action buttons — pending only */}
-      {r.status === "pending" && (
+      {/* (rejected rows carry the reason in the main info block above) */}
+      {/* Action buttons — a request waiting or already confirmed */}
+      {isLive(r.status) && (
         <div
           style={{
             display: "flex",
@@ -1359,6 +1393,55 @@ function ReservationRow({
             flexWrap: "wrap",
           }}
         >
+          {canConfirm(r.status) && (
+            <button
+              onClick={() => onConfirm(r)}
+              disabled={busy}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                padding: "6px 14px",
+                minHeight: "44px",
+                borderRadius: "var(--db-radius)",
+                border: "none",
+                background: "var(--db-success)",
+                color: "var(--db-accent-text)",
+                fontSize: "13px",
+                fontWeight: 600,
+                cursor: busy ? "not-allowed" : "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <IconCheck size={13} />
+              {t("resConfirmButton")}
+            </button>
+          )}
+          {canReject(r.status) && (
+            <button
+              onClick={() => setRejecting((v) => !v)}
+              disabled={busy}
+              aria-expanded={rejecting}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                padding: "6px 12px",
+                minHeight: "44px",
+                borderRadius: "var(--db-radius)",
+                border: "1px solid var(--db-danger)",
+                background: "transparent",
+                color: "var(--db-danger)",
+                fontSize: "13px",
+                fontWeight: 500,
+                cursor: busy ? "not-allowed" : "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <IconX size={13} />
+              {t("resRejectButton")}
+            </button>
+          )}
           <button
             onClick={() => onEdit(r)}
             disabled={busy}
@@ -1405,6 +1488,97 @@ function ReservationRow({
           </button>
         </div>
       )}
+
+      {/* Reject panel: the reason is optional and the guest sees it */}
+      {rejecting && canReject(r.status) && (
+        <div
+          role="group"
+          aria-label={t("resRejectTitle")}
+          style={{
+            flexBasis: "100%",
+            borderTop: "1px solid var(--db-border)",
+            paddingTop: "12px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "10px",
+          }}
+        >
+          <div>
+            <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--db-text-primary)" }}>{t("resRejectTitle")}</div>
+            <div style={{ fontSize: "12px", color: "var(--db-text-tertiary)" }}>{t("resRejectHint")}</div>
+          </div>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            {REJECT_REASONS.map((key) => {
+              const selected = reason === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => setReason(selected ? null : key)}
+                  style={{
+                    padding: "6px 14px",
+                    minHeight: "44px",
+                    borderRadius: "999px",
+                    border: "1px solid",
+                    borderColor: selected ? "var(--db-accent)" : "var(--db-border)",
+                    background: selected ? "var(--db-accent-bg)" : "transparent",
+                    color: selected ? "var(--db-accent)" : "var(--db-text-secondary)",
+                    fontSize: "13px",
+                    fontWeight: selected ? 600 : 400,
+                    cursor: "pointer",
+                  }}
+                >
+                  {t(`resReject_${key}`)}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                onReject(r, reason);
+                setRejecting(false);
+                setReason(null);
+              }}
+              style={{
+                padding: "6px 14px",
+                minHeight: "44px",
+                borderRadius: "var(--db-radius)",
+                border: "none",
+                background: "var(--db-danger)",
+                color: "var(--db-accent-text)",
+                fontSize: "13px",
+                fontWeight: 600,
+                cursor: busy ? "not-allowed" : "pointer",
+              }}
+            >
+              {t("resRejectSubmit")}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setRejecting(false);
+                setReason(null);
+              }}
+              style={{
+                padding: "6px 14px",
+                minHeight: "44px",
+                borderRadius: "var(--db-radius)",
+                border: "1px solid var(--db-border)",
+                background: "transparent",
+                color: "var(--db-text-secondary)",
+                fontSize: "13px",
+                cursor: "pointer",
+              }}
+            >
+              {t("resRejectBack")}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1417,6 +1591,8 @@ interface CalendarViewProps {
   actionLoading: string | null;
   onEdit: (r: Reservation) => void;
   onCheckIn: (r: Reservation) => void;
+  onConfirm: (r: Reservation) => void;
+  onReject: (r: Reservation, reason: RejectReason | null) => void;
   t: TFn;
 }
 
@@ -1426,6 +1602,8 @@ function CalendarView({
   actionLoading,
   onEdit,
   onCheckIn,
+  onConfirm,
+  onReject,
   t,
 }: CalendarViewProps) {
   const grouped: Record<string, Reservation[]> = {};
@@ -1528,6 +1706,8 @@ function CalendarView({
                     actionLoading={actionLoading}
                     onEdit={onEdit}
                     onCheckIn={onCheckIn}
+                    onConfirm={onConfirm}
+                    onReject={onReject}
                     t={t}
                   />
                 ))}
@@ -1703,6 +1883,52 @@ export default function ReservationsPage() {
     [t]
   );
 
+  // M3: the venue answers a request. Both end with a notice to the guest (trigger in migration 274); the screen only reports the outcome.
+  const handleConfirm = useCallback(
+    async (r: Reservation) => {
+      setActionLoading(r.id);
+      setError(null);
+      setSuccess(null);
+      try {
+        if (isSupabaseConfigured) {
+          const { error: err } = await supabase.rpc("set_reservation_status", { p_reservation_id: r.id, p_status: "confirmed" });
+          if (err) throw err;
+        }
+        setSuccess(t("resConfirmDone"));
+        setReservations((prev) => prev.map((x) => (x.id === r.id ? { ...x, status: "confirmed" } : x)));
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        setError(t("reservationsActionError", { msg }));
+      } finally {
+        setActionLoading(null);
+      }
+    },
+    [t]
+  );
+
+  const handleReject = useCallback(
+    async (r: Reservation, reason: RejectReason | null) => {
+      setActionLoading(r.id);
+      setError(null);
+      setSuccess(null);
+      try {
+        if (isSupabaseConfigured) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { error: err } = await (supabase as any).rpc("reject_reservation", { p_reservation_id: r.id, p_reason: reason ?? undefined });
+          if (err) throw err;
+        }
+        setSuccess(t("resRejectDone"));
+        setReservations((prev) => prev.map((x) => (x.id === r.id ? { ...x, status: "rejected", status_reason: reason } : x)));
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        setError(t("reservationsActionError", { msg }));
+      } finally {
+        setActionLoading(null);
+      }
+    },
+    [t]
+  );
+
   // ── Save / open callbacks ─────────────────────────────────────────────────
   const handleSaved = useCallback(() => {
     setShowForm(false);
@@ -1735,13 +1961,10 @@ export default function ReservationsPage() {
   }, []);
 
   // ── Filter ────────────────────────────────────────────────────────────────
-  const filtered =
-    filterStatus === "all"
-      ? reservations
-      : reservations.filter((r) => r.status === filterStatus);
+  const filtered = reservations.filter((r) => matchesFilter(r.status, filterStatus));
 
   // ── Stats ─────────────────────────────────────────────────────────────────
-  const pendingCount = reservations.filter((r) => r.status === "pending").length;
+  const pendingCount = countPending(reservations);
   const arrivedCount = reservations.filter((r) => r.status === "arrived").length;
   const noShowCount = reservations.filter((r) => r.status === "no_show").length;
 
@@ -2001,16 +2224,20 @@ export default function ReservationsPage() {
         {(
           [
             { key: "all", label: t("reservationsFilterAll") },
-            { key: "pending", label: t("orderStatusPending") },
+            { key: "pending", label: t("reservationsFilterPending", { count: pendingCount }) },
+            { key: "confirmed", label: t("resStatusConfirmed") },
             { key: "arrived", label: t("resStatusArrived") },
             { key: "no_show", label: t("reservationsStatusNoShow") },
             { key: "cancelled", label: t("resStatusCancelled") },
+            { key: "rejected", label: t("resStatusRejected") },
           ] as { key: FilterStatus; label: string }[]
         ).map(({ key, label }) => (
           <button
             key={key}
             onClick={() => setFilterStatus(key)}
+            aria-pressed={filterStatus === key}
             style={{
+              minHeight: "44px",
               padding: "6px 14px",
               borderRadius: "999px",
               border: "1px solid",
@@ -2052,6 +2279,8 @@ export default function ReservationsPage() {
           actionLoading={actionLoading}
           onEdit={openEdit}
           onCheckIn={openCheckIn}
+          onConfirm={handleConfirm}
+          onReject={handleReject}
           t={t}
         />
       ) : (
@@ -2084,6 +2313,8 @@ export default function ReservationsPage() {
                 actionLoading={actionLoading}
                 onEdit={openEdit}
                 onCheckIn={openCheckIn}
+                onConfirm={handleConfirm}
+                onReject={handleReject}
                 t={t}
               />
             ))
