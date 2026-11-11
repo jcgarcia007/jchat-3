@@ -34,12 +34,13 @@
   "rowA11y": "{{business}}, {{when}}, {{people}}, {{status}}",
   "viewMine": "View my reservations",
   "status": {
-    "pending": "Pending",
+    "pending": "Pending confirmation",
     "confirmed": "Confirmed",
     "arrived": "Arrived",
     "noShow": "No-show",
     "cancelled": "Cancelled",
-    "unknown": "Unknown"
+    "unknown": "Unknown",
+    "rejected": "Rejected"
   },
   "stepCounter": "Step {{current}} of {{total}}",
   "stepDate": "Which day?",
@@ -92,5 +93,26 @@
   "slotGoneError": "That time is no longer available. Pick another one.",
   "venueLoadError": "We couldn't load the venue.",
   "requestsLabel": "Requests",
-  "closeFlow": "Close"
+  "closeFlow": "Close",
+  "next": {
+    "title": "Your next reservation",
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "more_one": "and {{count}} more",
+    "more_other": "and {{count}} more",
+    "moreA11y": "See all my reservations",
+    "directions": "Directions",
+    "directionsA11y": "Get directions to {{business}}",
+    "viewVenue": "View venue",
+    "viewVenueA11y": "Open {{business}}",
+    "cancel": "Cancel",
+    "directionsError": "We couldn't open the maps app.",
+    "a11y": "Your next reservation: {{business}}, {{when}}, {{people}}, {{status}}"
+  },
+  "rejectReason": {
+    "no_availability": "No availability",
+    "closed_that_day": "Closed that day",
+    "group_too_large": "Group too large"
+  },
+  "rejectedReason": "Reason: {{reason}}"
 }

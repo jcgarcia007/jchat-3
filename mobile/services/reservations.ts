@@ -9,7 +9,14 @@
 
 import { supabase, isSupabaseConfigured } from './supabase';
 
-type EmbeddedBusiness = { name: string | null; logo_url: string | null; address: string | null } | null;
+type EmbeddedBusiness = {
+  name: string | null;
+  logo_url: string | null;
+  address: string | null;
+  timezone?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+} | null;
 
 export interface MyReservationRow {
   id: string;
@@ -20,6 +27,8 @@ export interface MyReservationRow {
   is_waitlist: boolean;
   /** Request chip KEYS ("birthday,terrace"), or free text on reservations made before the keyboard-free flow (utils/reservationFlow.parseRequests). */
   special_requests?: string | null;
+  /** Why the venue rejected it (a key of utils/reservationStatus REJECT_REASON_KEYS); only on status 'rejected'. */
+  status_reason?: string | null;
   /** Joined venue (PostgREST may return one object or a one-element array). */
   businesses?: EmbeddedBusiness | EmbeddedBusiness[];
 }
@@ -28,6 +37,10 @@ export interface ReservationBusiness {
   name: string;
   logoUrl: string | null;
   address: string | null;
+  /** The venue's IANA zone (the card writes dates and times in it). */
+  timezone: string | null;
+  lat: number | null;
+  lng: number | null;
 }
 
 /** The venue of a reservation, flattened. */
@@ -37,8 +50,13 @@ export function reservationBusiness(row: Pick<MyReservationRow, 'businesses'>): 
     name: embedded?.name ?? '',
     logoUrl: embedded?.logo_url ?? null,
     address: embedded?.address ?? null,
+    timezone: embedded?.timezone ?? null,
+    lat: typeof embedded?.lat === 'number' ? embedded.lat : null,
+    lng: typeof embedded?.lng === 'number' ? embedded.lng : null,
   };
 }
+
+const RESERVATION_COLUMNS = 'id, business_id, reserved_at, party_size, status, status_reason, is_waitlist, special_requests, businesses(name, logo_url, address, timezone, lat, lng)';
 
 /** The customer's reservations, most recent first (reserved_at desc). */
 export async function listMyReservations(): Promise<MyReservationRow[]> {
@@ -48,7 +66,7 @@ export async function listMyReservations(): Promise<MyReservationRow[]> {
   if (!userId) return [];
   const { data, error } = await supabase
     .from('reservations')
-    .select('id, business_id, reserved_at, party_size, status, is_waitlist, special_requests, businesses(name, logo_url, address)')
+    .select(RESERVATION_COLUMNS)
     .eq('user_id', userId)
     .order('reserved_at', { ascending: false })
     .limit(100);
@@ -85,4 +103,26 @@ export async function cancelMyReservation(id: string): Promise<string> {
   }
   if (!data) throw new ReservationCancelError('not_found');
   return (data as { status: string }).status;
+}
+
+/**
+ * The reservations that can be on the "Your next reservation" card: pending or confirmed, from two hours ago on, nearest first.
+ * The card re-checks the window itself (utils/nextReservation.pickNext), this only keeps the read small.
+ */
+export async function listActiveReservations(nowMs: number = Date.now()): Promise<MyReservationRow[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data: sessionData } = await supabase.auth.getSession();
+  const userId = sessionData.session?.user.id;
+  if (!userId) return [];
+  const since = new Date(nowMs - 2 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await supabase
+    .from('reservations')
+    .select(RESERVATION_COLUMNS)
+    .eq('user_id', userId)
+    .in('status', ['pending', 'confirmed'])
+    .gt('reserved_at', since)
+    .order('reserved_at', { ascending: true })
+    .limit(10);
+  if (error) throw error;
+  return (data ?? []) as unknown as MyReservationRow[];
 }

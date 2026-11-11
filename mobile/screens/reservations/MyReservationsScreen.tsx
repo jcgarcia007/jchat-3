@@ -38,10 +38,12 @@ import {
 } from '../../services/reservations';
 import { confirm } from '../../utils/dialog';
 import { colorIndex, initials } from '../../utils/mapPin';
+import NextReservationCard from '../../components/reservations/NextReservationCard';
 import { parseRequests } from '../../utils/reservationFlow';
 import {
   canCancel,
   formatReservationWhen,
+  isRejectReasonKey,
   splitReservations,
   statusLabelKey,
   statusTone,
@@ -133,6 +135,7 @@ export default function MyReservationsScreen(): React.ReactElement {
     if (tone === 'warning') return c.warning;
     if (tone === 'success') return c.success;
     if (tone === 'brand') return c.brandText;
+    if (tone === 'danger') return c.dangerText;
     return c.textSecondary;
   }, [c]);
 
@@ -148,10 +151,12 @@ export default function MyReservationsScreen(): React.ReactElement {
     // chip keys are translated; free text from older reservations is shown as it is
     const parsed = parseRequests(item.special_requests);
     const requests = parsed.keys.length > 0 ? parsed.keys.map((k) => t(`request.${k}`)).join(' · ') : parsed.legacy;
+    // a rejected request tells the guest why, when the venue said so
+    const rejectedReason = item.status === 'rejected' && isRejectReasonKey(item.status_reason) ? t('rejectedReason', { reason: t(`rejectReason.${item.status_reason}`) }) : null;
     return (
       <View
         accessible
-        accessibilityLabel={`${t('rowA11y', { business: name, when, people, status: statusText })}${requests ? `, ${t('requestsLabel')}: ${requests}` : ''}`}
+        accessibilityLabel={`${t('rowA11y', { business: name, when, people, status: statusText })}${rejectedReason ? `, ${rejectedReason}` : ''}${requests ? `, ${t('requestsLabel')}: ${requests}` : ''}`}
         style={[styles.row, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}
       >
         <View style={styles.rowTop}>
@@ -167,16 +172,17 @@ export default function MyReservationsScreen(): React.ReactElement {
             <Text style={[styles.rowMeta, { color: c.textSecondary }]}>{when}</Text>
             <Text style={[styles.rowMeta, { color: c.textTertiary }]}>{people}</Text>
             {requests ? <Text style={[styles.rowMeta, { color: c.textTertiary }]}>{t('requestsLabel')}: {requests}</Text> : null}
-          </View>
-          <View style={styles.chips}>
-            <View style={[styles.chip, { borderColor: tone }]}>
-              <Text style={[styles.chipText, { color: tone }]}>{statusText}</Text>
-            </View>
-            {item.is_waitlist ? (
-              <View style={[styles.chip, { borderColor: c.textSecondary }]}>
-                <Text style={[styles.chipText, { color: c.textSecondary }]}>{t('waitlistChip')}</Text>
+            {rejectedReason ? <Text style={[styles.rowMeta, { color: c.textSecondary }]}>{rejectedReason}</Text> : null}
+            <View style={styles.chips}>
+              <View style={[styles.chip, { borderColor: tone }]}>
+                <Text style={[styles.chipText, { color: tone }]}>{statusText}</Text>
               </View>
-            ) : null}
+              {item.is_waitlist ? (
+                <View style={[styles.chip, { borderColor: c.textSecondary }]}>
+                  <Text style={[styles.chipText, { color: c.textSecondary }]}>{t('waitlistChip')}</Text>
+                </View>
+              ) : null}
+            </View>
           </View>
         </View>
         {cancellable ? (
@@ -248,6 +254,7 @@ export default function MyReservationsScreen(): React.ReactElement {
           keyExtractor={(row) => row.id}
           renderItem={renderItem}
           renderSectionHeader={renderSectionHeader}
+          ListHeaderComponent={<NextReservationCard onChange={() => { void load(true); }} />}
           stickySectionHeadersEnabled={false}
           refreshControl={(
             <RefreshControl
@@ -290,7 +297,7 @@ const styles = StyleSheet.create({
   rowMain: { flex: 1, gap: 2 },
   rowTitle: { fontSize: 15, fontWeight: '700' },
   rowMeta: { fontSize: 13 },
-  chips: { alignItems: 'flex-end', gap: 6 },
+  chips: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
   chip: { borderRadius: 999, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 3 },
   chipText: { fontSize: 12, fontWeight: '700' },
   cancelBtn: { alignItems: 'center', borderRadius: 12, borderWidth: 1, justifyContent: 'center', minHeight: 44, paddingHorizontal: 16 },

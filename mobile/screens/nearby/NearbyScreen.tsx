@@ -16,6 +16,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import BusinessCard, { BusinessCardSkeleton } from '../../components/nearby/BusinessCard';
 import NearbyFilters from '../../components/nearby/NearbyFilters';
+import NextReservationCard from '../../components/reservations/NextReservationCard';
 import { useNearbyBusinesses } from '../../hooks/useNearbyBusinesses';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { haversineMeters } from '../../services/geofence';
@@ -82,6 +83,7 @@ export default function NearbyScreen() {
         data={nearby.filtered}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
+        ListHeaderComponent={<NextReservationCard />}
         showsVerticalScrollIndicator={false}
         refreshControl={(
           <RefreshControl

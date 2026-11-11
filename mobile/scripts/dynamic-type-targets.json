@@ -83,6 +83,10 @@
     ],
     "screens/settings/SettingsScreen.tsx": [
       "segmentedOption"
+    ],
+    "components/reservations/NextReservationCard.tsx": [
+      "btn",
+      "more"
     ]
   },
   "labelCapFiles": [

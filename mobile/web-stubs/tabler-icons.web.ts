@@ -23,7 +23,9 @@ export { default as IconBrandPagekit } from '@tabler/icons-react-native/IconBran
 export { default as IconBriefcase } from '@tabler/icons-react-native/IconBriefcase';
 export { default as IconBuilding } from '@tabler/icons-react-native/IconBuilding';
 export { default as IconBuildingStore } from '@tabler/icons-react-native/IconBuildingStore';
+export { default as IconCalendarCheck } from '@tabler/icons-react-native/IconCalendarCheck';
 export { default as IconCalendarEvent } from '@tabler/icons-react-native/IconCalendarEvent';
+export { default as IconCalendarPlus } from '@tabler/icons-react-native/IconCalendarPlus';
 export { default as IconCalendarX } from '@tabler/icons-react-native/IconCalendarX';
 export { default as IconCamera } from '@tabler/icons-react-native/IconCamera';
 export { default as IconCards } from '@tabler/icons-react-native/IconCards';
