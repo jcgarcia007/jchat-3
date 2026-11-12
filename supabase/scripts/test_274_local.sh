@@ -124,17 +124,17 @@ select pg_temp.login(4);
 insert into public.reservations (id, business_id, user_id, reserved_at, party_size, status) values
   ('e2740000-0000-4000-8000-0000000000a2', 'e2740000-0000-4000-8000-0000000000b1', pg_temp.u(4), now() + interval '3 days', 4, 'pending');
 select pg_temp.logout();
-select pg_temp.chk((select count(*) = 2 from public.notifications where type = 'reservation_requested'), 'requested: a booking notifies exactly the owner and the staff with the permission (2)');
-select pg_temp.chk((select count(*) = 1 from public.notifications where type = 'reservation_requested' and user_id = pg_temp.u(1)) and (select count(*) = 1 from public.notifications where type = 'reservation_requested' and user_id = pg_temp.u(2)), 'requested: ... the owner and staff 02');
-select pg_temp.chk((select count(*) = 0 from public.notifications where user_id in (pg_temp.u(3), pg_temp.u(5), pg_temp.u(7), pg_temp.u(8), pg_temp.u(4), pg_temp.u(6))), 'requested: ... and NOT staff without permission, pending staff, base-role staff, another venue, the customer');
+select pg_temp.chk((select count(*) = 1 from public.notifications where type = 'reservation_requested'), 'requested: a booking notifies only the owner (1)');
+select pg_temp.chk((select count(*) = 1 from public.notifications where type = 'reservation_requested' and user_id = pg_temp.u(1)), 'requested: ... the owner');
+select pg_temp.chk((select count(*) = 0 from public.notifications where user_id in (pg_temp.u(2), pg_temp.u(3), pg_temp.u(5), pg_temp.u(7), pg_temp.u(8), pg_temp.u(4), pg_temp.u(6))), 'requested: ... and NOT staff (even with the permission), staff without permission, pending staff, base-role staff, another venue, the customer');
 select pg_temp.chk((select payload->>'business_name' = 'Bar Uno' and payload->>'reservation_id' = 'e2740000-0000-4000-8000-0000000000a2' and payload->>'timezone' = 'America/Santo_Domingo' and (payload->>'party_size')::int = 4 and payload ? 'reserved_at' from public.notifications where type = 'reservation_requested' and user_id = pg_temp.u(1)), 'requested: payload {business_id, business_name, reservation_id, reserved_at, timezone of the venue, party_size}');
 delete from public.notifications;
--- the owner booking at their own venue: staff 02 hears it, the owner (the author) does not
+-- the owner booking at their own venue: nobody is notified (the owner is the author, staff do not get it yet)
 select pg_temp.login(1);
 insert into public.reservations (id, business_id, user_id, reserved_at, party_size, status) values
   ('e2740000-0000-4000-8000-0000000000a3', 'e2740000-0000-4000-8000-0000000000b1', pg_temp.u(1), now() + interval '4 days', 2, 'pending');
 select pg_temp.logout();
-select pg_temp.chk((select count(*) = 1 and bool_and(user_id = pg_temp.u(2)) from public.notifications where type = 'reservation_requested'), 'requested: the author (the owner booking at their own venue) is never notified');
+select pg_temp.chk((select count(*) = 0 from public.notifications where type = 'reservation_requested'), 'requested: the author (the owner booking at their own venue) is never notified, and staff with the permission are not either');
 delete from public.notifications;
 -- a phone booking made by the venue (user_id null) says nothing
 select pg_temp.login(1);
