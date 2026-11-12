@@ -80,6 +80,7 @@ test('the system permission texts exist in es and en and say the app never reads
   const cfg = read('app.config.ts');
   assert.match(cfg, /\['expo-calendar', \{[^}]*remindersPermission: false[^}]*writeOnlyAccess: true/);
   assert.match(cfg, /'android\.permission\.READ_CALENDAR'/);
+  assert.match(cfg, /'android\.permission\.WRITE_CALENDAR'/);
 });
 
 test('the calendar texts have the same keys in es and en', () => {
