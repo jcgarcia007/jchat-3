@@ -56,11 +56,10 @@ test('the card sits on top of Nearby and of My reservations', () => {
   assert.match(mine, /ListHeaderComponent=\{<NextReservationCard onChange=/);
 });
 
-test('the card: no calendar button and no calendar module until the build has it', () => {
-  assert.match(card, /CALENDAR_BUTTON_ENABLED = false/);
+test('the card: the calendar button is on and uses the shared handler (details in reservation-calendar.test.mjs)', () => {
+  assert.match(card, /CALENDAR_BUTTON_ENABLED = true/);
+  assert.match(card, /useAddReservationToCalendar/);
   assert.ok(!/expo-calendar/.test(card + nextHook));
-  const pkg = JSON.parse(read('../package.json'));
-  assert.equal(pkg.dependencies['expo-calendar'], undefined);
 });
 
 test('the card hook: Realtime filtered on the user, unsubscribed on unmount, refreshed on foreground, leaves on its own', () => {
