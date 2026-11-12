@@ -170,8 +170,10 @@ const config: ExpoConfig = {
       // The app uses no advertising and no advertising ID; the libraries' AD_ID permission is removed (consistent with Data safety).
       'com.google.android.gms.permission.AD_ID',
       'android.permission.SYSTEM_ALERT_WINDOW',
-      // expo-calendar's plugin adds READ and WRITE; the app only opens the system editor to add an event, so it never reads the calendar.
+      // expo-calendar's plugin adds READ and WRITE; the app only opens the system event editor through an intent (no permission needed),
+      // so it neither reads nor writes the calendar itself.
       'android.permission.READ_CALENDAR',
+      'android.permission.WRITE_CALENDAR',
     ],
     // Firebase Cloud Messaging — local file in dev, EAS file secret in CI.
     googleServicesFile: ANDROID_GOOGLE_SERVICES,
