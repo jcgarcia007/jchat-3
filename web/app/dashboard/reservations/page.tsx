@@ -65,6 +65,13 @@ interface ReservationCustomer {
   last_name: string | null;
 }
 
+/** M3 (migration 275): who booked from the app. Only name, @user and photo; never email or phone. */
+interface GuestCard {
+  display_name: string | null;
+  username: string | null;
+  avatar_url: string | null;
+}
+
 interface TableOption {
   id: string;
   label: string;
@@ -89,6 +96,7 @@ interface Reservation {
   is_waitlist: boolean;
   created_at: string;
   customer?: ReservationCustomer | null;
+  guest?: GuestCard | null;
   reservation_tables?: ReservationTableLink[];
 }
 
@@ -247,6 +255,11 @@ function isoDateOnly(iso: string): string {
 }
 
 function customerLabel(r: Reservation): string {
+  const g = r.guest;
+  if (g) {
+    if (g.display_name) return g.display_name;
+    if (g.username) return `@${g.username}`;
+  }
   const c = r.customer;
   if (!c) return "—";
   const name = [c.first_name, c.last_name].filter(Boolean).join(" ");
@@ -1290,6 +1303,16 @@ function ReservationRow({
             marginBottom: "6px",
           }}
         >
+          {r.guest?.avatar_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={r.guest.avatar_url}
+              alt=""
+              width={28}
+              height={28}
+              style={{ borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
+            />
+          )}
           <span
             style={{
               fontSize: "15px",
@@ -1299,6 +1322,9 @@ function ReservationRow({
           >
             {customerLabel(r)}
           </span>
+          {r.guest?.display_name && r.guest.username && (
+            <span style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>@{r.guest.username}</span>
+          )}
           <StatusBadge status={r.status} isWaitlist={r.is_waitlist} t={t} />
           <EventTypeBadge eventType={r.event_type} t={t} />
         </div>
@@ -1744,6 +1770,7 @@ export default function ReservationsPage() {
   const [editingReservation, setEditingReservation] = useState<Reservation | null>(null);
 
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const guestCache = useRef(new Map<string, GuestCard>());
 
   // ── Resolve business id ───────────────────────────────────────────────────
   const resolveBusinessId = useCallback(async () => {
@@ -1795,7 +1822,24 @@ export default function ReservationsPage() {
           .order("reserved_at", { ascending: true })
           .limit(200);
         if (err) throw err;
-        setReservations((data as unknown as Reservation[]) ?? []);
+        const rows = (data as unknown as Reservation[]) ?? [];
+        // M3 (275): app bookings have no reservation_customers row; the minimal card (name, @user, photo) comes from an RPC
+        const withCards = await Promise.all(
+          rows.map(async (r) => {
+            if (!r.user_id || r.customer) return r;
+            const hit = guestCache.current.get(r.id);
+            if (hit) return { ...r, guest: hit };
+            try {
+              const { data: card } = await (supabase as any).rpc("reservation_customer_card", { p_reservation_id: r.id });
+              const g = (Array.isArray(card) ? card[0] : card) as GuestCard | undefined;
+              if (g) guestCache.current.set(r.id, g);
+              return g ? { ...r, guest: g } : r;
+            } catch {
+              return r;
+            }
+          })
+        );
+        setReservations(withCards);
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
         setError(t("reservationsLoadError", { msg }));
