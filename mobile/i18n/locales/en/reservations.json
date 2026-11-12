@@ -114,5 +114,12 @@
     "closed_that_day": "Closed that day",
     "group_too_large": "Group too large"
   },
-  "rejectedReason": "Reason: {{reason}}"
+  "rejectedReason": "Reason: {{reason}}",
+  "calendar": {
+    "add": "Add to calendar",
+    "addA11y": "Add your reservation at {{business}} to your calendar",
+    "error": "We couldn't open your calendar.",
+    "denied": "Allow calendar access in Settings to add the reservation.",
+    "eventTitle": "Reservation at {{business}}"
+  }
 }
