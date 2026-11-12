@@ -4,7 +4,7 @@
  * Sits on top of Nearby and of My reservations while the signed-in customer has a pending or confirmed reservation that has not expired
  * (hooks/useNextReservation; it leaves 2 h after its time). Shows the venue, when (the venue's calendar and clock), how many people,
  * the status with a coloured dot and the request chips, and four actions: directions (the phone's maps app), view the venue (its chat),
- * cancel (two steps: a confirmation first) and, once the build has a calendar module, add to calendar (CALENDAR_BUTTON_ENABLED, off).
+ * cancel (two steps: a confirmation first) and add to calendar (system editor, CALENDAR_BUTTON_ENABLED).
  * One accessible region with the whole text as its label; every button is at least controlMinHeight tall; text uses the type standard.
  */
 
@@ -14,12 +14,13 @@ import { Image } from 'expo-image';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { IconBuildingStore, IconMapPin } from '@tabler/icons-react-native';
+import { IconBuildingStore, IconCalendarPlus, IconMapPin } from '@tabler/icons-react-native';
 
 import AppText from '../common/AppText';
 import { Spinner } from '../common/Spinner';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { useAuth } from '../../context/AuthContext';
+import { useAddReservationToCalendar } from '../../hooks/useAddReservationToCalendar';
 import { useNextReservation } from '../../hooks/useNextReservation';
 import { reservationBusiness, type MyReservationRow } from '../../services/reservations';
 import { resolveMainRoomId } from '../../services/businesses';
@@ -32,8 +33,8 @@ import { directionsUrl, nextWhenLabel } from '../../utils/nextReservation';
 import { parseRequests, type FlowLocale } from '../../utils/reservationFlow';
 import { statusLabelKey, statusTone } from '../../utils/reservationStatus';
 
-/** "Add to calendar" needs a native calendar module, which arrives with the next build. Off until then; the card never shows the button. */
-export const CALENDAR_BUTTON_ENABLED = false;
+/** "Add to calendar" opens the system event editor (native module arrives with build 13). */
+export const CALENDAR_BUTTON_ENABLED = true;
 
 const AVATAR_COLORS = [palette.brand, palette.brandPurple, palette.success, palette.gold];
 
@@ -50,6 +51,7 @@ export default function NextReservationCard({ onChange }: NextReservationCardPro
   const navigation = useNavigation<Nav>();
   const { user } = useAuth();
   const { next, more, nowMs, cancel } = useNextReservation(user?.id ?? null, onChange);
+  const addToCalendar = useAddReservationToCalendar();
   const [busy, setBusy] = useState<'cancel' | 'venue' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -89,6 +91,12 @@ export default function NextReservationCard({ onChange }: NextReservationCardPro
       setError(t('next.directionsError'));
     }
   }, [t]);
+
+  const openCalendar = useCallback(async (row: MyReservationRow) => {
+    setError(null);
+    const problem = await addToCalendar(row);
+    if (problem) setError(problem);
+  }, [addToCalendar]);
 
   const openVenue = useCallback(async (row: MyReservationRow) => {
     setBusy('venue');
@@ -161,6 +169,17 @@ export default function NextReservationCard({ onChange }: NextReservationCardPro
           >
             <IconMapPin size={18} color={palette.onBrand} />
             <AppText variant="button" color={palette.onBrand}>{t('next.directions')}</AppText>
+          </Pressable>
+        ) : null}
+        {CALENDAR_BUTTON_ENABLED ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('calendar.addA11y', { business: name })}
+            onPress={() => { void openCalendar(next); }}
+            style={({ pressed }) => [styles.btn, styles.btnOutline, { borderColor: c.borderSubtle, opacity: pressed ? 0.7 : 1 }]}
+          >
+            <IconCalendarPlus size={18} color={c.textPrimary} />
+            <AppText variant="button">{t('calendar.add')}</AppText>
           </Pressable>
         ) : null}
         <Pressable
