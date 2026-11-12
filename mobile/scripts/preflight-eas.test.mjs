@@ -69,12 +69,20 @@ test('only top-level registry packages with an android/ or ios/ folder are check
   assert.deepEqual(nativePackages(root).map((p) => `${p.name}@${p.version}`), ['native-one@1.0.0', 'native-two@2.0.0']);
 });
 
-test('runtime: the active runtime is build 12 (installed since 2026-11); compareRuntime flags any change', () => {
-  assert.equal(ACTIVE_RUNTIME, 'build12');
-  assert.deepEqual(compareRuntime(RUNTIMES.build12).ok, true);
-  const r = compareRuntime(RUNTIMES.build11);
+test('runtime: build 13 is the active one but its hashes are not known until EAS builds it; build 12 stays recorded', () => {
+  assert.equal(ACTIVE_RUNTIME, 'build13');
+  assert.deepEqual(RUNTIMES.build13, { ios: null, android: null });
+  // pending: nothing to compare with, so it never says ok (an OTA is refused until the hashes are filled)
+  const pending = compareRuntime({ ios: 'a'.repeat(40), android: 'b'.repeat(40) });
+  assert.equal(pending.ok, false);
+  assert.match(pending.lines.join('\n'), /not filled in RUNTIMES yet/);
+  assert.deepEqual(compareRuntime(RUNTIMES.build12, RUNTIMES.build12).ok, true);
+  const r = compareRuntime(RUNTIMES.build11, RUNTIMES.build12);
   assert.equal(r.ok, false);
   assert.match(r.lines.join('\n'), /✖ ios/);
   assert.deepEqual(compareRuntime(RUNTIMES.build11, RUNTIMES.build11).ok, true);
-  for (const b of Object.values(RUNTIMES)) for (const h of Object.values(b)) assert.match(h, /^[0-9a-f]{40}$/);
+  for (const [name, b] of Object.entries(RUNTIMES)) {
+    if (name === 'build13') continue;
+    for (const h of Object.values(b)) assert.match(h, /^[0-9a-f]{40}$/);
+  }
 });
