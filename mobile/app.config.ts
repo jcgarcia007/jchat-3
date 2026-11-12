@@ -46,6 +46,7 @@ const LOCATION_WHEN_IN_USE = 'JChat uses your location only while you use the ap
 const CAMERA = 'JChat uses the camera to take photos for chat, posts and your profile, and to scan inventory barcodes.';
 const FACE_ID = 'JChat uses Face ID to unlock the app and confirm payments.';
 const LOCAL_NETWORK = 'JChat uses the local network to connect to WiFi card readers and network printers at the venue.';
+const CALENDAR_ADD = 'JChat adds your reservation to your calendar only when you tap "Add to calendar". It never reads your calendar.';
 const MOTION = "JChat uses your device's motion sensors to detect how you are holding it, so photos you take with the camera are saved the right way up.";
 
 const config: ExpoConfig = {
@@ -166,6 +167,8 @@ const config: ExpoConfig = {
       // The app uses no advertising and no advertising ID; the libraries' AD_ID permission is removed (consistent with Data safety).
       'com.google.android.gms.permission.AD_ID',
       'android.permission.SYSTEM_ALERT_WINDOW',
+      // expo-calendar's plugin adds READ and WRITE; the app only opens the system editor to add an event, so it never reads the calendar.
+      'android.permission.READ_CALENDAR',
     ],
     // Firebase Cloud Messaging — local file in dev, EAS file secret in CI.
     googleServicesFile: ANDROID_GOOGLE_SERVICES,
@@ -256,6 +259,9 @@ const config: ExpoConfig = {
         motionUsagePermission: MOTION,
       },
     ],
+    // "Add to calendar" on a reservation (utils/reservationCalendar.ts): the system event editor opens prefilled. iOS 17+ needs only the write-only
+    // key; NSCalendarsUsageDescription covers iOS < 17. No reminders keys (remindersPermission false deletes them); the app never reads the calendar.
+    ['expo-calendar', { calendarPermission: CALENDAR_ADD, writeOnlyCalendarPermission: CALENDAR_ADD, remindersPermission: false, writeOnlyAccess: true }],
     // Biometric lock (services/biometric.ts): its plugin runs by default with a generic Face ID text.
     ['expo-local-authentication', { faceIDPermission: FACE_ID }],
     // Sentry (docs/SENTRY_SETUP.md). The upload of source maps authenticates with SENTRY_AUTH_TOKEN (EAS secret, never here);
