@@ -360,13 +360,9 @@ begin
   select b.name, b.owner_id into v_name, v_owner from public.businesses b where b.id = new.business_id;
   if not found then return new; end if;
 
+  -- Solo el dueño. TODO: ampliar al personal aceptado con reservations_manage (reservations_can_manage) cuando tengan dashboard donde actuar.
   for v_to in
     select v_owner where v_owner is not null
-    union
-    select e.user_id
-      from public.employees e
-      join public.custom_roles cr on cr.id = e.custom_role_id and cr.business_id = e.business_id
-     where e.business_id = new.business_id and e.status = 'accepted' and cr.permissions ->> 'reservations_manage' = 'true'
   loop
     continue when v_to is not distinct from new.user_id;                          -- nunca al propio autor (p. ej. el dueño reservando en su local)
     insert into public.notifications (user_id, type, payload)
