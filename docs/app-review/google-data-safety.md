@@ -39,7 +39,7 @@ Los proveedores que procesan datos por cuenta de JChat (Supabase, Stripe, Sentry
 | Información y rendimiento de la app | Diagnósticos | Sí | No | Obligatorio | Analítica (Sentry) |
 | Identificadores de dispositivo u otros | ID de dispositivo u otros (token de notificaciones push de Expo) | Sí | No | Opcional (solo si activa las notificaciones) | Funciones de la app |
 
-No se recoge: contactos, calendario (build 13: "Añadir al calendario" solo abre el editor de eventos del sistema con la reserva; la app no lee el calendario ni recibe datos de él; `READ_CALENDAR` bloqueado en `app.config.ts`), historial de navegación, SMS, lista de apps, salud, ni ID de publicidad (Android: `AD_ID` bloqueado en `app.config.ts`).
+No se recoge: contactos, calendario (build 13: "Añadir al calendario" solo abre el editor de eventos del sistema con la reserva; la app no lee el calendario ni recibe datos de él; `READ_CALENDAR` y `WRITE_CALENDAR` bloqueados en `app.config.ts` (el editor se abre por intent, sin permiso)), historial de navegación, SMS, lista de apps, salud, ni ID de publicidad (Android: `AD_ID` bloqueado en `app.config.ts`).
 
 ## 3. Cómo coincide con Apple
 
