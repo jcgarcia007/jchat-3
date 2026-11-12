@@ -38,7 +38,8 @@ import {
 } from '../../services/reservations';
 import { confirm } from '../../utils/dialog';
 import { colorIndex, initials } from '../../utils/mapPin';
-import NextReservationCard from '../../components/reservations/NextReservationCard';
+import NextReservationCard, { CALENDAR_BUTTON_ENABLED } from '../../components/reservations/NextReservationCard';
+import { useAddReservationToCalendar } from '../../hooks/useAddReservationToCalendar';
 import { parseRequests } from '../../utils/reservationFlow';
 import {
   canCancel,
@@ -66,6 +67,7 @@ export default function MyReservationsScreen(): React.ReactElement {
   const { t, i18n } = useTranslation('reservations');
   const navigation = useNavigation<MyReservationsNav>();
 
+  const addToCalendar = useAddReservationToCalendar();
   const [rows, setRows] = useState<MyReservationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -185,6 +187,16 @@ export default function MyReservationsScreen(): React.ReactElement {
             </View>
           </View>
         </View>
+        {cancellable && CALENDAR_BUTTON_ENABLED ? (
+          <Pressable
+            accessibilityLabel={t('calendar.addA11y', { business: name })}
+            accessibilityRole="button"
+            onPress={() => { void addToCalendar(item).then((problem) => { if (problem) showNotice(problem, 'error'); }); }}
+            style={({ pressed }) => [styles.cancelBtn, { borderColor: c.borderSubtle, opacity: pressed ? 0.6 : 1 }]}
+          >
+            <Text style={[styles.cancelText, { color: c.textPrimary }]}>{t('calendar.add')}</Text>
+          </Pressable>
+        ) : null}
         {cancellable ? (
           <Pressable
             accessibilityLabel={t('cancelA11y', { business: name })}
@@ -199,7 +211,7 @@ export default function MyReservationsScreen(): React.ReactElement {
         ) : null}
       </View>
     );
-  }, [askToCancel, c, cancellingId, i18n.language, t, toneColor]);
+  }, [addToCalendar, askToCancel, c, cancellingId, i18n.language, showNotice, t, toneColor]);
 
   const renderSectionHeader = useCallback(({ section }: { section: SectionListData<MyReservationRow, Section> }) => (
     <View style={[styles.sectionHeader, { backgroundColor: c.bgBase, borderBottomColor: c.borderSubtle }]}>
