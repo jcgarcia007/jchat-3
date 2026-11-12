@@ -55,15 +55,25 @@ export const RUNTIMES = {
   // iOS image Xcode 26.6). Computed on fix/c-native-build; they MUST be the hashes in the EAS log of build 12 (recompute if app.config.ts,
   // config-plugins, eas.json or a native dependency changes before the build).
   build12: { ios: '04e88e9740e9a5811cc2e003033e99c0bdf0a25a', android: '6b8d88666a255a5cec8cfbbeb2e686fe0e7ea4a0' },
+  // Build 13 (M3 reservations + expo-calendar + privacy manifest, 2026-11). Its hashes are NOT known until EAS builds it: after `eas build`, copy the
+  // two fingerprints from the EAS log ("Configure expo-updates" / runtime version) into `build13` below, check them with
+  // `npx expo-updates fingerprint:generate --platform ios|android` on the same commit, then commit. Until then `--ota` refuses (nothing to compare with).
+  // If the app is still on build 12, ACTIVE_RUNTIME can go back to 'build12'.
+  build13: { ios: null, android: null },
 };
-// Build 12 is the installed one (its EAS log hashes equal `build12` above). An OTA may only target this runtime; the next native change needs build 13.
-export const ACTIVE_RUNTIME = 'build12';
+// The build that OTAs may target. Build 12 was the installed one; build 13 replaces it once it is in TestFlight / Play.
+export const ACTIVE_RUNTIME = 'build13';
 
 /** { ok, lines } comparing the current fingerprints with the runtime an OTA is allowed to target. */
 export function compareRuntime(current, expected = RUNTIMES[ACTIVE_RUNTIME]) {
   const lines = [];
   let ok = true;
   for (const platform of ['ios', 'android']) {
+    if (expected[platform] == null) {
+      ok = false;
+      lines.push(`… ${platform}: ${current[platform]} (hash of this build not filled in RUNTIMES yet: copy it from the EAS log of the build)`);
+      continue;
+    }
     const same = current[platform] === expected[platform];
     if (!same) ok = false;
     lines.push(`${same ? '✔' : '✖'} ${platform}: ${current[platform]}${same ? '' : ` (expected ${expected[platform]})`}`);
