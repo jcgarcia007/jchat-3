@@ -1830,6 +1830,7 @@ export default function ReservationsPage() {
             const hit = guestCache.current.get(r.id);
             if (hit) return { ...r, guest: hit };
             try {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const { data: card } = await (supabase as any).rpc("reservation_customer_card", { p_reservation_id: r.id });
               const g = (Array.isArray(card) ? card[0] : card) as GuestCard | undefined;
               if (g) guestCache.current.set(r.id, g);
