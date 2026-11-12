@@ -7,6 +7,8 @@
     "NSFaceIDUsageDescription": "JChat usa Face ID para desbloquear la app y confirmar pagos.",
     "NSMotionUsageDescription": "JChat usa los sensores de movimiento de tu dispositivo para detectar cómo sostienes el teléfono y que las fotos que tomas con la cámara se guarden en la orientación correcta.",
     "NSBluetoothAlwaysUsageDescription": "JChat usa Bluetooth para conectarse a los lectores de tarjetas Stripe Terminal en pagos presenciales.",
-    "NSLocalNetworkUsageDescription": "JChat usa la red local para conectarse a lectores de tarjetas con WiFi y a impresoras de red del local."
+    "NSLocalNetworkUsageDescription": "JChat usa la red local para conectarse a lectores de tarjetas con WiFi y a impresoras de red del local.",
+    "NSCalendarsUsageDescription": "JChat añade tu reserva a tu calendario solo cuando tocas \"Añadir al calendario\". Nunca lee tu calendario.",
+    "NSCalendarsWriteOnlyAccessUsageDescription": "JChat añade tu reserva a tu calendario solo cuando tocas \"Añadir al calendario\". Nunca lee tu calendario."
   }
 }
