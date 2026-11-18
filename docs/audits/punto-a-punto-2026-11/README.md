@@ -13,7 +13,7 @@ Severidad: P0 bloquea el envío a tiendas o es de seguridad · P1 rompe un recor
 ### Web (hecho, 120 capturas, solo páginas públicas)
 Playwright sobre `https://jchat.cloud` (producción, solo `goto` + captura). Por cada combinación:
 - Idioma: contexto con `locale` y cabecera `Accept-Language` (`es-ES` / `en-US`); la web decide por cookie o por esa cabecera (`web/i18n/request.ts`).
-- Tema: tras cargar, `document.documentElement.setAttribute('data-theme', 'dark'|'light')` (la web arranca en oscuro, `web/app/layout.tsx:75`).
+- Tema: tras cargar, `document.documentElement.setAttribute('data-theme', 'dark'|'light')` (la web arranca en oscuro, `web/app/layout.tsx:75`). Aviso (H-015): varias páginas públicas no obedecen ese atributo (`/terms`, `/safety`, `/nearby`, `/account/delete` salen idénticas en «claro» y «oscuro»; `/pricing` siempre claro), así que en esas el «tema» de la carpeta no es fiable.
 - Viewport: `m390` = 390×844, `d1280` = 1280×800. Captura de la ventana (no página completa).
 - Pantallas: `home /`, `login /auth/login`, `register /auth/register`, `forgot /forgot-password`, `nearby /nearby`, `pricing /pricing`, `pricingbiz /pricing/business`, `download /download`, `privacy /privacy`, `terms /terms`, `support /support`, `contact /contact`, `safety /safety`, `deleteaccount /account/delete`, `bizregister /business/register`.
 - Cada carga registra errores de consola, desbordamiento horizontal y página en blanco (resumidos en HALLAZGOS.md).
