@@ -15,6 +15,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { getTranslations } from "next-intl/server";
+import { safeJsonLd, localBusinessJsonLd } from "@/lib/jsonLd";
 import {
   IconMapPin,
   IconClock,
@@ -194,25 +195,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 // ---------------------------------------------------------------------------
 
 function JsonLd({ biz }: { biz: Business }) {
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    name: biz.name,
-    description: biz.description ?? undefined,
-    address: biz.address
-      ? {
-          "@type": "PostalAddress",
-          streetAddress: biz.address,
-        }
-      : undefined,
-    image: biz.cover_url ?? undefined,
-    url: `https://jchat.app/b/${biz.slug}`, // TODO: replace with real production domain
-  };
-
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      dangerouslySetInnerHTML={{ __html: safeJsonLd(localBusinessJsonLd(biz)) }}
     />
   );
 }
