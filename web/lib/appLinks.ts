@@ -6,7 +6,9 @@ export const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com
 export const APP_STORES_LIVE = process.env.NEXT_PUBLIC_APP_STORES_LIVE === "true";
 export const DOWNLOAD_PATH = "/download";
 /** Destino del QR de escritorio: siempre el dominio de producción (igual que QR_HOST en services/qr.ts). */
-export const DOWNLOAD_URL = `https://jchat.cloud${DOWNLOAD_PATH}`;
+/** Dominio público de producción (única fuente: DOWNLOAD_URL y la URL canónica del JSON-LD parten de aquí). */
+export const SITE_ORIGIN = "https://jchat.cloud";
+export const DOWNLOAD_URL = `${SITE_ORIGIN}${DOWNLOAD_PATH}`;
 
 export type StorePlatform = "ios" | "android" | "desktop";
 
