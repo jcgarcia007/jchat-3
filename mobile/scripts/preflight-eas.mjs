@@ -55,11 +55,12 @@ export const RUNTIMES = {
   // iOS image Xcode 26.6). Computed on fix/c-native-build; they MUST be the hashes in the EAS log of build 12 (recompute if app.config.ts,
   // config-plugins, eas.json or a native dependency changes before the build).
   build12: { ios: '04e88e9740e9a5811cc2e003033e99c0bdf0a25a', android: '6b8d88666a255a5cec8cfbbeb2e686fe0e7ea4a0' },
-  // Build 13 (M3 reservations + expo-calendar + privacy manifest, 2026-11). Its hashes are NOT known until EAS builds it: after `eas build`, copy the
-  // two fingerprints from the EAS log ("Configure expo-updates" / runtime version) into `build13` below, check them with
-  // `npx expo-updates fingerprint:generate --platform ios|android` on the same commit, then commit. Until then `--ota` refuses (nothing to compare with).
-  // If the app is still on build 12, ACTIVE_RUNTIME can go back to 'build12'.
-  build13: { ios: null, android: null },
+  // Build 13 (M3 reservations + expo-calendar + privacy manifest, 2026-11). runtimeVersion of each build as reported by EAS (build_info):
+  //   iOS      build 14  EAS 1b50d7c9-aba9-47fa-970b-f4024a107dbf  commit e6250128
+  //   Android  build 13  EAS ad07d0dc-4876-4bc3-9387-93e5b475007d  commit 46477515
+  // (iOS build 13, EAS 5420c0e4, failed on InfoPlist.strings and does not count.) The next build gets its own entry, copied the same way from the EAS
+  // log / build_info and checked with `npx expo-updates fingerprint:generate --platform ios|android` on the same commit.
+  build13: { ios: 'dbdfeaeab820021354ccf7b8a061b3b962e3a04e', android: 'f7d420cd34d516f36a04ca63411df939d7f66e34' },
 };
 // The build that OTAs may target. Build 12 was the installed one; build 13 replaces it once it is in TestFlight / Play.
 export const ACTIVE_RUNTIME = 'build13';
