@@ -65,7 +65,7 @@ export function TopBar({ navOpen = false, onToggleNav }: { navOpen?: boolean; on
     if (signingOut) return;
     setSigningOut(true);
     try {
-      await supabase.auth.signOut();
+      await supabase.auth.signOut({ scope: "local" });
     } catch {
       // Even if the network call fails, leave the dashboard: the middleware/layout gate re-checks the session.
     }
