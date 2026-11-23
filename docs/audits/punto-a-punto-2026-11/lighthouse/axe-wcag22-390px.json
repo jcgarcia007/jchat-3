@@ -1,0 +1,227 @@
+{
+ "home": {
+  "lang": "es",
+  "title": "JChat — Chatea, pide y paga donde estés",
+  "desc": "Únete a salas de chat en tus lugares favoritos, pide desde tu mesa y paga en la app.",
+  "violations": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "tags": "wcag2aa,wcag143",
+    "count": 18,
+    "sample": [
+     {
+      "t": ".map-you-label",
+      "s": "Element has insufficient color contrast of 3.67 (foreground color: #ffffff, background color: #5c7cfa, font size: 5.3pt (7px), font weight: bold). Expected cont"
+     },
+     {
+      "t": ".mq-a > span:nth-child(1)",
+      "s": "Element has insufficient color contrast of 2.43 (foreground color: #9ca3af, background color: #fafafa, font size: 9.8pt (13px), font weight: normal). Expected c"
+     }
+    ]
+   },
+   {
+    "id": "landmark-one-main",
+    "impact": "moderate",
+    "tags": "",
+    "count": 1,
+    "sample": [
+     {
+      "t": "html",
+      "s": "Document does not have a main landmark"
+     }
+    ]
+   },
+   {
+    "id": "region",
+    "impact": "moderate",
+    "tags": "",
+    "count": 11,
+    "sample": [
+     {
+      "t": ".hero-grid > div:nth-child(1)",
+      "s": "Some page content is not contained by landmarks"
+     },
+     {
+      "t": "section:nth-child(5)",
+      "s": "Some page content is not contained by landmarks"
+     }
+    ]
+   }
+  ]
+ },
+ "pricing": {
+  "lang": "es",
+  "title": "Planes y precios — JChat",
+  "desc": "Planes para negocios: salas de chat, menú, POS y analítica. Empieza con una prueba gratis.",
+  "violations": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "tags": "wcag2aa,wcag143",
+    "count": 3,
+    "sample": [
+     {
+      "t": "a[href$=\"privacy\"]",
+      "s": "Element has insufficient color contrast of 2.11 (foreground color: #aeaeb2, background color: #fafafa, font size: 9.8pt (13px), font weight: normal). Expected c"
+     },
+     {
+      "t": "a[href$=\"terms\"]",
+      "s": "Element has insufficient color contrast of 2.11 (foreground color: #aeaeb2, background color: #fafafa, font size: 9.8pt (13px), font weight: normal). Expected c"
+     }
+    ]
+   },
+   {
+    "id": "landmark-one-main",
+    "impact": "moderate",
+    "tags": "",
+    "count": 1,
+    "sample": [
+     {
+      "t": "html",
+      "s": "Document does not have a main landmark"
+     }
+    ]
+   },
+   {
+    "id": "region",
+    "impact": "moderate",
+    "tags": "",
+    "count": 35,
+    "sample": [
+     {
+      "t": "a[href=\"/\"]",
+      "s": "Some page content is not contained by landmarks"
+     },
+     {
+      "t": "div:nth-child(3) > div:nth-child(2) > div:nth-child(1) > div > span",
+      "s": "Some page content is not contained by landmarks"
+     }
+    ]
+   }
+  ]
+ },
+ "nearby": {
+  "lang": "es",
+  "title": "Lugares cercanos — JChat",
+  "desc": "Explora bares, restaurantes y locales en JChat y únete a sus salas de chat.",
+  "violations": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "tags": "wcag2aa,wcag143",
+    "count": 19,
+    "sample": [
+     {
+      "t": "main > div > div:nth-child(3)",
+      "s": "Element has insufficient color contrast of 3.19 (foreground color: #636366, background color: #0f0f11, font size: 9.0pt (12px), font weight: normal). Expected c"
+     },
+     {
+      "t": "a[href$=\"bar-xzx-omd2\"] > div > div:nth-child(2) > div:nth-child(1) > span:nth-child(2)",
+      "s": "Element has insufficient color contrast of 4.32 (foreground color: #1d9e75, background color: #192c29, font size: 8.3pt (11px), font weight: normal). Expected c"
+     }
+    ]
+   }
+  ]
+ },
+ "b": {
+  "lang": "es",
+  "title": "caminata en JChat",
+  "desc": "caminata está en JChat. Descarga la app para unirte a la conversación.",
+  "violations": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "tags": "wcag2aa,wcag143",
+    "count": 2,
+    "sample": [
+     {
+      "t": "div > div:nth-child(2) > div:nth-child(1) > span:nth-child(1)",
+      "s": "Element has insufficient color contrast of 4.18 (foreground color: #5c7cfa, background color: #202436, font size: 9.8pt (13px), font weight: normal). Expected c"
+     },
+     {
+      "t": "div:nth-child(1) > span:nth-child(2)",
+      "s": "Element has insufficient color contrast of 4.18 (foreground color: #5c7cfa, background color: #202436, font size: 9.8pt (13px), font weight: normal). Expected c"
+     }
+    ]
+   }
+  ]
+ },
+ "m": {
+  "lang": "es",
+  "title": "Menú · caminata",
+  "desc": "Ver el menú de caminata y hacer tu pedido.",
+  "violations": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "tags": "wcag2aa,wcag143",
+    "count": 1,
+    "sample": [
+     {
+      "t": "p",
+      "s": "Element has insufficient color contrast of 3.19 (foreground color: #636366, background color: #0f0f11, font size: 9.8pt (13px), font weight: normal). Expected c"
+     }
+    ]
+   }
+  ]
+ },
+ "login": {
+  "lang": "es",
+  "title": "Sign in — JChat",
+  "desc": "Sign in to your JChat business dashboard",
+  "violations": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "tags": "wcag2aa,wcag143",
+    "count": 12,
+    "sample": [
+     {
+      "t": "div:nth-child(2) > .brand-jchat",
+      "s": "Element has insufficient color contrast of 3.26 (foreground color: #8e8e93, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected c"
+     },
+     {
+      "t": "p:nth-child(3)",
+      "s": "Element has insufficient color contrast of 3.26 (foreground color: #8e8e93, background color: #ffffff, font size: 9.8pt (13px), font weight: normal). Expected c"
+     }
+    ]
+   }
+  ]
+ },
+ "privacy": {
+  "lang": "es",
+  "title": "Política de privacidad — JChat",
+  "desc": "Cómo JChat, operado por Otunity Labs LLC, recopila, usa y protege tu información.",
+  "violations": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "tags": "wcag2aa,wcag143",
+    "count": 20,
+    "sample": [
+     {
+      "t": "a[href$=\"#who-this-applies\"]",
+      "s": "Element has insufficient color contrast of 3.33 (foreground color: #5c7cfa, background color: #f3f4f6, font size: 10.5pt (14px), font weight: normal). Expected "
+     },
+     {
+      "t": "a[href$=\"#information-we-collect\"]",
+      "s": "Element has insufficient color contrast of 3.33 (foreground color: #5c7cfa, background color: #f3f4f6, font size: 10.5pt (14px), font weight: normal). Expected "
+     }
+    ]
+   },
+   {
+    "id": "landmark-unique",
+    "impact": "moderate",
+    "tags": "",
+    "count": 1,
+    "sample": [
+     {
+      "t": "main > nav",
+      "s": "The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
+     }
+    ]
+   }
+  ]
+ }
+}
