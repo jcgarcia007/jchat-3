@@ -7,8 +7,12 @@ import {
   IconCheck,
   IconBuildingStore,
   IconPlus,
+  IconMenu2,
+  IconX,
+  IconLogout,
 } from "@tabler/icons-react";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import {
   listUserBusinesses,
@@ -36,7 +40,7 @@ function useClock(): string {
   return time;
 }
 
-export function TopBar() {
+export function TopBar({ navOpen = false, onToggleNav }: { navOpen?: boolean; onToggleNav?: () => void }) {
   const t = useTranslations("dashboardCommon");
   const time = useClock();
 
@@ -45,6 +49,28 @@ export function TopBar() {
   const [activeName, setActiveName] = useState<string>("");
   const [open, setOpen] = useState(false);
   const [switching, setSwitching] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setUserMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [userMenuOpen]);
+
+  async function handleSignOut() {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // Even if the network call fails, leave the dashboard: the middleware/layout gate re-checks the session.
+    }
+    window.location.assign("/auth/login");
+  }
 
   useEffect(() => {
     let active = true;
@@ -106,8 +132,30 @@ export function TopBar() {
         flexShrink: 0,
       }}
     >
-      {/* Left — business switcher */}
-      <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+      {/* Left — nav toggle (mobile only) + business switcher */}
+      <div style={{ position: "relative", display: "flex", alignItems: "center", minWidth: 0, gap: "4px" }}>
+        <button
+          type="button"
+          className="db-shell-menu-btn"
+          onClick={onToggleNav}
+          aria-label={navOpen ? t("closeNavAria") : t("openNavAria")}
+          aria-expanded={navOpen}
+          aria-controls="dashboard-nav"
+          style={{
+            alignItems: "center",
+            justifyContent: "center",
+            width: "36px",
+            height: "36px",
+            flexShrink: 0,
+            borderRadius: "var(--db-radius)",
+            border: "none",
+            background: "transparent",
+            color: "var(--db-text-primary)",
+            cursor: "pointer",
+          }}
+        >
+          {navOpen ? <IconX size={20} stroke={1.7} /> : <IconMenu2 size={20} stroke={1.7} />}
+        </button>
         {hasSwitcher ? (
           <button
             type="button"
@@ -129,11 +177,12 @@ export function TopBar() {
               fontSize: "14px",
               cursor: switching ? "wait" : "pointer",
               whiteSpace: "nowrap",
+              minWidth: 0,
               opacity: switching ? 0.6 : 1,
             }}
           >
-            <IconBuildingStore size={16} stroke={1.7} color="var(--db-text-secondary)" />
-            <span>{switching ? t("switchingState") : displayName}</span>
+            <IconBuildingStore size={16} stroke={1.7} color="var(--db-text-secondary)" style={{ flexShrink: 0 }} />
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{switching ? t("switchingState") : displayName}</span>
             <IconChevronDown size={14} stroke={1.7} color="var(--db-text-tertiary)" />
           </button>
         ) : (
@@ -257,7 +306,7 @@ export function TopBar() {
       </div>
 
       {/* Right — language switcher + live clock + avatar */}
-      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
         {/* Language switcher */}
         <span style={{ color: "var(--db-text-secondary)" }}>
           <LanguageSwitcher />
@@ -265,6 +314,7 @@ export function TopBar() {
 
         {/* Live clock */}
         <span
+          className="db-topbar-clock"
           aria-live="polite"
           aria-label={t("currentTimeAria", { time })}
           style={{
@@ -278,26 +328,81 @@ export function TopBar() {
           {time}
         </span>
 
-        {/* Avatar stub */}
-        {/* TODO(Task 1.7): replace with real user avatar from profiles.avatar_url */}
-        <div
-          aria-label={t("userAvatarAria")}
-          style={{
-            width: "28px",
-            height: "28px",
-            borderRadius: "50%",
-            background: "var(--db-accent-bg)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "12px",
-            fontWeight: 700,
-            color: "var(--db-accent)",
-            flexShrink: 0,
-            cursor: "pointer",
-          }}
-        >
-          {activeName ? activeName.charAt(0).toUpperCase() : "?"}
+        {/* Avatar + user menu */}
+        <div style={{ position: "relative", display: "flex" }}>
+          <button
+            type="button"
+            onClick={() => setUserMenuOpen((o) => !o)}
+            aria-label={t("userMenuAria")}
+            aria-haspopup="menu"
+            aria-expanded={userMenuOpen}
+            style={{
+              width: "32px",
+              height: "32px",
+              borderRadius: "50%",
+              border: "none",
+              background: "var(--db-accent-bg)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "12px",
+              fontWeight: 700,
+              color: "var(--db-accent)",
+              flexShrink: 0,
+              cursor: "pointer",
+              padding: 0,
+            }}
+          >
+            {activeName ? activeName.charAt(0).toUpperCase() : "?"}
+          </button>
+          {userMenuOpen && (
+            <>
+              <div onClick={() => setUserMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 15 }} />
+              <div
+                role="menu"
+                aria-label={t("userMenuAria")}
+                style={{
+                  position: "absolute",
+                  top: "calc(100% + 6px)",
+                  right: 0,
+                  minWidth: "180px",
+                  background: "var(--db-bg-elevated)",
+                  border: "1px solid var(--db-border)",
+                  borderRadius: "var(--db-radius-card)",
+                  boxShadow: "0 8px 24px rgba(0, 0, 0, 0.18)",
+                  zIndex: 20,
+                  padding: "4px",
+                }}
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  autoFocus
+                  disabled={signingOut}
+                  onClick={() => void handleSignOut()}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    width: "100%",
+                    minHeight: "40px",
+                    padding: "8px 10px",
+                    borderRadius: "var(--db-radius)",
+                    border: "none",
+                    background: "transparent",
+                    color: "var(--db-text-primary)",
+                    fontSize: "14px",
+                    fontWeight: 500,
+                    cursor: signingOut ? "wait" : "pointer",
+                    textAlign: "left",
+                  }}
+                >
+                  <IconLogout size={16} stroke={1.7} />
+                  <span>{t("logout")}</span>
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </header>

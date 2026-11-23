@@ -208,11 +208,8 @@ export function Sidebar() {
     <nav
       aria-label={t("navAriaLabel")}
       style={{
-        width: "200px",
-        minWidth: "200px",
-        height: "100vh",
-        position: "sticky",
-        top: 0,
+        width: "100%",
+        height: "100%",
         display: "flex",
         flexDirection: "column",
         padding: "12px 8px",

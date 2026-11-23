@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { Sidebar } from "@/components/dashboard/Sidebar";
-import { TopBar } from "@/components/dashboard/TopBar";
+import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { DashboardThemeProvider } from "@/components/dashboard/DashboardThemeProvider";
-import { OverviewTabBarGate } from "@/components/dashboard/OverviewTabBarGate";
 import {
   createSupabaseServerClient,
   isSupabaseConfigured,
@@ -116,40 +114,7 @@ export default async function DashboardLayout({
 
   return (
     <DashboardThemeProvider initialThemeId={initialThemeId} initialPaletteId={initialPaletteId}>
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "row",
-          minHeight: "100vh",
-          background: "var(--db-bg-base)",
-          color: "var(--db-text-primary)",
-        }}
-      >
-        <Sidebar />
-
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            minWidth: 0,
-            overflow: "hidden",
-          }}
-        >
-          <TopBar />
-
-          <main
-            style={{
-              flex: 1,
-              overflowY: "auto",
-              padding: "24px",
-            }}
-          >
-            <OverviewTabBarGate />
-            {children}
-          </main>
-        </div>
-      </div>
+      <DashboardShell>{children}</DashboardShell>
     </DashboardThemeProvider>
   );
 }
