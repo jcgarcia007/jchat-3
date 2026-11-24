@@ -15,13 +15,6 @@ import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.44.4
 // deno-lint-ignore no-explicit-any
 type Db = SupabaseClient<any, "public", any>;
 
-/**
- * @deprecated The invented 8% default. `payments` no longer uses it (it asks
- * effective_tax_rate instead: business rate → state table → none). It stays exported
- * ONLY because guest-pay still imports it; do not use it in new code.
- */
-export const TAX_FALLBACK = 0.08;
-
 export type TaxSource = "business" | "state" | "none";
 
 /**

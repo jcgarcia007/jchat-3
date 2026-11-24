@@ -31,7 +31,7 @@
 import Stripe from "npm:stripe@16.2.0";
 import { createAdminClient } from "../_shared/supabaseAdmin.ts";
 import { businessChargeGate, buildConnectPiParams } from "../_shared/connect.ts";
-import { priceLinesFromDb, computeTaxCents, TAX_FALLBACK } from "../_shared/pricing.ts";
+import { priceLinesFromDb, computeTaxCents, getEffectiveTaxRate } from "../_shared/pricing.ts";
 import { finiteCoord, venueOrderCheck } from "../_shared/venue.ts";
 
 function getAdminClient() {
@@ -171,7 +171,7 @@ async function handleCreateGuestPayment(body: Record<string, unknown>, req: Requ
   // ── Guard 3: business exists + can charge (shared gate, same errors) ───────
   const { data: business, error: bizErr } = await db
     .from("businesses")
-    .select("id, stripe_account_id, tax_rate, status, stripe_charges_enabled")
+    .select("id, stripe_account_id, status, stripe_charges_enabled")
     .eq("id", businessId)
     .maybeSingle();
   if (bizErr) return errorResponse(`DB error: ${bizErr.message}`, 500);
@@ -206,8 +206,11 @@ async function handleCreateGuestPayment(body: Record<string, unknown>, req: Requ
   if ("error" in priced) return errorResponse(priced.error, priced.status ?? 400);
   const { lineUnitCents, resolvedOptions, subtotalCents } = priced;
 
-  const taxRate = business.tax_rate != null ? Number(business.tax_rate) : TAX_FALLBACK;
-  const taxCents = computeTaxCents(subtotalCents, taxRate);
+  // Tax: the same single rule as `payments` (business rate → state table → none). Never an
+  // invented rate: if the DB can't say, answer an error and DON'T charge (H-093).
+  const tax = await getEffectiveTaxRate(db, businessId);
+  if ("error" in tax) return errorResponse(tax.error, 500);
+  const taxCents = computeTaxCents(subtotalCents, tax.rate);
   const totalCents = subtotalCents + taxCents; // guest: no tip, no discount
   if (totalCents < 50) return errorResponse("Total is below Stripe minimum ($0.50)");
 
