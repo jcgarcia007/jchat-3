@@ -89,6 +89,13 @@
           "react-native-tcp-socket"
         ]
       }
+    },
+    "autolinking": {
+      "exclude": [
+        "@stripe/stripe-terminal-react-native",
+        "react-native-bluetooth-classic",
+        "react-native-tcp-socket"
+      ]
     }
   },
   "private": true,
