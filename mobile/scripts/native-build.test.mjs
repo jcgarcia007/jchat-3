@@ -16,34 +16,46 @@ const cfg = introspectClean();
 const plist = cfg.ios.infoPlist;
 const perms = cfg.android.permissions;
 
-test('C1 (B10-1): the only background mode is bluetooth-central, once; no media-playback foreground service', () => {
-  assert.deepEqual(plist.UIBackgroundModes, ['bluetooth-central']);
+test('C1 (B10-1): no background mode at all (bluetooth-central is gone with the POS hardware); no media-playback foreground service', () => {
+  assert.equal(plist.UIBackgroundModes, undefined);
   assert.ok(!perms.some((p) => /FOREGROUND_SERVICE/.test(p)), `foreground-service permissions left: ${perms.filter((p) => /FOREGROUND_SERVICE/.test(p))}`);
   assert.match(read('app.config.ts'), /enableBackgroundPlayback: false/);
   assert.match(read('app.config.ts'), /enableBackgroundRecording: false/);
 });
 
-test('C2 (B10-2): no NSBluetoothPeripheralUsageDescription (the Terminal plugin writes it unless a plugin deletes it after it)', () => {
-  assert.equal(plist.NSBluetoothPeripheralUsageDescription, undefined);
+test('C2 (consumer build): no Bluetooth / local-network / accessory keys in the Info.plist, and none of the three POS hardware packages is linked', () => {
+  for (const k of ['NSBluetoothPeripheralUsageDescription', 'NSBluetoothAlwaysUsageDescription', 'UISupportedExternalAccessoryProtocols']) {
+    assert.equal(plist[k], undefined, `${k} is still in the Info.plist`);
+  }
+  // NSLocalNetworkUsageDescription: the only one left is expo-dev-launcher's own text (dev-client builds). Its "[Expo Dev Launcher] Strip Local Network Keys
+  // for Release" build phase deletes it (and the _expo._tcp Bonjour service) from every non-Debug build, so the store binary has neither.
+  assert.ok(plist.NSLocalNetworkUsageDescription === undefined || /Expo Dev Launcher/.test(plist.NSLocalNetworkUsageDescription), 'a non-dev-launcher local-network text is in the Info.plist');
   const src = read('app.config.ts');
-  assert.ok(!/bluetoothPeripheralPermission/.test(src));
-  // Order: the deleting plugin is registered BEFORE the Terminal plugin (Expo runs the later plugin's Info.plist mod first).
-  assert.ok(src.indexOf("withoutBluetoothPeripheral'") > 0 && src.indexOf("withoutBluetoothPeripheral'") < src.indexOf("'@stripe/stripe-terminal-react-native'"));
+  for (const gone of ['@stripe/stripe-terminal-react-native', 'withBluetoothClassicPermissions', 'withoutBluetoothPeripheral', 'bluetoothBackgroundMode']) {
+    assert.ok(!src.includes(gone), `app.config.ts still mentions ${gone}`);
+  }
+  const exclude = JSON.parse(read('package.json')).expo?.autolinking?.exclude ?? [];
+  for (const pkg of ['@stripe/stripe-terminal-react-native', 'react-native-bluetooth-classic', 'react-native-tcp-socket']) {
+    assert.ok(exclude.includes(pkg), `${pkg} must be in expo.autolinking.exclude`);
+  }
+  // Their JS side resolves to the inert stubs on every platform (the package is not linked, so importing it for real would crash).
+  const metro = read('metro.config.js');
+  assert.match(metro, /const HARDWARE_STUBS = \{/);
+  assert.match(read('constants/posHardware.ts'), /export const POS_HARDWARE_ENABLED = false;/);
+  for (const perm of ['BLUETOOTH', 'BLUETOOTH_ADMIN', 'BLUETOOTH_SCAN', 'BLUETOOTH_CONNECT', 'NFC', 'READ_PHONE_STATE', 'HIDE_OVERLAY_WINDOWS', 'ACCESS_WIFI_STATE', 'CHANGE_NETWORK_STATE']) {
+    assert.ok(!perms.some((p) => p.endsWith(`.${perm}`)), `${perm} declared by the app config`);
+  }
 });
 
-test('C2 (B10-3): Face ID and local-network texts mention payments and network printers, es and en', () => {
+test('C2 (B10-3): Face ID text mentions payments, es and en; no Bluetooth or local-network text in the locales; the location text no longer mentions card readers', () => {
   const FACE = { en: 'JChat uses Face ID to unlock the app and confirm payments.', es: 'JChat usa Face ID para desbloquear la app y confirmar pagos.' };
-  const NET = {
-    en: 'JChat uses the local network to connect to WiFi card readers and network printers at the venue.',
-    es: 'JChat usa la red local para conectarse a lectores de tarjetas con WiFi y a impresoras de red del local.',
-  };
   assert.equal(plist.NSFaceIDUsageDescription, FACE.en);
-  assert.equal(plist.NSLocalNetworkUsageDescription, NET.en);
+  assert.doesNotMatch(plist.NSLocationWhenInUseUsageDescription, /card reader/i);
   for (const l of ['en', 'es']) {
     const ios = JSON.parse(read(`assets/locales/${l}.json`)).ios;
     assert.equal(ios.NSFaceIDUsageDescription, FACE[l], `${l} Face ID`);
-    assert.equal(ios.NSLocalNetworkUsageDescription, NET[l], `${l} local network`);
-    assert.equal(ios.NSBluetoothPeripheralUsageDescription, undefined, `${l} still has the peripheral key`);
+    for (const k of ['NSBluetoothPeripheralUsageDescription', 'NSBluetoothAlwaysUsageDescription', 'NSLocalNetworkUsageDescription']) assert.equal(ios[k], undefined, `${l} still has ${k}`);
+    assert.doesNotMatch(ios.NSLocationWhenInUseUsageDescription, /lector|reader/i, `${l} location text mentions readers`);
   }
 });
 

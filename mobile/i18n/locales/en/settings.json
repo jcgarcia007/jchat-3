@@ -253,6 +253,8 @@
     "partyPeople": "{{count}} guests",
     "terminalUnavailableTitle": "Physical device required for payments",
     "terminalUnavailableSub": "Stripe Terminal is not available in the Simulator. Use an EAS build on a physical iPhone to process payments.",
+    "readerNotInBuildTitle": "Card reader not available in this version",
+    "readerNotInBuildSub": "Card reader payments are not part of this version of the app. Ask the owner to set the POS to External payment mode (cash or your own card terminal) to charge from here.",
     "draftDone": "Done · Add",
     "hubSeatLabel": "Seat {{n}}",
     "hubTableCenter": "Table",

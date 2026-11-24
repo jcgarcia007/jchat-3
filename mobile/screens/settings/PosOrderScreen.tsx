@@ -41,6 +41,7 @@ import {
 } from '@tabler/icons-react-native';
 
 import { palette } from '../../theme/tokens';
+import { POS_HARDWARE_ENABLED } from '../../constants/posHardware';
 import { useThemeColors } from '../../theme/colors';
 import {
   getMenu,
@@ -746,9 +747,11 @@ export default function PosOrderScreen() {
 
     if (result.ok) {
       // Print kitchen/bar commandas — aislado, no afecta el flujo
-      resolveServerName(businessId).then((serverName) => {
-        printKitchenTickets({ businessId, orderId: result.orderId, tableLabel, serverName });
-      });
+      if (POS_HARDWARE_ENABLED) {
+        resolveServerName(businessId).then((serverName) => {
+          printKitchenTickets({ businessId, orderId: result.orderId, tableLabel, serverName });
+        });
+      }
       // fire-and-forget — impresion no bloquea el flujo
       showAlert(
         t('pos.submitSuccess'),
