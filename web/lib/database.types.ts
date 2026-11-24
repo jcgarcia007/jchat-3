@@ -7761,6 +7761,19 @@ export type Database = {
         }
         Returns: Json
       }
+      submit_business_plan_request_server: {
+        Args: {
+          p_business_name: string
+          p_email: string
+          p_ip_hash?: string
+          p_locale: string
+          p_locations_count: number
+          p_message: string
+          p_phone: string
+          p_user_id?: string
+        }
+        Returns: Json
+      }
       tab_amount_due: { Args: { p_tab_id: string }; Returns: Json }
       tod_accept_terms: { Args: { p_version?: string }; Returns: undefined }
       tod_applaud: { Args: { p_draw_id: string }; Returns: Json }
