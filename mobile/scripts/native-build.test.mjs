@@ -59,6 +59,13 @@ test('C2 (B10-3): Face ID text mentions payments, es and en; no Bluetooth or loc
   }
 });
 
+test('H-005: expo-secure-store is installed and its plugin keeps the app\'s Face ID text; no extra Android backup rules', () => {
+  assert.ok(JSON.parse(read('package.json')).dependencies['expo-secure-store']);
+  assert.match(read('app.config.ts'), /\['expo-secure-store', \{ faceIDPermission: FACE_ID, configureAndroidBackup: false \}\]/);
+  assert.equal(plist.NSFaceIDUsageDescription, 'JChat uses Face ID to unlock the app and confirm payments.');
+  assert.equal(cfg.android.allowBackup, false);
+});
+
 test('C2 (C-12): allowBackup is false; USE_FINGERPRINT and MODIFY_AUDIO_SETTINGS stay on purpose (real use, normal permissions)', () => {
   assert.equal(cfg.android.allowBackup, false);
   // USE_FINGERPRINT: androidx.biometric's FingerprintManager path on Android 8.0/8.1 (minSdk 26). MODIFY_AUDIO_SETTINGS: expo-audio's

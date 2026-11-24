@@ -242,6 +242,9 @@ const config: ExpoConfig = {
     ['expo-calendar', { calendarPermission: CALENDAR_ADD, writeOnlyCalendarPermission: CALENDAR_ADD, remindersPermission: false, writeOnlyAccess: true }],
     // Biometric lock (services/biometric.ts): its plugin runs by default with a generic Face ID text.
     ['expo-local-authentication', { faceIDPermission: FACE_ID }],
+    // Supabase session in the Keychain / Keystore (H-005, services/authStorage.native.ts). Same Face ID text as above so the plugin's default never overwrites it;
+    // allowBackup is already false, so no Android backup rules are added.
+    ['expo-secure-store', { faceIDPermission: FACE_ID, configureAndroidBackup: false }],
     // Sentry (docs/SENTRY_SETUP.md). The upload of source maps authenticates with SENTRY_AUTH_TOKEN (EAS secret, never here);
     // without it builds must run with SENTRY_DISABLE_AUTO_UPLOAD=true (set by default in eas.json).
     ['@sentry/react-native/expo', { organization: 'otunity-labs', project: 'jchat-mobile', url: 'https://sentry.io/' }],

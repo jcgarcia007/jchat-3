@@ -8,12 +8,12 @@
  * `.env` is filled in (see .env.example).
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
 import i18n from '../i18n';
 import { showAlert } from '../utils/dialog';
 import { fetchWithTimeout } from './fetchWithTimeout';
+import { authStorage } from './authStorage';
 import { reportRealtimeHeartbeat } from './realtimeHealth';
 
 /** Project URL — exported so callers can reach Edge Functions (e.g. delete-account). */
@@ -50,12 +50,14 @@ const HEARTBEAT_INTERVAL_MS = 15_000;
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
-    storage: AsyncStorage,
+    // iOS / Android: Keychain / Keystore in chunks (services/authStorage.native.ts, H-005); web: AsyncStorage (services/authStorage.ts).
+    // The PKCE code verifier of flowType 'pkce' goes through the same storage.
+    storage: authStorage,
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
     // PKCE (supabase-js' default is 'implicit', which returns tokens in the URL). With PKCE a deep link / OAuth return
-    // carries only a code that this device alone can exchange (code verifier in AsyncStorage): a link opened by another
+    // carries only a code that this device alone can exchange (code verifier in the session storage): a link opened by another
     // app or page cannot sign anybody in (H-03, see utils/authUrl.ts). The email OTP of the password recovery
     // (verifyOtp) does not use the code verifier and is unaffected.
     flowType: 'pkce',
