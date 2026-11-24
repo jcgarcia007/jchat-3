@@ -10,6 +10,7 @@ grant select on public.public_profiles to anon;
 
 -- 2 · S-02
 grant execute on function public.submit_business_plan_request(text, integer, text, text, text, text, text) to public, anon, authenticated;
+-- (la web de ese momento llama a la función original, que en producción trae el correo a ventas@ de la 272 de la web: no se toca)
 drop function if exists public.submit_business_plan_request_server(text, integer, text, text, text, text, text, uuid);
 
 -- 3 · H-108
@@ -25,6 +26,10 @@ alter default privileges for role postgres in schema public grant insert, update
 
 -- 5 · S-03
 grant delete on public.businesses to authenticated;
+
+-- 4b · MAINTAIN
+grant maintain on all tables in schema public to anon;
+alter default privileges for role postgres in schema public grant maintain on tables to anon;
 
 -- 6 · S-04
 grant insert on public.trials to authenticated;
