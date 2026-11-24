@@ -1,5 +1,5 @@
 /**
- * Web stub for react-native-bluetooth-classic (Metro alias, web only — see metro.config.js).
+ * Stub for react-native-bluetooth-classic (Metro alias on every platform — see metro.config.js; the package is not linked on devices).
  * Covers the default-export methods used by services/btPrinter.ts:
  * isBluetoothEnabled, getBondedDevices, connectToDevice. BluetoothDevice is type-only.
  */

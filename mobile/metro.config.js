@@ -11,10 +11,17 @@ const config = getSentryExpoConfig(__dirname);
 const WEB_STUBS = {
   'react-native-maps': 'react-native-maps.tsx',
   '@stripe/stripe-react-native': 'stripe-react-native.tsx',
+  'react-native-webview': 'react-native-webview.tsx',
+};
+
+// POS hardware packages: NOT linked into the iOS / Android binary (package.json → expo.autolinking.exclude: the store build declares no Bluetooth,
+// local network, NFC or phone-state permission), so on EVERY platform they resolve to the same inert stubs (see POS_HARDWARE_ENABLED in
+// constants/posHardware.ts). To bring the reader / printers back: remove them from expo.autolinking.exclude, re-add their plugins in app.config.ts
+// (withBluetoothClassicPermissions, withoutBluetoothPeripheral, @stripe/stripe-terminal-react-native) and delete these three entries.
+const HARDWARE_STUBS = {
   '@stripe/stripe-terminal-react-native': 'stripe-terminal-react-native.ts',
   'react-native-bluetooth-classic': 'react-native-bluetooth-classic.ts',
   'react-native-tcp-socket': 'react-native-tcp-socket.ts',
-  'react-native-webview': 'react-native-webview.tsx',
 };
 
 // Web only: '@tabler/icons-react-native' (the whole icon set, ~47 % of the web bundle) resolves to a generated
@@ -26,6 +33,8 @@ const TABLER_WEB_STUB = path.resolve(__dirname, 'web-stubs', 'tabler-icons.web.t
 const upstreamResolveRequest = config.resolver.resolveRequest;
 
 config.resolver.resolveRequest = (context, moduleName, platform) => {
+  const hw = Object.keys(HARDWARE_STUBS).find((name) => moduleName === name || moduleName.startsWith(`${name}/`));
+  if (hw) return context.resolveRequest(context, path.resolve(__dirname, 'web-stubs', HARDWARE_STUBS[hw]), platform);
   if (platform === 'web') {
     if (moduleName === '@tabler/icons-react-native') {
       return context.resolveRequest(context, TABLER_WEB_STUB, platform);
