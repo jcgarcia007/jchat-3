@@ -26,7 +26,8 @@
 -- 6. S-04  authenticated y anon ya no pueden INSERT en trials (la política "trials: owner insert" dejaba a un dueño fabricarse una prueba gratuita). Nada del
 --          cliente inserta ahí; la tabla sigue existiendo y se sigue leyendo.
 --
--- NO incluido (propuesta aparte): el privilegio MAINTAIN (PG17) que anon tiene por defecto en las tablas; no se pidió y no es de escritura de datos.
+--          · también MAINTAIN (PG17) sobre las tablas y por defecto (la base de producción y la local son PG17: el baseline ya lo concede).
+-- La función _server conserva lo que hace la de producción tras el insert (correo a ventas@ + entrega inmediata), ver el comentario dentro.
 
 -- 1 · S-01
 revoke select on public.public_profiles from anon;
@@ -56,6 +57,12 @@ declare
   v_ip_hash text := nullif(btrim(coalesce(p_ip_hash, '')), '');
   v_recent  integer;
   v_total   integer;
+  v_req_id  uuid;
+  v_created timestamptz;
+  v_mail_id uuid;
+  v_secret  text;
+  -- Destino de las solicitudes del plan Custom (alias de ImprovMX → Juan). Igual que en producción (272 de la web): cambiarlo en los dos sitios.
+  v_sales_email constant text := 'ventas@jchat.cloud';
 begin
   if char_length(v_name) < 1 or char_length(v_name) > 120
      or v_email !~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$' or char_length(v_email) > 200
@@ -84,7 +91,37 @@ begin
   end if;
 
   insert into public.business_plan_requests (user_id, business_name, locations_count, phone, email, message, locale, ip_hash)
-  values (p_user_id, v_name, p_locations_count, v_phone, v_email, v_message, v_locale, v_ip_hash);
+  values (p_user_id, v_name, p_locations_count, v_phone, v_email, v_message, v_locale, v_ip_hash)
+  returning id, created_at into v_req_id, v_created;
+
+  -- Correo a ventas@ (best-effort): en su propio subbloque, para que un fallo aquí no deshaga ni pierda la solicitud de arriba.
+  -- (Tramo copiado tal cual del cuerpo de submit_business_plan_request de la 272 de la web; solo cambian los nombres, ahora calificados por search_path = '').
+  begin
+    insert into public.outbound_emails (kind, to_email, reply_to, payload)
+    values ('business_plan_request', v_sales_email, v_email,
+            jsonb_build_object('business_name', v_name, 'locations_count', p_locations_count, 'phone', v_phone, 'email', v_email,
+                               'message', v_message, 'locale', v_locale, 'request_id', v_req_id, 'created_at', v_created))
+    returning id into v_mail_id;
+  exception when others then
+    raise warning 'submit_business_plan_request_server: could not queue the sales email for request %: %', v_req_id, sqlerrm;
+    v_mail_id := null;
+  end;
+
+  -- Entrega inmediata: el mismo disparo que outbound_emails_retry() (266), pero solo con este id. Si falla o no hay secreto, lo recoge el cron.
+  if v_mail_id is not null then
+    begin
+      select decrypted_secret into v_secret from vault.decrypted_secrets where name = 'push_webhook_secret' limit 1;
+      if v_secret is not null then
+        perform net.http_post(
+          url := 'https://klfsgcfoahdtkojyqspd.supabase.co/functions/v1/outbound-emails',
+          body := jsonb_build_object('ids', jsonb_build_array(v_mail_id)),
+          headers := jsonb_build_object('Content-Type', 'application/json', 'x-push-secret', v_secret),
+          timeout_milliseconds := 20000);
+      end if;
+    exception when others then
+      raise warning 'submit_business_plan_request_server: immediate delivery trigger failed for email %: %', v_mail_id, sqlerrm;
+    end;
+  end if;
 
   return jsonb_build_object('ok', true);
 end;
@@ -108,6 +145,10 @@ alter function public.match_fits(text, text) set search_path = '';
 
 revoke insert, update, delete, truncate on all tables in schema public from anon;
 alter default privileges for role postgres in schema public revoke insert, update, delete, truncate on tables from anon;
+
+-- MAINTAIN (PG17: VACUUM, ANALYZE, REINDEX, LOCK TABLE…) tampoco lo necesita anon
+revoke maintain on all tables in schema public from anon;
+alter default privileges for role postgres in schema public revoke maintain on tables from anon;
 
 -- 5 · S-03
 revoke delete on public.businesses from authenticated;

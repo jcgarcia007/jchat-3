@@ -52,6 +52,28 @@ create function pg_temp.can_exec(r text, f text) returns boolean language sql as
   select count(*) > 0 and bool_and(has_function_privilege(r, p.oid, 'execute')) from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = f $$;
 grant execute on function pg_temp.can_exec(text, text) to public;
 SQL
+cat <<'SQL'
+-- PRODUCTION PREREQUISITE not yet on main: migration 272_outbound_emails_subscriptions (branch web/correos-planes) widens outbound_emails (kind check, to_email, reply_to, dedupe_key,
+-- recipient trigger). Production has it applied; the 276 function relies on it. Same DDL as that file (sections 1-4), so the test runs against production's shape.
+do $$ begin
+  if exists (select 1 from pg_constraint where conrelid = 'public.outbound_emails'::regclass and conname = 'outbound_emails_kind_chk' and pg_get_constraintdef(oid) not like '%subscription_started%') then
+    alter table public.outbound_emails drop constraint outbound_emails_kind_chk;
+  end if;
+  if not exists (select 1 from pg_constraint where conrelid = 'public.outbound_emails'::regclass and conname = 'outbound_emails_kind_chk') then
+    alter table public.outbound_emails add constraint outbound_emails_kind_chk check (kind in ('reservation_cancelled_business_closed', 'subscription_started', 'trial_will_end', 'business_plan_request'));
+  end if;
+end $$;
+alter table public.outbound_emails add column if not exists to_email text;
+alter table public.outbound_emails add column if not exists reply_to text;
+alter table public.outbound_emails add column if not exists dedupe_key text;
+create or replace function public.outbound_emails_require_recipient() returns trigger language plpgsql set search_path = public as $f$
+begin
+  if new.user_id is null and new.to_email is null then raise exception 'outbound_emails: user_id or to_email is required' using errcode = 'check_violation'; end if;
+  return new;
+end; $f$;
+create or replace trigger trg_outbound_emails_require_recipient before insert on public.outbound_emails for each row execute function public.outbound_emails_require_recipient();
+create unique index if not exists outbound_emails_dedupe_key_uq on public.outbound_emails (dedupe_key);
+SQL
 cat "$ROOT/supabase/migrations/276_security_hardening_anon.sql"
 cat "$ROOT/supabase/migrations/276_security_hardening_anon.sql"   # idempotent: the second run must not fail
 cat <<'SQL'
@@ -111,6 +133,47 @@ select pg_temp.chk((select count(*) = 30 from public.business_plan_requests wher
 set local role service_role;
 select pg_temp.chk((public.submit_business_plan_request_server('Otro', 1, null, 'brand-new@example.com', null, 'es', 'brand-new-ip', null))->>'code' = 'RATE_LIMIT', 'S-02: the 31st request of the hour, all-new e-mail and ip_hash → RATE_LIMIT (global cap)');
 reset role;
+
+-- ── sales e-mail (what production's function does after the insert; the first 276 lost it) ─────────────────────────────────────────
+-- (the 31st-request check above ran with the hour full; start from a clean table so this block is independent)
+delete from public.business_plan_requests;
+delete from public.outbound_emails;
+set local role service_role;
+select public.submit_business_plan_request_server('Mail Bar', 3, '555-0100', 'Solicitante@Example.com', 'hola', 'es', 'mail-ip', pg_temp.u(2)) as rm \gset
+reset role;
+select pg_temp.chk((:'rm'::jsonb)->>'ok' = 'true', 'mail: a valid request answers ok');
+select pg_temp.chk((select count(*) = 1 from public.outbound_emails where kind = 'business_plan_request'), 'mail: exactly ONE outbound_emails row of kind business_plan_request');
+select pg_temp.chk((select to_email = 'ventas@jchat.cloud' and reply_to = 'solicitante@example.com' and user_id is null from public.outbound_emails where kind = 'business_plan_request'), 'mail: to_email = sales, reply_to = the requester (lower-cased)');
+select pg_temp.chk((select payload->>'business_name' = 'Mail Bar' and (payload->>'locations_count')::int = 3 and payload->>'phone' = '555-0100' and payload->>'email' = 'solicitante@example.com'
+                           and payload->>'message' = 'hola' and payload->>'locale' = 'es' and (payload->>'request_id')::uuid = r.id and payload ? 'created_at'
+                      from public.outbound_emails e, public.business_plan_requests r where e.kind = 'business_plan_request'), 'mail: payload has business_name, locations_count, phone, email, message, locale, request_id (= the stored request), created_at');
+-- a request refused by a limit creates no row
+set local role service_role;
+select public.submit_business_plan_request_server('Mail Bar', 3, null, 'solicitante@example.com', null, 'es', 'mail-ip-2', null);
+select public.submit_business_plan_request_server('Mail Bar', 3, null, 'solicitante@example.com', null, 'es', 'mail-ip-3', null);
+select pg_temp.chk((public.submit_business_plan_request_server('Mail Bar', 3, null, 'solicitante@example.com', null, 'es', 'mail-ip-4', null))->>'code' = 'RATE_LIMIT', 'mail: (setup) the 4th request is refused');
+select pg_temp.chk((public.submit_business_plan_request_server('', 3, null, 'x@example.com', null, 'es', null, null))->>'code' = 'INVALID', 'mail: (setup) an invalid request is refused');
+reset role;
+select pg_temp.chk((select count(*) = 3 from public.outbound_emails where kind = 'business_plan_request'), 'mail: refused requests (RATE_LIMIT, INVALID) create no row (3 rows for 3 accepted requests)');
+-- without the secret in the vault the request still answers ok; with it, the delivery trigger runs without breaking the request
+select pg_temp.chk(not exists (select 1 from vault.decrypted_secrets where name = 'push_webhook_secret'), 'mail: (setup) the local vault has no push_webhook_secret');
+set local role service_role;
+select public.submit_business_plan_request_server('Sin secreto', 1, null, 'sin@example.com', null, 'en', 'no-secret-ip', null) as rn \gset
+reset role;
+select pg_temp.chk((:'rn'::jsonb)->>'ok' = 'true' and exists (select 1 from public.outbound_emails where payload->>'business_name' = 'Sin secreto'), 'mail: no push_webhook_secret in the vault → still ok, row queued (the cron delivers it)');
+select vault.create_secret('local-test-secret', 'push_webhook_secret');
+set local role service_role;
+select public.submit_business_plan_request_server('Con secreto', 1, null, 'con@example.com', null, 'en', 'secret-ip', null) as rs \gset
+reset role;
+select pg_temp.chk((:'rs'::jsonb)->>'ok' = 'true' and exists (select 1 from public.outbound_emails where payload->>'business_name' = 'Con secreto'), 'mail: with the secret → ok, row queued, immediate delivery requested without error');
+-- if queuing the e-mail fails the request is NOT lost
+alter table public.outbound_emails add constraint zz_block_mail check (payload->>'business_name' <> 'Falla correo');
+set local role service_role;
+select public.submit_business_plan_request_server('Falla correo', 1, null, 'falla@example.com', null, 'en', 'fail-ip', null) as rf \gset
+reset role;
+select pg_temp.chk((:'rf'::jsonb)->>'ok' = 'true' and exists (select 1 from public.business_plan_requests where business_name = 'Falla correo') and not exists (select 1 from public.outbound_emails where payload->>'business_name' = 'Falla correo'), 'mail: if the e-mail cannot be queued the request is still stored and answers ok');
+alter table public.outbound_emails drop constraint zz_block_mail;
+select pg_temp.chk(not exists (select 1 from information_schema.role_table_grants where grantee = 'anon' and table_schema = 'public' and privilege_type = 'MAINTAIN'), 'MAINTAIN: anon has no MAINTAIN on any table of public');
 
 -- ── H-108 default privileges ──────────────────────────────────────────────────────────────────────────────────────────────────────
 create function public.zz_after_276_fn() returns int language sql as $$ select 1 $$;
