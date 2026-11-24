@@ -33,6 +33,7 @@ import { PosDraftProvider } from '../contexts/PosDraftContext';
 import { usePosAlerts, type PosServiceCallRow } from '../hooks/usePosAlerts';
 import { PosServiceCallBanner } from '../components/pos/PosServiceCallBanner';
 import { useComandaPrintBridge } from '../hooks/useComandaPrintBridge';
+import { POS_HARDWARE_ENABLED } from '../constants/posHardware';
 import PosHomeScreen from '../screens/settings/PosHomeScreen';
 import PosTableHubScreen from '../screens/settings/PosTableHub';
 import PosOrderScreen from '../screens/settings/PosOrderScreen';
@@ -225,7 +226,7 @@ export default function PosNavigator(): React.ReactElement {
           {/* PosApproval: F4 — approve / edit / reject awaiting customer orders */}
           <PosStack.Screen name="PosApproval" component={PosApprovalScreen} />
           {/* PosMyPrinters: F7 — BT printer management */}
-          <PosStack.Screen name="PosMyPrinters" component={PosMyPrintersScreen} />
+          {POS_HARDWARE_ENABLED && <PosStack.Screen name="PosMyPrinters" component={PosMyPrintersScreen} />}
         </PosStack.Navigator>
       </PosDraftProvider>
     </StripeTerminalProvider>

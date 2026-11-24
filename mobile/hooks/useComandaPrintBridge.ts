@@ -10,6 +10,7 @@
  */
 
 import { useEffect, useRef } from 'react';
+import { POS_HARDWARE_ENABLED } from '../constants/posHardware';
 import { AppState, AppStateStatus } from 'react-native';
 import { supabase, channelTopic } from '../services/supabase';
 import { printKitchenTickets } from '../services/printer';
@@ -212,6 +213,7 @@ export function useComandaPrintBridge(businessId: string): void {
   // ── AppState: catch-up al volver al primer plano ──────────────────────────
 
   useEffect(() => {
+    if (!POS_HARDWARE_ENABLED) return undefined; // no printer support in this build: the bridge stays off
     const handler = (state: AppStateStatus): void => {
       if (state === 'active') {
         void catchUp();
@@ -225,6 +227,7 @@ export function useComandaPrintBridge(businessId: string): void {
   // ── Mount / unmount ──────────────────────────────────────────────────────────
 
   useEffect(() => {
+    if (!POS_HARDWARE_ENABLED) return undefined;
     if (__DEV__) console.log('[ComandaBridge] mount, businessId=', businessId);
 
     try {

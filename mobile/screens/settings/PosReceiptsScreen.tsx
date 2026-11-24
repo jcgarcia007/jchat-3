@@ -28,6 +28,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { IconChevronLeft, IconPrinter, IconReceipt } from '@tabler/icons-react-native';
 
 import { palette } from '../../theme/tokens';
+import { POS_HARDWARE_ENABLED } from '../../constants/posHardware';
 import { useThemeColors } from '../../theme/colors';
 import { supabase } from '../../services/supabase';
 import { posReceiptsToday, type PosReceiptRow } from '../../services/pos';
@@ -148,7 +149,8 @@ function ReceiptRowItem({ row, businessId, pickerRef, colors, t }: RowProps) {
         </Text>
       </View>
 
-      {/* Right: reprint button */}
+      {/* Right: reprint button (needs a printer: hidden while POS_HARDWARE_ENABLED is false) */}
+      {POS_HARDWARE_ENABLED && (
       <Pressable
         style={[
           styles.reprintBtn,
@@ -165,6 +167,7 @@ function ReceiptRowItem({ row, businessId, pickerRef, colors, t }: RowProps) {
           <IconPrinter size={16} color={canReprint ? printBtnColor : colors.textSecondary} />
         )}
       </Pressable>
+      )}
     </View>
   );
 }
@@ -295,7 +298,7 @@ export default function PosReceiptsScreen(): React.ReactElement {
       )}
 
       {/* Unified BT+network printer picker (F7) */}
-      <PrinterPickerSheet ref={pickerRef} />
+      {POS_HARDWARE_ENABLED && <PrinterPickerSheet ref={pickerRef} />}
     </View>
   );
 }

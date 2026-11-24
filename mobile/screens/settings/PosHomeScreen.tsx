@@ -48,6 +48,7 @@ import {
 } from '@tabler/icons-react-native';
 
 import { palette } from '../../theme/tokens';
+import { POS_HARDWARE_ENABLED } from '../../constants/posHardware';
 import { useThemeColors } from '../../theme/colors';
 import {
   posPickupBoard,
@@ -373,15 +374,17 @@ export default function PosHomeScreen() {
           )}
         </Pressable>
 
-        {/* Mis impresoras (F7) */}
-        <Pressable
-          onPress={() => navigation.navigate('PosMyPrinters', { businessId, businessName })}
-          style={({ pressed }) => [styles.ordersButton, { opacity: pressed ? 0.65 : 1 }]}
-          accessibilityRole="button"
-          accessibilityLabel={t('pos.printers.title')}
-        >
-          <IconPrinter size={22} color={c.brandText} strokeWidth={2} />
-        </Pressable>
+        {/* Mis impresoras (F7) — hidden while the store build carries no printer support */}
+        {POS_HARDWARE_ENABLED && (
+          <Pressable
+            onPress={() => navigation.navigate('PosMyPrinters', { businessId, businessName })}
+            style={({ pressed }) => [styles.ordersButton, { opacity: pressed ? 0.65 : 1 }]}
+            accessibilityRole="button"
+            accessibilityLabel={t('pos.printers.title')}
+          >
+            <IconPrinter size={22} color={c.brandText} strokeWidth={2} />
+          </Pressable>
+        )}
       </View>
 
       {/* ── Body ───────────────────────────────────────────────────────────── */}

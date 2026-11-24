@@ -55,6 +55,7 @@ import {
 } from '@tabler/icons-react-native';
 
 import { palette } from '../../theme/tokens';
+import { POS_HARDWARE_ENABLED } from '../../constants/posHardware';
 import { useThemeColors } from '../../theme/colors';
 import { supabase, isSupabaseConfigured, channelTopic } from '../../services/supabase';
 import {
@@ -658,9 +659,11 @@ export default function PosTableHub(): React.ReactElement {
         .then((rows) => setSentItems(rows))
         .catch(() => {});
       // Print kitchen/bar commandas — aislado, no afecta el envio
-      resolveServerName(businessId).then((serverName) => {
-        printKitchenTickets({ businessId, orderId: result.orderId, tableLabel, serverName });
-      });
+      if (POS_HARDWARE_ENABLED) {
+        resolveServerName(businessId).then((serverName) => {
+          printKitchenTickets({ businessId, orderId: result.orderId, tableLabel, serverName });
+        });
+      }
       // fire-and-forget — impresion no bloquea el flujo
       showAlert(t('pos.hubKitchenSent'), t('pos.hubKitchenSentMsg'), [
         { text: t('pos.submitOk') },
@@ -1107,7 +1110,8 @@ export default function PosTableHub(): React.ReactElement {
 
                 {/* Action buttons row */}
                 <View style={styles.codeActions}>
-                  {/* Print */}
+                  {/* Print (needs a printer: hidden while POS_HARDWARE_ENABLED is false) */}
+                  {POS_HARDWARE_ENABLED && (
                   <Pressable
                     style={[styles.codeActionBtn, { backgroundColor: c.brandFill }]}
                     onPress={() => void handlePrintCode()}
@@ -1118,6 +1122,7 @@ export default function PosTableHub(): React.ReactElement {
                       {t('pos.tableCode.print')}
                     </Text>
                   </Pressable>
+                  )}
 
                   {/* Copy */}
                   <Pressable
@@ -1582,23 +1587,25 @@ export default function PosTableHub(): React.ReactElement {
           )}
         </Pressable>
 
-        {/* Split Bill — active when sent items exist (C11) */}
-        <Pressable
-          onPress={hasSent ? handleDividir : undefined}
-          disabled={!hasSent}
-          style={({ pressed }) => [
-            styles.actionBtn,
-            { backgroundColor: hasSent ? c.brandPurple : c.borderSubtle },
-            pressed && hasSent && { opacity: 0.8 },
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel={t('pos.hubSplitBill')}
-          accessibilityState={{ disabled: !hasSent }}
-        >
-          <Text style={[styles.actionBtnText, { color: hasSent ? palette.onBrand : c.textTertiary }]}>
-            {t('pos.hubBtnSplit')}
-          </Text>
-        </Pressable>
+        {/* Split Bill (C11) — pays each share with the card reader: hidden while POS_HARDWARE_ENABLED is false */}
+        {POS_HARDWARE_ENABLED && (
+          <Pressable
+            onPress={hasSent ? handleDividir : undefined}
+            disabled={!hasSent}
+            style={({ pressed }) => [
+              styles.actionBtn,
+              { backgroundColor: hasSent ? c.brandPurple : c.borderSubtle },
+              pressed && hasSent && { opacity: 0.8 },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={t('pos.hubSplitBill')}
+            accessibilityState={{ disabled: !hasSent }}
+          >
+            <Text style={[styles.actionBtnText, { color: hasSent ? palette.onBrand : c.textTertiary }]}>
+              {t('pos.hubBtnSplit')}
+            </Text>
+          </Pressable>
+        )}
 
         {/* Charge */}
         <Pressable
@@ -1624,11 +1631,13 @@ export default function PosTableHub(): React.ReactElement {
       </View>
 
       {/* F2 — Printer picker (no-UI helper; mounts once per screen) */}
-      <PrinterPickerSheet
-        ref={printerPickerRef}
-        onNoPrinter={() => showAlert(t('pos.tableCode.title'), t('pos.tableCode.noPrinter'))}
-        onError={(err) => showAlert(t('pos.tableCode.title'), t('pos.tableCode.printFailed'))}
-      />
+      {POS_HARDWARE_ENABLED && (
+        <PrinterPickerSheet
+          ref={printerPickerRef}
+          onNoPrinter={() => showAlert(t('pos.tableCode.title'), t('pos.tableCode.noPrinter'))}
+          onError={(err) => showAlert(t('pos.tableCode.title'), t('pos.tableCode.printFailed'))}
+        />
+      )}
     </View>
   );
 }

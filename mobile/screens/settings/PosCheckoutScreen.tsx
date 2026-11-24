@@ -63,6 +63,7 @@ import { usePosBusinessSettings } from '../../hooks/usePosBusinessSettings';
 import PosTipPicker, { TIP_PRESETS } from '../../components/pos/PosTipPicker';
 
 import { palette } from '../../theme/tokens';
+import { POS_HARDWARE_ENABLED } from '../../constants/posHardware';
 import { useThemeColors } from '../../theme/colors';
 import { posTableBalance, posApplyExternalPayment } from '../../services/pos';
 import {
@@ -130,7 +131,7 @@ export default function PosCheckoutScreen() {
     collectPaymentMethod,
     confirmPaymentIntent,
     handleRetryReader,
-  } = usePosReader({ businessId, enabled: !isExternal });
+  } = usePosReader({ businessId, enabled: !isExternal && POS_HARDWARE_ENABLED });
 
   // ── Tab data (preview, display only — authoritative amount comes from EF) ──
   const [tabAmountCents, setTabAmountCents] = useState<number | null>(null);
@@ -466,10 +467,10 @@ export default function PosCheckoutScreen() {
         <View style={styles.unavailableBody}>
           <IconWifiOff size={44} color={c.textTertiary} strokeWidth={1.5} />
           <Text style={[styles.unavailableTitle, { color: c.textPrimary }]}>
-            {t('pos.terminalUnavailableTitle')}
+            {POS_HARDWARE_ENABLED ? t('pos.terminalUnavailableTitle') : t('pos.readerNotInBuildTitle')}
           </Text>
           <Text style={[styles.unavailableSub, { color: c.textTertiary }]}>
-            {t('pos.terminalUnavailableSub')}
+            {POS_HARDWARE_ENABLED ? t('pos.terminalUnavailableSub') : t('pos.readerNotInBuildSub')}
           </Text>
           <Pressable
             onPress={() => navigation.goBack()}
@@ -731,7 +732,7 @@ export default function PosCheckoutScreen() {
         {/* Success phase: print + close (both modes) */}
         {phase === 'success' ? (
           <View style={styles.successFooter}>
-            {printReady ? (
+            {printReady && POS_HARDWARE_ENABLED ? (
               <>
                 <Pressable
                   onPress={handlePrint}
@@ -893,7 +894,7 @@ export default function PosCheckoutScreen() {
       </View>
 
       {/* Unified BT+network printer picker (F7) */}
-      <PrinterPickerSheet
+      {POS_HARDWARE_ENABLED && <PrinterPickerSheet
         ref={printerPickerRef}
         onNoPrinter={() => {
           setPrintStatus('error');
@@ -903,7 +904,7 @@ export default function PosCheckoutScreen() {
           setPrintStatus('error');
           setPrintError(toUserMessage(err, 'settings:pos.printError'));
         }}
-      />
+      />}
     </View>
   );
 }
