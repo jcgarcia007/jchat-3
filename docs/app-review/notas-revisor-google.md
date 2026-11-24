@@ -29,6 +29,6 @@ JChat opens a venue's chat only when the phone is physically inside it. So that 
 
 **Alcohol.** Some venues list alcohol. Nothing is shipped or delivered: staff serve it at the venue and check ID. Items marked 21+ show a notice before payment. The app is for adults (18+).
 
-**Permissions.** Location (while in use; venue presence), camera/photos/microphone (profile and chat photos, voice notes), notifications, biometrics (optional app lock). Bluetooth/nearby devices only in Work Mode for card readers and printers. No background location, no advertising ID.
+**Permissions.** Location (while in use; venue presence), camera/photos/microphone (profile and chat photos, voice notes), notifications, biometrics (optional app lock). No Bluetooth, NFC, phone-state or nearby-devices permissions (card readers and printers are not part of this build; Work Mode keeps orders, tables and kitchen display with cash / external-card payments). No background location, no advertising ID.
 
 **Data safety.** Answers match the App Privacy labels on iOS (`google-data-safety.md`).

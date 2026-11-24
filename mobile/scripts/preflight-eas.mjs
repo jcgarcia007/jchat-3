@@ -61,9 +61,12 @@ export const RUNTIMES = {
   // (iOS build 13, EAS 5420c0e4, failed on InfoPlist.strings and does not count.) The next build gets its own entry, copied the same way from the EAS
   // log / build_info and checked with `npx expo-updates fingerprint:generate --platform ios|android` on the same commit.
   build13: { ios: 'dbdfeaeab820021354ccf7b8a061b3b962e3a04e', android: 'f7d420cd34d516f36a04ca63411df939d7f66e34' },
+  // Build 15 (consumer build: no Stripe Terminal / Bluetooth Classic / TCP printers in the binary, expo-secure-store for the session; branch fix/l1-consumer-native).
+  // Fill in with the runtimeVersion of the EAS log of the build (see the note of build 13); the fingerprints computed on the branch are in the report.
+  build15: { ios: null, android: null },
 };
-// The build that OTAs may target. Build 12 was the installed one; build 13 replaces it once it is in TestFlight / Play.
-export const ACTIVE_RUNTIME = 'build13';
+// The build that OTAs may target. Build 15 changes the native graph (runtime), so it cannot receive OTAs from builds 13 / 14 nor give them any.
+export const ACTIVE_RUNTIME = 'build15';
 
 /** { ok, lines } comparing the current fingerprints with the runtime an OTA is allowed to target. */
 export function compareRuntime(current, expected = RUNTIMES[ACTIVE_RUNTIME]) {

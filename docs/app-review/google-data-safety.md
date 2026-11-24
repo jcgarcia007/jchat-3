@@ -68,5 +68,5 @@ No se recoge: contactos, calendario (build 13: "Añadir al calendario" solo abre
 - **Público objetivo:** 18 años o más.
 - **Aplicaciones de noticias, salud, gobierno, finanzas:** no.
 - **ID de publicidad:** no se usa.
-- **Permisos sensibles:** ubicación solo "mientras se usa" (sin segundo plano), y el texto del permiso es el de iOS/Android (`app.config.ts`).
+- **Permisos sensibles:** ubicación solo "mientras se usa" (sin segundo plano), y el texto del permiso es el de iOS/Android (`app.config.ts`). **Build 15:** el AAB ya no declara `BLUETOOTH*`, `NFC`, `READ_PHONE_STATE`, `HIDE_OVERLAY_WINDOWS`, `ACCESS_WIFI_STATE` ni `CHANGE_NETWORK_STATE` (el lector de tarjetas, Tap to Pay y las impresoras de red/Bluetooth salen del binario de tiendas). Cifrado en el dispositivo: la sesión de Supabase se guarda en el Keystore (`expo-secure-store`); sigue sin responder «sí» a cifrado de *todos* los datos (la caché de AsyncStorage no está cifrada).
 - **URL de eliminación de cuenta:** `https://jchat.cloud/account/delete` (la página existe en `main`; la versión con el detalle de qué se borra y qué se conserva está en la rama `fix/a6-web-legal`, que debe estar publicada antes del envío).

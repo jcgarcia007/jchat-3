@@ -69,12 +69,15 @@ test('only top-level registry packages with an android/ or ios/ folder are check
   assert.deepEqual(nativePackages(root).map((p) => `${p.name}@${p.version}`), ['native-one@1.0.0', 'native-two@2.0.0']);
 });
 
-test('runtime: build 13 is the active one and its EAS runtimeVersions are recorded; older builds stay recorded', () => {
-  assert.equal(ACTIVE_RUNTIME, 'build13');
+test('runtime: build 15 is the active one (hashes pending until the EAS log); build 13 and older stay recorded', () => {
+  assert.equal(ACTIVE_RUNTIME, 'build15');
+  assert.deepEqual(RUNTIMES.build15, { ios: null, android: null }); // filled in from the EAS log of the build
+  // while build 15 has no hashes, an OTA check against the active runtime is refused even for a plausible fingerprint
+  assert.equal(compareRuntime({ ios: 'a'.repeat(40), android: 'b'.repeat(40) }).ok, false);
   // runtimeVersion of iOS build 14 (EAS 1b50d7c9) and Android build 13 (EAS ad07d0dc), as reported by EAS build_info
   assert.deepEqual(RUNTIMES.build13, { ios: 'dbdfeaeab820021354ccf7b8a061b3b962e3a04e', android: 'f7d420cd34d516f36a04ca63411df939d7f66e34' });
-  assert.equal(compareRuntime({ ios: 'a'.repeat(40), android: 'b'.repeat(40) }).ok, false); // a different fingerprint is refused (default target = active runtime)…
-  assert.equal(compareRuntime(RUNTIMES.build13).ok, true); // …and the recorded one passes
+  assert.equal(compareRuntime(RUNTIMES.build13, RUNTIMES.build13).ok, true); // the recorded build 13 still passes against itself
+  assert.equal(compareRuntime(RUNTIMES.build13).ok, false); // …and is NOT the active runtime any more
   // an entry whose hashes are not filled in yet never says ok (an OTA is refused until they are)
   const pending = compareRuntime({ ios: 'a'.repeat(40), android: 'b'.repeat(40) }, { ios: null, android: null });
   assert.equal(pending.ok, false);
@@ -84,7 +87,8 @@ test('runtime: build 13 is the active one and its EAS runtimeVersions are record
   assert.equal(r.ok, false);
   assert.match(r.lines.join('\n'), /✖ ios/);
   assert.deepEqual(compareRuntime(RUNTIMES.build11, RUNTIMES.build11).ok, true);
-  for (const b of Object.values(RUNTIMES)) {
+  for (const [name, b] of Object.entries(RUNTIMES)) {
+    if (name === ACTIVE_RUNTIME && b.ios === null && b.android === null) continue; // the active build waits for its EAS log
     for (const h of Object.values(b)) assert.match(h, /^[0-9a-f]{40}$/);
   }
 });
