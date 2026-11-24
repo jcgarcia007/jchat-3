@@ -34,7 +34,7 @@
 
 **Alcohol (1.4.3) and age.** Some venues list alcohol. Nothing is shipped; staff serve it at the venue and check ID. 21+ items show a notice before payment. The app is 18+.
 
-**Other.** Sign in with Apple is offered with Google and e-mail (4.8). Permissions: location while using the app, camera/photos/microphone, notifications; Face ID optional. No tracking, no ad identifier.
+**Other.** Sign in with Apple is offered with Google and e-mail (4.8). Permissions: location while using the app, camera/photos/microphone, notifications; Face ID optional. No Bluetooth, local-network or background modes (card readers and printers are not part of this build). No tracking, no ad identifier.
 
 Thank you. Questions: soporte@jchat.cloud (safety: safety@jchat.cloud).
 
