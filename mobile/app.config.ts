@@ -45,10 +45,9 @@ const COLLECTED_DATA_TYPES = [
 
 // iOS permission texts (English default in Info.plist; the Spanish ones live in assets/locales/es.json and are written to
 // InfoPlist.strings at prebuild). One string per key so two plugins can never disagree about it.
-const LOCATION_WHEN_IN_USE = 'JChat uses your location only while you use the app, to confirm you are at the venue and open its chat, show nearby venues on the map, and connect to card readers.';
+const LOCATION_WHEN_IN_USE = 'JChat uses your location only while you use the app, to confirm you are at the venue and open its chat, and show nearby venues on the map.';
 const CAMERA = 'JChat uses the camera to take photos for chat, posts and your profile, and to scan inventory barcodes.';
 const FACE_ID = 'JChat uses Face ID to unlock the app and confirm payments.';
-const LOCAL_NETWORK = 'JChat uses the local network to connect to WiFi card readers and network printers at the venue.';
 const CALENDAR_ADD = 'JChat adds your reservation to your calendar only when you tap "Add to calendar". It never reads your calendar.';
 const MOTION = "JChat uses your device's motion sensors to detect how you are holding it, so photos you take with the camera are saved the right way up.";
 
@@ -113,10 +112,6 @@ const config: ExpoConfig = {
       ITSAppUsesNonExemptEncryption: false,
       // Lets the per-language InfoPlist.strings (locales above) apply.
       CFBundleAllowMixedLocalizations: true,
-      // react-native-bluetooth-classic force-unwraps this key in its iOS init
-      // (RNBluetoothClassic.swift) → launch crash if absent. Empty = no MFi
-      // accessory protocols (BT Classic printing is Android-only).
-      UISupportedExternalAccessoryProtocols: [],
     },
   },
   android: {
@@ -188,19 +183,12 @@ const config: ExpoConfig = {
     // Stripe Terminal requires API 26+; the RN default catalog value is 24.
     // This plugin runs first so all subsequent plugins see the correct SDK floor.
     './config-plugins/withAndroidMinSdkVersion',
-    // Bluetooth Classic (SPP) permissions for Tab POS thermal printers (F7).
-    // Adds BLUETOOTH_SCAN (neverForLocation) + BLUETOOTH_CONNECT for Android 12+
-    // and legacy BLUETOOTH/BLUETOOTH_ADMIN (maxSdkVersion=30) for Android ≤ 11.
-    // Does NOT add ACCESS_FINE_LOCATION — SPP printers do not derive location.
-    './config-plugins/withBluetoothClassicPermissions',
     // iOS only: raises Pods targets below iOS 15.1 up to 15.1 in the Podfile's
     // post_install (Xcode 27 rejects deployment targets < 15.0). Pods already at
     // 15.1+ (e.g. 16.4) are untouched.
     './config-plugins/withMinPodsDeploymentTarget',
     // B7-2: changing the system font size must not recreate MainActivity (the open chat and the dock would be lost).
     './config-plugins/withAndroidFontScaleConfigChanges',
-    // Registered BEFORE the Stripe Terminal plugin on purpose: it deletes the key that plugin always writes (see the file).
-    './config-plugins/withoutBluetoothPeripheral',
     [
       'react-native-maps',
       {
@@ -227,21 +215,6 @@ const config: ExpoConfig = {
         merchantIdentifier: 'merchant.com.otunitylabs.jchat',
         // Google Pay in the native PaymentSheet (orders and gifts). services/stripe.ts sets googlePay.testEnv from the publishable key.
         enableGooglePay: true,
-      },
-    ],
-    // Stripe Terminal: physical card reader support for the employee POS (C2a).
-    // Adds iOS Info.plist keys and Android permissions via prebuild.
-    //   iOS:     NSBluetoothAlwaysUsageDescription, NSBluetoothPeripheralUsageDescription,
-    //            NSLocalNetworkUsagePermission, UIBackgroundModes: bluetooth-central
-    //   Android: ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION, BLUETOOTH_CONNECT, BLUETOOTH_SCAN
-    [
-      '@stripe/stripe-terminal-react-native',
-      {
-        bluetoothBackgroundMode: true,
-        locationWhenInUsePermission: LOCATION_WHEN_IN_USE,
-        bluetoothAlwaysUsagePermission:
-          'JChat uses Bluetooth to connect to Stripe Terminal card readers for in-person payments.',
-        localNetworkUsagePermission: LOCAL_NETWORK,
       },
     ],
     'expo-web-browser',
