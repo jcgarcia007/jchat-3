@@ -3,8 +3,9 @@
  *
  * Why a route handler and not a direct supabase.rpc from the browser: the browser cannot know its own IP, and the RPC's per-IP limit needs it.
  * Here we read x-forwarded-for, store only an HMAC of it (never the address), verify hCaptcha when a secret is configured, and call the RPC
- * `submit_business_plan_request` (migration 269) with the visitor's own session, so auth.uid() fills user_id when they are signed in.
- * The RPC validates and rate-limits (3 per hour per email / ip_hash); nothing here is trusted beyond forwarding.
+ * `submit_business_plan_request_server` (migration 276) with the SERVER key (service_role): since 276 the browser/anon/authenticated roles can no longer
+ * execute the RPC, so nobody can call it directly with an ip_hash they chose (S-02). The visitor's session is read here (getUser) and its id is passed as
+ * p_user_id. The RPC validates and rate-limits (3 per hour per email / ip_hash, 30 per hour in total); nothing here is trusted beyond forwarding.
  *
  * NO e-mail is sent in this spec. TODO spec 4: the RPC will queue outbound_emails kind='business_plan_request' → SALES_EMAIL.
  *
@@ -15,6 +16,8 @@
 import { createHmac } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { clientIp } from "@/lib/clientIp";
+import { supabaseAdmin, isSupabaseAdminConfigured } from "@/lib/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
 
@@ -23,8 +26,7 @@ export const dynamic = "force-dynamic";
 const IP_HASH_SECRET = process.env.IP_HASH_SECRET ?? "jchat-business-plan-requests";
 
 function clientIpHash(req: Request): string | null {
-  const ip =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip")?.trim() || "";
+  const ip = clientIp(req.headers);
   return ip ? createHmac("sha256", IP_HASH_SECRET).update(ip).digest("hex") : null;
 }
 
@@ -68,8 +70,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, code: "CAPTCHA" }, { status: 400 });
   }
 
+  if (!isSupabaseAdminConfigured) {
+    console.error("[business-plan-request] SB_SECRET_KEY / SUPABASE_URL not configured");
+    return NextResponse.json({ ok: false, code: "ERROR" }, { status: 500 });
+  }
+
+  // The visitor's own session (cookies), only to know WHO is asking: user_id stays null for a guest.
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.rpc("submit_business_plan_request", {
+  const { data: auth } = await supabase.auth.getUser();
+  const userId = auth.user?.id ?? null;
+
+  const { data, error } = await supabaseAdmin.rpc("submit_business_plan_request_server", {
     p_business_name: name,
     p_locations_count: locations,
     p_phone: text(body.phone) ?? "",
@@ -77,6 +88,7 @@ export async function POST(req: Request) {
     p_message: text(body.message) ?? "",
     p_locale: text(body.locale) ?? "",
     p_ip_hash: clientIpHash(req) ?? undefined,
+    p_user_id: userId ?? undefined,
   });
   if (error) {
     console.error("[business-plan-request] rpc failed:", error.message);
