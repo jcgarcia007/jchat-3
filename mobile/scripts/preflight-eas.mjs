@@ -61,9 +61,12 @@ export const RUNTIMES = {
   // (iOS build 13, EAS 5420c0e4, failed on InfoPlist.strings and does not count.) The next build gets its own entry, copied the same way from the EAS
   // log / build_info and checked with `npx expo-updates fingerprint:generate --platform ios|android` on the same commit.
   build13: { ios: 'dbdfeaeab820021354ccf7b8a061b3b962e3a04e', android: 'f7d420cd34d516f36a04ca63411df939d7f66e34' },
-  // Build 15 (consumer build: no Stripe Terminal / Bluetooth Classic / TCP printers in the binary, expo-secure-store for the session; branch fix/l1-consumer-native).
-  // Fill in with the runtimeVersion of the EAS log of the build (see the note of build 13); the fingerprints computed on the branch are in the report.
-  build15: { ios: null, android: null },
+  // Build 15 (consumer build: no Stripe Terminal / Bluetooth Classic / TCP printers in the binary, expo-secure-store for the session). Both built from
+  // commit a78ab589 (main after Lote 1); runtimeVersion as reported by EAS (build_info). NOTE the store numbers differ: iOS is build 15, Android is 14 (versionCode).
+  //   iOS      build 15  EAS 303d3f55-574d-45fa-a0ff-8860724e688b  runtime f818b6a3837abf521f9f1be3497fc92ca5ed46a6
+  //   Android  build 14  EAS 9bb7de8b-4481-4a93-8d1c-cc2ff0950822  runtime 947e79e20b254105e59917914c2bb77e3c3dd1f6
+  // Fingerprints must be computed WITH the ignored files of mobile/ copied in (.env, google-services.json, GoogleService-Info.plist), as for build 13.
+  build15: { ios: 'f818b6a3837abf521f9f1be3497fc92ca5ed46a6', android: '947e79e20b254105e59917914c2bb77e3c3dd1f6' },
 };
 // The build that OTAs may target. Build 15 changes the native graph (runtime), so it cannot receive OTAs from builds 13 / 14 nor give them any.
 export const ACTIVE_RUNTIME = 'build15';

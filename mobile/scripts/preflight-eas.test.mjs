@@ -71,7 +71,7 @@ test('only top-level registry packages with an android/ or ios/ folder are check
 
 test('runtime: build 15 is the active one (hashes pending until the EAS log); build 13 and older stay recorded', () => {
   assert.equal(ACTIVE_RUNTIME, 'build15');
-  assert.deepEqual(RUNTIMES.build15, { ios: null, android: null }); // filled in from the EAS log of the build
+  assert.deepEqual(RUNTIMES.build15, { ios: 'f818b6a3837abf521f9f1be3497fc92ca5ed46a6', android: '947e79e20b254105e59917914c2bb77e3c3dd1f6' }); // EAS build_info: iOS build 15 (303d3f55), Android build 14 (9bb7de8b)
   // while build 15 has no hashes, an OTA check against the active runtime is refused even for a plausible fingerprint
   assert.equal(compareRuntime({ ios: 'a'.repeat(40), android: 'b'.repeat(40) }).ok, false);
   // runtimeVersion of iOS build 14 (EAS 1b50d7c9) and Android build 13 (EAS ad07d0dc), as reported by EAS build_info
