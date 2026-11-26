@@ -44,7 +44,7 @@ import {
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { usesKilometers } from '../../utils/distanceUnits';
-import type { CategoryOption } from '../../utils/categories';
+import { categoryLabel, type CategoryOption } from '../../utils/categories';
 import { LABEL_TEXT_CAP } from '../../theme/textScale';
 
 // ── Public types ──────────────────────────────────────────────────────────────
@@ -227,7 +227,7 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
       icon: <IconBuildingStore size={13} color={chipIconColor(filters.category === 'all' && !filters.openNow)} />,
     },
     ...categories.map((option): ChipDef => ({
-      key: option.key, kind: 'category', label: option.label,
+      key: option.key, kind: 'category', label: categoryLabel(option.label, (key) => t(key)),
       icon: <IconBuilding size={13} color={chipIconColor(filters.category === option.key)} />,
     })),
     {

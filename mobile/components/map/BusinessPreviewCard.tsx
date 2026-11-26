@@ -47,6 +47,7 @@ import { typeCap, typeStyle } from '../../theme/typography';
 import { controlMinHeight } from '../../theme/spacing';
 import { CATEGORY_ICONS, initialsColor } from './pinAppearance';
 import { initials, pinCategory } from '../../utils/mapPin';
+import { categoryLabel } from '../../utils/categories';
 import { cityFromAddress, formatMeters } from '../../utils/businessCard';
 import { usesKilometers } from '../../utils/distanceUnits';
 import {
@@ -295,7 +296,7 @@ export default function BusinessPreviewCard({
               <View style={styles.metaRow}>
                 <View style={styles.categoryChip}>
                   <CategoryIcon size={13} color={palette.onImage} strokeWidth={2} />
-                  <Text style={styles.categoryChipText} maxFontSizeMultiplier={typeCap('caption')} numberOfLines={1}>{business.category}</Text>
+                  <Text style={styles.categoryChipText} maxFontSizeMultiplier={typeCap('caption')} numberOfLines={1}>{categoryLabel(business.category, (key) => t(key))}</Text>
                 </View>
                 {business.rating != null ? (
                   <View style={styles.ratingInline} accessible accessibilityLabel={t('businessPreviewCard.ratingA11y', { rating: business.rating.toFixed(1) })}>

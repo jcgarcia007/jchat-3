@@ -7,6 +7,7 @@ import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { type NearbyBusiness } from '../../services/nearby';
 import { getOpenStatus } from '../../utils/hours';
+import { categoryLabel } from '../../utils/categories';
 import { BusinessIcon } from '../common/BusinessIcon';
 import { Skeleton } from '../common/Skeleton';
 import { LABEL_TEXT_CAP } from '../../theme/textScale';
@@ -39,7 +40,7 @@ export default function BusinessCard({ item, onEnter }: BusinessCardProps) {
           </View>
         </View>
         <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} numberOfLines={1} style={[styles.category, { color: colors.textSecondary }]}>
-          {item.category}
+          {categoryLabel(item.category, (key) => mapTranslation.t(key))}
         </Text>
         <View style={styles.bottomRow}>
           <View style={styles.stats}>

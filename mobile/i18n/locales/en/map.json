@@ -71,6 +71,19 @@
     "closedNow": "Closed now",
     "closedNowA11y": "Closed now. You can enter the chat; orders open when the venue opens."
   },
+  "categories": {
+    "bar_nightclub": "Bar & Nightclub",
+    "restaurant": "Restaurant",
+    "cafe": "Café",
+    "lounge": "Lounge",
+    "club": "Club",
+    "brewery": "Brewery",
+    "rooftop_bar": "Rooftop Bar",
+    "sports_bar": "Sports Bar",
+    "cocktail_bar": "Cocktail Bar",
+    "wine_bar": "Wine Bar",
+    "other": "Other"
+  },
   "filterPanel": {
     "categoryAll": "All",
     "categoryOpenNow": "Open now",

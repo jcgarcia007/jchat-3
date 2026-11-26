@@ -71,6 +71,19 @@
     "closedNow": "Cerrado ahora",
     "closedNowA11y": "Cerrado ahora. Puedes entrar al chat; los pedidos se abren cuando el local abra."
   },
+  "categories": {
+    "bar_nightclub": "Bar y discoteca",
+    "restaurant": "Restaurante",
+    "cafe": "Café",
+    "lounge": "Lounge",
+    "club": "Club",
+    "brewery": "Cervecería",
+    "rooftop_bar": "Bar en azotea",
+    "sports_bar": "Bar deportivo",
+    "cocktail_bar": "Coctelería",
+    "wine_bar": "Vinoteca",
+    "other": "Otro"
+  },
   "filterPanel": {
     "categoryAll": "Todas",
     "categoryOpenNow": "Abierto ahora",

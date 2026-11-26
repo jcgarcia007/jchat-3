@@ -9,6 +9,7 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { categoryLabel } from '../../utils/categories';
 
 import BusinessAvatar from '../megaphone/BusinessAvatar';
 import { useThemeColors } from '../../theme/colors';
@@ -57,7 +58,7 @@ export default function MapSearchResults<T extends SearchResultBusiness>({ query
                 testID={`map-search-result-${business.id}`}
                 onPress={() => onSelect(business)}
                 accessibilityRole="button"
-                accessibilityLabel={[business.name, business.category, distance].filter(Boolean).join(', ')}
+                accessibilityLabel={[business.name, categoryLabel(business.category, (key) => t(key)), distance].filter(Boolean).join(', ')}
                 style={({ pressed }) => [
                   styles.row,
                   index > 0 && { borderTopColor: c.borderSubtle, borderTopWidth: StyleSheet.hairlineWidth },
@@ -67,7 +68,7 @@ export default function MapSearchResults<T extends SearchResultBusiness>({ query
                 <BusinessAvatar iconUrl={business.icon_url} logoUrl={business.logo_url ?? null} emoji={business.icon_emoji} size={36} />
                 <View style={styles.texts}>
                   <Text style={[styles.name, { color: c.textPrimary }]} numberOfLines={1}>{business.name}</Text>
-                  {business.category ? <Text style={[styles.category, { color: c.textSecondary }]} numberOfLines={1}>{business.category}</Text> : null}
+                  {business.category ? <Text style={[styles.category, { color: c.textSecondary }]} numberOfLines={1}>{categoryLabel(business.category, (key) => t(key))}</Text> : null}
                 </View>
                 {distance ? <Text style={[styles.distance, { color: c.textSecondary }]} numberOfLines={1}>{distance}</Text> : null}
               </Pressable>
