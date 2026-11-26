@@ -816,6 +816,7 @@
     "resStatusCancelled": "Cancelada",
     "resStatusConfirmed": "Confirmada",
     "resStatusRejected": "Rechazada",
+    "resStatusExpired": "Sin respuesta",
     "resConfirmButton": "Confirmar",
     "resRejectButton": "Rechazar",
     "resRejectTitle": "¿Por qué no puedes aceptarla?",

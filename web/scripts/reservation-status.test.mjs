@@ -55,3 +55,51 @@ test('messages: every new key exists in en and es, es differs from en (it is tra
   assert.match(en.reservationsFilterPending, /\{count\}/);
   assert.match(es.reservationsFilterPending, /\{count\}/);
 });
+
+// ── Lote 2 (migration 277): expired ─────────────────────────────────────────────────────────────────────────────────────────
+const { effectiveStatus } = await import(pathToFileURL(out).href);
+const NOW_MS = Date.parse('2026-11-26T18:00:00Z');
+const PAST = '2026-11-26T12:00:00Z';
+const FUTURE = '2026-11-27T01:00:00Z';
+
+test('expired is a known status, and nothing can be done to it (no confirm, reject, check-in; not live)', () => {
+  assert.ok(RESERVATION_STATUSES.includes('expired'));
+  assert.equal(canConfirm('expired'), false);
+  assert.equal(canReject('expired'), false);
+  assert.equal(isLive('expired'), false);
+  assert.equal(matchesFilter('expired', 'expired'), true);
+  assert.equal(matchesFilter('expired', 'pending'), false);
+});
+
+test('H-030 / H-059: a pending request whose time passed reads as expired before the cron marks it; the rest keep their status', () => {
+  assert.equal(effectiveStatus('pending', PAST, NOW_MS), 'expired');
+  assert.equal(effectiveStatus('pending', FUTURE, NOW_MS), 'pending');
+  assert.equal(effectiveStatus('pending', new Date(NOW_MS).toISOString(), NOW_MS), 'expired');
+  assert.equal(effectiveStatus('confirmed', PAST, NOW_MS), 'confirmed');
+  assert.equal(effectiveStatus('cancelled', PAST, NOW_MS), 'cancelled');
+  assert.equal(effectiveStatus('pending', null, NOW_MS), 'pending');
+  assert.equal(effectiveStatus('pending', 'nope', NOW_MS), 'pending');
+  assert.equal(canConfirm(effectiveStatus('pending', PAST, NOW_MS)), false);
+  assert.equal(isLive(effectiveStatus('pending', PAST, NOW_MS)), false);
+});
+
+test('the number of waiting requests (menu counter) leaves out the ones whose time passed', () => {
+  const list = [
+    { status: 'pending', reserved_at: FUTURE },
+    { status: 'pending', reserved_at: PAST },
+    { status: 'pending', reserved_at: PAST, is_waitlist: true },
+    { status: 'confirmed', reserved_at: FUTURE },
+  ];
+  assert.equal(countPending(list, NOW_MS), 1);
+});
+
+test('the dashboard offers the filter and the label for expired, in es and en; the menu hook only counts future pending ones', () => {
+  for (const lang of ['es', 'en']) assert.ok(messages(lang).resStatusExpired, lang);
+  assert.equal(messages('es').resStatusExpired, 'Sin respuesta');
+  assert.equal(messages('en').resStatusExpired, 'No response');
+  const page = readFileSync(new URL('../app/dashboard/reservations/page.tsx', import.meta.url), 'utf8');
+  assert.match(page, /const status = effectiveStatus\(r\.status, r\.reserved_at\)/);
+  assert.match(page, /key: "expired", label: t\("resStatusExpired"\)/);
+  const hook = readFileSync(new URL('../components/dashboard/useReservationsPending.ts', import.meta.url), 'utf8');
+  assert.match(hook, /\.eq\("status", "pending"\)\s*\.gte\("reserved_at"/);
+});

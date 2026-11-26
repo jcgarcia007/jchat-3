@@ -43,6 +43,7 @@ import {
   canConfirm,
   canReject,
   countPending,
+  effectiveStatus,
   isLive,
   isRejectReason,
   matchesFilter,
@@ -316,6 +317,11 @@ function getStatusMeta(t: TFn): Record<
     },
     cancelled: {
       label: t("resStatusCancelled"),
+      bg: "var(--db-bg-elevated)",
+      color: "var(--db-text-tertiary)",
+    },
+    expired: {
+      label: t("resStatusExpired"),
       bg: "var(--db-bg-elevated)",
       color: "var(--db-text-tertiary)",
     },
@@ -1230,6 +1236,8 @@ function ReservationRow({
   t,
 }: ReservationRowProps) {
   const busy = actionLoading === r.id;
+  // H-030 / H-059: a pending request whose time passed reads and behaves as expired (no Confirm / check-in) even before the cron marks it
+  const status = effectiveStatus(r.status, r.reserved_at);
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState<RejectReason | null>(null);
 
@@ -1325,7 +1333,7 @@ function ReservationRow({
           {r.guest?.display_name && r.guest.username && (
             <span style={{ fontSize: "13px", color: "var(--db-text-secondary)" }}>@{r.guest.username}</span>
           )}
-          <StatusBadge status={r.status} isWaitlist={r.is_waitlist} t={t} />
+          <StatusBadge status={status} isWaitlist={r.is_waitlist} t={t} />
           <EventTypeBadge eventType={r.event_type} t={t} />
         </div>
 
@@ -1374,7 +1382,7 @@ function ReservationRow({
           )}
         </div>
 
-        {r.status === "rejected" && isRejectReason(r.status_reason) && (
+        {status === "rejected" && isRejectReason(r.status_reason) && (
           <div style={{ marginTop: "6px", fontSize: "12px", color: "var(--db-text-secondary)" }}>
             {t("resRejectedReason", { reason: t(`resReject_${r.status_reason}`) })}
           </div>
@@ -1409,7 +1417,7 @@ function ReservationRow({
 
       {/* (rejected rows carry the reason in the main info block above) */}
       {/* Action buttons — a request waiting or already confirmed */}
-      {isLive(r.status) && (
+      {isLive(status) && (
         <div
           style={{
             display: "flex",
@@ -1419,7 +1427,7 @@ function ReservationRow({
             flexWrap: "wrap",
           }}
         >
-          {canConfirm(r.status) && (
+          {canConfirm(status) && (
             <button
               onClick={() => onConfirm(r)}
               disabled={busy}
@@ -1443,7 +1451,7 @@ function ReservationRow({
               {t("resConfirmButton")}
             </button>
           )}
-          {canReject(r.status) && (
+          {canReject(status) && (
             <button
               onClick={() => setRejecting((v) => !v)}
               disabled={busy}
@@ -1516,7 +1524,7 @@ function ReservationRow({
       )}
 
       {/* Reject panel: the reason is optional and the guest sees it */}
-      {rejecting && canReject(r.status) && (
+      {rejecting && canReject(status) && (
         <div
           role="group"
           aria-label={t("resRejectTitle")}
@@ -2006,7 +2014,7 @@ export default function ReservationsPage() {
   }, []);
 
   // ── Filter ────────────────────────────────────────────────────────────────
-  const filtered = reservations.filter((r) => matchesFilter(r.status, filterStatus));
+  const filtered = reservations.filter((r) => matchesFilter(effectiveStatus(r.status, r.reserved_at), filterStatus));
 
   // ── Stats ─────────────────────────────────────────────────────────────────
   const pendingCount = countPending(reservations);
@@ -2275,6 +2283,7 @@ export default function ReservationsPage() {
             { key: "no_show", label: t("reservationsStatusNoShow") },
             { key: "cancelled", label: t("resStatusCancelled") },
             { key: "rejected", label: t("resStatusRejected") },
+            { key: "expired", label: t("resStatusExpired") },
           ] as { key: FilterStatus; label: string }[]
         ).map(({ key, label }) => (
           <button
