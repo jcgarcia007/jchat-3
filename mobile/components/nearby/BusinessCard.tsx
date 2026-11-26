@@ -30,7 +30,7 @@ export default function BusinessCard({ item, onEnter }: BusinessCardProps) {
       </View>
       <View style={styles.content}>
         <View style={styles.titleRow}>
-          <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} numberOfLines={1} style={[styles.name, { color: colors.textPrimary }]}>
+          <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} numberOfLines={2} style={[styles.name, { color: colors.textPrimary }]}>
             {item.name}
           </Text>
           <View style={[styles.badge, { backgroundColor: colors.bgElevated }]}>
@@ -39,7 +39,7 @@ export default function BusinessCard({ item, onEnter }: BusinessCardProps) {
             </Text>
           </View>
         </View>
-        <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} numberOfLines={1} style={[styles.category, { color: colors.textSecondary }]}>
+        <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} numberOfLines={2} style={[styles.category, { color: colors.textSecondary }]}>
           {categoryLabel(item.category, (key) => mapTranslation.t(key))}
         </Text>
         <View style={styles.bottomRow}>

@@ -87,6 +87,12 @@
     "components/reservations/NextReservationCard.tsx": [
       "btn",
       "more"
+    ],
+    "components/profile/ProfileHeader.tsx": [
+      "capsuleCell",
+      "capsule",
+      "button",
+      "completionStrip"
     ]
   },
   "labelCapFiles": [

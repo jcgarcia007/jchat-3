@@ -284,7 +284,7 @@ export default function ProfileHeader(props: ProfileHeaderProps) {
 
         <View style={styles.nameBlock}>
           <View style={styles.nameRow}>
-            <Text style={[styles.displayName, { color: c.textPrimary }]} numberOfLines={1}>{name}</Text>
+            <Text style={[styles.displayName, { color: c.textPrimary }]} numberOfLines={2}>{name}</Text>
             {isVerified ? <IconCircleCheckFilled size={20} color={theme.accent} /> : null}
           </View>
           <Text style={[styles.handle, { color: c.textSecondary }]} numberOfLines={1}>@{username}</Text>
@@ -319,7 +319,7 @@ export default function ProfileHeader(props: ProfileHeaderProps) {
           <View style={styles.capsules}>
             <Pressable testID="profile-edit" style={styles.capsuleCell} onPress={onEditProfile} accessibilityRole="button" accessibilityLabel={editLabel}>
               <GlassSurface variant="sheet" style={styles.capsule}>
-                <Text style={[styles.capsuleLabel, { color: c.textPrimary }]} numberOfLines={1}>{t('header.editProfile')}</Text>
+                <Text style={[styles.capsuleLabel, { color: c.textPrimary }]} numberOfLines={2}>{t('header.editProfile')}</Text>
               </GlassSurface>
               {pendingRequests > 0 ? <View testID="profile-requests-dot" style={[styles.requestsDot, { backgroundColor: c.danger, borderColor: c.bgBase }]} /> : null}
             </Pressable>
@@ -327,7 +327,7 @@ export default function ProfileHeader(props: ProfileHeaderProps) {
               <Pressable testID="profile-publish" style={styles.capsuleCell} onPress={onPublish} accessibilityRole="button" accessibilityLabel={t('header.createPostA11y')}>
                 <View style={[styles.capsule, styles.publishCapsule, { backgroundColor: c.brandFillSoft, borderColor: c.offersBorder }]}>
                   <IconPlus size={16} color={palette.onBrand} strokeWidth={2.6} />
-                  <Text style={[styles.capsuleLabel, { color: palette.onBrand }]} numberOfLines={1}>{t('header.publish')}</Text>
+                  <Text style={[styles.capsuleLabel, { color: palette.onBrand }]} numberOfLines={2}>{t('header.publish')}</Text>
                 </View>
               </Pressable>
             ) : null}
@@ -337,7 +337,7 @@ export default function ProfileHeader(props: ProfileHeaderProps) {
         {isOwnProfile && completionVisible && completedCount < 3 ? (
           <View style={[styles.completionStrip, { borderColor: c.borderSubtle, backgroundColor: c.bgSurface }]}>
             <View style={styles.completionCopy}>
-              <Text style={[styles.completionSummary, { color: c.textPrimary }]} numberOfLines={1}>
+              <Text style={[styles.completionSummary, { color: c.textPrimary }]} numberOfLines={2}>
                 {t('completion.summary', { count: completedCount })}
               </Text>
               <View style={[styles.progressTrack, { backgroundColor: c.borderSubtle }]}>
@@ -356,16 +356,16 @@ export default function ProfileHeader(props: ProfileHeaderProps) {
               <Text style={[styles.blockedNotice, { color: c.textSecondary }]}>{t('header.blockedMe')}</Text>
             ) : relation === 'blockedByMe' ? (
               <TouchableOpacity style={outlined} onPress={onUnblock} disabled={followBusy} accessibilityRole="button">
-                {followBusy ? <Spinner color={c.textPrimary} /> : <Text style={[styles.buttonLabel, { color: c.textPrimary }]}>{t('header.unblock')}</Text>}
+                {followBusy ? <Spinner color={c.textPrimary} /> : <Text numberOfLines={2} style={[styles.buttonLabel, { color: c.textPrimary }]}>{t('header.unblock')}</Text>}
               </TouchableOpacity>
             ) : (
               <>
                 <TouchableOpacity testID="profile-follow" style={followOutlined ? outlined : primary} onPress={followAction} disabled={followBusy} accessibilityRole="button">
-                  {followBusy ? <Spinner color={followOutlined ? c.textPrimary : onAccent} /> : <Text style={[styles.buttonLabel, { color: followOutlined ? c.textPrimary : onAccent }]}>{followLabel}</Text>}
+                  {followBusy ? <Spinner color={followOutlined ? c.textPrimary : onAccent} /> : <Text numberOfLines={2} style={[styles.buttonLabel, { color: followOutlined ? c.textPrimary : onAccent }]}>{followLabel}</Text>}
                 </TouchableOpacity>
                 <TouchableOpacity style={outlined} onPress={onMessage} accessibilityRole="button">
                   <IconMessage size={18} color={c.textPrimary} />
-                  <Text style={[styles.buttonLabel, { color: c.textPrimary }]}>{t('header.message')}</Text>
+                  <Text numberOfLines={2} style={[styles.buttonLabel, { color: c.textPrimary }]}>{t('header.message')}</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -405,17 +405,17 @@ const styles = StyleSheet.create({
   cityRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, marginTop: 8, marginHorizontal: 20 },
   city: { fontSize: 14, lineHeight: 19 },
   capsules: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginHorizontal: 20, marginTop: 14 },
-  capsuleCell: { flex: 1, maxWidth: CAPSULE_MAX_WIDTH, height: 44 },
-  capsule: { height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 },
+  capsuleCell: { flex: 1, maxWidth: CAPSULE_MAX_WIDTH, minHeight: 44 },
+  capsule: { minHeight: 44, flex: 1, borderRadius: 22, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6, paddingHorizontal: 12, paddingVertical: 4 },
   publishCapsule: { borderWidth: 1 },
-  capsuleLabel: { fontSize: 15, fontWeight: '700' },
+  capsuleLabel: { flexShrink: 1, fontSize: 15, fontWeight: '700', textAlign: 'center' },
   requestsDot: { position: 'absolute', top: 2, right: 10, width: 11, height: 11, borderRadius: 6, borderWidth: 2 },
   actionRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginHorizontal: 20, marginTop: 14 },
-  button: { flex: 1, maxWidth: CAPSULE_MAX_WIDTH, height: 44, borderRadius: 22, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
+  button: { flex: 1, maxWidth: CAPSULE_MAX_WIDTH, minHeight: 44, borderRadius: 22, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingHorizontal: 12, paddingVertical: 4 },
   outlinedButton: { borderWidth: 1 },
-  buttonLabel: { fontSize: 15, fontWeight: '700' },
+  buttonLabel: { flexShrink: 1, fontSize: 15, fontWeight: '700', textAlign: 'center' },
   blockedNotice: { flex: 1, fontSize: 14, lineHeight: 20, paddingVertical: 12, textAlign: 'center' },
-  completionStrip: { height: 44, marginHorizontal: 20, marginTop: 12, borderWidth: 1, borderRadius: 12, flexDirection: 'row', alignItems: 'center', paddingLeft: 12 },
+  completionStrip: { minHeight: 44, paddingVertical: 4, marginHorizontal: 20, marginTop: 12, borderWidth: 1, borderRadius: 12, flexDirection: 'row', alignItems: 'center', paddingLeft: 12 },
   completionCopy: { flex: 1, gap: 4 },
   completionSummary: { fontSize: 13, lineHeight: 16, fontWeight: '700' },
   completionDismiss: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },

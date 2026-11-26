@@ -53,7 +53,7 @@ test('the avatar is centred (left 50% with marginLeft -AVATAR_SIZE / 2) on the s
   assert.doesNotMatch(style, /left: 20/);
 });
 
-test('name, @username, bio, city and capsules are centred; capsules are 44 pt tall and at most 160 wide', () => {
+test('name, @username, bio, city and capsules are centred; capsules are at least 44 pt tall (minHeight, so the label can wrap at large text) and at most 160 wide', () => {
   assert.match(header, /nameBlock: \{[^}]*alignItems: 'center'/);
   assert.match(header, /nameRow: \{[^}]*justifyContent: 'center'/);
   assert.match(header, /displayName: \{[^}]*fontSize: 26[^}]*textAlign: 'center'/);
@@ -62,8 +62,8 @@ test('name, @username, bio, city and capsules are centred; capsules are 44 pt ta
   assert.match(header, /cityRow: \{[^}]*justifyContent: 'center'/);
   assert.match(header, /capsules: \{[^}]*justifyContent: 'center'/);
   assert.match(header, /const CAPSULE_MAX_WIDTH = 160/);
-  assert.match(header, /capsuleCell: \{ flex: 1, maxWidth: CAPSULE_MAX_WIDTH, height: 44 \}/);
-  assert.match(header, /capsule: \{ height: 44,/);
+  assert.match(header, /capsuleCell: \{ flex: 1, maxWidth: CAPSULE_MAX_WIDTH, minHeight: 44 \}/);
+  assert.match(header, /capsule: \{ minHeight: 44,/);
 });
 
 test('the fallback initials are 44 pt', () => {
