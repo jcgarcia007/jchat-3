@@ -130,3 +130,32 @@ Pendiente:
 - AVD `JChat_Small_API30`: no se hizo (todas sus pantallas pedidas necesitan sesión).
 - La ficha `/b/jchat-demo-lounge-y7of` da 404 sin sesión a propósito (es un local de revisión oculto por `business_visible_to`); en Lighthouse/axe se usó el local público `caminata-nhim` (`/b/…` y `/m/…`).
 - Segunda pasada (23-nov, tarde): TalkBack no se pudo escuchar ni capturar (las capturas de `uiautomator dump` fallan en pantallas animadas como login y mapa), así que la accesibilidad con TalkBack sigue sin comprobarse. Pixel_8_clean y JChat_Small_API30 quedaron con sesión cerrada; en el AVD pequeño la app ya instalada tenía otra firma y se reemplazó por el APK de desarrollo `ec0b1ce0`. En iOS Ajustes/chat/reservar se repitieron en una tercera pasada (Metro con sitekey vacía y sin botón flotante de Expo): ver H-089 a H-091.
+
+## Lote 2 (26-nov-2026): estado de cada hallazgo, rama `release/lote2` (`5f7e5a67`)
+Ramas: A `fix/l2-reservas` (`e654c487`), B `fix/l2-app` (`07c00703`), C `fix/l2-web` (`3dec5ad9`). Ninguno se vio en pantalla (no había `DEV_BUILDS.md`): «Cómo se comprobó» es prueba, axe o lectura de código. Estados: **OTA** = corregido, pendiente de OTA al build 15 · **web** = corregido, pendiente de deploy de la web · **277** = pendiente de aplicar la 277.
+
+| Hallazgo | Commit | Estado | Cómo se comprobó |
+|---|---|---|---|
+| N-02 (`status_changed_by` al cancelar el cliente) | `14ecc89a` | 277 | `test_277_local.sh` (62 ok): el cliente cancela con UPDATE directo → queda el cliente; el guard sigue rechazando lo demás |
+| N-01 (aviso al local cuando el cliente cancela) | `14ecc89a`, `4e209983` (app), `5df5ca02` (send-push) | 277 + OTA + deploy de `send-push` | prueba local de la 277 (dueño y personal con permiso, no el autor); pruebas de la app y Deno del texto del push |
+| H-030 (reserva sin respuesta) | `14ecc89a`, `ded04efd` (app), `e654c487` (dashboard) | 277 (caduca) + OTA + web; la etiqueta «Sin respuesta del local» sale ya con la app, sin la 277 | prueba local (solo `pending` > 2 h; `confirmed` intactas); pruebas unitarias de `effectiveStatus` |
+| H-059 (dashboard: vencidas con Confirmar/Check-in y en el contador) | `e654c487` | web (+ 277 para el estado real) | pruebas unitarias; el contador del menú solo cuenta `pending` con hora futura |
+| H-031 (mes vacío en iOS) | `0296c483` | OTA | pruebas con `formatToParts` anulado, 12 meses y 7 días ES/EN |
+| H-009 | `d1aeacc6` | OTA | prueba unitaria (`tel:`, `sms:`, `javascript:`, `http:`, otra app, espacios) |
+| H-081 (pestañas VoiceOver) | `e7cc243b` | OTA, **parcial**: sin `snapshot_ui` | prueba estática; en iOS el rol `tab` no añade rasgo, no se sabe si lo resuelve |
+| H-084 (barra de estado sobre el mapa) | `e6ed0d54` | OTA, sin ver en pantalla | prueba estática |
+| H-044 (impuesto con tasa 0) | `a92a7d64` | OTA | prueba estática, claves ES/EN |
+| H-026 (categorías en la app) | `d8cade8c` | OTA | prueba unitaria: 11 opciones del alta con clave ES/EN |
+| H-033 / H-091 (enlaces legales con `?lang=`) | `0fe21c92` | OTA + web (`?lang=` de la rama C) | prueba unitaria de `legalUrl` |
+| H-087 (login en 360×640) | `9879fe73` | OTA, **parcial**: teclado de Android sin ver | prueba estática |
+| H-027 / H-040 (texto grande) | `f45a89a3` | OTA, **parcial**: sin ver con font_scale 2.0 / AX5 | pruebas estáticas; la barra inferior queda con tope 1 por una prueba previa |
+| `?lang=es\|en` | `9e3f71e8` | web | prueba unitaria + curl contra servidor local |
+| H-003 (pie legal) | `719453fe` | web | Playwright, 6 páginas × ES/EN × 390/320 px: 0 desbordes |
+| H-012 (botón «Descargar la app») | `bf18560f` | web | lectura de código y tsc |
+| H-013 (categorías en web) | `fa612a39` | web | pruebas de clave (11 categorías ES/EN) |
+| H-017, H-018 (textos de la landing y del menú público) | `018114dc` | web | paridad ES = EN (4018 claves) |
+| H-021 (recibos y orden de compra; parcial, `devices`/`printers` sin tocar) | `83787ed4` | web | tsc, paridad |
+| H-067 (contraste) | `3dec5ad9` | web | axe a 390 px: 67 → 0 nodos con `color-contrast` en las 7 páginas (`/b` y `/m` sin datos medían 0 en la base) y prueba de ratios de los tokens |
+| H-007 (`table.label` sin escapar) | `7801c2c4` | web | prueba de `escapeHtml` y de su uso |
+
+Sin código nativo: ninguno de los arreglos lo necesitó. Puerta del runtime en `release/lote2`: ✔ iOS `f818b6a3…`, ✔ Android `947e79e2…` (sin tocar los hashes de `build15`).
