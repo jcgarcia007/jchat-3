@@ -40,7 +40,8 @@
     "noShow": "No-show",
     "cancelled": "Cancelled",
     "unknown": "Unknown",
-    "rejected": "Rejected"
+    "rejected": "Rejected",
+    "expired": "No response from the venue"
   },
   "stepCounter": "Step {{current}} of {{total}}",
   "stepDate": "Which day?",

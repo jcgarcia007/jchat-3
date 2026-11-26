@@ -3,12 +3,12 @@
  *
  * The customer can cancel a reservation that is still pending or confirmed and has not happened yet (the database
  * agrees: reservations_customer_guard only lets a customer change status to 'cancelled'). The list is split into
- * "Upcoming" (in the future, not cancelled or rejected) and "Past" (already happened, cancelled or rejected).
+ * "Upcoming" (in the future, not cancelled, rejected or expired) and "Past" (already happened, cancelled, rejected or expired).
  */
 
 import { format12h } from './hours';
 
-export type ReservationStatus = 'pending' | 'confirmed' | 'arrived' | 'no_show' | 'cancelled' | 'rejected';
+export type ReservationStatus = 'pending' | 'confirmed' | 'arrived' | 'no_show' | 'cancelled' | 'rejected' | 'expired';
 
 export interface ReservationLike {
   status: string;
@@ -16,7 +16,7 @@ export interface ReservationLike {
   reserved_at: string;
 }
 
-const KNOWN_STATUSES: readonly string[] = ['pending', 'confirmed', 'arrived', 'no_show', 'cancelled', 'rejected'];
+const KNOWN_STATUSES: readonly string[] = ['pending', 'confirmed', 'arrived', 'no_show', 'cancelled', 'rejected', 'expired'];
 
 /** Why the venue rejected a request (reservations.status_reason, migration 274). */
 export const REJECT_REASON_KEYS = ['no_availability', 'closed_that_day', 'group_too_large'] as const;
@@ -41,9 +41,19 @@ export function canCancel(reservation: ReservationLike, now: Date | number): boo
   return Number.isFinite(at) && at > asMillis(now);
 }
 
-/** In the future and not cancelled or rejected. */
+/**
+ * The status to SHOW (H-030, migration 277). A pending reservation whose time has already passed was never answered by the venue: until the server's cron
+ * marks it 'expired' (every 10 min, 2 h after the time) it reads the same as an expired one, never "Pending confirmation".
+ */
+export function effectiveStatus(reservation: ReservationLike, now: Date | number): string {
+  if (reservation.status !== 'pending') return reservation.status;
+  const at = reservedMillis(reservation);
+  return Number.isFinite(at) && at <= asMillis(now) ? 'expired' : reservation.status;
+}
+
+/** In the future and not cancelled, rejected or expired. */
 export function isUpcoming(reservation: ReservationLike, now: Date | number): boolean {
-  if (reservation.status === 'cancelled' || reservation.status === 'rejected') return false;
+  if (reservation.status === 'cancelled' || reservation.status === 'rejected' || reservation.status === 'expired') return false;
   const at = reservedMillis(reservation);
   return Number.isFinite(at) && at > asMillis(now);
 }
@@ -63,6 +73,8 @@ export function statusLabelKey(status: string): string {
       return 'status.cancelled';
     case 'rejected':
       return 'status.rejected';
+    case 'expired':
+      return 'status.expired';
     default:
       return 'status.unknown';
   }

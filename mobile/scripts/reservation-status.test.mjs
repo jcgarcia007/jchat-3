@@ -17,7 +17,7 @@ for (const name of ['hours', 'reservationStatus']) {
   outputText = outputText.replace(/from '\.\/hours'/g, "from './hours.mjs'");
   writeFileSync(join(dir, `${name}.mjs`), outputText);
 }
-const { canCancel, isUpcoming, statusLabelKey, statusTone, splitReservations, formatReservationWhen } = await import(
+const { canCancel, isUpcoming, statusLabelKey, statusTone, splitReservations, formatReservationWhen, effectiveStatus } = await import(
   pathToFileURL(join(dir, 'reservationStatus.mjs')).href
 );
 
@@ -115,4 +115,40 @@ test('reject reasons: the three keys of the venue, nothing else', () => {
   assert.equal(isRejectReasonKey('group_too_large'), true);
   assert.equal(isRejectReasonKey('other'), false);
   assert.equal(isRejectReasonKey(undefined), false);
+});
+
+// ── Lote 2 (migration 277): expired = "No response from the venue" ──────────────────────────────────────────────────────────────
+test('expired: its own label key, muted tone, never upcoming, never cancellable', () => {
+  assert.equal(statusLabelKey('expired'), 'status.expired');
+  assert.equal(statusTone('expired'), 'muted');
+  assert.equal(isUpcoming(R('expired', future), NOW), false);
+  assert.equal(canCancel(R('expired', future), NOW), false);
+  const { upcoming, past: pastList } = splitReservations([R('expired', future), R('expired', past), R('pending', future)], NOW);
+  assert.equal(upcoming.length, 1);
+  assert.equal(pastList.length, 2);
+});
+
+test('H-030: a pending reservation whose time passed shows as expired before the cron marks it; a future or non-pending one keeps its status', () => {
+  assert.equal(effectiveStatus(R('pending', past), NOW), 'expired');
+  assert.equal(effectiveStatus(R('pending', future), NOW), 'pending');
+  assert.equal(effectiveStatus(R('confirmed', past), NOW), 'confirmed');
+  assert.equal(effectiveStatus(R('cancelled', past), NOW), 'cancelled');
+  assert.equal(effectiveStatus(R('expired', past), NOW), 'expired');
+  assert.equal(effectiveStatus(R('pending', 'not a date'), NOW), 'pending');
+  // exactly now counts as passed
+  assert.equal(effectiveStatus(R('pending', iso(NOW)), NOW), 'expired');
+  assert.equal(statusLabelKey(effectiveStatus(R('pending', past), NOW)), 'status.expired');
+});
+
+test('the expired chip text exists in es and en', () => {
+  const lang = (l) => JSON.parse(readFileSync(new URL(`../i18n/locales/${l}/reservations.json`, import.meta.url), 'utf8')).status.expired;
+  assert.equal(lang('es'), 'Sin respuesta del local');
+  assert.equal(lang('en'), 'No response from the venue');
+});
+
+test('the screen shows the effective status and keeps the cancel decision on the real status', () => {
+  const screen = readFileSync(new URL('../screens/reservations/MyReservationsScreen.tsx', import.meta.url), 'utf8');
+  assert.match(screen, /const shownStatus = effectiveStatus\(item, new Date\(\)\)/);
+  assert.match(screen, /statusLabelKey\(shownStatus\)/);
+  assert.match(screen, /canCancel\(item, new Date\(\)\)/);
 });
