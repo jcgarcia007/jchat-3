@@ -142,6 +142,7 @@
     "quoteRetry": "Reintentar",
     "paymentsNotEnabled": "Este local todavía no acepta pagos en la app. Puedes pedir en el mostrador.",
     "taxLabelRate": "Impuesto ({{rate}}%)",
+    "taxLabelNone": "Impuesto",
     "taxNotConfigured": "El negocio no tiene impuestos configurados.",
     "bioFailedTitle": "No pudimos verificar tu identidad",
     "bioFailedMessage": "El pago no se realizó. Inténtalo de nuevo para confirmarlo.",

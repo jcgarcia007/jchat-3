@@ -928,8 +928,8 @@ export default function CheckoutScreen() {
 
                 <View style={styles.totalRow}>
                   <Text style={[styles.totalLabel, { color: c.textSecondary }]}>
-                    {quote.tax_source === 'none'
-                      ? t('cart.taxLabel')
+                    {quote.tax_source === 'none' || !(quote.tax_rate > 0)
+                      ? t('checkout.taxLabelNone')
                       : t('checkout.taxLabelRate', { rate: formatTaxRate(quote.tax_rate) })}
                   </Text>
                   <Text style={[styles.totalValue, { color: c.textPrimary }]} numberOfLines={1}>
