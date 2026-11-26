@@ -338,7 +338,7 @@ export default function LandingPage() {
           box-shadow:0 0 0 4px rgb(var(--color-brand-rgb) / .25), 0 2px 8px rgb(var(--ink-rgb) / .18);
         }
         .map-you-label {
-          background:var(--color-brand); color:rgb(var(--white-rgb));
+          background:var(--color-brand-fill); color:rgb(var(--white-rgb));
           font-size:7px; font-weight:700;
           padding:2px 6px; border-radius:6px;
           white-space:nowrap;

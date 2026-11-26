@@ -29,7 +29,7 @@ export default async function NoBusinessNotice() {
         <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 8px" }}>{t("title")}</h1>
         <p style={{ fontSize: 14, lineHeight: 1.6, color: "var(--text-secondary)", margin: "0 0 20px" }}>{t("body")}</p>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <Link href="/business/register" style={{ ...button, background: "var(--color-brand)", color: "var(--on-brand)" }}>
+          <Link href="/business/register" style={{ ...button, background: "var(--color-brand-fill)", color: "var(--on-brand)" }}>
             {t("register")}
           </Link>
           <Link href="/" style={{ ...button, background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--border-subtle)" }}>

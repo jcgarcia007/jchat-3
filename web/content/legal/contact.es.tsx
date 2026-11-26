@@ -1,6 +1,6 @@
 /** Contacto — contenido en español. Página pública. */
 
-const LINK: React.CSSProperties = { color: "var(--color-brand)", textDecoration: "underline" };
+const LINK: React.CSSProperties = { color: "var(--color-brand-text-light)", textDecoration: "underline" };
 const H1: React.CSSProperties = { fontSize: "28px", fontWeight: 800, color: "var(--gray-900)", marginBottom: "6px", letterSpacing: "-0.5px" };
 const H2: React.CSSProperties = { fontSize: "18px", fontWeight: 700, marginTop: "32px", marginBottom: "10px", color: "var(--gray-900)" };
 const P: React.CSSProperties = { lineHeight: "1.7", marginTop: "0", marginBottom: "14px", color: "var(--gray-700)" };

@@ -121,7 +121,7 @@ function ConfirmAgeInner() {
     padding: "11px 16px",
     borderRadius: 10,
     border: "none",
-    background: "var(--color-brand)",
+    background: "var(--color-brand-fill)",
     color: "var(--on-brand)",
     fontSize: 14,
     fontWeight: 600,

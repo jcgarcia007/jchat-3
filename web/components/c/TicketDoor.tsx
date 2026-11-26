@@ -89,7 +89,7 @@ export function TicketDoor({ businessId, businessName, businessSlug, logoUrl, ta
     textDecoration: "none",
     cursor: "pointer",
   };
-  const primary: React.CSSProperties = { ...button, border: "none", background: "var(--color-brand)", color: "var(--on-brand)" };
+  const primary: React.CSSProperties = { ...button, border: "none", background: "var(--color-brand-fill)", color: "var(--on-brand)" };
   const disabled: React.CSSProperties = { ...button, opacity: 0.55, cursor: "default" };
   const bite: React.CSSProperties = {
     position: "absolute",

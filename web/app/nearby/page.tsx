@@ -289,7 +289,7 @@ function OpenBadge({ open }: { open: boolean }) {
         background: open
           ? "rgb(var(--color-success-rgb) / 0.15)"
           : "rgb(var(--color-danger-rgb) / 0.15)",
-        color: open ? "var(--color-success)" : "var(--color-danger)",
+        color: open ? "var(--color-success-text)" : "var(--color-danger-text)",
         flexShrink: 0,
         lineHeight: "18px",
       }}

@@ -163,7 +163,7 @@ function CardHeader() {
           width: 36,
           height: 36,
           borderRadius: 10,
-          background: "var(--color-brand)",
+          background: "var(--color-brand-fill)",
           color: "var(--on-brand)",
         }}
       >

@@ -58,7 +58,7 @@ export default function UnbanEmail() {
             <span style={{ fontSize: 13, color: "var(--text-primary)", lineHeight: 1.5 }}>{t("unbanConfirm", { email: email.trim() })}</span>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button type="button" autoFocus onClick={() => setPhase("idle")} style={{ minHeight: 40, padding: "0 14px", borderRadius: 6, border: "1px solid var(--border-subtle)", background: "transparent", color: "var(--text-secondary)", fontSize: 13, cursor: "pointer" }}>{t("unbanCancel")}</button>
-              <button type="button" onClick={() => void remove()} style={{ minHeight: 40, padding: "0 14px", borderRadius: 6, border: "none", background: "var(--color-brand)", color: "var(--on-brand)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{t("unbanConfirmYes")}</button>
+              <button type="button" onClick={() => void remove()} style={{ minHeight: 40, padding: "0 14px", borderRadius: 6, border: "none", background: "var(--color-brand-fill)", color: "var(--on-brand)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{t("unbanConfirmYes")}</button>
             </div>
           </div>
         ) : (

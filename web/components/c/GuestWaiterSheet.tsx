@@ -169,7 +169,7 @@ export function GuestWaiterSheet({ businessId, businessName, tableToken, tableLa
             <button
               onClick={() => void handleSend()}
               disabled={state === "locating" || state === "sending" || errorKey === "callAlreadyOpen"}
-              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px 16px", borderRadius: 12, border: "none", background: "var(--color-brand)", color: "var(--on-brand)", fontSize: 15, fontWeight: 600, cursor: "pointer", opacity: state === "locating" || state === "sending" || errorKey === "callAlreadyOpen" ? 0.6 : 1 }}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px 16px", borderRadius: 12, border: "none", background: "var(--color-brand-fill)", color: "var(--on-brand)", fontSize: 15, fontWeight: 600, cursor: "pointer", opacity: state === "locating" || state === "sending" || errorKey === "callAlreadyOpen" ? 0.6 : 1 }}
             >
               {(state === "locating" || state === "sending") && <IconLoader2 size={18} className="spin" />}
               {state === "locating" ? tv("locating") : state === "sending" ? t("sending") : needsLocation ? tv("allowLocation") : t("requestTitle")}

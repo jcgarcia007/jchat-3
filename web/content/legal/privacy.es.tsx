@@ -1,6 +1,6 @@
 /** Política de privacidad — Español. Página pública: sin var(--*), solo hex fijos. */
 
-const LINK: React.CSSProperties = { color: "var(--color-brand)", textDecoration: "underline" };
+const LINK: React.CSSProperties = { color: "var(--color-brand-text-light)", textDecoration: "underline" };
 const H2: React.CSSProperties = { fontSize: "18px", fontWeight: 700, marginTop: "36px", marginBottom: "10px", color: "var(--gray-900)" };
 const P: React.CSSProperties = { lineHeight: "1.7", marginTop: "0", marginBottom: "14px", color: "var(--gray-700)" };
 const UL: React.CSSProperties = { paddingLeft: "20px", lineHeight: "1.7", color: "var(--gray-700)", marginBottom: "14px" };

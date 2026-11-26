@@ -292,7 +292,7 @@ function HoursSection({ hours }: { hours: Hours }) {
               <span
                 style={{
                   fontSize: 13,
-                  color: isToday ? "var(--color-brand)" : "var(--text-secondary)",
+                  color: isToday ? "var(--color-brand-text)" : "var(--text-secondary)",
                   fontWeight: isToday ? 600 : 400,
                   minWidth: 90,
                 }}
@@ -303,9 +303,9 @@ function HoursSection({ hours }: { hours: Hours }) {
                 style={{
                   fontSize: 13,
                   color: entry?.closed
-                    ? "var(--color-danger)"
+                    ? "var(--color-danger-text)"
                     : isToday
-                    ? "var(--color-brand)"
+                    ? "var(--color-brand-text)"
                     : "var(--text-primary)",
                   fontWeight: isToday ? 600 : 400,
                 }}
@@ -425,7 +425,7 @@ function DownloadCTA({ businessName }: { businessName: string }) {
   return (
     <div
       style={{
-        background: "linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-purple) 100%)",
+        background: "linear-gradient(135deg, var(--color-brand-fill) 0%, var(--color-brand-purple) 100%)",
         borderRadius: 18,
         padding: "28px 24px",
         textAlign: "center",

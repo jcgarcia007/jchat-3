@@ -452,7 +452,7 @@ export default function PricingPage() {
                   {isPopular && (
                     <div style={{
                       position:"absolute", top:"-11px", left:"50%", transform:"translateX(-50%)",
-                      background:"linear-gradient(135deg,var(--color-brand),var(--color-brand-purple))",
+                      background:"linear-gradient(135deg,var(--color-brand-fill),var(--color-brand-purple))",
                       color:"var(--on-brand)", fontSize:"10px", fontWeight:800,
                       letterSpacing:".08em", textTransform:"uppercase",
                       padding:"3px 14px", borderRadius:"99px", whiteSpace:"nowrap",
@@ -499,7 +499,7 @@ export default function PricingPage() {
                       border: plan.cta === "checkout" ? "none" : "1px solid rgb(var(--ink-rgb) / .12)",
                       background: plan.cta === "checkout"
                         ? isPopular
-                          ? "linear-gradient(135deg,var(--color-brand),var(--color-brand-purple))"
+                          ? "linear-gradient(135deg,var(--color-brand-fill),var(--color-brand-purple))"
                           : "linear-gradient(135deg,var(--land-peach),var(--land-peach-dark))"
                         : "rgb(var(--ink-rgb) / .04)",
                       color: plan.cta === "checkout" ? "var(--on-brand)" : "var(--land-sub)",
@@ -613,10 +613,10 @@ export default function PricingPage() {
       </div>
 
       {/* Legal footer */}
-      <footer style={{ borderTop:"1px solid var(--border-subtle)", marginTop:"48px", padding:"20px 24px", display:"flex", justifyContent:"center", gap:"24px", fontSize:"13px", color:"var(--text-secondary)", flexWrap:"wrap" }}>
-        <a href="/privacy" style={{ color:"var(--text-secondary)", textDecoration:"none" }}>{t("footer.privacy")}</a>
-        <a href="/terms" style={{ color:"var(--text-secondary)", textDecoration:"none" }}>{t("footer.terms")}</a>
-        <a href="/support" style={{ color:"var(--text-secondary)", textDecoration:"none" }}>{t("footer.support")}</a>
+      <footer style={{ borderTop:"1px solid var(--border-subtle)", marginTop:"48px", padding:"20px 24px", display:"flex", justifyContent:"center", gap:"24px", fontSize:"13px", color:"var(--land-muted)", flexWrap:"wrap" }}>
+        <a href="/privacy" style={{ color:"var(--land-muted)", textDecoration:"none" }}>{t("footer.privacy")}</a>
+        <a href="/terms" style={{ color:"var(--land-muted)", textDecoration:"none" }}>{t("footer.terms")}</a>
+        <a href="/support" style={{ color:"var(--land-muted)", textDecoration:"none" }}>{t("footer.support")}</a>
       </footer>
     </div>
     </>
