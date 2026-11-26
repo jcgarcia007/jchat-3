@@ -347,7 +347,7 @@ export default function ReportsQueue({ onPendingCount }: { onPendingCount?: (n: 
                     {RESOLUTIONS.map((v) => <option key={v} value={v}>{t(`resolutions.${v}`)}</option>)}
                   </select>
                   <input aria-label={t("note")} placeholder={t("note")} value={note[r.id] ?? ""} onChange={(e) => setNote((p) => ({ ...p, [r.id]: e.target.value }))} style={{ ...field, flex: "1 1 180px" }} />
-                  <button type="button" disabled={busy || !resolution[r.id]} onClick={() => requestResolve(r, resolution[r.id])} style={{ ...smallBtn, background: "var(--color-brand)", color: "var(--on-brand)", opacity: resolution[r.id] ? 1 : 0.5 }}>{t("resolve")}</button>
+                  <button type="button" disabled={busy || !resolution[r.id]} onClick={() => requestResolve(r, resolution[r.id])} style={{ ...smallBtn, background: "var(--color-brand-fill)", color: "var(--on-brand)", opacity: resolution[r.id] ? 1 : 0.5 }}>{t("resolve")}</button>
                 </div>
               </div>
             ) : (
@@ -411,7 +411,7 @@ export default function ReportsQueue({ onPendingCount }: { onPendingCount?: (n: 
             <p id="ncmec-confirm-text" style={{ margin: 0, fontSize: 14, color: "var(--text-primary)", lineHeight: 1.5 }}>{t("ncmecConfirmMessage")}</p>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
               <button type="button" autoFocus onClick={() => setNcmecAsk(null)} style={smallBtn}>{t("ncmecConfirmCancel")}</button>
-              <button type="button" onClick={confirmNcmec} style={{ ...smallBtn, background: "var(--color-brand)", color: "var(--on-brand)" }}>{t("ncmecConfirmYes")}</button>
+              <button type="button" onClick={confirmNcmec} style={{ ...smallBtn, background: "var(--color-brand-fill)", color: "var(--on-brand)" }}>{t("ncmecConfirmYes")}</button>
             </div>
           </div>
         </div>

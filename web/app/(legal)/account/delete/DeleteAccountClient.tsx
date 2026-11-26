@@ -22,7 +22,7 @@ type Phase = "checking" | "public" | "form" | "deleting" | "done";
 interface OwnerState { names: string[]; blocker: OwnerBlocker | null }
 
 const P: React.CSSProperties = { lineHeight: "1.7", marginTop: 0, marginBottom: "14px", color: "var(--gray-700)" };
-const LINK: React.CSSProperties = { color: "var(--color-brand)", textDecoration: "underline" };
+const LINK: React.CSSProperties = { color: "var(--color-brand-text-light)", textDecoration: "underline" };
 
 export function DeleteAccountClient() {
   const t = useTranslations("accountDelete");

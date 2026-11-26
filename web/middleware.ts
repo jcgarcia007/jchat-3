@@ -8,9 +8,21 @@
 
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { LANG_COOKIE, LANG_COOKIE_MAX_AGE, parseLangParam } from './lib/langParam';
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({ request });
+  // `?lang=es|en` sets the language cookie. It is also written on the request so that this very
+  // render (i18n/request.ts reads the cookie) is already served in that language.
+  const langParam = parseLangParam(request.nextUrl.searchParams.get('lang'));
+  if (langParam) request.cookies.set(LANG_COOKIE, langParam);
+  const withLang = (res: NextResponse) => {
+    if (langParam) {
+      res.cookies.set(LANG_COOKIE, langParam, { path: '/', maxAge: LANG_COOKIE_MAX_AGE, sameSite: 'lax' });
+    }
+    return res;
+  };
+
+  let response = withLang(NextResponse.next({ request }));
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -27,7 +39,7 @@ export async function middleware(request: NextRequest) {
         cookiesToSet.forEach(({ name, value }) =>
           request.cookies.set(name, value)
         );
-        response = NextResponse.next({ request });
+        response = withLang(NextResponse.next({ request }));
         cookiesToSet.forEach(({ name, value, options }) =>
           response.cookies.set(name, value, options)
         );

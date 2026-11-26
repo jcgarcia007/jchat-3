@@ -15,6 +15,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { getTranslations } from "next-intl/server";
+import { categoryLabel } from "@/lib/categoryLabel";
 import { safeJsonLd, localBusinessJsonLd } from "@/lib/jsonLd";
 import {
   IconMapPin,
@@ -291,7 +292,7 @@ function HoursSection({ hours }: { hours: Hours }) {
               <span
                 style={{
                   fontSize: 13,
-                  color: isToday ? "var(--color-brand)" : "var(--text-secondary)",
+                  color: isToday ? "var(--color-brand-text)" : "var(--text-secondary)",
                   fontWeight: isToday ? 600 : 400,
                   minWidth: 90,
                 }}
@@ -302,9 +303,9 @@ function HoursSection({ hours }: { hours: Hours }) {
                 style={{
                   fontSize: 13,
                   color: entry?.closed
-                    ? "var(--color-danger)"
+                    ? "var(--color-danger-text)"
                     : isToday
-                    ? "var(--color-brand)"
+                    ? "var(--color-brand-text)"
                     : "var(--text-primary)",
                   fontWeight: isToday ? 600 : 400,
                 }}
@@ -424,7 +425,7 @@ function DownloadCTA({ businessName }: { businessName: string }) {
   return (
     <div
       style={{
-        background: "linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-purple) 100%)",
+        background: "linear-gradient(135deg, var(--color-brand-fill) 0%, var(--color-brand-purple) 100%)",
         borderRadius: 18,
         padding: "28px 24px",
         textAlign: "center",
@@ -621,6 +622,7 @@ function NotFoundState({ slug }: { slug: string }) {
 
 export default async function BusinessPreviewPage({ params }: PageProps) {
   const t = await getTranslations("businessPage");
+  const tc = await getTranslations("businessCategories");
   const { slug } = await params;
   const biz = await getBusiness(slug);
 
@@ -712,7 +714,7 @@ export default async function BusinessPreviewPage({ params }: PageProps) {
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <IconStar size={13} color="var(--color-gold)" />
               <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-                {biz.category}
+                {categoryLabel(biz.category, tc)}
               </span>
             </div>
           </div>

@@ -155,7 +155,7 @@ function LoginForm() {
             width: 36,
             height: 36,
             borderRadius: 10,
-            background: "var(--color-brand)",
+            background: "var(--color-brand-fill)",
             color: "var(--on-brand)",
           }}
         >
@@ -253,7 +253,7 @@ function LoginForm() {
         </div>
 
         <div style={{ textAlign: "right", margin: "-12px 0 16px" }}>
-          <a href="/forgot-password" style={{ color: "var(--color-brand)", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
+          <a href="/forgot-password" style={{ color: "var(--color-brand-text-light)", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
             {t("forgot")}
           </a>
         </div>
@@ -267,7 +267,7 @@ function LoginForm() {
             padding: "11px 16px",
             borderRadius: 10,
             border: "none",
-            background: "var(--color-brand)",
+            background: "var(--color-brand-fill)",
             color: "var(--on-brand)",
             fontSize: 14,
             fontWeight: 600,
@@ -343,7 +343,7 @@ function LoginForm() {
         }}
       >
         {t("noAccount")}{" "}
-        <a href="/auth/register" style={{ color: "var(--color-brand)", fontWeight: 600 }}>
+        <a href="/auth/register" style={{ color: "var(--color-brand-text-light)", fontWeight: 600 }}>
           {t("signUp")}
         </a>
       </p>

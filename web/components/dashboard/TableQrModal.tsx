@@ -9,6 +9,7 @@
 import { useEffect, useState } from "react";
 import { untypedDb } from "@/lib/untypedDb"; // regenerate_table_code is not in the generated types
 import { resolveActiveBusiness } from "@/lib/business";
+import { escapeHtml } from "@/lib/escapeHtml";
 import { useTranslations } from "next-intl";
 import { IconX, IconDownload, IconCopy, IconCheck, IconPrinter, IconMessageCircle, IconRefresh } from "@tabler/icons-react";
 import {
@@ -95,7 +96,7 @@ export function TableQrModal({ table, onClose }: { table: QrTable; onClose: () =
   function print() {
     const w = window.open("", "_blank", "width=480,height=640");
     if (!w) return;
-    const title = t("tablesQrModalTitle", { label: table.label });
+    const title = escapeHtml(t("tablesQrModalTitle", { label: table.label }));
     w.document.write(
       `<!doctype html><title>${title}</title><body style="margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:system-ui"><h2>${title}</h2><div style="width:320px">${svg}</div><script>window.onload=function(){window.print()}</script></body>`,
     );

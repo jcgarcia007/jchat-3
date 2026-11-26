@@ -78,7 +78,7 @@ export default async function LegalLayout({ children }: { children: React.ReactN
             color: "var(--gray-500)",
           }}
         >
-          <nav style={{ display: "flex", gap: "20px" }}>
+          <nav style={{ display: "flex", flexWrap: "wrap", gap: "8px 20px", minWidth: 0 }}>
             <Link href="/privacy" style={{ color: "var(--gray-500)", textDecoration: "none" }}>
               {isEs ? "Privacidad" : "Privacy"}
             </Link>

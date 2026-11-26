@@ -27,7 +27,8 @@
   --land-tint-sky:     #EFF6FF;
   --land-text:        #111827;
   --land-sub:         #4B5563;
-  --land-muted:       #9CA3AF;
+  /* Text-safe muted grey: #9CA3AF was 2.43:1 on #FAFAFA; #636A76 reaches 5.2:1 on it and 4.95:1 on #F3F4F6 (AA). */
+  --land-muted:       #636A76;
   --land-glass:       rgb(var(--white-rgb) / .80);
   --land-border-v:    rgb(var(--land-peach-rgb) / .30);
   --land-border-c:    rgb(var(--land-sky-rgb) / .38);
