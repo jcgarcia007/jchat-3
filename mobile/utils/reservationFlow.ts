@@ -281,14 +281,43 @@ export function slotTimeLabel(slotAt: string, tz: string | null | undefined, loc
   return new Intl.DateTimeFormat(locale, { timeZone: safeZone(tz), hour: 'numeric', minute: '2-digit', hour12: locale === 'en' }).format(new Date(slotAt));
 }
 
+// Day and month names come from OUR tables, never from Intl.formatToParts: on iOS (Hermes) the month part arrives empty ("martes 24 de", H-031).
+const WEEKDAYS_LONG = {
+  es: ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'],
+  en: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+} as const;
+const WEEKDAYS_SHORT = {
+  es: ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'],
+  en: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+} as const;
+const MONTHS_LONG = {
+  es: ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'],
+  en: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+} as const;
+const MONTHS_SHORT = {
+  es: ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sept', 'oct', 'nov', 'dic'],
+  en: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+} as const;
+
+/** Weekday name, `dow` 0 = Sunday … 6 = Saturday ("sábado" / "Saturday", short: "sáb" / "Sat"). Empty when out of range. */
+export function weekdayName(dow: number, locale: FlowLocale, style: 'long' | 'short' = 'long'): string {
+  return (style === 'long' ? WEEKDAYS_LONG : WEEKDAYS_SHORT)[locale][dow] ?? '';
+}
+
+/** Month name, `month0` 0 = January … 11 = December ("noviembre" / "November", short: "nov" / "Nov"). Empty when out of range. */
+export function monthName(month0: number, locale: FlowLocale, style: 'long' | 'short' = 'long'): string {
+  return (style === 'long' ? MONTHS_LONG : MONTHS_SHORT)[locale][month0] ?? '';
+}
+
 /** "sábado 15 de noviembre" / "Saturday, November 15" — the date as the venue's calendar says it (no zone shift). */
 export function longDateLabel(date: string, locale: FlowLocale): string {
   const p = parseDate(date);
   if (!p) return date;
   const at = new Date(Date.UTC(p.y, p.m - 1, p.d, 12));
-  const f = new Intl.DateTimeFormat(locale, { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).formatToParts(at);
-  const get = (type: string) => f.find((x) => x.type === type)?.value ?? '';
-  return locale === 'es' ? `${get('weekday')} ${get('day')} de ${get('month')}` : `${get('weekday')}, ${get('month')} ${get('day')}`;
+  const weekday = weekdayName(at.getUTCDay(), locale);
+  const month = monthName(at.getUTCMonth(), locale);
+  const day = at.getUTCDate();
+  return locale === 'es' ? `${weekday} ${day} de ${month}` : `${weekday}, ${month} ${day}`;
 }
 
 /** Short weekday of the strip ("sáb" / "Sat"). */
