@@ -258,6 +258,7 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
         <TextInput
           style={[styles.searchInput, { color: c.textPrimary }]}
           placeholder={t('filterPanel.searchPlaceholder')}
+          accessibilityLabel={t('filterPanel.searchA11y')}
           placeholderTextColor={c.textTertiary}
           value={filters.searchQuery}
           onChangeText={handleSearchChange}

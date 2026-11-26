@@ -99,6 +99,7 @@ export default function NotchTabBar({ state, descriptors, navigation }: BottomTa
     return (
       <Pressable
         key={route.key}
+        accessible
         accessibilityLabel={label}
         accessibilityRole="tab"
         accessibilityState={{ selected: focused }}
@@ -180,11 +181,12 @@ export default function NotchTabBar({ state, descriptors, navigation }: BottomTa
         </Svg>
       ) : null}
 
-      <View style={[styles.side, styles.leftSide, { width: sideWidth }]}>
+      {/* Both halves are tab lists: the five destinations are announced as tabs (the centre one is a button over the notch). */}
+      <View accessibilityRole="tablist" style={[styles.side, styles.leftSide, { width: sideWidth }]}>
         {renderRoute(0)}
         {renderRoute(1)}
       </View>
-      <View style={[styles.side, styles.rightSide, { width: sideWidth }]}>
+      <View accessibilityRole="tablist" style={[styles.side, styles.rightSide, { width: sideWidth }]}>
         {renderRoute(2)}
         {renderRoute(3)}
       </View>
@@ -200,8 +202,9 @@ export default function NotchTabBar({ state, descriptors, navigation }: BottomTa
       </Text>
 
       <Pressable
+        accessible
         accessibilityLabel={commonTranslation.t('tabs.offers')}
-        accessibilityRole="button"
+        accessibilityRole="tab"
         accessibilityState={{ selected: offersFocused }}
         onPress={() => navigation.navigate('Offers')}
         testID="tab-offers"

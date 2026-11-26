@@ -76,6 +76,7 @@
     "categoryOpenNow": "Open now",
     "distanceKm": "{{count}} km",
     "searchPlaceholder": "Search places…",
+    "searchA11y": "Search places",
     "advancedFiltersA11y": "Advanced filters",
     "resultsCount_one": "{{count}} place near you",
     "resultsCount_other": "{{count}} places near you",
