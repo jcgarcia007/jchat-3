@@ -25,8 +25,8 @@ const union = service.slice(service.indexOf('export type NotificationType ='), s
 const TYPES = [...union.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
 const B = 'biz-1';
 
-test('there are 22 types, and the hook accepts every one (derived from SOCIAL_NOTIFICATION_TYPES, not a hand-kept list)', () => {
-  assert.equal(TYPES.length, 22);
+test('there are 23 types, and the hook accepts every one (derived from SOCIAL_NOTIFICATION_TYPES, not a hand-kept list)', () => {
+  assert.equal(TYPES.length, 23);
   assert.match(hook, /new Set\(SOCIAL_NOTIFICATION_TYPES\)/);
   const social = service.slice(service.indexOf('export const SOCIAL_NOTIFICATION_TYPES'), service.indexOf('export function isSocialNotificationType'));
   for (const t of ['dm', 'follower', 'like', 'comment', 'work_alert']) assert.ok(social.includes(`'${t}'`), t);
@@ -71,7 +71,9 @@ test('the route of every type', () => {
     assert.deepEqual(routeForNotification(type, null), { screen: 'MyReservations' }, `${type} without payload`);
   }
   assert.equal(routeForNotification('reservation_requested', { business_id: B, reservation_id: 'r1' }), null);
-  assert.deepEqual(Object.keys(table).concat('work_alert', 'business_closed', 'reservation_cancelled', 'staff_added', 'staff_removed', 'reservation_confirmed', 'reservation_rejected', 'reservation_requested', 'reservation_reminder').sort(), [...TYPES].sort());
+  // Lote 2 (migration 277): the customer cancelled → for the owner / staff, same as requested: no screen in the app
+  assert.equal(routeForNotification('reservation_cancelled_by_customer', { business_id: B, reservation_id: 'r1' }), null);
+  assert.deepEqual(Object.keys(table).concat('work_alert', 'business_closed', 'reservation_cancelled', 'staff_added', 'staff_removed', 'reservation_confirmed', 'reservation_rejected', 'reservation_requested', 'reservation_reminder', 'reservation_cancelled_by_customer').sort(), [...TYPES].sort());
 });
 
 test('a type this build does not know opens nothing', () => {

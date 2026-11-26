@@ -62,6 +62,7 @@ const FOREGROUND_BANNER_TYPES: ReadonlySet<string> = new Set([
   'reservation_rejected',
   'reservation_requested',
   'reservation_reminder',
+  'reservation_cancelled_by_customer',
 ]);
 
 // Web has no foreground OS banners or push (the browser build lists notifications through Realtime only).
