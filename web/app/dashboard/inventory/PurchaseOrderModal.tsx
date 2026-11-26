@@ -585,7 +585,7 @@ export default function PurchaseOrderModal({
                       style={inputSt}
                       value={form.legal_name}
                       onChange={(e) => setForm({ ...form, legal_name: e.target.value })}
-                      placeholder="Restaurante El Sol S.A."
+                      placeholder={t("poModalLegalNamePlaceholder")}
                     />
                   </div>
                   <div>
@@ -594,7 +594,7 @@ export default function PurchaseOrderModal({
                       style={inputSt}
                       value={form.address}
                       onChange={(e) => setForm({ ...form, address: e.target.value })}
-                      placeholder="Calle Principal 123"
+                      placeholder={t("poModalAddressPlaceholder")}
                     />
                   </div>
                   <div>

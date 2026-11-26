@@ -73,6 +73,7 @@ interface PreviewProps {
 }
 
 function ReceiptPreview({ bizName, templateId, brandColor }: PreviewProps) {
+  const t = useTranslations("dashboardCommon");
   const brandText   = textOn(brandColor);
   const accentColor = accentOnWhite(brandColor);
 
@@ -95,7 +96,7 @@ function ReceiptPreview({ bizName, templateId, brandColor }: PreviewProps) {
         borderRadius: 999,
       }}
     >
-      PAGADO
+      {t("receiptPreviewPaid")}
     </span>
   );
 
@@ -106,12 +107,12 @@ function ReceiptPreview({ bizName, templateId, brandColor }: PreviewProps) {
         <div style={{ background: brandColor, padding: "14px 16px 12px", color: brandText, textAlign: "center" }}>
           <div style={{ width: 32, height: 32, borderRadius: "50%", background: `${brandText === "#ffffff" ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.10)"}`, margin: "0 auto 6px" }} />
           <div style={{ fontWeight: 700, fontSize: 13, color: brandText }}>{bizName}</div>
-          <div style={{ fontSize: 9, opacity: 0.8, color: brandText }}>Ciudad, Estado</div>
+          <div style={{ fontSize: 9, opacity: 0.8, color: brandText }}>{t("receiptPreviewCityState")}</div>
         </div>
         <div style={{ textAlign: "center", padding: "8px 16px 0" }}><PaidChip /></div>
         <div style={{ padding: "8px 16px 0" }}>
           <div style={{ background: C.metaBg, borderRadius: 6, padding: "6px 10px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, fontSize: 10 }}>
-            {[["Mesa", "5"], ["Fecha", "Hoy"]].map(([k, v]) => (
+            {[[t("receiptPreviewTable"), "5"], [t("receiptPreviewDate"), t("receiptPreviewToday")]].map(([k, v]) => (
               <><span style={{ color: C.textSec }}>{k}</span><span style={{ fontWeight: 600, color: C.text, textAlign: "right" }}>{v}</span></>
             ))}
           </div>
@@ -125,14 +126,14 @@ function ReceiptPreview({ bizName, templateId, brandColor }: PreviewProps) {
           ))}
         </div>
         <div style={{ padding: "6px 16px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0", fontSize: 10, color: C.textSec }}><span>Subtotal</span><span>$42.00</span></div>
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0", fontSize: 10, color: C.textSec }}><span>{t("receiptPreviewSubtotal")}</span><span>$42.00</span></div>
           <div style={{ borderTop: `1px solid ${C.border}`, marginTop: 4, paddingTop: 4, display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: 13 }}>
-            <span>Total</span><span style={{ color: accentColor }}>$45.36</span>
+            <span>{t("receiptPreviewTotal")}</span><span style={{ color: accentColor }}>$45.36</span>
           </div>
         </div>
         <div style={{ padding: "0 16px 12px", textAlign: "center" }}>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 12px", borderRadius: 6, background: brandColor, color: brandText, fontWeight: 600, fontSize: 10 }}>
-            Descargar PDF
+            {t("receiptPreviewDownloadPdf")}
           </span>
         </div>
       </div>
@@ -146,12 +147,12 @@ function ReceiptPreview({ bizName, templateId, brandColor }: PreviewProps) {
       <div style={{ colorScheme: "light", ...MONO, background: "#fdfaf5", color: "#1a1a1a", maxWidth: 260, width: "100%", boxShadow: "0 2px 12px rgba(0,0,0,0.12)", fontSize: 10 }}>
         <div style={{ background: brandColor, color: brandText, textAlign: "center", padding: "12px 16px 10px" }}>
           <div style={{ fontWeight: 700, fontSize: 12, letterSpacing: "0.05em", color: brandText }}>{bizName.toUpperCase()}</div>
-          <div style={{ fontSize: 9, opacity: 0.8, color: brandText }}>Ciudad, Estado</div>
+          <div style={{ fontSize: 9, opacity: 0.8, color: brandText }}>{t("receiptPreviewCityState")}</div>
         </div>
         <div style={{ padding: "10px 16px" }}>
           <div style={{ textAlign: "center", marginBottom: 8 }}><PaidChip /></div>
           <div style={{ borderTop: "1px dashed #d1c9b8", margin: "6px 0" }} />
-          {[["MESA", "5"], ["FECHA", "Hoy"]].map(([k, v]) => (
+          {[[t("receiptPreviewTable").toUpperCase(), "5"], [t("receiptPreviewDate").toUpperCase(), t("receiptPreviewToday")]].map(([k, v]) => (
             <div key={k} style={{ display: "flex", justifyContent: "space-between" }}>
               <span style={{ color: "#7a7060" }}>{k}</span><span style={{ fontWeight: 700 }}>{v}</span>
             </div>
@@ -164,10 +165,10 @@ function ReceiptPreview({ bizName, templateId, brandColor }: PreviewProps) {
           ))}
           <div style={{ borderTop: "1px dashed #d1c9b8", margin: "6px 0" }} />
           <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: 12 }}>
-            <span>TOTAL</span><span style={{ color: accentColor }}>$45.36</span>
+            <span>{t("receiptPreviewTotal").toUpperCase()}</span><span style={{ color: accentColor }}>$45.36</span>
           </div>
           <div style={{ borderTop: "1px dashed #d1c9b8", margin: "6px 0" }} />
-          <div style={{ textAlign: "center", fontSize: 9, color: "#7a7060", letterSpacing: "0.1em" }}>GRACIAS POR SU VISITA</div>
+          <div style={{ textAlign: "center", fontSize: 9, color: "#7a7060", letterSpacing: "0.1em" }}>{t("receiptPreviewThanks")}</div>
         </div>
       </div>
     );
@@ -179,12 +180,12 @@ function ReceiptPreview({ bizName, templateId, brandColor }: PreviewProps) {
       <div style={{ colorScheme: "light", background: C.cardBg, color: C.text, maxWidth: 320, width: "100%", borderTop: `3px solid ${accentColor}`, boxShadow: "0 1px 8px rgba(0,0,0,0.06)", fontSize: 11 }}>
         <div style={{ padding: "24px 28px 16px", borderBottom: `1px solid ${C.border}` }}>
           <div style={{ fontWeight: 300, fontSize: 16, letterSpacing: "0.04em", color: C.text }}>{bizName}</div>
-          <div style={{ fontSize: 10, color: C.textSec, fontWeight: 300, marginTop: 3, letterSpacing: "0.03em" }}>Ciudad, Estado</div>
+          <div style={{ fontSize: 10, color: C.textSec, fontWeight: 300, marginTop: 3, letterSpacing: "0.03em" }}>{t("receiptPreviewCityState")}</div>
         </div>
         <div style={{ padding: "12px 28px", display: "flex", alignItems: "center", gap: 16, borderBottom: `1px solid ${C.border}` }}>
           <PaidChip />
           <div>
-            <div style={{ fontSize: 9, letterSpacing: "0.1em", color: C.textSec, fontWeight: 300, textTransform: "uppercase" }}>Mesa</div>
+            <div style={{ fontSize: 9, letterSpacing: "0.1em", color: C.textSec, fontWeight: 300, textTransform: "uppercase" }}>{t("receiptPreviewTable")}</div>
             <div style={{ fontSize: 11, color: C.text, fontWeight: 400 }}>5</div>
           </div>
         </div>
@@ -197,9 +198,9 @@ function ReceiptPreview({ bizName, templateId, brandColor }: PreviewProps) {
           ))}
         </div>
         <div style={{ padding: "12px 28px 20px", borderTop: `1px solid ${C.border}`, marginTop: 8 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: C.textSec, fontWeight: 300, paddingBottom: 6 }}><span>Subtotal</span><span>$42.00</span></div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: C.textSec, fontWeight: 300, paddingBottom: 6 }}><span>{t("receiptPreviewSubtotal")}</span><span>$42.00</span></div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", borderTop: `1px solid ${C.border}`, paddingTop: 8 }}>
-            <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: C.textSec, fontWeight: 300 }}>Total</span>
+            <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: C.textSec, fontWeight: 300 }}>{t("receiptPreviewTotal")}</span>
             <span style={{ fontSize: 20, fontWeight: 300, color: accentColor }}>$45.36</span>
           </div>
         </div>
@@ -214,7 +215,7 @@ function ReceiptPreview({ bizName, templateId, brandColor }: PreviewProps) {
       <div style={{ height: 2, background: accentColor }} />
       <div style={{ padding: "24px 28px 16px", textAlign: "center", borderBottom: `1px solid ${C.border}` }}>
         <div style={{ fontStyle: "italic", fontWeight: 400, fontSize: 17, color: C.text }}>{bizName}</div>
-        <div style={{ fontSize: 10, color: C.textSec, marginTop: 4, letterSpacing: "0.04em" }}>Ciudad, Estado</div>
+        <div style={{ fontSize: 10, color: C.textSec, marginTop: 4, letterSpacing: "0.04em" }}>{t("receiptPreviewCityState")}</div>
       </div>
       <div style={{ padding: "12px 28px", textAlign: "center", borderBottom: `1px solid ${C.border}` }}>
         <PaidChip />
@@ -228,11 +229,11 @@ function ReceiptPreview({ bizName, templateId, brandColor }: PreviewProps) {
       </div>
       <div style={{ padding: "10px 28px 20px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: C.textSec, paddingBottom: 6 }}>
-          <span style={{ fontVariant: "small-caps" }}>Subtotal</span><span>$42.00</span>
+          <span style={{ fontVariant: "small-caps" }}>{t("receiptPreviewSubtotal")}</span><span>$42.00</span>
         </div>
         <div style={{ borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`, paddingTop: 2, marginBottom: 6 }}><div style={{ borderTop: `1px solid ${C.border}`, marginTop: 3 }} /></div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <span style={{ fontVariant: "small-caps", fontSize: 12 }}>Total</span>
+          <span style={{ fontVariant: "small-caps", fontSize: 12 }}>{t("receiptPreviewTotal")}</span>
           <span style={{ fontSize: 20, fontStyle: "italic", color: accentColor }}>$45.36</span>
         </div>
       </div>
@@ -390,7 +391,7 @@ export default function ReceiptDashboardPage() {
   const t = useTranslations("dashboardCommon");
 
   const [bizId,       setBizId]       = useState<string | null>(null);
-  const [bizName,     setBizName]     = useState("Tu Negocio");
+  const [bizName,     setBizName]     = useState(() => t("receiptDefaultBizName"));
   const [bizSlug,     setBizSlug]     = useState<string | null>(null);
   const [color,       setColor]       = useState("#5C7CFA");
   const [templateId,  setTemplateId]  = useState<TemplateId>("modern");
@@ -450,12 +451,12 @@ export default function ReceiptDashboardPage() {
       </p>
 
       {loading ? (
-        <p style={{ color: "var(--db-text-secondary)" }}>Cargando…</p>
+        <p style={{ color: "var(--db-text-secondary)" }}>{t("receiptPageLoading")}</p>
       ) : !bizId ? (
         <p style={{ color: "var(--db-text-secondary)" }}>
-          No hay negocio activo. Activa uno desde{" "}
+          {t("receiptNoBusiness")}{" "}
           <a href="/dashboard/configuration/businesses" style={{ color: "var(--db-accent)" }}>
-            Configuración › Negocios
+            {t("receiptBusinessesLink")}
           </a>.
         </p>
       ) : (

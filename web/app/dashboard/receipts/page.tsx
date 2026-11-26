@@ -20,6 +20,7 @@ import {
   IconExternalLink,
   IconRefresh,
 } from "@tabler/icons-react";
+import { useLocale, useTranslations } from "next-intl";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
 import { formatCents } from "@/lib/currency";
@@ -39,11 +40,10 @@ interface ReceiptRow {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("en-US", {
+function formatTime(iso: string, locale: string): string {
+  return new Date(iso).toLocaleTimeString(locale, {
     hour: "numeric",
     minute: "2-digit",
-    hour12: true,
   });
 }
 
@@ -54,6 +54,8 @@ function receiptUrl(code: string): string {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ReceiptsPage() {
+  const t = useTranslations("dashboardCommon");
+  const locale = useLocale();
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [rows, setRows]             = useState<ReceiptRow[]>([]);
   const [loading, setLoading]       = useState(true);
@@ -88,11 +90,11 @@ export default function ReceiptsPage() {
 
     setLoading(false);
     if (rpcErr) {
-      setError("No se pudieron cargar los recibos.");
+      setError(t("receiptsTodayLoadError"));
       return;
     }
     setRows(((data ?? []) as unknown) as ReceiptRow[]);
-  }, [businessId]);
+  }, [businessId, t]);
 
   useEffect(() => {
     if (businessId !== null) load();
@@ -111,19 +113,19 @@ export default function ReceiptsPage() {
       <div style={S.pageHeader}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <IconReceipt2 size={22} style={{ color: "var(--db-accent)" }} />
-          <h1 style={S.pageTitle}>Recibos de hoy</h1>
+          <h1 style={S.pageTitle}>{t("receiptsTodayTitle")}</h1>
         </div>
         <button
           style={S.refreshBtn}
           onClick={load}
           disabled={loading}
-          aria-label="Refrescar"
+          aria-label={t("receiptsTodayRefresh")}
         >
           <IconRefresh
             size={16}
             style={{ animation: loading ? "spin 1s linear infinite" : "none" }}
           />
-          Refrescar
+          {t("receiptsTodayRefresh")}
         </button>
       </div>
 
@@ -131,19 +133,19 @@ export default function ReceiptsPage() {
       {rows.length > 0 && (
         <div style={S.summaryRow}>
           <div style={S.summaryCard}>
-            <span style={S.summaryLabel}>Cobros</span>
+            <span style={S.summaryLabel}>{t("receiptsTodayCharges")}</span>
             <span style={S.summaryValue}>{rows.length}</span>
           </div>
           <div style={S.summaryCard}>
-            <span style={S.summaryLabel}>Base</span>
+            <span style={S.summaryLabel}>{t("receiptsTodayBase")}</span>
             <span style={S.summaryValue}>{formatCents(totalBase)}</span>
           </div>
           <div style={S.summaryCard}>
-            <span style={S.summaryLabel}>Propinas</span>
+            <span style={S.summaryLabel}>{t("receiptsTodayTips")}</span>
             <span style={S.summaryValue}>{formatCents(totalTip)}</span>
           </div>
           <div style={S.summaryCard}>
-            <span style={S.summaryLabel}>Total</span>
+            <span style={S.summaryLabel}>{t("receiptsTodayTotal")}</span>
             <span style={{ ...S.summaryValue, color: "var(--db-accent)" }}>
               {formatCents(totalBase + totalTip)}
             </span>
@@ -155,7 +157,7 @@ export default function ReceiptsPage() {
       {loading ? (
         <div style={S.centered}>
           <IconLoader2 size={28} style={{ color: "var(--db-accent)", animation: "spin 1s linear infinite" }} />
-          <span style={S.hint}>Cargando recibos…</span>
+          <span style={S.hint}>{t("receiptsTodayLoading")}</span>
         </div>
       ) : error ? (
         <div style={S.centered}>
@@ -165,15 +167,22 @@ export default function ReceiptsPage() {
       ) : rows.length === 0 ? (
         <div style={S.centered}>
           <IconReceipt2 size={40} style={{ color: "var(--db-text-muted, #9ca3af)" }} />
-          <span style={S.emptyTitle}>Sin recibos hoy</span>
-          <span style={S.hint}>Los cobros completados aparecerán aquí.</span>
+          <span style={S.emptyTitle}>{t("receiptsTodayEmptyTitle")}</span>
+          <span style={S.hint}>{t("receiptsTodayEmptyBody")}</span>
         </div>
       ) : (
         <div style={S.tableWrapper}>
           <table style={S.table}>
             <thead>
               <tr>
-                {["Hora", "Mesa", "Empleado", "Base", "Propina", "Recibo"].map((h) => (
+                {[
+                  t("receiptsTodayColTime"),
+                  t("receiptsTodayColTable"),
+                  t("receiptsTodayColEmployee"),
+                  t("receiptsTodayBase"),
+                  t("receiptsTodayColTip"),
+                  t("receiptsTodayColReceipt"),
+                ].map((h) => (
                   <th key={h} style={S.th}>{h}</th>
                 ))}
               </tr>
@@ -181,7 +190,7 @@ export default function ReceiptsPage() {
             <tbody>
               {rows.map((row) => (
                 <tr key={row.id} style={S.tr}>
-                  <td style={S.td}>{formatTime(row.created_at)}</td>
+                  <td style={S.td}>{formatTime(row.created_at, locale)}</td>
                   <td style={S.td}>{row.table_label ?? "—"}</td>
                   <td style={{ ...S.td, fontFamily: "monospace", fontSize: "12px", color: "var(--db-text-secondary)" }}>
                     {row.paid_by ? row.paid_by.slice(0, 8) + "…" : "—"}
@@ -200,11 +209,11 @@ export default function ReceiptsPage() {
                         title={row.receipt_code}
                       >
                         <IconExternalLink size={14} />
-                        Ver
+                        {t("receiptsTodayView")}
                       </a>
                     ) : (
                       <span style={{ color: "var(--db-text-muted, #9ca3af)", fontSize: "12px" }}>
-                        Sin código
+                        {t("receiptsTodayNoCode")}
                       </span>
                     )}
                   </td>
