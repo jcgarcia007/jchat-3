@@ -37,6 +37,7 @@ import {
   IconChevronDown,
 } from "@tabler/icons-react";
 import { useTranslations } from "next-intl";
+import { categoryLabel } from "@/lib/categoryLabel";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 // ---------------------------------------------------------------------------
@@ -300,6 +301,7 @@ function OpenBadge({ open }: { open: boolean }) {
 
 function BusinessCard({ item }: { item: BusinessRow }) {
   const t = useTranslations("nearbyPage");
+  const tc = useTranslations("businessCategories");
   const open = isOpenNow(item.hours);
 
   return (
@@ -380,7 +382,7 @@ function BusinessCard({ item }: { item: BusinessRow }) {
               marginBottom: 8,
             }}
           >
-            {item.category}
+            {categoryLabel(item.category, tc)}
           </div>
 
           {/* Stats */}
@@ -455,6 +457,7 @@ function BusinessCard({ item }: { item: BusinessRow }) {
 
 export default function NearbyPage() {
   const t = useTranslations("nearbyPage");
+  const tc = useTranslations("businessCategories");
   const [businesses, setBusinesses] = useState<BusinessRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -497,14 +500,15 @@ export default function NearbyPage() {
       const matchesSearch =
         !q ||
         b.name.toLowerCase().includes(q) ||
-        b.category.toLowerCase().includes(q);
+        b.category.toLowerCase().includes(q) ||
+        categoryLabel(b.category, tc).toLowerCase().includes(q);
       const matchesCategory =
         !selectedCategory || b.category === selectedCategory;
       const matchesCity =
         selectedCity === ALL_CITIES || b.city === selectedCity;
       return matchesSearch && matchesCategory && matchesCity;
     });
-  }, [businesses, searchQuery, selectedCategory, selectedCity]);
+  }, [businesses, searchQuery, selectedCategory, selectedCity, tc]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -733,7 +737,7 @@ export default function NearbyPage() {
                       transition: "background 0.15s, color 0.15s, border-color 0.15s",
                     }}
                   >
-                    {cat}
+                    {categoryLabel(cat, tc)}
                   </button>
                 );
               })}

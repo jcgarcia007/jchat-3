@@ -3944,6 +3944,21 @@
     "noResultsTitle": "No se encontraron resultados",
     "noResultsBody": "Prueba con otra búsqueda, categoría o ciudad."
   },
+  "businessCategories": {
+    "bar_nightclub": "Bar y discoteca",
+    "restaurant": "Restaurante",
+    "cafe": "Café",
+    "lounge": "Lounge",
+    "club": "Club",
+    "brewery": "Cervecería",
+    "rooftop_bar": "Bar en azotea",
+    "sports_bar": "Bar deportivo",
+    "cocktail_bar": "Coctelería",
+    "wine_bar": "Bar de vinos",
+    "other": "Otro",
+    "bar_lounge": "Bar y lounge",
+    "nightclub": "Discoteca"
+  },
   "businessPage": {
     "coverPhoto": "Foto de portada de {name}",
     "hours": "Horario",

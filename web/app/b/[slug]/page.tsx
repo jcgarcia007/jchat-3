@@ -15,6 +15,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { getTranslations } from "next-intl/server";
+import { categoryLabel } from "@/lib/categoryLabel";
 import { safeJsonLd, localBusinessJsonLd } from "@/lib/jsonLd";
 import {
   IconMapPin,
@@ -621,6 +622,7 @@ function NotFoundState({ slug }: { slug: string }) {
 
 export default async function BusinessPreviewPage({ params }: PageProps) {
   const t = await getTranslations("businessPage");
+  const tc = await getTranslations("businessCategories");
   const { slug } = await params;
   const biz = await getBusiness(slug);
 
@@ -712,7 +714,7 @@ export default async function BusinessPreviewPage({ params }: PageProps) {
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <IconStar size={13} color="var(--color-gold)" />
               <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-                {biz.category}
+                {categoryLabel(biz.category, tc)}
               </span>
             </div>
           </div>

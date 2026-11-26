@@ -3944,6 +3944,21 @@
     "noResultsTitle": "No results found",
     "noResultsBody": "Try a different search, category, or city."
   },
+  "businessCategories": {
+    "bar_nightclub": "Bar & Nightclub",
+    "restaurant": "Restaurant",
+    "cafe": "Café",
+    "lounge": "Lounge",
+    "club": "Club",
+    "brewery": "Brewery",
+    "rooftop_bar": "Rooftop Bar",
+    "sports_bar": "Sports Bar",
+    "cocktail_bar": "Cocktail Bar",
+    "wine_bar": "Wine Bar",
+    "other": "Other",
+    "bar_lounge": "Bar & Lounge",
+    "nightclub": "Nightclub"
+  },
   "businessPage": {
     "coverPhoto": "Cover photo for {name}",
     "hours": "Hours",
