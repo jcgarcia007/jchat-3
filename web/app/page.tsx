@@ -566,7 +566,7 @@ export default function LandingPage() {
                   <IconArrowRight size={16}/>
                 </motion.a>
                 <motion.a
-                  href="#"
+                  href="/download"
                   className="btn-ghost"
                   whileTap={prefersReduced ? undefined : { scale:0.97 }}
                 >
