@@ -46,6 +46,7 @@ import {
   formatReservationWhen,
   isRejectReasonKey,
   splitReservations,
+  effectiveStatus,
   statusLabelKey,
   statusTone,
   type StatusTone,
@@ -146,8 +147,10 @@ export default function MyReservationsScreen(): React.ReactElement {
     const name = business.name || t('venueFallback');
     const when = formatReservationWhen(item.reserved_at, i18n.language);
     const people = t('people', { count: item.party_size });
-    const statusText = t(statusLabelKey(item.status));
-    const tone = toneColor(statusTone(item.status));
+    // H-030: a pending one whose time passed reads "No response from the venue" even before the server marks it expired
+    const shownStatus = effectiveStatus(item, new Date());
+    const statusText = t(statusLabelKey(shownStatus));
+    const tone = toneColor(statusTone(shownStatus));
     const cancellable = canCancel(item, new Date());
     const busy = cancellingId === item.id;
     // chip keys are translated; free text from older reservations is shown as it is

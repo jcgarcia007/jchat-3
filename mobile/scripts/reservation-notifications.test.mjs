@@ -99,3 +99,24 @@ test('reservations texts exist in es and en (next card, reject reasons, rejected
   assert.equal(es.status.pending, 'Pendiente de confirmación');
   assert.match(en.rejectedReason, /\{\{reason\}\}/);
 });
+
+// ── Lote 2 (migration 277): the customer cancelled → notice for the owner / staff ────────────────────────────────────────────
+test('reservation_cancelled_by_customer: type, icon, banner, route and texts in es and en', () => {
+  const t = 'reservation_cancelled_by_customer';
+  assert.match(service, new RegExp(`\\| '${t}'`));
+  assert.match(service, new RegExp(`case '${t}':\\s*\\n\\s*return \\{ icon:`));
+  assert.match(presenter, new RegExp(`${t}: Icon`));
+  const set = hook.slice(hook.indexOf('FOREGROUND_BANNER_TYPES'), hook.indexOf(']);', hook.indexOf('FOREGROUND_BANNER_TYPES')));
+  assert.ok(set.includes(`'${t}'`));
+  const types = service.slice(service.indexOf('export const RESERVATION_NOTIFICATION_TYPES'), service.indexOf('export const SOCIAL_NOTIFICATION_TYPES'));
+  assert.ok(types.includes(`'${t}'`));
+  assert.match(presenter, /notification\.type === 'reservation_cancelled_by_customer'/);
+  for (const lang of ['es', 'en']) {
+    const n = social(lang);
+    assert.match(n.reservationCancelledByCustomer, /\{\{name\}\}.*\{\{date\}\}.*\{\{time\}\}/);
+    assert.match(n.reservationCancelledByCustomerNoDate, /\{\{name\}\}/);
+    assert.ok(n.reservationCancelledByCustomerGuest);
+  }
+  assert.equal(social('es').reservationCancelledByCustomerNoDate, '{{name}} canceló su reserva');
+  assert.equal(social('en').reservationCancelledByCustomerNoDate, '{{name}} cancelled their reservation');
+});

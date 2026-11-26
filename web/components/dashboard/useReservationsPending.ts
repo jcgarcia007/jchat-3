@@ -6,7 +6,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness } from "@/lib/business";
 
 /**
- * M3: live count of reservations waiting for an answer (status = 'pending') for the active business — the number next to "Reservations" in the menu.
+ * M3: live count of reservations waiting for an answer (status = 'pending' and the time not yet passed: one nobody answered is expired, H-059) for the active business — the number next to "Reservations" in the menu.
  * Subscribes on mount, unsubscribes on unmount (Supabase Realtime rule). Non-critical chrome: any failure is swallowed and the count stays at 0.
  */
 export function useReservationsPending(): number {
@@ -22,7 +22,8 @@ export function useReservationsPending(): number {
         .from("reservations")
         .select("id", { count: "exact", head: true })
         .eq("business_id", businessId)
-        .eq("status", "pending");
+        .eq("status", "pending")
+        .gte("reserved_at", new Date().toISOString());
       if (!active) return;
       if (!error) setPending(count ?? 0);
     }

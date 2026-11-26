@@ -59,6 +59,7 @@ export const NOTIFICATION_ICONS: Record<NotificationType, Icon> = {
   reservation_rejected: IconCalendarX,
   reservation_requested: IconCalendarPlus,
   reservation_reminder: IconBellRinging,
+  reservation_cancelled_by_customer: IconCalendarX,
 };
 
 /** The venue name a D4 notice carries in its own payload (the venue is no longer readable by the client once closed). */
@@ -196,6 +197,16 @@ export function useNotificationPresenter(notifications: NotificationRow[]) {
         return when && Number.isFinite(count) && count >= 1
           ? t('messages.notif.reservationRequested', { count, date: when.date, time: when.time })
           : t('messages.notif.reservationRequestedNoDate');
+      }
+
+      // Lote 2 (migration 277): the customer cancelled; for the owner / staff. The name is the customer's display name (or username) from the payload.
+      if (notification.type === 'reservation_cancelled_by_customer') {
+        const rawName = typeof payload?.customer_name === 'string' ? payload.customer_name.trim() : '';
+        const name = rawName || t('messages.notif.reservationCancelledByCustomerGuest');
+        const when = formatReservationWhen(payload?.reserved_at, payload?.timezone, i18n.language);
+        return when
+          ? t('messages.notif.reservationCancelledByCustomer', { name, date: when.date, time: when.time })
+          : t('messages.notif.reservationCancelledByCustomerNoDate', { name });
       }
 
       if (notification.type === 'reservation_reminder') {

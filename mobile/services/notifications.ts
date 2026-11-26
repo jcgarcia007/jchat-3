@@ -77,7 +77,8 @@ export type NotificationType =
   | 'reservation_confirmed'
   | 'reservation_rejected'
   | 'reservation_requested'
-  | 'reservation_reminder';
+  | 'reservation_reminder'
+  | 'reservation_cancelled_by_customer';
 
 export const MATCH_NOTIFICATION_TYPES: readonly NotificationType[] = [
   'match_like',
@@ -112,13 +113,15 @@ export const STAFF_NOTIFICATION_TYPES: readonly NotificationType[] = ['staff_add
 
 /**
  * M3 (migration 274): the venue answered a reservation (confirmed / rejected), a customer asked for one (requested: to the owner and staff with the
- * reservations permission) and the 24 h / 2 h reminder. Transactional. A tap opens "My reservations", except `requested`, which has no screen in the app.
+ * reservations permission) and the 24 h / 2 h reminder. Lote 2 (migration 277): `cancelled_by_customer` tells the venue (same recipients) that the customer cancelled.
+ * Transactional. A tap opens "My reservations", except `requested` and `cancelled_by_customer`, which have no screen in the app (the owner / staff answer in the web dashboard).
  */
 export const RESERVATION_NOTIFICATION_TYPES: readonly NotificationType[] = [
   'reservation_confirmed',
   'reservation_rejected',
   'reservation_requested',
   'reservation_reminder',
+  'reservation_cancelled_by_customer',
 ];
 
 export const SOCIAL_NOTIFICATION_TYPES: readonly NotificationType[] = [
@@ -361,6 +364,9 @@ export function getNotificationStyle(type: NotificationType): NotificationStyle 
     case 'reservation_requested':
       return { icon: IconCalendarPlus, accent: palette.brand };
 
+    case 'reservation_cancelled_by_customer':
+      return { icon: IconCalendarX, accent: palette.warning };
+
     case 'reservation_reminder':
       return { icon: IconBellRinging, accent: palette.brand };
 
@@ -545,7 +551,8 @@ export function routeForNotification(
       return { screen: 'MyReservations' };
 
     case 'reservation_requested':
-      // M3: it is for the owner / staff, who answer it in the web dashboard: the app has no screen for it.
+    case 'reservation_cancelled_by_customer':
+      // M3 / Lote 2: for the owner / staff, who answer in the web dashboard: the app has no screen for it (same as `requested`).
       return null;
 
     case 'match_like':

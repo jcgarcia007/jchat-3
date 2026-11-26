@@ -55,3 +55,15 @@ Deno.test("the push carries only the type, the business id and the reservation i
   const c = reservationPushContent("reservation_confirmed", { ...P, secret: "x", reason: "no_availability" }, false);
   assertEquals(c.data, { type: "reservation_confirmed", payload: { business_id: "b1", reservation_id: "r1" } });
 });
+
+Deno.test("cancelled by the customer (migration 277): who, and when in the venue's zone; es and en; fallback without a name", () => {
+  const p = { ...P, customer_name: "Carla" };
+  const es = norm(reservationPushContent("reservation_cancelled_by_customer", p, false).body);
+  const en = norm(reservationPushContent("reservation_cancelled_by_customer", p, true).body);
+  assertEquals(es.startsWith("Carla canceló su reserva · "), true);
+  assertEquals(en.startsWith("Carla cancelled their reservation · ") && en.includes("8:00 PM"), true);
+  assertEquals(reservationPushContent("reservation_cancelled_by_customer", { business_id: "b1" }, false).body, "Un cliente canceló su reserva");
+  assertEquals(reservationPushContent("reservation_cancelled_by_customer", { business_id: "b1" }, true).body, "A guest cancelled their reservation");
+  // the push still carries only the type and the two ids (the customer's name travels in the body, not in data)
+  assertEquals(reservationPushContent("reservation_cancelled_by_customer", p, true).data, { type: "reservation_cancelled_by_customer", payload: { business_id: "b1", reservation_id: "r1" } });
+});

@@ -227,3 +227,50 @@ test('bookingName: display name, else @username, else null', () => {
   assert.equal(F.bookingName({ display_name: null, username: null }), null);
   assert.equal(F.bookingName(null), null);
 });
+
+// ── H-031: day and month names come from our own tables (iOS returns an empty month from Intl.formatToParts) ────────────────────
+test('longDateLabel: the 12 months and the 7 weekdays, in es and en (own tables)', () => {
+  const MONTHS = {
+    es: ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'],
+    en: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+  };
+  const DAYS = {
+    es: ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'],
+    en: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+  };
+  for (const lang of ['es', 'en']) {
+    for (let m = 0; m < 12; m++) {
+      const date = `2026-${String(m + 1).padStart(2, '0')}-14`;
+      const dow = new Date(Date.UTC(2026, m, 14, 12)).getUTCDay();
+      const expected = lang === 'es' ? `${DAYS.es[dow]} 14 de ${MONTHS.es[m]}` : `${DAYS.en[dow]}, ${MONTHS.en[m]} 14`;
+      assert.equal(F.longDateLabel(date, lang), expected, `${lang} ${date}`);
+    }
+    // the seven weekdays: 2026-11-08 is a Sunday
+    for (let i = 0; i < 7; i++) {
+      const day = 8 + i;
+      const label = F.longDateLabel(`2026-11-${String(day).padStart(2, '0')}`, lang);
+      assert.ok(label.startsWith(DAYS[lang][i]), `${lang} weekday ${i}: ${label}`);
+    }
+  }
+  assert.equal(F.longDateLabel('2026-11-24', 'es'), 'martes 24 de noviembre'); // the exact string H-031 saw as "martes 24 de"
+});
+
+test('weekdayName / monthName: both styles, and out of range is empty', () => {
+  assert.equal(F.weekdayName(0, 'es'), 'domingo');
+  assert.equal(F.weekdayName(6, 'en', 'short'), 'Sat');
+  assert.equal(F.monthName(8, 'es', 'short'), 'sept');
+  assert.equal(F.monthName(11, 'en'), 'December');
+  assert.equal(F.weekdayName(7, 'en'), '');
+  assert.equal(F.monthName(-1, 'es'), '');
+});
+
+test('the labels no longer depend on Intl.formatToParts for day or month names', () => {
+  const orig = Intl.DateTimeFormat.prototype.formatToParts;
+  Intl.DateTimeFormat.prototype.formatToParts = function () { return []; }; // what iOS effectively gave: nothing usable
+  try {
+    assert.equal(F.longDateLabel('2026-11-24', 'es'), 'martes 24 de noviembre');
+    assert.equal(F.longDateLabel('2026-11-24', 'en'), 'Tuesday, November 24');
+  } finally {
+    Intl.DateTimeFormat.prototype.formatToParts = orig;
+  }
+});

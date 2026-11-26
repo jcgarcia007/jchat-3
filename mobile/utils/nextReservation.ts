@@ -6,7 +6,7 @@
  * never the phone's, like the booking flow (utils/reservationFlow.ts).
  */
 
-import { daysBetween, safeZone, slotTimeLabel, todayInZone, type FlowLocale } from './reservationFlow';
+import { daysBetween, monthName, safeZone, slotTimeLabel, todayInZone, weekdayName, type FlowLocale } from './reservationFlow';
 
 /** How long after its time a reservation stays on the card. */
 export const CARD_GRACE_MS = 2 * 60 * 60 * 1000;
@@ -51,9 +51,10 @@ export function shortDateLabel(date: string, locale: FlowLocale): string {
   const [y, m, d] = date.split('-').map(Number);
   if (!y || !m || !d) return date;
   const at = new Date(Date.UTC(y, m - 1, d, 12));
-  const parts = new Intl.DateTimeFormat(locale, { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' }).formatToParts(at);
-  const get = (type: string) => (parts.find((p) => p.type === type)?.value ?? '').replace(/\.$/, '');
-  return locale === 'es' ? `${get('weekday')} ${get('day')} ${get('month')}` : `${get('weekday')}, ${get('month')} ${get('day')}`;
+  // our own tables, not Intl.formatToParts (empty month on iOS, H-031)
+  const weekday = weekdayName(at.getUTCDay(), locale, 'short');
+  const month = monthName(at.getUTCMonth(), locale, 'short');
+  return locale === 'es' ? `${weekday} ${at.getUTCDate()} ${month}` : `${weekday}, ${month} ${at.getUTCDate()}`;
 }
 
 export interface WhenWords {

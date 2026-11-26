@@ -107,3 +107,16 @@ test('directionsUrl: coordinates → a maps link; anything else → null', () =>
   assert.equal(N.directionsUrl(91, 0), null);
   assert.equal(N.directionsUrl(0, 181), null);
 });
+
+test('H-031: the short date of a later day does not depend on Intl.formatToParts (own tables)', () => {
+  const orig = Intl.DateTimeFormat.prototype.formatToParts;
+  Intl.DateTimeFormat.prototype.formatToParts = function () { return []; };
+  try {
+    assert.equal(N.shortDateLabel('2026-11-15', 'en'), 'Sun, Nov 15');
+    assert.equal(N.shortDateLabel('2026-11-15', 'es'), 'dom 15 nov');
+    assert.equal(N.shortDateLabel('2026-09-05', 'es'), 'sáb 5 sept');
+    assert.equal(N.shortDateLabel('2026-09-05', 'en'), 'Sat, Sep 5');
+  } finally {
+    Intl.DateTimeFormat.prototype.formatToParts = orig;
+  }
+});

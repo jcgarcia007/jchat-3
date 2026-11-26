@@ -40,7 +40,8 @@
     "noShow": "No se presentó",
     "cancelled": "Cancelada",
     "unknown": "Desconocido",
-    "rejected": "Rechazada"
+    "rejected": "Rechazada",
+    "expired": "Sin respuesta del local"
   },
   "stepCounter": "Paso {{current}} de {{total}}",
   "stepDate": "¿Qué día?",
