@@ -99,7 +99,7 @@
     "aiShowSomethingNew": "Muéstrame algo nuevo",
     "aiRecommendedForYou": "Recomendado para ti",
     "aiLiveUpdating": "actualiza en vivo",
-    "aiMatchScore": "{score}% match",
+    "aiMatchScore": "{score}% de afinidad",
     "aiComposerPlaceholder": "Pídeme lo que sea… \"algo caliente\"",
     "aiReasons": [
       "Porque te gustan los clásicos",
@@ -135,7 +135,7 @@
     "masonryClearAria": "Limpiar",
     "masonryResultCount": "{count, plural, one {# resultado} other {# resultados}}",
     "masonryNoResults": "Sin resultados.",
-    "masonryCheckout": "Checkout →",
+    "masonryCheckout": "Pagar →",
     "masonryCartItemCount": "{count, plural, one {# artículo} other {# artículos}}",
     "categorySidebarCartLabel": "CARRITO · {count}",
     "iconRailCartLabel": "Carrito · {count}",
@@ -158,7 +158,7 @@
     "timelineCartLabel": "Tu velada · {count, plural, one {# platillo} other {# platillos}}",
     "badgeBestSeller": "⭐ Más vendido",
     "badgeNew": "✨ Nuevo",
-    "badgeHot": "🌶️ Hot",
+    "badgeHot": "🌶️ Picante",
     "dietaryVegetarian": "🌱 Vegetal",
     "dietaryVegan": "🌿 Vegano",
     "dietaryGlutenFree": "🌾 Sin gluten",
@@ -3254,7 +3254,7 @@
       "signIn": "Iniciar sesión"
     },
     "hero": {
-      "pill": "Real Places · Real People · Real Moments",
+      "pill": "Lugares reales · Gente real · Momentos reales",
       "title": "Conecta con la gente y los lugares a tu alrededor",
       "subtitle": "Descubre negocios, únete a chats cercanos y crea tu propio grupo.",
       "createAccount": "Crear cuenta",
@@ -3320,7 +3320,7 @@
       }
     },
     "groups": {
-      "badge": "⚡ Pro Social",
+      "badge": "⚡ Social Pro",
       "title": "Crea tu espacio, lidera tu comunidad",
       "body": "Con el plan Pro creas grupos temáticos, fijas mensajes clave y mandas anuncios a toda tu comunidad local.",
       "f1": {
