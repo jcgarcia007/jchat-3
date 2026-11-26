@@ -25,6 +25,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { ticket } from '../../theme/ticket';
+import { useKeyboardOpen } from '../../hooks/useKeyboardOpen';
 import { useReduceMotion } from '../../hooks/useReduceMotion';
 import { LanguagePill } from './LanguagePill';
 import { TICKET_PADDING } from './ticketLayout';
@@ -34,6 +35,8 @@ import { TICKET_PADDING } from './ticketLayout';
 const TICKET_SPRING = { stiffness: 95, damping: 15, mass: 1 } as const;
 /** The content starts to appear this long after the ticket starts rising (it is still moving). */
 const CONTENT_START_MS = 350;
+/** Room under the safe area for the top bar (8 pt gap + 44 pt Back button + 16 pt clearance for the ticket's tilt). */
+const TOP_BAR_ROOM = 68;
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const LOGIN_PHOTO = require('../../assets/images/login-bg.jpg') as number;
@@ -88,11 +91,21 @@ export function TicketShell({
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const reduce = useReduceMotion();
+  const keyboardOpen = useKeyboardOpen();
+  const scrollRef = useRef<ScrollView>(null);
   const photoHeight = Math.round(height * photoFraction);
   const translateY = useRef(new Animated.Value(entrance ? height : 0)).current;
   const doneRef = useRef(false);
   const doneCallbackRef = useRef(onContentReady);
   doneCallbackRef.current = onContentReady;
+
+  // Small screens (360x640): with the keyboard up the photo's room is given back to the form (the ticket starts right under the top
+  // bar, so Back never covers the logo) and, on Android, the view follows to the bottom so the password and the button stay in sight.
+  useEffect(() => {
+    if (!keyboardOpen || Platform.OS !== 'android') return undefined;
+    const timer = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120);
+    return () => clearTimeout(timer);
+  }, [keyboardOpen]);
 
   useEffect(() => {
     const finish = (reduceMotion: boolean) => {
@@ -129,13 +142,17 @@ export function TicketShell({
 
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={{
-            paddingTop: photoHeight - overlap,
+            paddingTop: keyboardOpen ? insets.top + TOP_BAR_ROOM : Math.max(photoHeight - overlap, insets.top + TOP_BAR_ROOM),
             paddingBottom: insets.bottom + 28,
             paddingHorizontal: 20,
           }}
           keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+          // Visible scrollbar: on a short screen the end of the ticket (Create account) is below the fold, and nothing else says so.
+          indicatorStyle="white"
+          persistentScrollbar
+          showsVerticalScrollIndicator
         >
           <Animated.View style={[styles.ticket, { transform: [{ translateY }, { rotate: '-2deg' }] }]}>
             {children}

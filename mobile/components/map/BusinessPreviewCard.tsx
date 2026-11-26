@@ -47,6 +47,7 @@ import { typeCap, typeStyle } from '../../theme/typography';
 import { controlMinHeight } from '../../theme/spacing';
 import { CATEGORY_ICONS, initialsColor } from './pinAppearance';
 import { initials, pinCategory } from '../../utils/mapPin';
+import { categoryLabel } from '../../utils/categories';
 import { cityFromAddress, formatMeters } from '../../utils/businessCard';
 import { usesKilometers } from '../../utils/distanceUnits';
 import {
@@ -295,7 +296,7 @@ export default function BusinessPreviewCard({
               <View style={styles.metaRow}>
                 <View style={styles.categoryChip}>
                   <CategoryIcon size={13} color={palette.onImage} strokeWidth={2} />
-                  <Text style={styles.categoryChipText} maxFontSizeMultiplier={typeCap('caption')} numberOfLines={1}>{business.category}</Text>
+                  <Text style={styles.categoryChipText} maxFontSizeMultiplier={typeCap('caption')} numberOfLines={1}>{categoryLabel(business.category, (key) => t(key))}</Text>
                 </View>
                 {business.rating != null ? (
                   <View style={styles.ratingInline} accessible accessibilityLabel={t('businessPreviewCard.ratingA11y', { rating: business.rating.toFixed(1) })}>
@@ -321,7 +322,7 @@ export default function BusinessPreviewCard({
               accessibilityLabel={blocked ? t('businessPreviewCard.enterChatBlockedA11y') : t('businessPreviewCard.enterChatA11y')}
             >
               <IconMessage size={18} color={blocked ? c.textTertiary : palette.onBrand} strokeWidth={2} />
-              <Text style={[styles.btnMainLabel, { color: blocked ? c.textTertiary : palette.onBrand }]} maxFontSizeMultiplier={typeCap('compact')} numberOfLines={1}>
+              <Text style={[styles.btnMainLabel, { color: blocked ? c.textTertiary : palette.onBrand }]} maxFontSizeMultiplier={typeCap('compact')} numberOfLines={2}>
                 {t('businessPreviewCard.enterChatButton')}
               </Text>
             </TouchableOpacity>
@@ -333,7 +334,7 @@ export default function BusinessPreviewCard({
               accessibilityLabel={t('businessPreviewCard.navigateA11y')}
             >
               <IconNavigation size={18} color={c.brandText} strokeWidth={2} />
-              <Text style={[styles.btnMainLabel, { color: c.textPrimary }]} maxFontSizeMultiplier={typeCap('compact')} numberOfLines={1}>
+              <Text style={[styles.btnMainLabel, { color: c.textPrimary }]} maxFontSizeMultiplier={typeCap('compact')} numberOfLines={2}>
                 {t('businessPreviewCard.directionsButton')}
               </Text>
             </TouchableOpacity>
@@ -355,7 +356,7 @@ export default function BusinessPreviewCard({
               accessibilityLabel={t('businessPreviewCard.menuA11y')}
             >
               <IconToolsKitchen2 size={17} color={c.textSecondary} strokeWidth={2} />
-              <Text style={[styles.btnSecondaryLabel, { color: c.textPrimary }]} maxFontSizeMultiplier={typeCap('caption')} numberOfLines={1}>
+              <Text style={[styles.btnSecondaryLabel, { color: c.textPrimary }]} maxFontSizeMultiplier={typeCap('caption')} numberOfLines={2}>
                 {t('businessPreviewCard.menuButton')}
               </Text>
             </TouchableOpacity>
@@ -367,7 +368,7 @@ export default function BusinessPreviewCard({
               accessibilityLabel={business.has_active_offers ? t('businessPreviewCard.offersActiveA11y') : t('businessPreviewCard.offersA11y')}
             >
               <IconTag size={17} color={c.textSecondary} strokeWidth={2} />
-              <Text style={[styles.btnSecondaryLabel, { color: c.textPrimary }]} maxFontSizeMultiplier={typeCap('caption')} numberOfLines={1}>
+              <Text style={[styles.btnSecondaryLabel, { color: c.textPrimary }]} maxFontSizeMultiplier={typeCap('caption')} numberOfLines={2}>
                 {t('businessPreviewCard.offersButton')}
               </Text>
               {business.has_active_offers ? <View style={[styles.offersDot, { backgroundColor: palette.danger }]} /> : null}
@@ -380,7 +381,7 @@ export default function BusinessPreviewCard({
               accessibilityLabel={t('businessPreviewCard.reserveA11y')}
             >
               <IconCalendarEvent size={17} color={c.textSecondary} strokeWidth={2} />
-              <Text style={[styles.btnSecondaryLabel, { color: c.textPrimary }]} maxFontSizeMultiplier={typeCap('caption')} numberOfLines={1}>
+              <Text style={[styles.btnSecondaryLabel, { color: c.textPrimary }]} maxFontSizeMultiplier={typeCap('caption')} numberOfLines={2}>
                 {t('businessPreviewCard.reserveButton')}
               </Text>
             </TouchableOpacity>
@@ -805,6 +806,7 @@ const styles = StyleSheet.create({
     ...typeStyle('compact'),
     fontWeight: '700',
     flexShrink: 1,
+    textAlign: 'center',
   },
   btnSecondary: {
     flex: 1,
@@ -822,6 +824,7 @@ const styles = StyleSheet.create({
     ...typeStyle('caption'),
     fontWeight: '600',
     flexShrink: 1,
+    textAlign: 'center',
   },
   offersDot: {
     position: 'absolute',

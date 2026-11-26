@@ -44,6 +44,7 @@ import { useCaptcha, captchaErrorI18nKeys } from '../../services/captcha';
 import { isSignupBlocked } from '../../utils/signupError';
 import type { AuthStackParamList } from '../../navigation/AppNavigator';
 import i18n, { changeAppLanguage, type SupportedLanguage } from '../../i18n';
+import { legalUrl } from '../../utils/legalLinks';
 import { showAlert } from '../../utils/dialog';
 import { parseBirthDate, type DateParts } from '../../utils/birthDate';
 import { TicketPlaceholder, TicketShell } from '../../components/auth/TicketShell';
@@ -85,8 +86,6 @@ const EMPTY_DATE: DateParts = { day: '', month: '', year: '' };
 // ---------------------------------------------------------------------------
 // Legal URL stubs
 // ---------------------------------------------------------------------------
-const TERMS_URL = 'https://jchat.cloud/terms';
-const PRIVACY_URL = 'https://jchat.cloud/privacy';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -234,11 +233,11 @@ export default function RegisterStep2Screen({ route, navigation }: Props) {
   // Legal links
   // ---------------------------------------------------------------------------
   const openTerms = useCallback(async () => {
-    await WebBrowser.openBrowserAsync(TERMS_URL);
+    await WebBrowser.openBrowserAsync(legalUrl('terms', appI18n.language));
   }, []);
 
   const openPrivacy = useCallback(async () => {
-    await WebBrowser.openBrowserAsync(PRIVACY_URL);
+    await WebBrowser.openBrowserAsync(legalUrl('privacy', appI18n.language));
   }, []);
 
   // ---------------------------------------------------------------------------

@@ -431,7 +431,7 @@ export default function MenuScreen() {
           <IconArrowLeft size={24} color={c.textPrimary} strokeWidth={2} />
         </Pressable>
 
-        <Text style={[styles.headerTitle, { color: c.textPrimary }]} numberOfLines={1}>
+        <Text style={[styles.headerTitle, { color: c.textPrimary }]} numberOfLines={2}>
           {businessName || t('menu.menuFallback')}
         </Text>
 

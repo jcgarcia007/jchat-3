@@ -27,6 +27,22 @@ export function embeddedMenuUrl(slug: string): string {
   return `${publicMenuUrl(slug)}?embed=1`;
 }
 
+/**
+ * An owner-typed menu link is opened only when it parses as a URL whose scheme is `https:` (no `tel:`, `sms:`, `javascript:`, `http:`,
+ * another app's scheme or text with spaces). Anything else behaves as if there were no external menu. Returns the trimmed text.
+ */
+export function safeExternalMenuUrl(raw: string | null | undefined): string | null {
+  const text = raw?.trim();
+  if (!text || /\s/.test(text)) return null;
+  try {
+    const url = new URL(text);
+    if (url.protocol !== 'https:' || !url.hostname) return null;
+    return text;
+  } catch {
+    return null;
+  }
+}
+
 export function venueMenuTarget(input: {
   platform: string;
   menuMode: string | null | undefined;
@@ -34,7 +50,7 @@ export function venueMenuTarget(input: {
   externalUrl: string | null | undefined;
 }): VenueMenuTarget {
   const slug = input.slug?.trim() || null;
-  const externalUrl = input.externalUrl?.trim() || null;
+  const externalUrl = safeExternalMenuUrl(input.externalUrl);
   const external = input.menuMode === 'external' && externalUrl ? ({ kind: 'external', url: externalUrl } as const) : null;
 
   if (input.platform === 'web') {

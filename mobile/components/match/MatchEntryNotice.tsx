@@ -18,9 +18,8 @@ import { IconBan, IconCamera, IconEye, IconLifebuoy, IconShieldCheck, IconTrash 
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { ThemedSwitch } from '../common/ThemedSwitch';
+import { legalUrl } from '../../utils/legalLinks';
 
-const TERMS_URL = 'https://jchat.cloud/terms';
-const PRIVACY_URL = 'https://jchat.cloud/privacy';
 
 /** Safety guide: section key → number of bullet items (texts in match.json entry.guide). */
 const GUIDE_SECTIONS = [
@@ -181,7 +180,7 @@ export function MatchEntryNotice({ businessName, full, gamesEnabled, onGamesEnab
                     key={item}
                     style={[styles.guideSectionBody, { color: c.textSecondary }, key === 'data' && item === 'i2' ? { textDecorationLine: 'underline' } : null]}
                     accessibilityRole={key === 'data' && item === 'i2' ? 'link' : undefined}
-                    onPress={key === 'data' && item === 'i2' ? () => void Linking.openURL(PRIVACY_URL) : undefined}
+                    onPress={key === 'data' && item === 'i2' ? () => void Linking.openURL(legalUrl('privacy', language)) : undefined}
                   >
                     {'• '}
                     {t(`entry.guide.${key}.${item}`)}
@@ -198,7 +197,7 @@ export function MatchEntryNotice({ businessName, full, gamesEnabled, onGamesEnab
         <Text
           style={{ color: c.brandText, textDecorationLine: 'underline' }}
           accessibilityRole="link"
-          onPress={() => void Linking.openURL(TERMS_URL)}
+          onPress={() => void Linking.openURL(legalUrl('terms', language))}
         >
           {t('entry.terms')}
         </Text>{' '}
@@ -206,7 +205,7 @@ export function MatchEntryNotice({ businessName, full, gamesEnabled, onGamesEnab
         <Text
           style={{ color: c.brandText, textDecorationLine: 'underline' }}
           accessibilityRole="link"
-          onPress={() => void Linking.openURL(PRIVACY_URL)}
+          onPress={() => void Linking.openURL(legalUrl('privacy', language))}
         >
           {t('entry.privacy')}
         </Text>

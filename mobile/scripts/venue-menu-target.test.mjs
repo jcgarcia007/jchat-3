@@ -17,7 +17,7 @@ const compile = (rel, out, fix) => {
 };
 compile('../constants/appLinks.ts', 'appLinks.mjs');
 compile('../utils/venueMenuTarget.ts', 'venueMenuTarget.mjs', true);
-const { venueMenuTarget, publicMenuUrl, embeddedMenuUrl } = await import(pathToFileURL(join(dir, 'venueMenuTarget.mjs')).href);
+const { venueMenuTarget, publicMenuUrl, embeddedMenuUrl, safeExternalMenuUrl } = await import(pathToFileURL(join(dir, 'venueMenuTarget.mjs')).href);
 
 const t = (platform, menuMode, slug, externalUrl) => venueMenuTarget({ platform, menuMode, slug, externalUrl });
 
@@ -57,4 +57,19 @@ test('native is unchanged: external → URL, web mode + slug → embedded previe
 test('the slug is URL-encoded and the base URL lives in one place', () => {
   assert.equal(publicMenuUrl('a b/c'), 'https://jchat.cloud/m/a%20b%2Fc');
   assert.equal(embeddedMenuUrl('bar'), 'https://jchat.cloud/m/bar?embed=1');
+});
+
+test('H-009: only an https: URL is an external menu; any other scheme, text with spaces or junk counts as no external menu', () => {
+  const bad = ['tel:+15551234567', 'sms:+15551234567', 'javascript:alert(1)', 'http://menu.example/x', 'whatsapp://send?text=hi', 'mailto:a@b.co', 'data:text/html,hi', 'file:///etc/passwd', 'menu.example/x', 'https://menu example/x', 'https:// menu.example', 'https:', 'https://', '   '];
+  for (const url of bad) {
+    assert.equal(safeExternalMenuUrl(url), null, url);
+    // native + external mode: falls back to the app's menu (or the embedded web preview when the venue uses the web menu)
+    assert.deepEqual(t('ios', 'external', 'bar', url), { kind: 'screen-menu' }, url);
+    // web: falls back to the public menu sheet when there is a slug, else nothing to open
+    assert.deepEqual(t('web', 'external', 'bar', url), { kind: 'web-sheet', url: 'https://jchat.cloud/m/bar?embed=1' }, url);
+    assert.deepEqual(t('web', 'external', null, url), { kind: 'none' }, url);
+  }
+  assert.equal(safeExternalMenuUrl('  https://menu.example/x?a=1  '), 'https://menu.example/x?a=1');
+  assert.equal(safeExternalMenuUrl('HTTPS://Menu.Example/x'), 'HTTPS://Menu.Example/x');
+  assert.deepEqual(t('android', 'external', 'bar', ' https://menu.example/x '), { kind: 'external', url: 'https://menu.example/x' });
 });

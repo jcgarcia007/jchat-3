@@ -122,7 +122,7 @@ const styles = StyleSheet.create({
   skeletonList: { gap: 10 },
   header: { paddingHorizontal: 16, paddingBottom: 12, gap: 12, borderBottomWidth: StyleSheet.hairlineWidth },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  title: { fontSize: 26, fontWeight: '700', letterSpacing: -0.3 },
+  title: { flexShrink: 1, fontSize: 26, fontWeight: '700', letterSpacing: -0.3 },
   list: { padding: 16, gap: 10, flexGrow: 1 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 80, paddingHorizontal: 32, gap: 12 },
   emptyTitle: { fontSize: 17, fontWeight: '600', textAlign: 'center' },

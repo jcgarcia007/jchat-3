@@ -7,6 +7,7 @@ import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { type NearbyBusiness } from '../../services/nearby';
 import { getOpenStatus } from '../../utils/hours';
+import { categoryLabel } from '../../utils/categories';
 import { BusinessIcon } from '../common/BusinessIcon';
 import { Skeleton } from '../common/Skeleton';
 import { LABEL_TEXT_CAP } from '../../theme/textScale';
@@ -29,7 +30,7 @@ export default function BusinessCard({ item, onEnter }: BusinessCardProps) {
       </View>
       <View style={styles.content}>
         <View style={styles.titleRow}>
-          <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} numberOfLines={1} style={[styles.name, { color: colors.textPrimary }]}>
+          <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} numberOfLines={2} style={[styles.name, { color: colors.textPrimary }]}>
             {item.name}
           </Text>
           <View style={[styles.badge, { backgroundColor: colors.bgElevated }]}>
@@ -38,8 +39,8 @@ export default function BusinessCard({ item, onEnter }: BusinessCardProps) {
             </Text>
           </View>
         </View>
-        <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} numberOfLines={1} style={[styles.category, { color: colors.textSecondary }]}>
-          {item.category}
+        <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} numberOfLines={2} style={[styles.category, { color: colors.textSecondary }]}>
+          {categoryLabel(item.category, (key) => mapTranslation.t(key))}
         </Text>
         <View style={styles.bottomRow}>
           <View style={styles.stats}>

@@ -22,6 +22,8 @@ import {
   AppState,
   Keyboard,
   Pressable,
+  StatusBar,
+  useColorScheme,
 } from 'react-native';
 import { Spinner } from '../../components/common/Spinner';
 import { AppModal } from '../../components/common/AppModal';
@@ -33,7 +35,7 @@ import { useTranslation } from 'react-i18next';
 import { IconMap, IconMapPin, IconSatellite, IconPlus, IconMinus, IconCurrentLocation } from '@tabler/icons-react-native';
 import type MapView from 'react-native-maps';
 import type { Region } from 'react-native-maps';
-import { useNavigation } from '@react-navigation/native';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import JChatMap, { type MapStyleVariant } from '../../components/map/JChatMap';
@@ -154,6 +156,11 @@ export default function MapScreen() {
     satellite: t('mapScreen.styleSatellite'),
   };
   const insets = useSafeAreaInsets();
+  // Android draws edge-to-edge: the map (light in both themes) runs under the status bar. A band of the theme's own surface sits under
+  // the bar so the clock and battery read on any map or satellite tile, and the icons follow the THEME (not the tile under them).
+  const mapScheme = useColorScheme();
+  const mapFocused = useIsFocused();
+  const statusBarTop = Math.max(insets.top, Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0);
   const homeBarInset = useHomeBarInset();
   const navigation = useNavigation<MapNav>();
   const mapRef = useRef<MapView>(null);
@@ -528,7 +535,12 @@ export default function MapScreen() {
         {/* TODO(Task 4.5): <MapReactionOverlay> — needs coordinate→point resolver */}
       </JChatMap>
 
-      <View style={[styles.overlayContainer, { paddingTop: insets.top + 8 }]} pointerEvents="box-none">
+      {Platform.OS === 'android' && statusBarTop > 0 ? (
+        <View pointerEvents="none" style={[styles.statusBand, { height: statusBarTop, backgroundColor: c.bgBase }]} />
+      ) : null}
+      {mapFocused ? <StatusBar barStyle={mapScheme === 'light' ? 'dark-content' : 'light-content'} /> : null}
+
+      <View style={[styles.overlayContainer, { paddingTop: statusBarTop + 12 }]} pointerEvents="box-none">
         {locationState === 'denied' && (
           <TouchableOpacity
             style={[styles.deniedBanner, { backgroundColor: palette.warning }]}
@@ -729,6 +741,7 @@ const styles = StyleSheet.create({
   prePermissionBtnLabel: { ...typeStyle('button'), fontWeight: '600' },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   loadingText: { ...typeStyle('compact') },
+  statusBand: { position: 'absolute', top: 0, left: 0, right: 0, opacity: 0.9 },
   overlayContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   deniedBanner: { marginHorizontal: 16, marginTop: 8, borderRadius: 10, paddingVertical: 12, paddingHorizontal: 16 },
   deniedBannerText: { color: palette.bgSurfaceLight, ...typeStyle('caption'), fontWeight: '500', textAlign: 'center' },
