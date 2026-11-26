@@ -80,6 +80,7 @@ import {
   setBiometricEnabled,
   authenticateBiometric,
 } from '../../services/biometric';
+import { legalUrl } from '../../utils/legalLinks';
 import i18n, { changeAppLanguage, type SupportedLanguage } from '../../i18n';
 import { posMyBusinesses } from '../../services/pos';
 import {
@@ -535,19 +536,19 @@ export default function SettingsScreen() {
   }, [navigation]);
 
   const openPrivacyPolicy = useCallback(async () => {
-    await WebBrowser.openBrowserAsync('https://jchat.cloud/privacy');
+    await WebBrowser.openBrowserAsync(legalUrl('privacy', i18n.language));
   }, []);
 
   const openTerms = useCallback(async () => {
-    await WebBrowser.openBrowserAsync('https://jchat.cloud/terms');
+    await WebBrowser.openBrowserAsync(legalUrl('terms', i18n.language));
   }, []);
 
   const openSafety = useCallback(async () => {
-    await WebBrowser.openBrowserAsync('https://jchat.cloud/safety');
+    await WebBrowser.openBrowserAsync(legalUrl('safety', i18n.language));
   }, []);
 
   const openContact = useCallback(async () => {
-    await WebBrowser.openBrowserAsync('https://jchat.cloud/contact');
+    await WebBrowser.openBrowserAsync(legalUrl('contact', i18n.language));
   }, []);
 
   // TODO(geofence): Restore the proximityMode control when geofencing ships.

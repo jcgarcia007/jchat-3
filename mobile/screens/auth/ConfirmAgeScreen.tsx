@@ -44,10 +44,9 @@ import { confirmAge } from '../../services/age';
 import { recordAgeRejection } from '../../services/ageRejection';
 import { deleteMyAccount } from '../../services/account';
 import { confirm, showAlert } from '../../utils/dialog';
+import { legalUrl } from '../../utils/legalLinks';
 import { fieldOrder, parseBirthDate, splitPastedDate, type DateParts, type FieldOrder } from '../../utils/birthDate';
 
-const TERMS_URL = 'https://jchat.cloud/terms';
-const PRIVACY_URL = 'https://jchat.cloud/privacy';
 
 const LOCAL_COLORS = {
   onBrand: palette.onBrand,
@@ -295,7 +294,7 @@ export default function ConfirmAgeScreen() {
             <TouchableOpacity
               onPress={(e) => {
                 e.stopPropagation();
-                void WebBrowser.openBrowserAsync(TERMS_URL);
+                void WebBrowser.openBrowserAsync(legalUrl('terms', i18n.language));
               }}
               hitSlop={6}
             >
@@ -309,7 +308,7 @@ export default function ConfirmAgeScreen() {
             <TouchableOpacity
               onPress={(e) => {
                 e.stopPropagation();
-                void WebBrowser.openBrowserAsync(PRIVACY_URL);
+                void WebBrowser.openBrowserAsync(legalUrl('privacy', i18n.language));
               }}
               hitSlop={6}
             >
