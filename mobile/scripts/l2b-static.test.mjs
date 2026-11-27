@@ -9,7 +9,9 @@ const locale = (lang, ns) => JSON.parse(read(`i18n/locales/${lang}/${ns}.json`))
 
 test('H-081: the five tabs are accessible tabs with a translated name and a selected state; the map search field has a label', () => {
   const bar = read('components/navigation/NotchTabBar.tsx');
-  assert.equal((bar.match(/accessibilityRole="tab"\n/g) ?? []).length, 2, 'four tabs (one Pressable in renderRoute) + the centre Offers button');
+  assert.equal((bar.match(/accessibilityRole=\{TAB_ITEM_ROLE\}\n/g) ?? []).length, 2, 'four tabs (one Pressable in renderRoute) + the centre Offers button');
+  // iOS: RN maps role tab to no trait, so the items are buttons there (selected state keeps the tab meaning); Android keeps tab
+  assert.match(bar, /const TAB_ITEM_ROLE = IS_IOS \? 'button' : 'tab';/);
   assert.equal((bar.match(/accessibilityState=\{\{ selected: (focused|offersFocused) \}\}/g) ?? []).length, 2);
   assert.match(bar, /accessibilityLabel=\{label\}/);
   assert.match(bar, /accessibilityRole="tablist"/);

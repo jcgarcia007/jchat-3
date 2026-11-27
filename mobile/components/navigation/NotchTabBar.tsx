@@ -42,6 +42,10 @@ const BAR_MARGIN = 14;
 const SHADOW_BLUR = 8;
 const SHADOW_PAD = 36;
 const IS_IOS = Platform.OS === 'ios';
+// iOS: React Native maps the `tab` role to NO accessibility trait (RCTViewManager: tab → UIAccessibilityTraitNone), so a tab was announced as plain text and accessibility
+// inspectors (snapshot_ui) did not list it as a control. A native tab bar item is a button with the selected trait: iOS gets `button` (+ accessibilityState.selected);
+// Android keeps `tab` (TalkBack announces "tab"). H-081.
+const TAB_ITEM_ROLE = IS_IOS ? 'button' : 'tab';
 
 export default function NotchTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const colors = useThemeColors();
@@ -101,7 +105,7 @@ export default function NotchTabBar({ state, descriptors, navigation }: BottomTa
         key={route.key}
         accessible
         accessibilityLabel={label}
-        accessibilityRole="tab"
+        accessibilityRole={TAB_ITEM_ROLE}
         accessibilityState={{ selected: focused }}
         onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
         onPress={onPress}
@@ -204,7 +208,7 @@ export default function NotchTabBar({ state, descriptors, navigation }: BottomTa
       <Pressable
         accessible
         accessibilityLabel={commonTranslation.t('tabs.offers')}
-        accessibilityRole="tab"
+        accessibilityRole={TAB_ITEM_ROLE}
         accessibilityState={{ selected: offersFocused }}
         onPress={() => navigation.navigate('Offers')}
         testID="tab-offers"
