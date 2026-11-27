@@ -302,7 +302,7 @@ function localizedContent(
     case "reservation_requested":
     case "reservation_reminder":
     case "reservation_cancelled_by_customer":
-      // M3 (migration 274): the venue confirmed / rejected a reservation, a customer requested one (owner and staff) or the 24 h / 2 h reminder; Lote 2 (migration 277): the customer cancelled (owner and staff). Transactional: always shown.
+      // M3 (migration 274): the venue confirmed / rejected a reservation, a customer requested one (owner and staff) or the 24 h / 2 h reminder; Lote 2 (migration 277): the customer cancelled (owner only, like `requested`). Transactional: always shown.
       return reservationPushContent(type, payload, english);
     case "admin_alert": {
       // Sent to platform admins by photo_moderation_alert() (migration 254): photos waiting for moderation more than 10 minutes.
