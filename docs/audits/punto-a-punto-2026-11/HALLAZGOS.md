@@ -204,3 +204,30 @@ Dev builds de `DEV_BUILDS.md`, Metro sirviendo `fix/l2-restos` (puerto 8082). Ca
 |---|---|
 | H-002 / H-066, CSP estricta con nonce | **Aplazado a después del lanzamiento: causa identificada, código listo y apagado** (`STRICT_CSP_REPORT_ONLY_ENABLED = false` en `web/lib/csp.ts`; con ello el middleware es el de `cbcdc1b6`). Causa: en Vercel la función recibe una cabecera de petición `content-security-policy` de 1139 caracteres sin nonce (la aplicada de `next.config.ts` `headers()`, que la plataforma también pone en la petición y pisa la del middleware; la estricta mide 1050), y Next lee `content-security-policy` antes que `-report-only`. Arreglo pendiente: emitir la política aplicada desde el middleware en vez de `headers()`. La CSP aplicada no cambió en ningún momento. |
 | H-068, carga del menú | **Corregido lo real** (Stripe diferido con `@stripe/stripe-js/pure`: 0 peticiones a Stripe al abrir `/m/<slug>`). El LCP de 6,9 s de `/m/caminata` era un local sin productos. |
+
+## Lote E · pulido antes del envío (28-nov-2026) — `release/lote-e` @ `32ac4591` (A `fix/le-app` @ `46bda82f` + reservas `fix/le-app-res` @ `7f8153e0` + B `fix/le-web` @ `57e4a701`)
+
+| Hallazgo | Estado | Cómo se comprobó |
+|---|---|---|
+| H-043 aviso iOS sin ubicación | Corregido | Visto en iPhone 17 con la ubicación revocada: aviso naranja + «Abrir Ajustes» y sin «N lugares cerca de ti» (`capturas/lote-e/ios-mapa-ubicacion-denegada.png`) |
+| H-050 / H-083 mapa | Corregido | Visto en iOS: márgenes laterales, recuento con fondo propio, selector plegado que abre al tocar y cierra al elegir o tocar fuera (`ios-mapa-plegado-recuento-margenes.png`, `ios-mapa-selector-abierto.png`) |
+| H-034 carrito / pago | (a) y (b) corregidos; (c) no es de la app | Prueba estática; sin ver en pantalla (no se llegó a carrito ni pago). (c): «BBQ o búfalo» es texto de la descripción, sin opciones; la app ya abre el selector si el producto tiene opciones: lo tiene que configurar el local |
+| H-038 pedido entregado | Corregido | Prueba estática (pasos pasados en verde, ningún ámbar); sin ver en pantalla (no hay pedido entregado en la cuenta de prueba). El formulario de valoración: `automaticallyAdjustKeyboardInsets`, sin ver |
+| H-028 / H-032 horas y fechas de reservas | Corregido | Pruebas node y Deno (104); hay que **desplegar `send-push`**; sin ver en pantalla |
+| H-085 Atrás desde Reservar | Corregido | Revisión de código; sin ver en pantalla |
+| H-088 tira de días / Perfil vacío | Parcial | Tira con prueba. Estado vacío del Perfil: ya suma el espacio de la barra y no se reproduce; visto sin barra activa |
+| H-042 reintento de horas | Corregido | Prueba |
+| H-036 / H-049 «Editar perfil» | Corregido | Visto en iOS (`ios-editar-perfil-titulo.png`) |
+| H-035 subtítulo de biometría | **No corregido en iOS**; correcto en Android | Visto cortado en iOS («…en los a»); cuatro intentos (`minWidth`, `flexShrink`, `key`, ancho por `onLayout`) sin efecto: el texto se mide en una línea. En Android sale completo (`android-ajustes-biometria-version.png`) |
+| H-086 texto por plataforma | Corregido | Visto en Android: «Usar huella o reconocimiento facial» (iOS conserva «Face ID / huella») |
+| H-029 fila «Versión» | Corregido | Vista en iOS «1.0.0 (1)» y Android «1.0.0 (14)»: son los dev builds; el número es el del binario |
+| H-037 espacio bajo la barra «Volver al chat» | No reproducido | Sin sesión en un local no hay barra; el código ya suma el inset de la barra en Perfil y Cerca |
+| H-048 distancia única | Corregido | Visto en Cerca (iOS): «Aquí», «0.5 mi», «177.5 mi» (`ios-cerca-distancias.png`); pruebas. La regla de unidades es ahora EE. UU. y territorios en mi/ft y el resto en km/m (antes solo Dominicana veía km) |
+| H-019 textos | Corregido | Pruebas: `deviceStrikes` con plural ES/EN y «Verdad o Reto» (título, cara oculta, bienvenida). «Truth or Dare» se queda en dos textos de Ajustes y Match porque pruebas antiguas exigen ese texto |
+| H-079 / H-090 accesibilidad | Parcial | La hoja del mapa marca modal y oculta lo de debajo (iOS/Android) por código y prueba; el selector ES/EN y los puntos del carrusel ya tenían nombre; sin VoiceOver real |
+| H-082 Return en el login | Corregido | Por código y prueba (refs); no probado en pantalla (no se escriben contraseñas) |
+| H-052, H-054, H-053, H-055 parcial, H-056, H-057, H-058, H-060 (dashboard) | Corregidos | Pruebas y revisión de código; el dashboard no se pudo ver (necesita sesión del dueño) |
+| H-070, H-004/H-063 (hCaptcha), H-073, H-071, H-023 (web pública) | Corregidos (hCaptcha parcial) | `curl`, Playwright y axe en local; hCaptcha no cargó en el entorno de prueba |
+| H-072 SEO | Parcial | `canonical` y sitemap con fichas `verified`; **no hecho `og:image`** (no hay imagen adecuada en `web/public`) |
+
+**Fuera de este lote — después del lanzamiento:** H-015, H-020, H-022, H-024, H-039, H-045, H-046, H-061, H-062, H-064, H-069, H-077, H-080 y los avisos de Google Maps de H-063.
