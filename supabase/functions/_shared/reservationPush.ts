@@ -4,7 +4,7 @@
  * reservation_confirmed → "Tu reserva en {local} está confirmada · {fecha} {hora}" / "Your reservation at {venue} is confirmed · {date} {time}"
  * reservation_rejected  → "{local} no pudo aceptar tu reserva" / "{venue} couldn't accept your reservation"
  * reservation_requested → (to the owner / staff) "Nueva solicitud: {n} personas · {fecha} {hora}" / "New request: {n} guests · {date} {time}"
- * reservation_cancelled_by_customer → (to the owner / staff) "{nombre} canceló su reserva · {fecha} {hora}" / "{name} cancelled their reservation · {date} {time}" (migration 277)
+ * reservation_cancelled_by_customer → (to the owner; staff later, with reservation_requested) "{nombre} canceló su reserva · {fecha} {hora}" / "{name} cancelled their reservation · {date} {time}" (migration 277)
  * reservation_reminder  → 24 h: "Mañana a las {hora}: tu reserva en {local}" · 2 h: "En 2 horas: tu reserva en {local} ({n} personas)"
  * Dates and times are written in the VENUE's time zone (payload.timezone, America/New_York when it is missing) and the person's language.
  * All four are transactional: send-push only silences the social and work types, so these always go out. The push carries {business_id, reservation_id}.

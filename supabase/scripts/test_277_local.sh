@@ -148,9 +148,9 @@ delete from public.notifications;
 select pg_temp.login(4);
 update public.reservations set status = 'cancelled' where id = pg_temp.r(10);
 select pg_temp.logout();
-select pg_temp.chk((select count(*) = 2 from public.notifications where type = 'reservation_cancelled_by_customer'), 'cancel notice: 2 notifications (owner + staff with reservations_manage)');
-select pg_temp.chk((select array_agg(user_id order by user_id) = array[pg_temp.u(1), pg_temp.u(2)] from public.notifications where type = 'reservation_cancelled_by_customer'), 'cancel notice: to the owner and the accepted staff WITH the permission');
-select pg_temp.chk((select count(*) = 0 from public.notifications where user_id in (pg_temp.u(3), pg_temp.u(5), pg_temp.u(6), pg_temp.u(7), pg_temp.u(4), pg_temp.u(9))), 'cancel notice: NOT staff without the permission, pending staff, the other venue, the customer (author), an admin');
+select pg_temp.chk((select count(*) = 1 from public.notifications where type = 'reservation_cancelled_by_customer'), 'cancel notice: exactly 1 notification (the owner only, like reservation_requested)');
+select pg_temp.chk((select array_agg(user_id) = array[pg_temp.u(1)] from public.notifications where type = 'reservation_cancelled_by_customer'), 'cancel notice: to the owner');
+select pg_temp.chk((select count(*) = 0 from public.notifications where user_id in (pg_temp.u(2), pg_temp.u(3), pg_temp.u(5), pg_temp.u(6), pg_temp.u(7), pg_temp.u(4), pg_temp.u(9))), 'cancel notice: NOT the staff WITH the permission (TODO, like reservation_requested), staff without it, pending staff, the other venue, the customer (author), an admin');
 select pg_temp.chk((select payload->>'business_name' = 'Bar Uno' and payload->>'business_id' = 'e2770000-0000-4000-8000-0000000000b1' and payload->>'reservation_id' = pg_temp.r(10)::text
                            and payload->>'timezone' = 'America/Santo_Domingo' and (payload->>'party_size')::int = 4 and payload ? 'reserved_at' and payload->>'customer_name' = 'Carla'
                     from public.notifications where type = 'reservation_cancelled_by_customer' and user_id = pg_temp.u(1)), 'cancel notice: payload {business_id, business_name, reservation_id, reserved_at, timezone of the venue, party_size, customer_name}');
@@ -162,7 +162,7 @@ delete from public.notifications;
 select pg_temp.login(10);
 update public.reservations set status = 'cancelled' where id = pg_temp.r(11);
 select pg_temp.logout();
-select pg_temp.chk((select count(*) = 2 and bool_and(payload->>'customer_name' = 'u277_10') from public.notifications where type = 'reservation_cancelled_by_customer'), 'cancel notice: a pending reservation notifies too; without display_name it carries the username');
+select pg_temp.chk((select count(*) = 1 and bool_and(payload->>'customer_name' = 'u277_10') from public.notifications where type = 'reservation_cancelled_by_customer'), 'cancel notice: a pending reservation notifies too; without display_name it carries the username');
 -- (c) the owner cancels: no new notice
 insert into public.reservations (id, business_id, user_id, reserved_at, party_size, status) values
   (pg_temp.r(12), 'e2770000-0000-4000-8000-0000000000b1', pg_temp.u(4), now() + interval '3 days', 2, 'confirmed');
@@ -187,14 +187,14 @@ select pg_temp.login(2);
 select public.set_reservation_status(pg_temp.r(14), 'cancelled');
 select pg_temp.logout();
 select pg_temp.chk((select count(*) = 0 from public.notifications) and (select status_changed_by = pg_temp.u(2) from public.reservations where id = pg_temp.r(14)), 'staff cancels: no notification, and status_changed_by = that staff member');
--- (f) the owner reserved at their own venue and cancels it as a customer: the author is skipped, staff are told
+-- (f) the owner reserved at their own venue and cancels it as a customer: the author is the only recipient, so nobody is notified (staff are not recipients)
 insert into public.reservations (id, business_id, user_id, reserved_at, party_size, status) values
   (pg_temp.r(15), 'e2770000-0000-4000-8000-0000000000b1', pg_temp.u(1), now() + interval '3 days', 2, 'pending');
 delete from public.notifications;
 select pg_temp.login(1);
 update public.reservations set status = 'cancelled' where id = pg_temp.r(15);
 select pg_temp.logout();
-select pg_temp.chk((select count(*) = 1 and bool_and(user_id = pg_temp.u(2)) from public.notifications where type = 'reservation_cancelled_by_customer'), 'cancel notice: the author (owner cancelling their own booking) is never notified; staff with permission are');
+select pg_temp.chk((select count(*) = 0 from public.notifications where type = 'reservation_cancelled_by_customer'), 'cancel notice: the author (owner cancelling their own booking) is never notified, and staff are not recipients');
 -- (g) not from a live state: an arrived reservation the customer cancels says nothing; a cancel of an already cancelled one neither
 insert into public.reservations (id, business_id, user_id, reserved_at, party_size, status) values
   (pg_temp.r(16), 'e2770000-0000-4000-8000-0000000000b1', pg_temp.u(4), now() - interval '1 hour', 2, 'arrived'),

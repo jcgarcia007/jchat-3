@@ -10,7 +10,8 @@
 --      que el guard no mira, así que no rechaza ninguna cancelación. Sin sesión (cron, service_role) no toca la columna.
 --      Además: una reserva 'expired' es terminal; cualquier cambio de su estado se rechaza (RESERVATION_EXPIRED), también desde un UPDATE directo del cliente o del dueño.
 --   2. N-01. reservations_notify: si el estado pasa de pending o confirmed a cancelled y lo cambia el propio cliente (auth.uid() = user_id), notificación
---      'reservation_cancelled_by_customer' al dueño y al personal aceptado con reservations_manage (nunca al autor). Payload: business_id, business_name, reservation_id,
+--      'reservation_cancelled_by_customer' SOLO al dueño (los mismos destinatarios que reservation_requested en la 274; nunca al autor). TODO: ampliarlo al personal con
+--      reservations_manage junto con reservation_requested, cuando tenga dónde actuar. Payload: business_id, business_name, reservation_id,
 --      reserved_at, timezone, party_size y customer_name (display_name, o el usuario si no tiene). Lo demás (confirmed / rejected al cliente) queda igual.
 --      trg_push_on_notification_insert = la lista de la 274 (19 tipos) + reservation_cancelled_by_customer.
 --   3. H-030 / H-059. Estado 'expired' en reservations_status_check. reservations_expire() (solo service_role): toda reserva 'pending' con reserved_at < now() − 2 h pasa a
@@ -167,19 +168,14 @@ begin
   if new.user_id is null then return new; end if;                           -- reserva por teléfono: sin cuenta que avisar
   if new.status is not distinct from old.status then return new; end if;
 
-  -- el cliente cancela su propia reserva viva: se avisa al local (dueño + personal con reservations_manage), nunca al propio autor
+  -- el cliente cancela su propia reserva viva: se avisa al dueño (los mismos destinatarios que reservations_notify_requested), nunca al propio autor.
+  -- TODO: ampliar al personal con reservations_manage junto con reservation_requested, cuando tenga dónde actuar.
   if new.status = 'cancelled' and old.status in ('pending', 'confirmed') and auth.uid() is not distinct from new.user_id then
     select b.name, b.owner_id into v_name, v_owner from public.businesses b where b.id = new.business_id;
     if not found then return new; end if;
     select coalesce(nullif(btrim(u.display_name), ''), u.username) into v_who from public.users u where u.id = new.user_id;
     for v_to in
       select v_owner where v_owner is not null
-      union
-      select e.user_id
-        from public.employees e
-        join public.custom_roles cr on cr.id = e.custom_role_id and cr.business_id = e.business_id
-       where e.business_id = new.business_id and e.status = 'accepted' and e.user_id is not null
-         and cr.permissions ->> 'reservations_manage' = 'true'
     loop
       continue when v_to is not distinct from new.user_id;
       insert into public.notifications (user_id, type, payload)

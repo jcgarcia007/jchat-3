@@ -113,8 +113,8 @@ export const STAFF_NOTIFICATION_TYPES: readonly NotificationType[] = ['staff_add
 
 /**
  * M3 (migration 274): the venue answered a reservation (confirmed / rejected), a customer asked for one (requested: to the owner and staff with the
- * reservations permission) and the 24 h / 2 h reminder. Lote 2 (migration 277): `cancelled_by_customer` tells the venue (same recipients) that the customer cancelled.
- * Transactional. A tap opens "My reservations", except `requested` and `cancelled_by_customer`, which have no screen in the app (the owner / staff answer in the web dashboard).
+ * reservations permission) and the 24 h / 2 h reminder. Lote 2 (migration 277): `cancelled_by_customer` tells the venue owner (same recipients as `requested`) that the customer cancelled.
+ * Transactional. A tap opens "My reservations", except `requested` and `cancelled_by_customer`, which have no screen in the app (the owner answers in the web dashboard).
  */
 export const RESERVATION_NOTIFICATION_TYPES: readonly NotificationType[] = [
   'reservation_confirmed',
@@ -552,7 +552,7 @@ export function routeForNotification(
 
     case 'reservation_requested':
     case 'reservation_cancelled_by_customer':
-      // M3 / Lote 2: for the owner / staff, who answer in the web dashboard: the app has no screen for it (same as `requested`).
+      // M3 / Lote 2: for the owner, who answers in the web dashboard: the app has no screen for it (same as `requested`).
       return null;
 
     case 'match_like':
