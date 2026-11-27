@@ -197,3 +197,10 @@ Dev builds de `DEV_BUILDS.md`, Metro sirviendo `fix/l2-restos` (puerto 8082). Ca
 | H-002 / H-066, CSP estricta | Producción enviará **dos** cabeceras: la actual (sin tocar, hash idéntico a `origin/main` en las 8 páginas) y `Content-Security-Policy-Report-Only` estricta con nonce. 0 violaciones de la estricta en `/`, `/pricing`, `/nearby`, `/auth/login`, `/privacy`, `/b/<slug>`, `/m/<slug>`, `/download` y en el paso de pago de `/m` (Stripe). Datos: `capturas/lote3/l3-csp-auditoria-paginas.json`. |
 | H-068, Stripe en el menú | `@stripe/stripe-js/pure`: al abrir `/m/<slug>` 0 peticiones a Stripe (antes 4–6, ≈255 KB y TBT 80 ms → 10 ms en la prueba); al abrir el paso de pago sí (42). Capturas `l3-menu-carga-sin-stripe`, `l3-menu-paso-pago-stripe-cargado` (intent simulado, nada escrito en producción). |
 | H-068, LCP | El LCP del menú con productos es una imagen; el aviso de ubicación no retrasa el pintado del menú. |
+
+## Lote 3 · cierre (27-nov-2026) — `fix/l3-cierre` @ `0a481062` (sustituye lo que decía la tabla anterior sobre la cabecera estricta)
+
+| Hallazgo | Estado |
+|---|---|
+| H-002 / H-066, CSP estricta con nonce | **Aplazado a después del lanzamiento: causa identificada, código listo y apagado** (`STRICT_CSP_REPORT_ONLY_ENABLED = false` en `web/lib/csp.ts`; con ello el middleware es el de `cbcdc1b6`). Causa: en Vercel la función recibe una cabecera de petición `content-security-policy` de 1139 caracteres sin nonce (la aplicada de `next.config.ts` `headers()`, que la plataforma también pone en la petición y pisa la del middleware; la estricta mide 1050), y Next lee `content-security-policy` antes que `-report-only`. Arreglo pendiente: emitir la política aplicada desde el middleware en vez de `headers()`. La CSP aplicada no cambió en ningún momento. |
+| H-068, carga del menú | **Corregido lo real** (Stripe diferido con `@stripe/stripe-js/pure`: 0 peticiones a Stripe al abrir `/m/<slug>`). El LCP de 6,9 s de `/m/caminata` era un local sin productos. |
