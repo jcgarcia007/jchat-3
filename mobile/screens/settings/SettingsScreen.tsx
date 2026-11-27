@@ -52,6 +52,7 @@ import {
   IconChevronLeft,
   IconChevronRight,
   IconFingerprint,
+  IconInfoCircle,
   IconLanguage,
   IconLock,
   IconMoon,
@@ -81,6 +82,7 @@ import {
   authenticateBiometric,
 } from '../../services/biometric';
 import { legalUrl } from '../../utils/legalLinks';
+import { appVersionLabel } from '../../utils/appVersion';
 import i18n, { changeAppLanguage, type SupportedLanguage } from '../../i18n';
 import { posMyBusinesses } from '../../services/pos';
 import {
@@ -354,7 +356,7 @@ export default function SettingsScreen() {
       if (!available) {
         showAlert(
           t('alerts.biometricUnavailableTitle'),
-          t('alerts.biometricUnavailableMessage'),
+          t(Platform.OS === 'android' ? 'alerts.biometricUnavailableMessageAndroid' : 'alerts.biometricUnavailableMessage'),
         );
         return; // leave the toggle OFF
       }
@@ -932,8 +934,12 @@ export default function SettingsScreen() {
         {/* Biometric app-lock (M2) — opt-in Face ID / Touch ID gate */}
         <SettingsRow
           icon={<IconFingerprint size={20} color={c.brandText} strokeWidth={2} />}
-          label={t('main.biometricLock')}
-          sublabel={biometricAvailable || biometricOn ? t('main.biometricLockSub') : t('main.biometricLockUnavailable')}
+          label={t(Platform.OS === 'android' ? 'main.biometricLockAndroid' : 'main.biometricLock')}
+          sublabel={
+            biometricAvailable || biometricOn
+              ? t('main.biometricLockSub')
+              : t(Platform.OS === 'android' ? 'main.biometricLockUnavailableAndroid' : 'main.biometricLockUnavailable')
+          }
           right={
             <ThemedSwitch
               value={biometricOn}
@@ -942,7 +948,7 @@ export default function SettingsScreen() {
                 void handleToggleBiometric(v);
               }}
               trackColor={{ false: c.borderSubtle, true: c.brand }}
-              accessibilityLabel={t('main.biometricLock')}
+              accessibilityLabel={t(Platform.OS === 'android' ? 'main.biometricLockAndroid' : 'main.biometricLock')}
             />
           }
         />
@@ -972,6 +978,19 @@ export default function SettingsScreen() {
           destructive
           testID="settings-delete-account"
         />
+
+        {/* App version and native build number, for support (H-029). Left out when nothing is known. */}
+        {appVersionLabel() !== null ? (
+          <>
+            <View style={styles.sectionGap} />
+            <SettingsRow
+              testID="settings-version"
+              icon={<IconInfoCircle size={20} color={c.textTertiary} strokeWidth={2} />}
+              label={t('main.versionLabel')}
+              sublabel={appVersionLabel() ?? undefined}
+            />
+          </>
+        ) : null}
       </ScrollView>
 
       {deleting || checkingOwner ? (

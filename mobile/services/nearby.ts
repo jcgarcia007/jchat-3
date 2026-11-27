@@ -1,4 +1,6 @@
 import type { HoursMap } from '../utils/hours';
+import { formatDistanceMeters } from '../utils/distance';
+import { usesKilometers } from '../utils/distanceUnits';
 import { isSupabaseConfigured, supabase } from './supabase';
 
 export type BusinessHours = HoursMap;
@@ -183,8 +185,7 @@ export async function fetchBusinesses(): Promise<NearbyBusiness[]> {
   }));
 }
 
-/** "250 m" under 1 km, "1.4 km" from there on. */
-export function formatDistanceLabel(meters: number): string {
-  if (meters < 1000) return `${Math.max(10, Math.round(meters / 10) * 10)} m`;
-  return `${(meters / 1000).toFixed(1)} km`;
+/** The Cerca de ti distance: the app's one rule (utils/distance.ts, H-048), in the device region's units; `here` instead of "0 ft" at the venue. */
+export function formatDistanceLabel(meters: number, here?: string): string {
+  return formatDistanceMeters(meters, usesKilometers(), here);
 }

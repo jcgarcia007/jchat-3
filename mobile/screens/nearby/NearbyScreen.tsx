@@ -21,6 +21,7 @@ import { useNearbyBusinesses } from '../../hooks/useNearbyBusinesses';
 import type { MainStackParamList } from '../../navigation/AppNavigator';
 import { haversineMeters } from '../../services/geofence';
 import { formatDistanceLabel, type NearbyBusiness } from '../../services/nearby';
+import { hereLabel } from '../../utils/distanceText';
 import { useThemeColors } from '../../theme/colors';
 import { useHomeBarInset } from '../../components/venue/HomeBarInset';
 
@@ -43,7 +44,7 @@ export default function NearbyScreen() {
   const renderItem = useCallback(
     ({ item }: ListRenderItemInfo<NearbyBusiness>) => {
       const withDistance = position && typeof item.lat === 'number' && typeof item.lng === 'number'
-        ? { ...item, distanceLabel: formatDistanceLabel(haversineMeters(position.lat, position.lng, item.lat, item.lng)) }
+        ? { ...item, distanceLabel: formatDistanceLabel(haversineMeters(position.lat, position.lng, item.lat, item.lng), hereLabel()) }
         : item;
       return <BusinessCard item={withDistance} onEnter={enterBusiness} />;
     },

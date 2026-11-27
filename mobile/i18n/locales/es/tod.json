@@ -1,5 +1,5 @@
 {
-  "title": "Truth or Dare",
+  "title": "Verdad o Reto",
   "fromJChat": "Cartas de JChat",
   "startedBy": "Iniciada por {{name}}",
   "official": "Ronda oficial · {{business}}",
@@ -47,11 +47,11 @@
     "pass": "Paso",
     "later": "Decidir después",
     "revealA11y": "Tu carta de {{kind}}: {{text}}",
-    "hiddenFace": "Truth or Dare",
+    "hiddenFace": "Verdad o Reto",
     "publishing": "Publicando…"
   },
   "welcome": {
-    "title": "Bienvenido a Truth or Dare",
+    "title": "Bienvenido a Verdad o Reto",
     "rule1": "Nada es obligatorio, puedes pasar",
     "rule2": "Sin alcohol, sin contenido íntimo, sin insultos",
     "rule3": "Puedes reportar y bloquear",

@@ -22,8 +22,7 @@ import { insideRadiusForCard } from '../../utils/reviewMode';
 import { resolveMainRoomId, type CardBusiness } from '../../services/businesses';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
-import { formatMeters } from '../../utils/businessCard';
-import { usesKilometers } from '../../utils/distanceUnits';
+import { distanceText } from '../../utils/distanceText';
 import { shareContent } from '../../utils/shareContent';
 
 interface Props {
@@ -46,7 +45,7 @@ export default function BusinessCardSheet({ business, userCoords, onClose }: Pro
     const radius = business.geofence_radius_m;
     return {
       distance_m,
-      distance: formatMeters(distance_m, usesKilometers()),
+      distance: distanceText(distance_m),
       inside_radius: insideRadiusForCard(typeof radius === 'number' && radius > 0 ? distance_m <= radius : null, business.id, reviewBypassIds),
     };
   }, [business, userCoords, reviewBypassIds]);

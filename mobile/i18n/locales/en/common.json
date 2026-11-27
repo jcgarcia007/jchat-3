@@ -2,6 +2,7 @@
   "appName": "JChat",
   "idRequiredNotice": "Only for ages 21 and over. You will be asked for ID at the venue.",
   "back": "Back",
+  "distanceHere": "Here",
   "actions": {
     "ok": "OK",
     "cancel": "Cancel",

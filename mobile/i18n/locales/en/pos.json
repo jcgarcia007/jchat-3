@@ -99,6 +99,8 @@
     "proceedCheckout": "Proceed to Checkout · {{amount}}",
     "proceedCheckoutA11y": "Proceed to checkout — {{amount}}",
     "selectOrderType": "Select order type to proceed",
+    "needTableButton": "Enter your table to continue",
+    "needRecipientButton": "Choose who to gift to continue",
     "taxAtCheckout": "Taxes and tip are calculated at checkout.",
     "onlyLeftTitle": "Limited stock",
     "onlyLeft": "Only {{count}} left."
@@ -139,6 +141,7 @@
     "venueTitle": "To order you need to be at {{business}}",
     "venueRetry": "Allow location / Retry",
     "venueFallback": "this venue",
+    "payBlockedVenue": "Unavailable from here",
     "quoteRetry": "Retry",
     "paymentsNotEnabled": "This venue doesn't accept in-app payments yet. You can order at the counter.",
     "taxLabelRate": "Tax ({{rate}}%)",

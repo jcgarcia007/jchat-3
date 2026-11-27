@@ -428,6 +428,10 @@ export default function OrderTrackingScreen(): React.ReactElement {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        // The rating form sits at the end of the content: with the keyboard up, iOS lifts the scroll area so the field is not left under it
+        // or under the bottom bar (H-038).
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
       >
         {/* ── Who and which order ── */}
         {order.order_number != null || businessName ? (
@@ -484,7 +488,10 @@ export default function OrderTrackingScreen(): React.ReactElement {
             {STEPS.map((step, idx) => {
               const isActive = idx <= currentStepIdx;
               const isCurrent = idx === currentStepIdx;
-              const stepColor = isActive ? step.activeColor : c.borderSubtle;
+              // A step the order has already passed is DONE (success green), whatever its in-progress colour is: a delivered
+              // order shows every step complete, none left amber (H-038).
+              const isDone = idx < currentStepIdx;
+              const stepColor = isDone ? palette.success : isActive ? step.activeColor : c.borderSubtle;
               const isLast = idx === STEPS.length - 1;
 
               return (
@@ -511,7 +518,7 @@ export default function OrderTrackingScreen(): React.ReactElement {
                           styles.stepConnector,
                           {
                             backgroundColor:
-                              idx < currentStepIdx ? step.activeColor : c.borderSubtle,
+                              idx < currentStepIdx ? palette.success : c.borderSubtle,
                           },
                         ]}
                       />

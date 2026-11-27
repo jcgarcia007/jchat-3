@@ -25,7 +25,10 @@
     "deleteAccount": "Eliminar cuenta",
     "deleteAccountSub": "Elimina tu cuenta y todos tus datos permanentemente",
     "biometricLock": "Usar Face ID / huella",
+    "biometricLockAndroid": "Usar huella o reconocimiento facial",
     "biometricLockUnavailable": "Configura una huella o Face ID en los ajustes del dispositivo para usar esto.",
+    "biometricLockUnavailableAndroid": "Configura una huella o el reconocimiento facial en los ajustes del dispositivo para usar esto.",
+    "versionLabel": "Versión",
     "biometricLockSub": "Pedir al abrir la app y antes de pagar",
     "appearanceDark": "Oscuro",
     "appearanceLight": "Claro",
@@ -157,6 +160,7 @@
     "deleting": "Borrando tu cuenta…",
     "biometricUnavailableTitle": "Biometría no disponible",
     "biometricUnavailableMessage": "Primero configura Face ID o Touch ID en los ajustes de tu dispositivo.",
+    "biometricUnavailableMessageAndroid": "Primero configura una huella o el reconocimiento facial en los ajustes de tu dispositivo.",
     "deleteOwnerTitle": "Eres dueño de un negocio",
     "deleteOwnerMessage": "Eres dueño de un negocio. Ciérralo o transfiérelo antes de eliminar tu cuenta."
   },
@@ -463,7 +467,8 @@
       "alreadyProcessed": "Este pedido ya fue procesado por otro mesero.",
       "sentToKitchen": "Pedido aprobado y enviado a cocina.",
       "approveError": "No se pudo aprobar el pedido.",
-      "deviceStrikes": "{{count}} strike(s)"
+      "deviceStrikes_one": "{{count}} advertencia",
+      "deviceStrikes_other": "{{count}} advertencias"
     },
     "inventoryBtn": "Inventario",
     "tipPlus": "+{{tip}} propina",

@@ -344,14 +344,17 @@ export default function FilterPanel({ filters, onChange, resultCount, hasLocatio
       {(resultCount != null || active) && (
         <View style={styles.metaRow}>
           {resultCount != null && (
-            <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[styles.resultCount, { color: c.textSecondary }]}>
-              {t('filterPanel.resultsCount', { count: resultCount })}
-            </Text>
+            // Own surface: the text reads over any map tile (street names, satellite) instead of blending into it (H-050 / H-083).
+            <View style={[styles.resultCountPill, { backgroundColor: c.bgSurface, borderColor: c.borderSubtle }]}>
+              <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[styles.resultCount, { color: c.textSecondary }]}>
+                {t('filterPanel.resultsCount', { count: resultCount })}
+              </Text>
+            </View>
           )}
           {active && (
             <TouchableOpacity
               onPress={handleReset}
-              style={[styles.resetBtn, { borderColor: c.borderSubtle }]}
+              style={[styles.resetBtn, { borderColor: c.borderSubtle, backgroundColor: c.bgSurface }]}
               accessibilityRole="button"
               accessibilityLabel={t('filterPanel.resetFiltersA11y')}
             >
@@ -532,6 +535,8 @@ const styles = StyleSheet.create({
   root: {
     gap: 8,
     zIndex: 20,
+    // Side margin: the search bar and the chips no longer run edge to edge (H-050); same 16 as the banners and the zoom column.
+    marginHorizontal: 16,
   },
   searchWrap: { zIndex: 30 },
   searchResults: { position: 'absolute', top: 48, left: 0, right: 0, zIndex: 40 },
@@ -592,6 +597,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 2,
+  },
+  resultCountPill: {
+    borderRadius: 999,
+    borderWidth: 0.5,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    flexShrink: 1,
   },
   resultCount: {
     fontSize: 12,

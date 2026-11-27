@@ -18,7 +18,7 @@ import type { MegaphoneItem } from '../../services/megaphone';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
 import { formatSocialTime } from '../../utils/formatSocialTime';
-import { formatDistance } from '../../utils/distanceUnits';
+import { distanceAwayText } from '../../utils/distanceText';
 import { ImageViewerModal } from '../ImageViewerModal';
 import { Spinner } from '../common/Spinner';
 import { Skeleton } from '../common/Skeleton';
@@ -97,7 +97,7 @@ export default function MegaphonePostCard({
           </Text>
           <Text numberOfLines={1} style={[styles.meta, { color: colors.textTertiary }]}>
             {item.distance_miles !== null
-              ? `${translation.t('distanceAway', { distance: formatDistance(item.distance_miles) })} · `
+              ? `${distanceAwayText(item.distance_miles, (distance) => translation.t('distanceAway', { distance }))} · `
               : ''}
             {formatSocialTime(item.created_at, socialTranslation.i18n.language, socialTranslation.t)}
           </Text>

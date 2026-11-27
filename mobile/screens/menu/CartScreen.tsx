@@ -260,6 +260,15 @@ export default function CartScreen() {
     return true; // counter — no extra requirement
   }, [lines.length, orderType, giftRecipientId, tableLabel]);
 
+  // The disabled button says what is really missing, not always "pick the order type" (H-034): a table that is not filled in,
+  // a gift without recipient, or — only when nothing else applies — the order type.
+  const blockedLabel =
+    orderType === 'table' && !tableLabel?.trim()
+      ? t('cart.needTableButton')
+      : orderType === 'gift' && !giftRecipientId
+        ? t('cart.needRecipientButton')
+        : t('cart.selectOrderType');
+
   // ── Handlers ─────────────────────────────────────────────────────────────────
 
   const handleBack = useCallback(() => {
@@ -671,18 +680,7 @@ export default function CartScreen() {
 
         {/* ── Checkout button (sticky) ── */}
         <View style={[styles.checkoutBar, { backgroundColor: c.bgSurface, borderTopColor: c.borderSubtle }]}>
-          {/* Disabled hint */}
-          {!canCheckout && orderType === 'gift' && !giftRecipientId ? (
-            <Text maxFontSizeMultiplier={typeCap('caption')} style={[styles.checkoutHint, { color: c.warningText }]}>
-              {t('cart.checkoutHint')}
-            </Text>
-          ) : null}
-          {!canCheckout && orderType === 'table' && !tableLabel?.trim() ? (
-            <Text maxFontSizeMultiplier={typeCap('caption')} style={[styles.checkoutHint, { color: c.warningText }]}>
-              {t('cart.tableRequired')}
-            </Text>
-          ) : null}
-
+          {/* What is missing is said by the button itself (blockedLabel) — no second line repeating it above (H-034). */}
           {venueClosed ? (
             <Text maxFontSizeMultiplier={typeCap('caption')} style={[styles.checkoutHint, { color: c.warningText }]} accessibilityRole="alert">
               {toUserMessage(new AppError('venue_closed'))}
@@ -701,7 +699,7 @@ export default function CartScreen() {
               },
             ]}
             accessibilityRole="button"
-            accessibilityLabel={venueClosed ? toUserMessage(new AppError('venue_closed')) : canCheckout ? t('cart.proceedCheckoutA11y', { amount: formatCents(subtotalCents) }) : t('cart.selectOrderType')}
+            accessibilityLabel={venueClosed ? toUserMessage(new AppError('venue_closed')) : canCheckout ? t('cart.proceedCheckoutA11y', { amount: formatCents(subtotalCents) }) : blockedLabel}
             accessibilityState={{ disabled: !canCheckout || venueClosed }}
           >
             <Text
@@ -711,7 +709,7 @@ export default function CartScreen() {
                 { color: canCheckout && !venueClosed ? palette.bgSurfaceLight : c.textTertiary },
               ]}
             >
-              {canCheckout ? t('cart.proceedCheckout', { amount: formatCents(subtotalCents) }) : t('cart.selectOrderType')}
+              {canCheckout ? t('cart.proceedCheckout', { amount: formatCents(subtotalCents) }) : blockedLabel}
             </Text>
           </Pressable>
         </View>

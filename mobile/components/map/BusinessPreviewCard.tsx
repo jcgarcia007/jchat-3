@@ -48,8 +48,8 @@ import { controlMinHeight } from '../../theme/spacing';
 import { CATEGORY_ICONS, initialsColor } from './pinAppearance';
 import { initials, pinCategory } from '../../utils/mapPin';
 import { categoryLabel } from '../../utils/categories';
-import { cityFromAddress, formatMeters } from '../../utils/businessCard';
-import { usesKilometers } from '../../utils/distanceUnits';
+import { cityFromAddress } from '../../utils/businessCard';
+import { distanceText as distanceTextOf } from '../../utils/distanceText';
 import {
   DAY_ORDER,
   closesAtLabel,
@@ -193,7 +193,7 @@ export default function BusinessPreviewCard({
   const city = useMemo(() => cityFromAddress(business.address), [business.address]);
   const distanceText =
     business.distance ??
-    (business.distance_m != null ? formatMeters(business.distance_m, usesKilometers()) : null);
+    (business.distance_m != null ? distanceTextOf(business.distance_m) : null);
   const distanceLine = [distanceText, city].filter(Boolean).join(' · ');
 
   // ── Entry: outside the radius the button is disabled and a notice explains why ──

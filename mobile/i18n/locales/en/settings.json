@@ -25,7 +25,10 @@
     "deleteAccount": "Delete Account",
     "deleteAccountSub": "Permanently delete your account and all your data",
     "biometricLock": "Use Face ID / fingerprint",
+    "biometricLockAndroid": "Use fingerprint or face recognition",
     "biometricLockUnavailable": "Set up a fingerprint or Face ID in your device settings to use this.",
+    "biometricLockUnavailableAndroid": "Set up a fingerprint or face recognition in your device settings to use this.",
+    "versionLabel": "Version",
     "biometricLockSub": "Ask when opening the app and before paying",
     "appearanceDark": "Dark",
     "appearanceLight": "Light",
@@ -157,6 +160,7 @@
     "deleting": "Deleting your account…",
     "biometricUnavailableTitle": "Biometrics unavailable",
     "biometricUnavailableMessage": "Set up Face ID or Touch ID in your device settings first.",
+    "biometricUnavailableMessageAndroid": "Set up a fingerprint or face recognition in your device settings first.",
     "deleteOwnerTitle": "You own a business",
     "deleteOwnerMessage": "You own a business. Close or transfer it before deleting your account."
   },
@@ -463,7 +467,8 @@
       "alreadyProcessed": "This order was already processed by another waiter.",
       "sentToKitchen": "Order approved and sent to kitchen.",
       "approveError": "Could not approve the order.",
-      "deviceStrikes": "{{count}} strike(s)"
+      "deviceStrikes_one": "{{count}} strike",
+      "deviceStrikes_other": "{{count}} strikes"
     },
     "inventoryBtn": "Inventory",
     "tipPlus": "+{{tip}} tip",

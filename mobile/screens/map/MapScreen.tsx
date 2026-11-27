@@ -48,11 +48,10 @@ import { getOpenStatus, isOpenNow, type HoursMap } from '../../utils/hours';
 import { haversineMeters } from '../../services/geofence';
 import { useReviewBypassIds } from '../../hooks/useReviewBypassIds';
 import { insideRadiusForCard } from '../../utils/reviewMode';
-import { formatMeters } from '../../utils/businessCard';
+import { distanceText } from '../../utils/distanceText';
 import { resolvePinModes, type CollisionPin } from '../../utils/pinCollision';
 import { fetchPeopleCounts } from '../../services/venuePresence';
 import { PIN_SHOWS_LOGO } from '../../components/map/pinLogoSupport';
-import { usesKilometers } from '../../utils/distanceUnits';
 import ReservationScreen from '../reservations/ReservationScreen';
 import { buildCategoryOptions, categoryMatches } from '../../utils/categories';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
@@ -172,6 +171,8 @@ export default function MapScreen() {
   }, []);
 
   const [mapVariant, setMapVariant] = useState<MapStyleVariant>('normal');
+  /** The Normal / Satellite picker is folded to one button by default (H-050): it opens on tap, closes on choosing or tapping outside. */
+  const [styleOpen, setStyleOpen] = useState(false);
 
   const [region, setRegion] = useState<Region | null>(null);
   const [locationState, setLocationState] = useState<LocationState>('checking');
@@ -392,7 +393,7 @@ export default function MapScreen() {
     const radius = selected.geofence_radius_m;
     return {
       distance_m,
-      distance: formatMeters(distance_m, usesKilometers()),
+      distance: distanceText(distance_m),
       inside_radius: insideRadiusForCard(typeof radius === 'number' && radius > 0 ? distance_m <= radius : null, selected.id, reviewBypassIds),
     };
   }, [selected, userCoords, reviewBypassIds]);
@@ -400,7 +401,7 @@ export default function MapScreen() {
   const searchDistanceLabel = useCallback(
     (business: MapBusiness): string | undefined => {
       if (!userCoords) return undefined;
-      return formatMeters(haversineMeters(userCoords.lat, userCoords.lng, business.lat, business.lng), usesKilometers());
+      return distanceText(haversineMeters(userCoords.lat, userCoords.lng, business.lat, business.lng));
     },
     [userCoords],
   );
@@ -540,7 +541,14 @@ export default function MapScreen() {
       ) : null}
       {mapFocused ? <StatusBar barStyle={mapScheme === 'light' ? 'dark-content' : 'light-content'} /> : null}
 
-      <View style={[styles.overlayContainer, { paddingTop: statusBarTop + 12 }]} pointerEvents="box-none">
+      <View
+        style={[styles.overlayContainer, { paddingTop: statusBarTop + 12 }]}
+        pointerEvents="box-none"
+        // A sheet or the reservation form is open over the map: a screen reader must not walk the search, filters, zoom and style controls
+        // behind it (H-090). iOS hides them with accessibilityElementsHidden, Android with importantForAccessibility.
+        accessibilityElementsHidden={selected !== null || reserveFor !== null}
+        importantForAccessibility={selected !== null || reserveFor !== null ? 'no-hide-descendants' : 'auto'}
+      >
         {locationState === 'denied' && (
           <TouchableOpacity
             style={[styles.deniedBanner, { backgroundColor: palette.warning }]}
@@ -588,7 +596,8 @@ export default function MapScreen() {
         <FilterPanel
           filters={filters}
           onChange={setFilters}
-          resultCount={filtered.length}
+          // "N places near you" is a distance claim: without a position (permission denied / no fix) it is not shown (H-043).
+          resultCount={userCoords !== null ? filtered.length : undefined}
           hasLocation={userCoords !== null}
           categories={categoryOptions}
           onSearchFocus={() => { if (filters.searchQuery.trim() !== '') setSearchOpen(true); }}
@@ -638,7 +647,17 @@ export default function MapScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Style switcher — absolute bottom-right */}
+        {/* A tap anywhere outside the open style picker closes it (under the picker, over the map and the panel). */}
+        {styleOpen ? (
+          <Pressable
+            testID="map-style-backdrop"
+            accessible={false}
+            style={StyleSheet.absoluteFill}
+            onPress={() => setStyleOpen(false)}
+          />
+        ) : null}
+
+        {/* Style switcher — absolute bottom-right; folded to the current style's icon until tapped */}
         <View
           style={[
             styles.styleSwitcher,
@@ -647,31 +666,49 @@ export default function MapScreen() {
               backgroundColor: c.bgSurface,
               borderColor: c.borderSubtle,
             },
+            !styleOpen && styles.styleSwitcherFolded,
           ]}
         >
-          {STYLE_OPTIONS.map(({ variant, Icon }, idx) => {
-            const isActive = mapVariant === variant;
-            return (
-              <TouchableOpacity
-                key={variant}
-                style={[styles.styleBtn, isActive && { backgroundColor: palette.brandLight }, idx < STYLE_OPTIONS.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderSubtle }]}
-                onPress={() => setMapVariant(variant)}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityState={{ selected: isActive }}
-                accessibilityLabel={t('mapScreen.mapStyleA11y', { style: styleLabels[variant] })}
-              >
-                <Icon size={18} color={isActive ? palette.brand : c.textSecondary} strokeWidth={isActive ? 2.5 : 1.75} />
-                <Text maxFontSizeMultiplier={typeCap('caption')} style={[styles.styleBtnLabel, { color: isActive ? c.textPrimary : c.textSecondary }]}>{styleLabels[variant]}</Text>
-              </TouchableOpacity>
-            );
-          })}
+          {styleOpen ? (
+            STYLE_OPTIONS.map(({ variant, Icon }, idx) => {
+              const isActive = mapVariant === variant;
+              return (
+                <TouchableOpacity
+                  key={variant}
+                  style={[styles.styleBtn, isActive && { backgroundColor: palette.brandLight }, idx < STYLE_OPTIONS.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderSubtle }]}
+                  onPress={() => { setMapVariant(variant); setStyleOpen(false); }}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isActive }}
+                  accessibilityLabel={t('mapScreen.mapStyleA11y', { style: styleLabels[variant] })}
+                >
+                  <Icon size={18} color={isActive ? palette.brand : c.textSecondary} strokeWidth={isActive ? 2.5 : 1.75} />
+                  <Text maxFontSizeMultiplier={typeCap('caption')} style={[styles.styleBtnLabel, { color: isActive ? c.textPrimary : c.textSecondary }]}>{styleLabels[variant]}</Text>
+                </TouchableOpacity>
+              );
+            })
+          ) : (
+            <TouchableOpacity
+              testID="map-style-toggle"
+              style={styles.styleToggle}
+              onPress={() => setStyleOpen(true)}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: false }}
+              accessibilityLabel={t('mapScreen.mapStyleToggleA11y', { style: styleLabels[mapVariant] })}
+            >
+              {(() => {
+                const Current = STYLE_OPTIONS.find((o) => o.variant === mapVariant)?.Icon ?? IconMap;
+                return <Current size={20} color={palette.brand} strokeWidth={2} />;
+              })()}
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
       {/* Business preview bottom sheet (Task 2.3) */}
       <AppModal visible={!!selected} transparent animationType="slide" onRequestClose={() => setSelected(null)}>
-        <View style={styles.sheetBackdrop}>
+        <View style={styles.sheetBackdrop} accessibilityViewIsModal>
           <TouchableOpacity accessible={false} style={styles.sheetDismiss} activeOpacity={1} onPress={() => setSelected(null)} />
           <View style={[styles.sheetBody, { backgroundColor: c.bgBase, paddingBottom: insets.bottom + 8 }]}>
             {selected && (
@@ -719,7 +756,7 @@ export default function MapScreen() {
 
       {/* Reservation form (ReservationScreen), full screen, opened from the card's Reserve button */}
       <AppModal visible={reserveFor !== null} animationType="slide" onRequestClose={() => setReserveFor(null)}>
-        <View style={{ flex: 1, backgroundColor: c.bgBase, paddingTop: insets.top, paddingBottom: insets.bottom }}>
+        <View accessibilityViewIsModal style={{ flex: 1, backgroundColor: c.bgBase, paddingTop: insets.top, paddingBottom: insets.bottom }}>
           {reserveFor !== null && (
             <ReservationScreen
               businessId={reserveFor}
@@ -751,6 +788,9 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden', minWidth: 92, maxWidth: '60%',
     ...Platform.select({ ios: { shadowColor: palette.bgBase, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6 }, android: { elevation: 6 } }),
   },
+  // Folded: a single 48 pt button (the touch target minimum) in the same corner; the picker opens over it.
+  styleSwitcherFolded: { minWidth: 0, maxWidth: undefined },
+  styleToggle: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
   // minHeight (never a fixed height) and a wrapping label: "Satélite" / "Normal" stay whole at large text.
   styleBtn: { flexDirection: 'row', alignItems: 'center', minHeight: 48, paddingVertical: 8, paddingHorizontal: 12, gap: 8 },
   styleBtnLabel: { ...typeStyle('caption'), fontWeight: '500', flexShrink: 1 },

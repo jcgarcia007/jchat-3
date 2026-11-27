@@ -6,7 +6,7 @@
  * AuthContext (onAuthStateChange), so there is no explicit navigation here.
  */
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useRegistrationEntry } from '../../hooks/useRegistrationEntry';
@@ -56,9 +56,14 @@ export default function LoginEmailScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // The latest typed / pasted value, written the moment the field reports it: pressing Return right after a paste submits through a handler
+  // created in an earlier render, whose `email` / `password` state is still the old one ("Missing fields" with a full form — H-082).
+  const emailRef = useRef('');
+  const passwordRef = useRef('');
+
   async function handleSignIn() {
-    const trimmedEmail = email.trim();
-    const trimmedPassword = password.trim();
+    const trimmedEmail = emailRef.current.trim();
+    const trimmedPassword = passwordRef.current.trim();
 
     if (!trimmedEmail || !trimmedPassword) {
       showAlert(t('login.alerts.missingFieldsTitle'), t('login.alerts.missingFieldsMessage'));
@@ -138,7 +143,7 @@ export default function LoginEmailScreen() {
         labelFamily="mono"
         textFamily="text"
         value={email}
-        onChangeText={setEmail}
+        onChangeText={(value) => { emailRef.current = value; setEmail(value); }}
         placeholder={t('ticket.emailPlaceholder')}
         keyboardType="email-address"
         autoCapitalize="none"
@@ -155,7 +160,7 @@ export default function LoginEmailScreen() {
         labelFamily="mono"
         textFamily="text"
         value={password}
-        onChangeText={setPassword}
+        onChangeText={(value) => { passwordRef.current = value; setPassword(value); }}
         placeholder={t('ticket.passwordPlaceholder')}
         secureTextEntry={!showPassword}
         autoCapitalize="none"

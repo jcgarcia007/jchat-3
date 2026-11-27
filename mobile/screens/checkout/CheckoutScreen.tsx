@@ -1054,7 +1054,7 @@ export default function CheckoutScreen() {
                 <Spinner color={palette.bgSurfaceLight} size="small" />
               ) : (
                 <Text style={styles.payButtonText}>
-                  {quote ? t(payWithFaceId ? 'checkout.payButton' : 'checkout.payButtonPlain', { amount: formatCents(quote.total_cents) }) : venueBlocked ? t('checkout.venueTitle', { business: businessName || t('checkout.venueFallback') }) : t('checkout.payWaiting')}
+                  {quote ? t(payWithFaceId ? 'checkout.payButton' : 'checkout.payButtonPlain', { amount: formatCents(quote.total_cents) }) : venueBlocked ? t('checkout.payBlockedVenue') : t('checkout.payWaiting')}
                 </Text>
               )}
             </Pressable>
@@ -1366,8 +1366,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 58,
+    paddingHorizontal: 16,
   },
   payButtonText: {
+    textAlign: 'center',
     color: palette.bgSurfaceLight,
     fontSize: 17,
     fontWeight: '800',

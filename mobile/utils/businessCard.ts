@@ -3,23 +3,14 @@
  * No React, no theme: they run in Node tests (scripts/business-card.test.mjs).
  */
 
-const METERS_PER_MILE = 1609.344;
-const FEET_PER_METER = 3.28084;
+import { formatDistanceMeters } from './distance';
 
 /**
- * "1.2 km" / "850 m" (kilometers) or "0.3 mi" / "400 ft" (miles). One decimal under 10, none above; under 0.1 mi the
- * feet are rounded to 10. A bad value (negative, NaN) is 0.
+ * The distance text of the card — the app's one rule lives in utils/distance.ts (H-048): feet in 50s under 0.1 mi / metres in 10s under 1 km,
+ * then one decimal; `here` ("Aquí" / "Here") instead of "0 ft" when standing at the venue. A bad value (negative, NaN) is 0.
  */
-export function formatMeters(meters: number, kilometers: boolean): string {
-  const m = Number.isFinite(meters) && meters > 0 ? meters : 0;
-  if (kilometers) {
-    if (m < 1000) return `${Math.round(m)} m`;
-    const km = m / 1000;
-    return `${km < 10 ? km.toFixed(1) : Math.round(km)} km`;
-  }
-  const miles = m / METERS_PER_MILE;
-  if (miles < 0.1) return `${Math.round((m * FEET_PER_METER) / 10) * 10} ft`;
-  return `${miles < 10 ? miles.toFixed(1) : Math.round(miles)} mi`;
+export function formatMeters(meters: number, kilometers: boolean, here?: string): string {
+  return formatDistanceMeters(meters, kilometers, here);
 }
 
 const COUNTRY_SEGMENT = /^(usa|us|u\.s\.a?\.?|united states( of america)?|estados unidos|ee\.? ?uu\.?|rep[uú]blica dominicana|dominican republic)$/i;

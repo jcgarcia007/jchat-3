@@ -391,7 +391,8 @@ export default function EditProfileScreen(): React.JSX.Element {
           <IconChevronLeft size={24} color={c.brandText} strokeWidth={2} />
         </TouchableOpacity>
 
-        <AppText variant="headline" adjustsFontSizeToFit minimumFontScale={0.6} numberOfLines={1} style={styles.headerTitle}>
+        {/* Same headline as the other screen titles (Ajustes, Amigos…): no shrink-to-fit, which squeezed it to ~10 pt on iOS (H-036 / H-049). */}
+        <AppText variant="headline" numberOfLines={2} style={styles.headerTitle}>
           {t('edit.title')}
         </AppText>
 

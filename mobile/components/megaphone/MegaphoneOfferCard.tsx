@@ -9,7 +9,7 @@ import { canEnterOffer } from '../../utils/offerEntry';
 import { getOpenStatus } from '../../utils/hours';
 import { useThemeColors } from '../../theme/colors';
 import { palette } from '../../theme/tokens';
-import { formatDistance } from '../../utils/distanceUnits';
+import { distanceAwayText } from '../../utils/distanceText';
 import { Skeleton } from '../common/Skeleton';
 import { Spinner } from '../common/Spinner';
 import BusinessAvatar from './BusinessAvatar';
@@ -43,7 +43,7 @@ export default function MegaphoneOfferCard({ item, onEnter, opening = false }: M
         </Text>
         {item.distance_miles !== null ? (
           <Text style={[styles.meta, { color: colors.textTertiary }]}>
-            {translation.t('distanceAway', { distance: formatDistance(item.distance_miles) })}
+            {distanceAwayText(item.distance_miles, (distance) => translation.t('distanceAway', { distance }))}
           </Text>
         ) : null}
       </View>
