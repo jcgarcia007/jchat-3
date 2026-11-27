@@ -6,7 +6,7 @@
  * "Upcoming" (in the future, not cancelled, rejected or expired) and "Past" (already happened, cancelled, rejected or expired).
  */
 
-import { format12h } from './hours';
+import { formatClock, monthName, weekdayName, zonedParts, type FlowLocale } from './reservationFlow';
 
 export type ReservationStatus = 'pending' | 'confirmed' | 'arrived' | 'no_show' | 'cancelled' | 'rejected' | 'expired';
 
@@ -115,18 +115,20 @@ export function splitReservations<T extends ReservationLike>(
 }
 
 /**
- * "Fri, Oct 25 · 7:00 pm" / "vie, 25 oct · 7:00 pm": weekday, day and month in the locale, the time as 12 h with
- * am / pm (utils/hours.ts format12h, the same everywhere), both in the phone's time zone. Empty when unreadable.
+ * "Fri, Oct 25 · 7:00 PM" / "vie, 25 oct · 19:00": weekday, day and month from our own tables, the time by the one app rule
+ * (utils/reservationFlow.ts formatClock: Spanish 24 h, English 12 h). In the VENUE's zone when given (the card and the assistant do
+ * the same), else the phone's. Empty when unreadable.
  */
-export function formatReservationWhen(iso: string, locale: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return '';
-  let day: string;
-  try {
-    day = new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'short' }).format(date);
-  } catch {
-    day = date.toDateString();
-  }
-  const time = format12h(date.getHours() * 60 + date.getMinutes());
-  return time ? `${day} · ${time}` : day;
+export function formatReservationWhen(iso: string, locale: string, timeZone?: string | null): string {
+  const ms = Date.parse(iso);
+  if (Number.isNaN(ms)) return '';
+  const lang: FlowLocale = locale.toLowerCase().startsWith('en') ? 'en' : 'es';
+  const zone = timeZone || (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return null; } })();
+  const p = zonedParts(ms, zone);
+  if (!p) return '';
+  const dow = new Date(Date.UTC(p.y, p.m - 1, p.d, 12)).getUTCDay();
+  const weekday = weekdayName(dow, lang, 'short');
+  const month = monthName(p.m - 1, lang, 'short');
+  const day = lang === 'es' ? `${weekday} ${p.d} ${month}` : `${weekday}, ${month} ${p.d}`;
+  return `${day} · ${formatClock(p.hour, p.minute, lang)}`;
 }

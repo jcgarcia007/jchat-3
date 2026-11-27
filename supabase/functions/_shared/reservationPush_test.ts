@@ -9,9 +9,9 @@ Deno.test("confirmed: venue, date and time in the venue's zone (es and en)", () 
   const es = norm(reservationPushContent("reservation_confirmed", P, false).body);
   const en = norm(reservationPushContent("reservation_confirmed", P, true).body);
   assertEquals(es.startsWith("Tu reserva en Bar Luna está confirmada · "), true);
-  assertEquals(es.includes("20:00") || es.includes("8:00"), true);
+  assertEquals(es, "Tu reserva en Bar Luna está confirmada · 20 de noviembre de 2026 20:00");
   assertEquals(en.startsWith("Your reservation at Bar Luna is confirmed · "), true);
-  assertEquals(en.includes("8:00 PM"), true);
+  assertEquals(en, "Your reservation at Bar Luna is confirmed · November 20, 2026 8:00 PM");
 });
 
 Deno.test("confirmed: the time is the venue's, not UTC", () => {
@@ -66,4 +66,16 @@ Deno.test("cancelled by the customer (migration 277): who, and when in the venue
   assertEquals(reservationPushContent("reservation_cancelled_by_customer", { business_id: "b1" }, true).body, "A guest cancelled their reservation");
   // the push still carries only the type and the two ids (the customer's name travels in the body, not in data)
   assertEquals(reservationPushContent("reservation_cancelled_by_customer", p, true).data, { type: "reservation_cancelled_by_customer", payload: { business_id: "b1", reservation_id: "r1" } });
+});
+
+Deno.test("H-028 / H-032: Spanish 24 h and date in Spanish order, English 12 h and date in English order, no mixing", () => {
+  // 2026-11-24T01:00Z = 23 Nov 20:00 in New York
+  const p = { ...P, reserved_at: "2026-11-24T01:00:00Z", timezone: "America/New_York" };
+  assertEquals(norm(reservationPushContent("reservation_confirmed", p, false).body), "Tu reserva en Bar Luna está confirmada · 23 de noviembre de 2026 20:00");
+  assertEquals(norm(reservationPushContent("reservation_confirmed", p, true).body), "Your reservation at Bar Luna is confirmed · November 23, 2026 8:00 PM");
+  assertEquals(reservationPushContent("reservation_reminder", { ...p, hours_before: 24 }, false).body, "Mañana a las 20:00: tu reserva en Bar Luna");
+  // morning hours: 24 h zero-padded in Spanish, AM in English
+  const am = { ...p, reserved_at: "2026-11-24T14:05:00Z" }; // 09:05 New York
+  assertEquals(norm(reservationPushContent("reservation_requested", am, false).body), "Nueva solicitud: 4 personas · 24 de noviembre de 2026 09:05");
+  assertEquals(norm(reservationPushContent("reservation_requested", am, true).body), "New request: 4 guests · November 24, 2026 9:05 AM");
 });

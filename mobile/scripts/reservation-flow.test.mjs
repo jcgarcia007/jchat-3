@@ -186,6 +186,71 @@ test('labels: the long date, the weekday and the slot time in the venue zone', (
   assert.equal(F.monthTitle(2026, 11, 'en'), 'November 2026');
 });
 
+test('H-028 / H-032: one clock rule — Spanish 24 h, English 12 h with AM / PM, by hand', () => {
+  assert.equal(F.formatClock(20, 0, 'es'), '20:00');
+  assert.equal(F.formatClock(9, 5, 'es'), '09:05');
+  assert.equal(F.formatClock(0, 0, 'es'), '00:00');
+  assert.equal(F.formatClock(20, 0, 'en'), '8:00 PM');
+  assert.equal(F.formatClock(0, 5, 'en'), '12:05 AM');
+  assert.equal(F.formatClock(12, 0, 'en'), '12:00 PM');
+  assert.equal(F.formatClock(11, 59, 'en'), '11:59 AM');
+  // 2026-11-21T00:00Z = 20:00 in Santo Domingo, 19:00 in New York (EST)
+  assert.equal(F.slotTimeLabel('2026-11-21T00:00:00Z', RD, 'es'), '20:00');
+  assert.equal(F.slotTimeLabel('2026-11-21T00:00:00Z', RD, 'en'), '8:00 PM');
+  assert.equal(F.slotTimeLabel('2026-11-21T00:00:00Z', NY, 'en'), '7:00 PM');
+  assert.equal(F.slotTimeLabel('garbage', NY, 'en'), '');
+});
+
+test('H-032: the date of a notice in the order of the language, with its time in the venue zone', () => {
+  assert.deepEqual(F.reservationWhenParts('2026-11-24T01:00:00Z', 'America/New_York', 'es'), { date: '23 de noviembre de 2026', time: '20:00' });
+  assert.deepEqual(F.reservationWhenParts('2026-11-24T01:00:00Z', 'America/New_York', 'en'), { date: 'November 23, 2026', time: '8:00 PM' });
+  assert.equal(F.reservationWhenParts('garbage', null, 'es'), null);
+  assert.equal(F.reservationWhenParts(undefined, null, 'en'), null);
+  // an unknown zone falls back to America/New_York, never throws
+  assert.deepEqual(F.reservationWhenParts('2026-11-24T01:00:00Z', 'Not/AZone', 'en'), { date: 'November 23, 2026', time: '8:00 PM' });
+  assert.equal(F.monthTitle(2026, 11, 'es'), 'noviembre de 2026');
+});
+
+test('H-088: day chips leave a sliver of the next chip visible, never below the minimum width', () => {
+  for (const width of [320, 360, 390, 412, 600]) {
+    const w = F.dayChipWidth(width, 8, 56);
+    assert.ok(w !== null && w >= 56, `${width}: ${w}`);
+    // k whole chips + k gaps + the peek fill the width exactly
+    const fit = Math.floor((width - 0.2 * w) / (w + 8) + 1e-9);
+    assert.ok(Math.abs(fit * (w + 8) + 0.2 * w - width) < 1e-6, `${width}: ${fit} chips`);
+    assert.ok(fit >= 1);
+  }
+  assert.equal(F.dayChipWidth(0, 8, 56), null);
+  assert.equal(F.dayChipWidth(NaN, 8, 56), null);
+  assert.equal(F.dayChipWidth(40, 8, 56), null);
+});
+
+test('H-042: a failed load retries once after the delay; success, cancel and double failure', async () => {
+  const waits = [];
+  const sleep = async (ms) => { waits.push(ms); };
+  let calls = 0;
+  const flaky = async () => { calls += 1; return calls === 1 ? null : ['ok']; };
+  assert.deepEqual(await F.loadWithOneRetry(flaky, 2000, () => false, sleep), ['ok']);
+  assert.equal(calls, 2);
+  assert.deepEqual(waits, [2000]);
+  // first call works: no wait, no second call
+  calls = 0; waits.length = 0;
+  assert.deepEqual(await F.loadWithOneRetry(async () => { calls += 1; return []; }, 2000, () => false, sleep), []);
+  assert.equal(calls, 1);
+  assert.deepEqual(waits, []);
+  // a throw counts as a failure; two failures give null (the error + "Retry" show)
+  calls = 0;
+  assert.equal(await F.loadWithOneRetry(async () => { calls += 1; throw new Error('net'); }, 2000, () => false, sleep), null);
+  assert.equal(calls, 2);
+  // cancelled while waiting: no second call
+  calls = 0;
+  let cancelled = false;
+  const r = await F.loadWithOneRetry(async () => { calls += 1; return null; }, 2000, () => cancelled, async () => { cancelled = true; });
+  assert.equal(r, null);
+  assert.equal(calls, 1);
+  assert.equal(F.SLOTS_RETRY_DELAY_MS, 2000);
+});
+
 test('flow state: changing the date clears the time; the rest is kept; the payload follows the choice', () => {
   let s = F.pickDate(F.EMPTY_FLOW, '2026-11-16');
   s = F.pickSlot(s, { slot_at: '2026-11-16T17:00:00.000Z', status: 'full' });

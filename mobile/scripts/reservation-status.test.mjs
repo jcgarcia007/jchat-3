@@ -10,11 +10,11 @@ import ts from 'typescript';
 
 const dir = mkdtempSync(join(tmpdir(), 'reservation-status-'));
 const opts = { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 } };
-// hours.ts is a dependency: transpile both next to each other (imports are extension-less, so rewrite to .mjs).
-for (const name of ['hours', 'reservationStatus']) {
+// reservationFlow.ts is a dependency: transpile both next to each other (imports are extension-less, so rewrite to .mjs).
+for (const name of ['reservationFlow', 'reservationStatus']) {
   const source = readFileSync(new URL(`../utils/${name}.ts`, import.meta.url), 'utf8');
   let { outputText } = ts.transpileModule(source, opts);
-  outputText = outputText.replace(/from '\.\/hours'/g, "from './hours.mjs'");
+  outputText = outputText.replace(/from '\.\/reservationFlow'/g, "from './reservationFlow.mjs'");
   writeFileSync(join(dir, `${name}.mjs`), outputText);
 }
 const { canCancel, isUpcoming, statusLabelKey, statusTone, splitReservations, formatReservationWhen, effectiveStatus } = await import(
@@ -84,17 +84,23 @@ test('splitReservations: upcoming nearest first, past most recent first, cancell
   assert.deepEqual(splitReservations([], NOW), { upcoming: [], past: [] });
 });
 
-test('formatReservationWhen: weekday, day, month and the time as 12 h am / pm', () => {
+test('formatReservationWhen: weekday, day, month; English 12 h with AM / PM, Spanish 24 h (H-028)', () => {
   const evening = iso(new Date(2026, 9, 25, 19, 0, 0));
   const en = formatReservationWhen(evening, 'en');
-  assert.ok(en.endsWith('· 7:00 pm'), en);
-  assert.ok(/Sun/.test(en) && /Oct/.test(en) && /25/.test(en), en);
+  assert.equal(en, 'Sun, Oct 25 · 7:00 PM');
   const es = formatReservationWhen(evening, 'es');
-  assert.ok(es.endsWith('· 7:00 pm'), es);
-  assert.ok(/oct/i.test(es) && /25/.test(es), es);
-  assert.ok(formatReservationWhen(iso(new Date(2026, 9, 25, 0, 5, 0)), 'en').endsWith('· 12:05 am'));
-  assert.ok(formatReservationWhen(iso(new Date(2026, 9, 25, 12, 0, 0)), 'en').endsWith('· 12:00 pm'));
+  assert.equal(es, 'dom 25 oct · 19:00');
+  assert.equal(formatReservationWhen(evening, 'es-US'), es);
+  assert.equal(formatReservationWhen(iso(new Date(2026, 9, 25, 0, 5, 0)), 'en'), 'Sun, Oct 25 · 12:05 AM');
+  assert.equal(formatReservationWhen(iso(new Date(2026, 9, 25, 12, 0, 0)), 'en'), 'Sun, Oct 25 · 12:00 PM');
+  assert.equal(formatReservationWhen(iso(new Date(2026, 9, 25, 9, 30, 0)), 'es'), 'dom 25 oct · 09:30');
   assert.equal(formatReservationWhen('nope', 'en'), '');
+});
+
+test('formatReservationWhen: the venue zone wins over the phone zone', () => {
+  // 2026-11-21T00:00Z is 20:00 in Santo Domingo (UTC-4) and 19:00 in New York (EST)
+  assert.equal(formatReservationWhen('2026-11-21T00:00:00Z', 'es', 'America/Santo_Domingo'), 'vie 20 nov · 20:00');
+  assert.equal(formatReservationWhen('2026-11-21T00:00:00Z', 'en', 'America/New_York'), 'Fri, Nov 20 · 7:00 PM');
 });
 
 // ── M3: rejected ──

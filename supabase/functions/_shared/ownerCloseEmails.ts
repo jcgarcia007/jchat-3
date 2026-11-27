@@ -11,20 +11,40 @@ export const SUPPORT_CONTACT = "soporte@jchat.cloud";
 
 export type Language = "es" | "en";
 
+const MONTHS = {
+  es: ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"],
+  en: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+} as const;
+
+function zoneParts(d: Date, tz: string): { y: number; m: number; day: number; hour: number; minute: number } {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz, hourCycle: "h23", year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric",
+  }).formatToParts(d);
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  return { y: get("year"), m: get("month"), day: get("day"), hour: get("hour") % 24, minute: get("minute") };
+}
+
+/**
+ * The one date + time rule of the app (H-028 / H-032, same as mobile/utils/reservationFlow.ts): Spanish "23 de noviembre de 2026" + "20:00",
+ * English "November 23, 2026" + "8:00 PM". Month names from our own tables; only the numeric parts come from Intl (zone conversion).
+ * An unknown zone falls back to UTC.
+ */
 export function formatWhen(reservedAtIso: string, timezone: string | null | undefined, language: Language): { date: string; time: string } {
-  const locale = language === "en" ? "en-US" : "es-US";
   const d = new Date(reservedAtIso);
-  const tz = timezone || "America/New_York";
-  let date: string;
-  let time: string;
+  let p: { y: number; m: number; day: number; hour: number; minute: number };
   try {
-    date = new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone: tz }).format(d);
-    time = new Intl.DateTimeFormat(locale, { timeStyle: "short", timeZone: tz }).format(d);
+    p = zoneParts(d, timezone || "America/New_York");
   } catch {
-    date = new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone: "UTC" }).format(d);
-    time = new Intl.DateTimeFormat(locale, { timeStyle: "short", timeZone: "UTC" }).format(d);
+    p = zoneParts(d, "UTC");
   }
-  return { date, time };
+  const mm = String(p.minute).padStart(2, "0");
+  if (language === "en") {
+    return {
+      date: `${MONTHS.en[p.m - 1]} ${p.day}, ${p.y}`,
+      time: `${p.hour % 12 === 0 ? 12 : p.hour % 12}:${mm} ${p.hour < 12 ? "AM" : "PM"}`,
+    };
+  }
+  return { date: `${p.day} de ${MONTHS.es[p.m - 1]} de ${p.y}`, time: `${String(p.hour).padStart(2, "0")}:${mm}` };
 }
 
 export function buildClosedReservationEmail(args: {

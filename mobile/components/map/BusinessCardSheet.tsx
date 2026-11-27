@@ -61,7 +61,8 @@ export default function BusinessCardSheet({ business, userCoords, onClose }: Pro
 
   return (
     <>
-      <AppModal visible={business !== null} transparent animationType="slide" onRequestClose={onClose}>
+      {/* H-085: while the reservation form is open the card is only hidden (not closed), so Back / Close there returns to the card */}
+      <AppModal visible={business !== null && reserveFor === null} transparent animationType="slide" onRequestClose={onClose}>
         <View style={styles.backdrop}>
           <TouchableOpacity accessible={false} style={styles.dismiss} activeOpacity={1} onPress={onClose} />
           <View style={[styles.body, { backgroundColor: c.bgBase, paddingBottom: insets.bottom + 8 }]}>
@@ -78,7 +79,6 @@ export default function BusinessCardSheet({ business, userCoords, onClose }: Pro
                 onClose={onClose}
                 onOffers={onClose}
                 onReserve={(businessId) => {
-                  onClose();
                   setReserveFor(businessId);
                 }}
                 onEnterChat={(businessId) => {
@@ -110,7 +110,7 @@ export default function BusinessCardSheet({ business, userCoords, onClose }: Pro
               businessId={reserveFor}
               onSuccess={() => { /* the form shows its own confirmation; Done calls onCancel */ }}
               onCancel={() => setReserveFor(null)}
-              onViewMine={() => { setReserveFor(null); navigation.navigate('MyReservations'); }}
+              onViewMine={() => { setReserveFor(null); onClose(); navigation.navigate('MyReservations'); }}
             />
           ) : null}
         </View>
