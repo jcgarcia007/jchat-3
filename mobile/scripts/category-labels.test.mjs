@@ -41,8 +41,8 @@ test('filtering is unchanged: it compares the normalized key, not the label', ()
   assert.deepEqual(buildCategoryOptions(['Café', 'cafe', 'Other']).map((o) => o.key), ['cafe', 'other']);
 });
 
-test('the four places that show a category go through categoryLabel', () => {
-  for (const file of ['components/map/FilterPanel.tsx', 'components/map/BusinessPreviewCard.tsx', 'components/map/MapSearchResults.tsx', 'components/nearby/BusinessCard.tsx']) {
+test('the places that show a category go through categoryLabel', () => {
+  for (const file of ['components/map/FilterPanel.tsx', 'components/map/BusinessPreviewCard.tsx', 'components/map/MapSearchResults.tsx', 'components/nearby/BusinessCard.tsx', 'components/nearby/NearbyFilters.tsx']) {
     assert.match(read(file), /categoryLabel\(/, file);
   }
 });

@@ -5,6 +5,7 @@ import { IconSearch, IconX } from '@tabler/icons-react-native';
 import { useTranslation } from 'react-i18next';
 import { useThemeColors } from '../../theme/colors';
 import CategoryChip from './CategoryChip';
+import { categoryLabel } from '../../utils/categories';
 
 interface NearbyFiltersProps {
   allLabel: string;
@@ -27,6 +28,7 @@ export default function NearbyFilters({
 }: NearbyFiltersProps) {
   const colors = useThemeColors();
   const { t } = useTranslation('common');
+  const { t: mapT } = useTranslation('map');
 
   return (
     <View style={styles.root}>
@@ -63,7 +65,7 @@ export default function NearbyFilters({
             <CategoryChip
               key={category}
               active={selectedCategory === category}
-              label={category}
+              label={categoryLabel(category, (key) => mapT(key))}
               onPress={() => onSelectCategory(selectedCategory === category ? null : category)}
             />
           ))}

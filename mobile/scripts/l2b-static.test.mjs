@@ -42,7 +42,8 @@ test('H-084: the map has a status-bar band (Android) and the search sits below i
 test('H-087: while the keyboard is up the ticket starts under the top bar; the scrollbar is visible', () => {
   const src = read('components/auth/TicketShell.tsx');
   assert.match(src, /useKeyboardOpen\(\)/);
-  assert.match(src, /paddingTop: keyboardOpen \? insets\.top \+ TOP_BAR_ROOM/);
+  // vuelta 3: the keyboard rule moved into ticketTopPadding (ticketLayout.ts); the ticket keeps its screen position (checked in l2d-static.test.mjs)
+  assert.match(src, /ticketTopPadding\(\{ safeTop: insets\.top, photoHeight, overlap, keyboardOpen \}\)/);
   assert.match(src, /scrollToEnd/);
   assert.match(src, /persistentScrollbar/);
 });

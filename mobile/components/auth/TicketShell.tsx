@@ -28,15 +28,13 @@ import { ticket } from '../../theme/ticket';
 import { useKeyboardOpen } from '../../hooks/useKeyboardOpen';
 import { useReduceMotion } from '../../hooks/useReduceMotion';
 import { LanguagePill } from './LanguagePill';
-import { TICKET_PADDING } from './ticketLayout';
+import { TICKET_PADDING, ticketScrollTop, ticketTopPadding } from './ticketLayout';
 
 // ── Entrance timing (tweak here) ──────────────────────────────────────────────
 /** Firm spring: the ticket settles in ≈ 600 ms with very little bounce. */
 const TICKET_SPRING = { stiffness: 95, damping: 15, mass: 1 } as const;
 /** The content starts to appear this long after the ticket starts rising (it is still moving). */
 const CONTENT_START_MS = 350;
-/** Room under the safe area for the top bar (8 pt gap + 44 pt Back button + 16 pt clearance for the ticket's tilt). */
-const TOP_BAR_ROOM = 68;
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const LOGIN_PHOTO = require('../../assets/images/login-bg.jpg') as number;
@@ -140,11 +138,12 @@ export function TicketShell({
     <View style={styles.root}>
       <TicketBackdrop photoFraction={photoFraction} />
 
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      {/* The scroll area starts under the top bar: the content (Forgot your password?, the fields) is cut there instead of sliding beneath the ES · EN pill. */}
+      <KeyboardAvoidingView style={[styles.flex, { marginTop: ticketScrollTop(insets.top) }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView
           ref={scrollRef}
           contentContainerStyle={{
-            paddingTop: keyboardOpen ? insets.top + TOP_BAR_ROOM : Math.max(photoHeight - overlap, insets.top + TOP_BAR_ROOM),
+            paddingTop: ticketTopPadding({ safeTop: insets.top, photoHeight, overlap, keyboardOpen }),
             paddingBottom: insets.bottom + 28,
             paddingHorizontal: 20,
           }}

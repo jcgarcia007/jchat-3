@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ticket } from '../../theme/ticket';
 import { loginFont } from '../../theme/loginFonts';
+import { LABEL_TEXT_CAP } from '../../theme/textScale';
 import { changeAppLanguage } from '../../i18n';
 import { setLanguageChoice, type LanguageChoice } from '../../services/languageChoice';
 
@@ -45,7 +46,7 @@ export function LanguagePill() {
             aria-checked={active}
             accessibilityLabel={t(option.a11yKey)}
           >
-            <Text style={[styles.optionText, active && styles.optionTextActive]}>{option.label}</Text>
+            <Text maxFontSizeMultiplier={LABEL_TEXT_CAP} style={[styles.optionText, active && styles.optionTextActive]}>{option.label}</Text>
           </Pressable>
         );
       })}

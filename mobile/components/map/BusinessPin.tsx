@@ -274,7 +274,8 @@ export default function BusinessPin({ business, mode = 'pill', onPress }: Busine
             <View style={[styles.categoryCircle, { width: circleSize, height: circleSize, borderRadius: circleSize / 2, backgroundColor: accent }]}>
               <CategoryIcon size={closed ? 12 : 14} color={iconColor} strokeWidth={2.2} />
             </View>
-            <Text style={[styles.pillText, { color: textColor, fontSize: closed ? 12 : 13 }]} numberOfLines={1}>
+            {/* The pin is a fixed-size drawing (32 pt pill, the collision math assumes ≈ 7.6 pt a character): its text stays at its size (cap 1, no fixed line height). */}
+            <Text maxFontSizeMultiplier={1} style={[styles.pillText, { color: textColor, fontSize: closed ? 12 : 13 }]} numberOfLines={1}>
               {label}
             </Text>
           </View>
