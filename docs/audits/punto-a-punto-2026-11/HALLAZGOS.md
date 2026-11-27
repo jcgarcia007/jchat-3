@@ -161,7 +161,7 @@ Ramas: A `fix/l2-reservas` (`e654c487`), B `fix/l2-app` (`07c00703`), C `fix/l2-
 Sin código nativo: ninguno de los arreglos lo necesitó. Puerta del runtime en `release/lote2`: ✔ iOS `f818b6a3…`, ✔ Android `947e79e2…` (sin tocar los hashes de `build15`).
 
 ### Lote 2: verificación en pantalla (26-nov-2026, `release/lote2` @ `30dc3143`)
-Dev builds de `main` @ `0c4fdca9` con Metro sirviendo `release/lote2`: Android en `Pixel_8_clean` (Pixel 8, API 35; H-087 con la pantalla emulada a 360×640 por `wm size`, no en `JChat_Small_API30`) e iPhone 17 en el simulador (iOS 26.5). Cuenta `@jchatreview2` en los dos. Capturas en `capturas/lote2/` (sin correos). Runtime de los binarios: Android `947e79e2…` e iOS `f818b6a3…` (los archivos `fingerprint` de cada build), igual que `DEV_BUILDS.md`.
+Dev builds de `main` @ `0c4fdca9` con Metro sirviendo `release/lote2`: Android en `Pixel_8_clean` (H-087 con la pantalla emulada a 360×640 por `wm size`, no en `JChat_Small_API30`) e iPhone 17 en el simulador (iOS 26.5). Cuenta `@jchatreview2` en los dos. Capturas en `capturas/lote2/` (sin correos). Runtime de los binarios: Android `947e79e2…` e iOS `f818b6a3…` (los archivos `fingerprint` de cada build), igual que `DEV_BUILDS.md`.
 
 | Hallazgo | Estado tras mirarlo en pantalla | Captura / nota |
 |---|---|---|
