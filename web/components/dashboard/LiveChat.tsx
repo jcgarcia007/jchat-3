@@ -8,7 +8,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { formatPanelDate } from "@/lib/dateFormat";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { IconArrowLeft, IconSend, IconAlertCircle } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -22,11 +23,12 @@ interface Message {
   author: string;
 }
 
-function timeOf(iso: string): string {
-  return new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+function timeOf(iso: string, locale: string): string {
+  return formatPanelDate(iso, locale, { hour: "2-digit", minute: "2-digit" });
 }
 
 export function LiveChat({ roomId }: { roomId: string }) {
+  const locale = useLocale();
   const t = useTranslations("dashboardCommon");
   const [roomName, setRoomName] = useState<string>("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -202,7 +204,7 @@ export function LiveChat({ roomId }: { roomId: string }) {
                   {m.body}
                 </div>
                 <div style={{ fontSize: "10px", color: "var(--db-text-tertiary)", marginTop: "2px", textAlign: mine ? "right" : "left", padding: "0 4px" }}>
-                  {timeOf(m.created_at)}
+                  {timeOf(m.created_at, locale)}
                 </div>
               </div>
             );

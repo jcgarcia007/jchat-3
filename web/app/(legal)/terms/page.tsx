@@ -9,6 +9,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: t("legal.terms.title"),
     description: t("legal.terms.description"),
     robots: { index: true, follow: true },
+    alternates: { canonical: "/terms" },
   };
 }
 

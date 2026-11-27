@@ -32,6 +32,7 @@
 
 import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from "react";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
+import { useLocale } from "next-intl";
 
 const PLACEHOLDER_SITEKEY = "PENDIENTE_SITEKEY";
 
@@ -65,6 +66,8 @@ export type InvisibleCaptchaHandle = {
 
 const InvisibleCaptcha = forwardRef<InvisibleCaptchaHandle>(function InvisibleCaptcha(_props, ref) {
   const captchaRef = useRef<HCaptcha>(null);
+  // hCaptcha logs "Invalid optional render properties: hl" when no language is passed (H-004 / H-063).
+  const locale = useLocale();
   // Token pre-verificado (si hCaptcha resolvió por adelantado vía onVerify).
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
@@ -135,6 +138,7 @@ const InvisibleCaptcha = forwardRef<InvisibleCaptchaHandle>(function InvisibleCa
       ref={captchaRef}
       sitekey={SITE_KEY}
       size="invisible"
+      languageOverride={locale === "es" ? "es" : "en"}
       onLoad={markReady}
       onVerify={(token) => setCaptchaToken(token)}
       onExpire={() => setCaptchaToken(null)}

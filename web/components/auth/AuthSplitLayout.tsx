@@ -54,6 +54,13 @@ export default function AuthSplitLayout({
           color: var(--text-primary);
         }
 
+        /* Placeholders: the browser default is the text colour at 50% (3.2:1 here); the secondary token is 7:1 (H-023) */
+        .auth-col input::placeholder,
+        .auth-col textarea::placeholder {
+          color: var(--text-secondary);
+          opacity: 1;
+        }
+
         /* Peach focus ring on all form controls inside the auth column */
         .auth-col input:focus,
         .auth-col select:focus {

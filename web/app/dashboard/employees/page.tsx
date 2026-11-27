@@ -25,7 +25,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { formatPanelDate } from "@/lib/dateFormat";
 import {
   IconAlertCircle,
   IconBriefcase,
@@ -89,13 +90,9 @@ const DEFAULT_PLAN_CAP = EMPLOYEE_LIMITS.business;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatDate(iso: string | null): string {
+function formatDate(iso: string | null, locale: string): string {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  return formatPanelDate(iso, locale, { month: "short", day: "numeric", year: "numeric" });
 }
 
 function statusColor(status: EmployeeStatus): string {
@@ -276,6 +273,7 @@ function EmployeeRow({
   onUpdateReceiptName: (empId: string, name: string | null) => Promise<void>;
   t: TFn;
 }) {
+  const locale = useLocale();
   const initials = (employee.display_name ?? employee.username)
     .slice(0, 2)
     .toUpperCase();
@@ -443,7 +441,7 @@ function EmployeeRow({
           }}
         >
           {employee.last_active_at
-            ? formatDate(employee.last_active_at)
+            ? formatDate(employee.last_active_at, locale)
             : t("employeesNeverActive")}
         </div>
 

@@ -18,7 +18,8 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { formatPanelDate } from "@/lib/dateFormat";
 import { IconHeart, IconLoader2, IconAlertCircle, IconBan, IconCheck, IconX } from "@tabler/icons-react";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { resolveActiveBusiness, isBusinessOwner } from "@/lib/business";
@@ -55,6 +56,7 @@ const OPEN_STATUSES = ["pending", "reviewing"];
 
 export default function DashboardMatchPage() {
   const t = useTranslations("dashboardCommon");
+  const locale = useLocale();
   const router = useRouter();
 
   const [checking, setChecking] = useState(true);
@@ -339,7 +341,7 @@ export default function DashboardMatchPage() {
                     {t("matchReportedLabel")} {displayName(r.reported_user_id)}
                   </span>
                   <span style={{ fontSize: "11px", color: "var(--db-text-tertiary)" }}>
-                    {new Date(r.created_at).toLocaleString()}
+                    {formatPanelDate(r.created_at, locale, { dateStyle: "medium", timeStyle: "short" })}
                     {r.status ? ` · ${statusKey ? t(statusKey) : r.status}` : ""}
                   </span>
                 </div>
@@ -398,7 +400,7 @@ export default function DashboardMatchPage() {
                   {displayName(k.user_id)}
                 </div>
                 <div style={{ fontSize: "11px", color: "var(--db-text-tertiary)" }}>
-                  {t("matchKickedOn", { date: new Date(k.created_at).toLocaleDateString() })}
+                  {t("matchKickedOn", { date: formatPanelDate(k.created_at, locale, { dateStyle: "medium" }) })}
                   {k.reason ? ` · ${k.reason}` : ""}
                 </div>
               </div>

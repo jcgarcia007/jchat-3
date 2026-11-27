@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { brandFromHost } from "@/lib/brand";
+import { SITE_ORIGIN } from "@/lib/appLinks";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -55,7 +56,12 @@ const inter = Inter({
 // Dashboard, auth, terminal and super-admin keep the metadata they define.
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("meta");
-  return { title: t("home.title"), description: t("home.description") };
+  // metadataBase lets every page declare a relative canonical (H-072); one origin, SITE_ORIGIN.
+  return {
+    metadataBase: new URL(SITE_ORIGIN),
+    title: t("home.title"),
+    description: t("home.description"),
+  };
 }
 
 export default async function RootLayout({

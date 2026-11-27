@@ -23,6 +23,7 @@ export function SupportES() {
 
       {/* Tabla de contenido */}
       <nav
+        aria-label="Contenido"
         style={{
           background: "var(--gray-100)",
           borderRadius: "10px",

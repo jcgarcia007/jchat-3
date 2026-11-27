@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   IconChevronDown,
   IconCheck,
@@ -21,12 +21,12 @@ import {
   type BusinessListItem,
 } from "@/lib/business";
 
-function useClock(): string {
+function useClock(locale: string): string {
   const [time, setTime] = useState<string>("");
 
   useEffect(() => {
     function format(): string {
-      return new Date().toLocaleTimeString([], {
+      return new Date().toLocaleTimeString(locale, {
         hour: "2-digit",
         minute: "2-digit",
       });
@@ -35,14 +35,15 @@ function useClock(): string {
     setTime(format());
     const id = setInterval(() => setTime(format()), 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [locale]);
 
   return time;
 }
 
 export function TopBar({ navOpen = false, onToggleNav }: { navOpen?: boolean; onToggleNav?: () => void }) {
   const t = useTranslations("dashboardCommon");
-  const time = useClock();
+  const locale = useLocale();
+  const time = useClock(locale);
 
   const [businesses, setBusinesses] = useState<BusinessListItem[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);

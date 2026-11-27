@@ -26,6 +26,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
+import { formatPanelDate } from "@/lib/dateFormat";
 import {
   IconAlertTriangle,
   IconCheck,
@@ -161,13 +162,8 @@ const DEMO_MOVEMENTS: StockMovement[] = [
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function formatDatetime(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+function formatDatetime(iso: string, locale: string): string {
+  return formatPanelDate(iso, locale, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 function formatCents(cents: number | null | undefined, locale: string): string {
@@ -2435,7 +2431,7 @@ export default function InventoryPage() {
                       {mv.delta >= 0 ? `+${mv.delta}` : String(mv.delta)}
                     </span>
                     <span style={{ color: "var(--db-text-secondary)" }}>{mv.reason}</span>
-                    <span style={{ color: "var(--db-text-tertiary)", textAlign: "right" }}>{formatDatetime(mv.created_at)}</span>
+                    <span style={{ color: "var(--db-text-tertiary)", textAlign: "right" }}>{formatDatetime(mv.created_at, locale)}</span>
                   </div>
                 ))}
               </>

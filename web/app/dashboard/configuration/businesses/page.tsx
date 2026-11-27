@@ -25,6 +25,7 @@ import {
   IconCheck,
 } from "@tabler/icons-react";
 import { supabase } from "@/lib/supabase";
+import { SITE_ORIGIN } from "@/lib/appLinks";
 import {
   brandColorOrDefault,
   RECEIPT_COLOR_SWATCHES,
@@ -463,7 +464,7 @@ export default function ConfigBusinessesPage() {
                   <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", margin: 0 }}>
                     {b.slug ? (
                       <>
-                        jchat.app/b/<strong style={{ color: "var(--db-text-primary)" }}>{b.slug}</strong>
+                        {SITE_ORIGIN.replace(/^https?:\/\//, "")}/b/<strong style={{ color: "var(--db-text-primary)" }}>{b.slug}</strong>
                       </>
                     ) : (
                       t("noSlugYet")

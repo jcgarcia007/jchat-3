@@ -9,7 +9,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { formatPanelDate } from "@/lib/dateFormat";
 import {
   IconCalendarEvent,
   IconPlus,
@@ -117,13 +118,10 @@ function StatusBadge({ status, t }: { status: EventStatus; t: TFn }) {
   );
 }
 
-// Note: no hardcoded locale here — toLocaleString() uses the browser's own
-// locale, same as reservations/page.tsx. Flagging for the future dates chunk
-// only as a place that WILL need real formatting once that's tackled; it's
-// not the es-ES-hardcode gap from the receipt/SalesCalendar.
-function formatWindow(startsAt: string | null, endsAt: string | null, t: TFn): string {
-  const s = startsAt ? new Date(startsAt).toLocaleString() : null;
-  const e = endsAt ? new Date(endsAt).toLocaleString() : null;
+function formatWindow(startsAt: string | null, endsAt: string | null, t: TFn, locale: string): string {
+  const opts: Intl.DateTimeFormatOptions = { dateStyle: "medium", timeStyle: "short" };
+  const s = startsAt ? formatPanelDate(startsAt, locale, opts) : null;
+  const e = endsAt ? formatPanelDate(endsAt, locale, opts) : null;
   if (s && e) return `${s} – ${e}`;
   if (s) return t("eventsWindowFrom", { date: s });
   if (e) return t("eventsWindowUntil", { date: e });
@@ -141,6 +139,7 @@ function EventRow({
   onManage: () => void;
   t: TFn;
 }) {
+  const locale = useLocale();
   const status = eventStatus(event.event_starts_at, event.event_ends_at);
   return (
     <section style={CARD}>
@@ -155,7 +154,7 @@ function EventRow({
           <StatusBadge status={status} t={t} />
         </div>
         <p style={{ fontSize: "13px", color: "var(--db-text-secondary)", margin: 0 }}>
-          {formatWindow(event.event_starts_at, event.event_ends_at, t)}
+          {formatWindow(event.event_starts_at, event.event_ends_at, t, locale)}
         </p>
       </div>
       <button

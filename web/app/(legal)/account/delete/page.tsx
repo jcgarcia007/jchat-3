@@ -10,6 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
     description: t("legal.accountDelete.description"),
     // This is the URL given to Google Play (Data safety → account deletion): it must be public and indexable.
     robots: { index: true, follow: true },
+    alternates: { canonical: "/account/delete" },
   };
 }
 

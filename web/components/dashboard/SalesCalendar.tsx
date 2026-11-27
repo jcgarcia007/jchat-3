@@ -22,6 +22,7 @@ import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { useActiveBusinessName } from "./useActiveBusinessName";
 import { formatCents } from "@/lib/currency";
+import { formatMonthYear } from "@/lib/dateFormat";
 
 // A sale is now counted by paid_at (money entered), not by kitchen status — see
 // the header note. The former SALE_STATUSES constant was removed: it had no other
@@ -131,10 +132,7 @@ export function SalesCalendar() {
     };
   }, [activeId, viewYear, viewMonth, reloadKey]);
 
-  const monthLabel = new Date(viewYear, viewMonth, 1).toLocaleDateString(locale, {
-    month: "long",
-    year: "numeric",
-  });
+  const monthLabel = formatMonthYear(viewYear, viewMonth, locale);
 
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   // Monday-based leading blanks: JS getDay() is 0=Sun..6=Sat.
@@ -206,7 +204,6 @@ export function SalesCalendar() {
               fontSize: "16px",
               fontWeight: 700,
               color: "var(--db-text-primary)",
-              textTransform: "capitalize",
               minWidth: "160px",
               textAlign: "center",
             }}

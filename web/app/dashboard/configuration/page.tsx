@@ -20,6 +20,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { isOvernight } from "@/lib/businessHours";
 import { describeSaveError } from "@/lib/saveError";
+import { formatPhone } from "@/lib/phoneFormat";
 import { useTranslations } from "next-intl";
 import {
   IconBuilding,
@@ -746,7 +747,7 @@ export default function ConfigurationPage() {
       setDescription(b.description ?? "");
       setCategory(b.category ?? "");
       setAddress(b.address ?? "");
-      setPhone(b.phone ?? "");
+      setPhone(formatPhone(b.phone));
       setWebsite(b.website ?? "");
       setHours(b.hours && Object.keys(b.hours).length > 0 ? b.hours : defaultHours());
       setCoverUrl(b.cover_url ?? "");
@@ -1330,7 +1331,7 @@ export default function ConfigurationPage() {
           </div>
           <div>
             <FieldLabel>{t("configurationPhoneLabel")}</FieldLabel>
-            <TextInput value={phone} onChange={setPhone} placeholder="+1 (555) 000-0000" type="tel" />
+            <TextInput value={phone} onChange={(v) => setPhone(formatPhone(v))} placeholder="(555) 000-0000" type="tel" />
           </div>
           <div>
             <FieldLabel>{t("configurationWebsiteLabel")}</FieldLabel>
