@@ -154,6 +154,9 @@ export default function PricingPage() {
     <style>{`
         /* --land-* tokens live in styles/landing.css (single definition). */
 
+      /* Promo field placeholder: the default (text colour at 50%) is ~3:1 on white; --land-muted is 5.7:1 (H-023) */
+      .promo-input::placeholder { color: var(--land-muted); opacity: 1; }
+
       /* Display font */
       .sg { font-family:var(--font-grotesk), 'Space Grotesk', system-ui, sans-serif; }
 
@@ -203,7 +206,7 @@ export default function PricingPage() {
         }}/>
       </div>
 
-      <div style={{ maxWidth:"1040px", margin:"0 auto", padding:"48px 24px", position:"relative", zIndex:1 }}>
+      <main style={{ maxWidth:"1040px", margin:"0 auto", padding:"48px 24px", position:"relative", zIndex:1 }}>
 
         {/* Nav row */}
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"48px" }}>
@@ -216,7 +219,8 @@ export default function PricingPage() {
             </svg>
             JChat
           </a>
-          <LanguageSwitcher/>
+          {/* Light page: the switcher reads the light text tokens; with the root dark theme its grey measured 1.98:1 (H-023) */}
+          <div data-theme="light" style={{ display:"contents" }}><LanguageSwitcher/></div>
         </div>
 
         {/* ══════════════════════════════════════════════════════
@@ -552,6 +556,7 @@ export default function PricingPage() {
 
             <div style={{ display:"flex", gap:"8px", flexWrap:"wrap" }}>
               <input
+                className="promo-input"
                 value={promoCode}
                 onChange={(e) => {
                   const v = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,12);
@@ -610,7 +615,7 @@ export default function PricingPage() {
             )}
           </motion.div>
         </section>
-      </div>
+      </main>
 
       {/* Legal footer */}
       <footer style={{ borderTop:"1px solid var(--border-subtle)", marginTop:"48px", padding:"20px 24px", display:"flex", justifyContent:"center", gap:"24px", fontSize:"13px", color:"var(--land-muted)", flexWrap:"wrap" }}>

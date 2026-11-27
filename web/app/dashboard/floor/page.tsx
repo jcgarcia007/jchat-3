@@ -19,7 +19,8 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { formatPanelDate } from "@/lib/dateFormat";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { IconBell, IconCalendar, IconUsers } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -157,8 +158,8 @@ function dayStart(): Date {
   return new Date(n.getFullYear(), n.getMonth(), n.getDate());
 }
 
-function resFormatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+function resFormatTime(iso: string, locale: string): string {
+  return formatPanelDate(iso, locale, { hour: "2-digit", minute: "2-digit" });
 }
 
 // ── Demo data ─────────────────────────────────────────────────────────────────
@@ -762,6 +763,7 @@ function TodayResRow({
   tables: TableRow[];
   t: ReturnType<typeof useTranslations>;
 }) {
+  const locale = useLocale();
   const tableMap = new Map(tables.map((tbl) => [tbl.id, tbl.label]));
   const tableLabels =
     res.reservation_tables.length > 0
@@ -801,7 +803,7 @@ function TodayResRow({
           flexShrink: 0,
         }}
       >
-        {resFormatTime(res.reserved_at)}
+        {resFormatTime(res.reserved_at, locale)}
       </span>
       <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--db-text-primary)", flex: 1, minWidth: "100px" }}>
         {customerName}

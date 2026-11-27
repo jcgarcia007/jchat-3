@@ -8,7 +8,8 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { formatPanelDate } from "@/lib/dateFormat";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import {
   IconCheck,
@@ -41,6 +42,13 @@ interface Order {
   total_cents: number;
   created_at: string;
   eta_minutes: number | null;
+  /** The number the customer sees ("Pedido #205"); absent only on demo rows. */
+  order_number?: number;
+  subtotal_cents?: number;
+  tax_cents?: number;
+  tip_cents?: number;
+  discount_cents?: number;
+  table_label?: string | null;
   customer: string;
   /** Gift orders (order_type 'gift'): who receives it and where to bring it. */
   gift?: { to: string; table: string | null; details: string | null };
@@ -81,14 +89,14 @@ function money(cents: number): string {
   return formatCents(cents);
 }
 
-function relativeTime(iso: string, t: Translator): string {
+function relativeTime(iso: string, t: Translator, locale: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diffMs / 60000);
   if (mins < 1) return t("timeJustNow");
   if (mins < 60) return t("ordersMinutesAgo", { count: mins });
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return t("ordersHoursAgo", { count: hrs });
-  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return formatPanelDate(iso, locale, { month: "short", day: "numeric" });
 }
 
 const DEMO_ORDERS: Order[] = [
@@ -111,6 +119,7 @@ const DEMO_ORDERS: Order[] = [
 
 export default function OrdersPage() {
   const t = useTranslations("dashboardCommon");
+  const locale = useLocale();
   const tCommon = useTranslations("common");
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -125,7 +134,7 @@ export default function OrdersPage() {
   async function loadOrders(bizId: string) {
     const { data: ordersData, error: ordErr } = await supabase
       .from("orders")
-      .select("id, status, order_type, total_cents, created_at, eta_minutes, user_id, gift_recipient_id, table_label, special_instructions")
+      .select("id, status, order_type, total_cents, created_at, eta_minutes, order_number, subtotal_cents, tax_cents, tip_cents, discount_cents, user_id, gift_recipient_id, table_label, special_instructions")
       .eq("business_id", bizId)
       .order("created_at", { ascending: false })
       .limit(200);
@@ -178,6 +187,12 @@ export default function OrdersPage() {
         total_cents: o.total_cents,
         created_at: o.created_at,
         eta_minutes: o.eta_minutes,
+        order_number: o.order_number,
+        subtotal_cents: o.subtotal_cents,
+        tax_cents: o.tax_cents,
+        tip_cents: o.tip_cents,
+        discount_cents: o.discount_cents,
+        table_label: o.table_label,
         customer: o.user_id ? nameById[o.user_id] ?? t("ordersColumnCustomer") : t("ordersGuestFallback"),
         gift: o.order_type === "gift"
           ? { to: o.gift_recipient_id ? nameById[o.gift_recipient_id] ?? t("ordersColumnCustomer") : t("ordersColumnCustomer"), table: o.table_label, details: o.special_instructions }
@@ -344,7 +359,7 @@ export default function OrdersPage() {
             return (
               <div key={o.id} style={{ borderBottom: "1px solid var(--db-border)" }}>
                 <div style={{ display: "grid", gridTemplateColumns: "90px 1fr 120px 70px 100px 90px 150px", gap: "12px", padding: "14px 20px", alignItems: "center" }}>
-                  <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--db-text-primary)" }}>#{o.id.slice(0, 6)}</span>
+                  <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--db-text-primary)" }}>#{o.order_number ?? o.id.slice(0, 6)}</span>
                   <span style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0 }}>
                     <IconUser size={14} color="var(--db-text-tertiary)" />
                     <span style={{ fontSize: "13px", color: "var(--db-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -356,7 +371,7 @@ export default function OrdersPage() {
                   </span>
                   <span style={{ textAlign: "right", fontSize: "14px", color: "var(--db-text-primary)" }}>{o.items.length}</span>
                   <span style={{ textAlign: "right", fontSize: "14px", fontWeight: 700, color: "var(--db-text-primary)" }}>{money(o.total_cents)}</span>
-                  <span style={{ textAlign: "right", fontSize: "13px", color: "var(--db-text-tertiary)" }}>{relativeTime(o.created_at, t)}</span>
+                  <span style={{ textAlign: "right", fontSize: "13px", color: "var(--db-text-tertiary)" }}>{relativeTime(o.created_at, t, locale)}</span>
                   <span style={{ textAlign: "right", display: "inline-flex", justifyContent: "flex-end", gap: "6px" }}>
                     {o.status === "ready" && (
                       <button
@@ -395,6 +410,29 @@ export default function OrdersPage() {
                         </div>
                       ))
                     )}
+                    {o.table_label && !o.gift && (
+                      <p style={{ margin: "10px 0 0", fontSize: "13px", color: "var(--db-text-secondary)" }}>
+                        {tableText(o.table_label, (table) => t("orderGiftTable", { table }))}
+                      </p>
+                    )}
+                    {o.subtotal_cents != null && (
+                      <dl style={{ margin: "12px 0 0", display: "grid", gridTemplateColumns: "1fr auto", gap: "4px 16px", maxWidth: "320px", marginLeft: "auto", fontSize: "13px", color: "var(--db-text-secondary)" }}>
+                        <dt>{t("ordersSubtotalLabel")}</dt>
+                        <dd style={{ margin: 0, textAlign: "right" }}>{money(o.subtotal_cents)}</dd>
+                        {(o.discount_cents ?? 0) > 0 && (
+                          <>
+                            <dt>{t("ordersDiscountLabel")}</dt>
+                            <dd style={{ margin: 0, textAlign: "right" }}>−{money(o.discount_cents ?? 0)}</dd>
+                          </>
+                        )}
+                        <dt>{t("ordersTaxLabel")}</dt>
+                        <dd style={{ margin: 0, textAlign: "right" }}>{money(o.tax_cents ?? 0)}</dd>
+                        <dt>{t("ordersTipLabel")}</dt>
+                        <dd style={{ margin: 0, textAlign: "right" }}>{money(o.tip_cents ?? 0)}</dd>
+                        <dt style={{ fontWeight: 700, color: "var(--db-text-primary)" }}>{t("ordersColumnTotal")}</dt>
+                        <dd style={{ margin: 0, textAlign: "right", fontWeight: 700, color: "var(--db-text-primary)" }}>{money(o.total_cents)}</dd>
+                      </dl>
+                    )}
                     {o.gift && (o.gift.table || o.gift.details) && (
                       <p style={{ margin: "10px 0 0", fontSize: "13px", color: "var(--db-text-secondary)" }}>
                         {o.gift.table ? tableText(o.gift.table, (table) => t("orderGiftTable", { table })) : ""}
@@ -413,7 +451,7 @@ export default function OrdersPage() {
                     )}
                     {o.eta_minutes != null && (
                       <p style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "var(--db-text-tertiary)", margin: "10px 0 0" }}>
-                        <IconClock size={13} /> {t("ordersEtaLine", { minutes: o.eta_minutes, time: relativeTime(o.created_at, t) })}
+                        <IconClock size={13} /> {t("ordersEtaLine", { minutes: o.eta_minutes, time: relativeTime(o.created_at, t, locale) })}
                       </p>
                     )}
                   </div>

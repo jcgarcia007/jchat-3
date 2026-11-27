@@ -284,7 +284,7 @@ function OpenBadge({ open }: { open: boolean }) {
         display: "inline-block",
         padding: "2px 8px",
         borderRadius: 6,
-        fontSize: 11,
+        fontSize: 12,
         fontWeight: 600,
         background: open
           ? "rgb(var(--color-success-rgb) / 0.15)"
@@ -410,7 +410,7 @@ function BusinessCard({ item }: { item: BusinessRow }) {
                 />
                 <span
                   style={{
-                    fontSize: 11,
+                    fontSize: 12,
                     color: "var(--text-tertiary)",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
@@ -430,7 +430,7 @@ function BusinessCard({ item }: { item: BusinessRow }) {
                 color="var(--text-tertiary)"
                 strokeWidth={2}
               />
-              <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
+              <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
                 {t("rooms", { count: item.room_count })}
               </span>
             </div>
@@ -439,7 +439,7 @@ function BusinessCard({ item }: { item: BusinessRow }) {
             {item.active_users > 0 && (
               <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                 <IconUsers size={12} color="var(--text-tertiary)" strokeWidth={2} />
-                <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
+                <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
                   {t("active", { count: item.active_users })}
                 </span>
               </div>

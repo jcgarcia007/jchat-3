@@ -1,64 +1,26 @@
 import type { MetadataRoute } from "next";
+import { SITE_ORIGIN } from "@/lib/appLinks";
+import { createSupabaseAnonServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { buildSitemap, type SitemapBusiness } from "@/lib/sitemapEntries";
 
-const BASE = "https://jchat.cloud";
-const LEGAL_DATE = new Date("2026-09-21");
+// Fresh enough for the crawler without querying on every hit.
+export const revalidate = 3600;
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  return [
-    {
-      url: BASE,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 1,
-    },
-    {
-      url: `${BASE}/pricing`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
-    // /pricing/business is NOT listed until spec 4 publishes it (it also carries robots noindex, see app/pricing/business/layout.tsx).
-    {
-      url: `${BASE}/download`,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
-      priority: 0.7,
-    },
-    {
-      url: `${BASE}/privacy`,
-      lastModified: LEGAL_DATE,
-      changeFrequency: "monthly",
-      priority: 0.5,
-    },
-    {
-      url: `${BASE}/terms`,
-      lastModified: LEGAL_DATE,
-      changeFrequency: "monthly",
-      priority: 0.5,
-    },
-    {
-      url: `${BASE}/support`,
-      lastModified: LEGAL_DATE,
-      changeFrequency: "monthly",
-      priority: 0.7,
-    },
-    {
-      url: `${BASE}/safety`,
-      lastModified: LEGAL_DATE,
-      changeFrequency: "monthly",
-      priority: 0.6,
-    },
-    {
-      url: `${BASE}/account/delete`,
-      lastModified: LEGAL_DATE,
-      changeFrequency: "monthly",
-      priority: 0.5,
-    },
-    {
-      url: `${BASE}/contact`,
-      lastModified: LEGAL_DATE,
-      changeFrequency: "monthly",
-      priority: 0.5,
-    },
-  ];
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  let businesses: SitemapBusiness[] = [];
+  if (isSupabaseConfigured) {
+    try {
+      const { data } = await createSupabaseAnonServerClient()
+        .from("businesses")
+        .select("slug, status, is_active, updated_at")
+        .eq("status", "verified")
+        .eq("is_active", true)
+        .order("updated_at", { ascending: false })
+        .limit(5000);
+      businesses = (data ?? []) as SitemapBusiness[];
+    } catch {
+      // A failed read must not take the sitemap down: the static pages are still listed.
+    }
+  }
+  return buildSitemap(SITE_ORIGIN, businesses);
 }

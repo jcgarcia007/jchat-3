@@ -533,17 +533,20 @@ function FieldInput({
   onChange,
   placeholder,
   type = "text",
+  inputMode,
   disabled,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   type?: string;
+  inputMode?: "numeric" | "decimal" | "text";
   disabled?: boolean;
 }) {
   return (
     <input
       type={type}
+      inputMode={inputMode}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
@@ -1873,10 +1876,12 @@ function ItemEditorModal({
             {/* Stock count */}
             <div>
               <SectionLabel>{t("menuItemStockCountLabel")}</SectionLabel>
+              {/* type=text + inputMode=numeric: a number input's spinner ate the width and cut the placeholder (H-057) */}
               <FieldInput
-                type="number"
+                type="text"
+                inputMode="numeric"
                 value={form.stock_count}
-                onChange={(v) => set("stock_count", v)}
+                onChange={(v) => set("stock_count", v.replace(/\D/g, ""))}
                 placeholder={t("menuItemStockPlaceholder")}
               />
               <p style={{ fontSize: "11px", color: "var(--db-text-tertiary)", marginTop: 4 }}>
@@ -4862,6 +4867,8 @@ export default function MenuPage() {
               ? t("menuModeExternalNoUrlState")
               : menuMode === "web"
               ? t("menuModeWebActiveState")
+              : categories.length > 0 || items.length > 0
+              ? t("menuModeNoneWithMenuState", { categories: categories.length, items: items.length })
               : t("menuModeNoneState")}
           </strong>
           {menuMode === "web" && bizSlug && (
@@ -5653,7 +5660,8 @@ export default function MenuPage() {
             {/* Dynamic island */}
             <div style={{ width: 88, height: 28, background: "#000", borderRadius: 20 }} />
             {/* Screen — direct render of MenuTemplateRenderer at 0.62 scale */}
-            <div style={{ width: 242, height: 524, overflow: "hidden", borderRadius: 25, background: "#fff" }}>
+            {/* data-theme="dark" + --bg-base: the same tokens the customer's menu page uses (MenuPageClient), so titles and dishes keep their contrast whatever the dashboard theme is (H-056) */}
+            <div data-theme="dark" style={{ width: 242, height: 524, overflow: "hidden", borderRadius: 25, background: "var(--bg-base)", color: "var(--text-primary)" }}>
               <div style={{ width: 390, height: Math.round(524 / 0.62), overflowY: "auto", transform: "scale(0.62)", transformOrigin: "top left" }}>
                 <MenuPaletteContext.Provider value={previewData.previewPalette}>
                   <MenuTemplateRenderer

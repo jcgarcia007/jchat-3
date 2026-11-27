@@ -28,7 +28,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { formatPanelDate } from "@/lib/dateFormat";
 import {
   IconAlertCircle,
   IconCheck,
@@ -252,13 +253,8 @@ function combineDatetime(date: string, time: string): string | null {
   return `${date}T${time || "00:00"}:00`;
 }
 
-function formatDateShort(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+function formatDateShort(iso: string, locale: string): string {
+  return formatPanelDate(iso, locale, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 function offerTypeLabel(type: string | null, labels: Record<OfferType, string>): string {
@@ -393,6 +389,7 @@ function OfferRow({
   onToggle: (offer: Offer) => void;
 }) {
   const t = useTranslations("dashboardCommon");
+  const locale = useLocale();
   const [expanded, setExpanded] = useState(false);
   const canToggle = offer.status === "active" || offer.status === "paused";
 
@@ -500,7 +497,7 @@ function OfferRow({
               color: "var(--db-text-tertiary)",
             }}
           >
-            <span>{offerTypeLabel(offer.type, offerTypeLabels)}</span>
+            {offer.type && <span>{offerTypeLabel(offer.type, offerTypeLabels)}</span>}
             {offer.targeting !== "all" && (
               <span
                 style={{
@@ -522,7 +519,7 @@ function OfferRow({
                 }}
               >
                 <IconClock size={11} />
-                {t("offersExpiresLabel", { date: formatDateShort(offer.expires_at) })}
+                {t("offersExpiresLabel", { date: formatDateShort(offer.expires_at, locale) })}
               </span>
             )}
             {offer.start_at && offer.status === "scheduled" && (
@@ -534,7 +531,7 @@ function OfferRow({
                 }}
               >
                 <IconClock size={11} />
-                {t("offersStartsLabel", { date: formatDateShort(offer.start_at) })}
+                {t("offersStartsLabel", { date: formatDateShort(offer.start_at, locale) })}
               </span>
             )}
             {offer.code && (
@@ -713,6 +710,7 @@ function OfferRow({
 
 export default function OffersPage() {
   const t = useTranslations("dashboardCommon");
+  const locale = useLocale();
   const tCommon = useTranslations("common");
 
   const offerTypeLabels: Record<OfferType, string> = {
@@ -947,7 +945,7 @@ export default function OffersPage() {
       setSuccess(
         status === "scheduled"
           ? startAt
-            ? t("offersScheduledSuccess", { title: titleTrimmed, date: formatDateShort(startAt) })
+            ? t("offersScheduledSuccess", { title: titleTrimmed, date: formatDateShort(startAt, locale) })
             : t("offersScheduledNoDateSuccess", { title: titleTrimmed })
           : roomId
           ? t("offersPublishedToChatSuccess", { title: titleTrimmed })
@@ -962,7 +960,7 @@ export default function OffersPage() {
     } finally {
       setCreating(false);
     }
-  }, [form, selectedRoomId, publishOfferToChat, loadOffers, t]);
+  }, [form, selectedRoomId, publishOfferToChat, loadOffers, t, locale]);
 
   // ── Pause / Resume toggle ────────────────────────────────────────────────────
   const handleToggle = useCallback(

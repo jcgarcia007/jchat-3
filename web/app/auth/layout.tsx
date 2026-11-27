@@ -1,20 +1,14 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import { getTranslations } from "next-intl/server";
 import { brandFromHost } from "@/lib/brand";
 
 // Tab title follows the brand of the request host (dashboard.tabpos.cloud → Tab POS).
 export async function generateMetadata(): Promise<Metadata> {
   const brand = brandFromHost((await headers()).get("host"));
-  if (brand === "tabpos") {
-    return {
-      title: "Iniciar sesión — Tab POS",
-      description: "Accede a tu punto de venta Tab POS",
-    };
-  }
-  return {
-    title: "Sign in — JChat",
-    description: "Sign in to your JChat business dashboard",
-  };
+  // Same language as the page body (cookie / Accept-Language through next-intl) — H-070.
+  const t = await getTranslations(brand === "tabpos" ? "meta.authTabpos" : "meta.auth");
+  return { title: t("title"), description: t("description") };
 }
 
 /**

@@ -74,7 +74,7 @@ const DEMO_TEAM: AdminMember[] = [
   {
     id: "admin-role-02",
     user_id: "user-ops-01",
-    email: "ops@jchat.app",
+    email: "ops@jchat.cloud",
     username: "ops_lead",
     display_name: "Ops Lead",
     role: "ops_admin",

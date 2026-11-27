@@ -24,6 +24,7 @@ export function TermsEN() {
 
       {/* Table of contents */}
       <nav
+        aria-label="Contents"
         style={{
           background: "var(--gray-100)",
           borderRadius: "10px",

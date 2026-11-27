@@ -18,7 +18,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { formatPanelDate } from "@/lib/dateFormat";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import {
   IconCalendarEvent,
@@ -223,27 +224,16 @@ const DEMO_RESERVATIONS: Reservation[] = [
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+function formatDate(iso: string, locale: string): string {
+  return formatPanelDate(iso, locale, { weekday: "short", month: "short", day: "numeric", year: "numeric" });
 }
 
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+function formatTime(iso: string, locale: string): string {
+  return formatPanelDate(iso, locale, { hour: "2-digit", minute: "2-digit" });
 }
 
-function formatDateShort(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  });
+function formatDateShort(iso: string, locale: string): string {
+  return formatPanelDate(iso, locale, { month: "short", day: "numeric" });
 }
 
 /**
@@ -1235,6 +1225,7 @@ function ReservationRow({
   onReject,
   t,
 }: ReservationRowProps) {
+  const locale = useLocale();
   const busy = actionLoading === r.id;
   // H-030 / H-059: a pending request whose time passed reads and behaves as expired (no Confirm / check-in) even before the cron marks it
   const status = effectiveStatus(r.status, r.reserved_at);
@@ -1286,7 +1277,7 @@ function ReservationRow({
             marginTop: "4px",
           }}
         >
-          {formatDateShort(r.reserved_at)}
+          {formatDateShort(r.reserved_at, locale)}
         </span>
         <span
           style={{
@@ -1296,7 +1287,7 @@ function ReservationRow({
             fontWeight: 600,
           }}
         >
-          {formatTime(r.reserved_at)}
+          {formatTime(r.reserved_at, locale)}
         </span>
       </div>
 
@@ -1367,7 +1358,7 @@ function ReservationRow({
             }}
           >
             <IconClock size={12} />
-            {formatDate(r.reserved_at)} · {formatTime(r.reserved_at)}
+            {formatDate(r.reserved_at, locale)} · {formatTime(r.reserved_at, locale)}
           </span>
           {tables.length > 0 && r.reservation_tables && r.reservation_tables.length > 0 && (
             <span
@@ -1640,6 +1631,7 @@ function CalendarView({
   onReject,
   t,
 }: CalendarViewProps) {
+  const locale = useLocale();
   const grouped: Record<string, Reservation[]> = {};
   for (const r of reservations) {
     const key = isoDateOnly(r.reserved_at);
@@ -1675,11 +1667,7 @@ function CalendarView({
       {sortedDates.map((date) => {
         const dayRes = grouped[date] ?? [];
         const d = new Date(date + "T00:00:00");
-        const dayLabel = d.toLocaleDateString(undefined, {
-          weekday: "long",
-          month: "long",
-          day: "numeric",
-        });
+        const dayLabel = formatPanelDate(d, locale, { weekday: "long", month: "long", day: "numeric" });
 
         return (
           <div key={date}>

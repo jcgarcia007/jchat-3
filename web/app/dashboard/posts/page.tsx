@@ -13,7 +13,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { formatPanelDate } from "@/lib/dateFormat";
 import {
   IconAlertCircle,
   IconCheck,
@@ -62,12 +63,8 @@ interface PostRowWithCounts {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+function formatDate(iso: string, locale: string): string {
+  return formatPanelDate(iso, locale, { year: "numeric", month: "short", day: "numeric" });
 }
 
 function errorMessage(e: unknown): string {
@@ -136,6 +133,7 @@ function PostCard({
   onDelete: (post: BusinessPost) => void;
 }) {
   const t = useTranslations("dashboardCommon");
+  const locale = useLocale();
   const tCommon = useTranslations("common");
   const [confirming, setConfirming] = useState(false);
   const cover = post.media_urls[0] ?? null;
@@ -229,7 +227,7 @@ function PostCard({
             color: "var(--db-text-tertiary)",
           }}
         >
-          <span>{formatDate(post.created_at)}</span>
+          <span>{formatDate(post.created_at, locale)}</span>
           {post.media_urls.length > 1 && (
             <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
               <IconPhoto size={12} />

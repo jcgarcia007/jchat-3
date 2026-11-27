@@ -22,7 +22,8 @@
  */
 
 import React, { useCallback, useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { formatPanelDate } from "@/lib/dateFormat";
 import {
   IconStar,
   IconStarFilled,
@@ -130,12 +131,8 @@ async function submitResponse(
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-function formatDate(isoString: string): string {
-  return new Date(isoString).toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+function formatDate(isoString: string, locale: string): string {
+  return formatPanelDate(isoString, locale, { year: "numeric", month: "short", day: "numeric" });
 }
 
 function authorLabel(review: ReviewRow, anonymousLabel: string): string {
@@ -225,6 +222,7 @@ interface ReviewCardProps {
 }
 
 function ReviewCard({ review, onResponseSubmit }: ReviewCardProps) {
+  const locale = useLocale();
   const t = useTranslations("dashboardCommon");
   const tCommon = useTranslations("common");
   const [draft, setDraft] = useState(review.response ?? "");
@@ -359,7 +357,7 @@ function ReviewCard({ review, onResponseSubmit }: ReviewCardProps) {
             <span
               style={{ fontSize: "12px", color: "var(--db-text-tertiary)" }}
             >
-              {formatDate(review.created_at)}
+              {formatDate(review.created_at, locale)}
             </span>
           </div>
         </div>
@@ -412,7 +410,7 @@ function ReviewCard({ review, onResponseSubmit }: ReviewCardProps) {
                   marginLeft: "4px",
                 }}
               >
-                · {formatDate(review.responded_at)}
+                · {formatDate(review.responded_at, locale)}
               </span>
             )}
           </div>
