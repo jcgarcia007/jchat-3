@@ -74,3 +74,12 @@ test("middleware sends the strict policy as report-only on request and response,
   assert.match(source, /res\.headers\.set\(STRICT_CSP_HEADER, strictCsp\)/);
   assert.ok(!source.includes("NextResponse.next({ request })"), "every next() must go through nextWithCsp (fresh headers)");
 });
+
+test("middleware puts the strict policy on the REQUEST as content-security-policy too, and never on the response", () => {
+  const source = readFileSync(new URL("../middleware.ts", import.meta.url), "utf8");
+  assert.match(source, /requestHeaders\.set\('Content-Security-Policy', strictCsp\)/);
+  // the only response header the middleware writes for CSP is the report-only one
+  const responseWrites = [...source.matchAll(/(?:res|response)\.headers\.(?:set|append)\(\s*([^,)]+)/g)].map((m) => m[1].trim());
+  assert.deepEqual(responseWrites, ["STRICT_CSP_HEADER"]);
+  assert.ok(!/(?:res|response)\.headers\.(?:set|append)\(\s*['"]content-security-policy['"]/i.test(source));
+});

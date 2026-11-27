@@ -36,6 +36,10 @@ export async function middleware(request: NextRequest) {
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set('x-nonce', nonce);
     requestHeaders.set(STRICT_CSP_HEADER, strictCsp);
+    // REQUEST only: on Vercel Next did not put the nonce on its own <script>s when only the -report-only request header was present
+    // (the JSON-LD, read from x-nonce, did get it). `content-security-policy` is the header Next's docs use for this. The RESPONSE keeps
+    // the enforced policy from next.config.ts: this middleware must never write `Content-Security-Policy` on it (a test pins that).
+    requestHeaders.set('Content-Security-Policy', strictCsp);
     return NextResponse.next({ request: { headers: requestHeaders } });
   };
 
