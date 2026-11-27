@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { buildStrictCsp, generateNonce, isEmbeddablePath, SHARED_DIRECTIVES, STRICT_REPORT_URI } from "./csp.ts";
+import { buildStrictCsp, generateNonce, isEmbeddablePath, SHARED_DIRECTIVES, STRICT_CSP_REPORT_ONLY_ENABLED, STRICT_REPORT_URI } from "./csp.ts";
 
 const NONCE = "dGVzdC1ub25jZS0xMjM0NQ==";
 const directives = (csp) => csp.split("; ");
@@ -72,7 +72,33 @@ test("middleware sends the strict policy as report-only on request and response,
   assert.match(source, /requestHeaders\.set\('x-nonce', nonce\)/);
   assert.match(source, /requestHeaders\.set\(STRICT_CSP_HEADER, strictCsp\)/);
   assert.match(source, /res\.headers\.set\(STRICT_CSP_HEADER, strictCsp\)/);
-  assert.ok(!source.includes("NextResponse.next({ request })"), "every next() must go through nextWithCsp (fresh headers)");
+  // every next() goes through nextWithCsp (fresh headers); the only bare one is the disabled branch, which is cbcdc1b6's behaviour
+  assert.equal(source.split("NextResponse.next({ request })").length - 1, 1);
+  assert.match(source, /if \(nonce === null \|\| strictCsp === null\) return NextResponse\.next\(\{ request \}\);/);
+});
+
+// The switch: OFF until after launch (HALLAZGOS H-066). Off = the middleware of cbcdc1b6: no nonce, no x-nonce, no CSP on the request,
+// no Content-Security-Policy-Report-Only on the response. On = everything the tests above pin.
+test("the strict policy is switched OFF", () => {
+  assert.equal(STRICT_CSP_REPORT_ONLY_ENABLED, false);
+  assert.match(readFileSync(new URL("./csp.ts", import.meta.url), "utf8"), /export const STRICT_CSP_REPORT_ONLY_ENABLED = false;/);
+});
+
+test("with the switch off the middleware generates no nonce and writes no CSP header anywhere", () => {
+  const source = readFileSync(new URL("../middleware.ts", import.meta.url), "utf8");
+  // nonce only exists behind the switch; strictCsp only exists when there is a nonce
+  assert.match(source, /const nonce = STRICT_CSP_REPORT_ONLY_ENABLED \? generateNonce\(\) : null;/);
+  assert.match(source, /nonce === null\s*\?\s*null\s*:\s*buildStrictCsp\(/);
+  // every x-nonce / CSP write (request or response) sits after the early return of the disabled branch, or under `strictCsp !== null`
+  const afterEarlyReturn = source.slice(source.indexOf("if (nonce === null || strictCsp === null) return"));
+  const beforeEarlyReturn = source.slice(0, source.indexOf("if (nonce === null || strictCsp === null) return"));
+  assert.ok(!/x-nonce|STRICT_CSP_HEADER, |'Content-Security-Policy'/.test(beforeEarlyReturn.replace(/\/\/.*$/gm, "").replace(/const STRICT_CSP_HEADER = [^;]+;/, "")));
+  assert.match(afterEarlyReturn, /if \(strictCsp !== null\) res\.headers\.set\(STRICT_CSP_HEADER, strictCsp\)/);
+});
+
+test("the optional nonce of the JSON-LD adds no attribute without x-nonce", () => {
+  const page = readFileSync(new URL("../app/b/[slug]/page.tsx", import.meta.url), "utf8");
+  assert.match(page, /\.get\("x-nonce"\) \?\? undefined/); // undefined => React renders no nonce attribute
 });
 
 test("middleware puts the strict policy on the REQUEST as content-security-policy too, and never on the response", () => {

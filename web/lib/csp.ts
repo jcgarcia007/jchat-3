@@ -12,6 +12,16 @@
  * Pure: no imports, so it runs under `node --test`. The caller passes the `frame-ancestors` value (lib/embedOrigins.ts owns it).
  */
 
+/**
+ * Master switch of the strict policy. OFF (Juan, 27-nov-2026: after launch). With `false` middleware.ts generates no nonce, sets no
+ * `x-nonce`, writes no CSP header on the request and no `Content-Security-Policy-Report-Only` on the response: it behaves as at cbcdc1b6.
+ * Why it is off (HALLAZGOS.md H-066): on Vercel the function receives a `content-security-policy` REQUEST header of 1139 chars without a
+ * nonce — the enforced policy from next.config.ts `headers()`, which the platform also puts on the request and which overrides the one the
+ * middleware sets (the strict one is 1050 chars). Next reads `content-security-policy` before `-report-only`, so it renders without nonce.
+ * Pending fix: emit the ENFORCED policy from the middleware instead of `headers()`, so there is a single source of that header.
+ */
+export const STRICT_CSP_REPORT_ONLY_ENABLED = false;
+
 const SUPABASE = 'https://klfsgcfoahdtkojyqspd.supabase.co';
 const SUPABASE_WS = 'wss://klfsgcfoahdtkojyqspd.supabase.co';
 
