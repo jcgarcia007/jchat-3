@@ -113,7 +113,7 @@ export default function MyReservationsScreen(): React.ReactElement {
 
   const askToCancel = useCallback(async (item: MyReservationRow) => {
     const business = reservationBusiness(item).name || t('venueFallback');
-    const when = formatReservationWhen(item.reserved_at, i18n.language);
+    const when = formatReservationWhen(item.reserved_at, i18n.language, reservationBusiness(item).timezone);
     const accepted = await confirm(
       t('confirmCancelTitle'),
       t('confirmCancelBody', { business, when }),
@@ -145,7 +145,7 @@ export default function MyReservationsScreen(): React.ReactElement {
   const renderItem = useCallback(({ item }: ListRenderItemInfo<MyReservationRow>) => {
     const business = reservationBusiness(item);
     const name = business.name || t('venueFallback');
-    const when = formatReservationWhen(item.reserved_at, i18n.language);
+    const when = formatReservationWhen(item.reserved_at, i18n.language, business.timezone);
     const people = t('people', { count: item.party_size });
     // H-030: a pending one whose time passed reads "No response from the venue" even before the server marks it expired
     const shownStatus = effectiveStatus(item, new Date());

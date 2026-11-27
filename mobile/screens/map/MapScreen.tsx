@@ -670,7 +670,8 @@ export default function MapScreen() {
       </View>
 
       {/* Business preview bottom sheet (Task 2.3) */}
-      <AppModal visible={!!selected} transparent animationType="slide" onRequestClose={() => setSelected(null)}>
+      {/* H-085: while the reservation form is open the card is only hidden (selected stays), so Back / Close there returns to the card */}
+      <AppModal visible={!!selected && reserveFor === null} transparent animationType="slide" onRequestClose={() => setSelected(null)}>
         <View style={styles.sheetBackdrop}>
           <TouchableOpacity accessible={false} style={styles.sheetDismiss} activeOpacity={1} onPress={() => setSelected(null)} />
           <View style={[styles.sheetBody, { backgroundColor: c.bgBase, paddingBottom: insets.bottom + 8 }]}>
@@ -693,7 +694,6 @@ export default function MapScreen() {
                   navigation.navigate('Offers');
                 }}
                 onReserve={(businessId) => {
-                  setSelected(null);
                   setReserveFor(businessId);
                 }}
                 onEnterChat={(businessId) => {
@@ -725,7 +725,7 @@ export default function MapScreen() {
               businessId={reserveFor}
               onSuccess={() => { /* the form shows its own confirmation; Done calls onCancel */ }}
               onCancel={() => setReserveFor(null)}
-              onViewMine={() => { setReserveFor(null); navigation.navigate('MyReservations'); }}
+              onViewMine={() => { setReserveFor(null); setSelected(null); navigation.navigate('MyReservations'); }}
             />
           )}
         </View>

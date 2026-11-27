@@ -31,7 +31,9 @@ import {
   bookingName,
   canContinue,
   firstIncompleteStep,
+  loadWithOneRetry,
   longDateLabel,
+  SLOTS_RETRY_DELAY_MS,
   nextStep,
   pickDate,
   pickSlot,
@@ -165,7 +167,8 @@ export default function ReservationScreen({ businessId, onSuccess, onCancel, onV
     let cancelled = false;
     setSlotsLoading(true);
     setSlotsFailed(false);
-    void fetchSlots(date).then((rows) => {
+    // H-042: a failed first load retries once after 2 s (the spinner stays) before the error and its "Retry" button show
+    void loadWithOneRetry(() => fetchSlots(date), SLOTS_RETRY_DELAY_MS, () => cancelled).then((rows) => {
       if (cancelled) return;
       setSlotsLoading(false);
       if (rows === null) { setSlotsFailed(true); setSlots([]); } else setSlots(rows);

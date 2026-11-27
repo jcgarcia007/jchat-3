@@ -17,6 +17,7 @@ import {
   REQUEST_KEYS,
   calendarMonths,
   dayStrip,
+  dayChipWidth,
   longDateLabel,
   monthGrid,
   monthTitle,
@@ -90,8 +91,11 @@ export function DayStrip({
   const { t } = useTranslation('reservations');
   const c = useThemeColors();
   const days = useMemo(() => dayStrip(hours, tz, nowMs), [hours, tz, nowMs]);
+  // H-088: whole chips plus a sliver of the next one, so the strip shows it scrolls and no label is cut through
+  const [stripWidth, setStripWidth] = useState(0);
+  const chipWidth = dayChipWidth(stripWidth, space.sm, DAY_CHIP_MIN_WIDTH);
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.strip}>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.strip} onLayout={(e) => setStripWidth(e.nativeEvent.layout.width)}>
       {days.map((d) => {
         const isSel = selected === d.date;
         const a11y = d.open ? longDateLabel(d.date, locale) : t('dayClosedA11y', { date: longDateLabel(d.date, locale) });
@@ -105,6 +109,7 @@ export function DayStrip({
             onPress={() => onPick(d.date)}
             style={[
               styles.dayCard,
+              chipWidth !== null && { width: chipWidth },
               { backgroundColor: isSel ? palette.brand : c.bgElevated, borderColor: isSel ? palette.brand : d.isToday ? palette.brand : c.borderSubtle, opacity: d.open ? 1 : 0.4 },
             ]}
           >
@@ -295,13 +300,15 @@ export function RequestChips({ selected, onToggle }: { selected: readonly Reques
   );
 }
 
+const DAY_CHIP_MIN_WIDTH = 56;
+
 const styles = StyleSheet.create({
   center: { textAlign: 'center' },
   pill: { minHeight: controlMinHeight, paddingHorizontal: space.lg, paddingVertical: space.sm, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   slotInner: { alignItems: 'center', justifyContent: 'center' },
   strip: { gap: space.sm, paddingVertical: space.xs },
-  dayCard: { minWidth: 56, minHeight: 72, paddingHorizontal: space.sm, paddingVertical: space.sm, borderRadius: 12, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  dayCard: { minWidth: DAY_CHIP_MIN_WIDTH, minHeight: 72, paddingHorizontal: space.sm, paddingVertical: space.sm, borderRadius: 12, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   calendar: { borderRadius: 12, borderWidth: 1, padding: space.md, gap: space.xs },
   calendarHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: space.xs },
   monthBtn: { minWidth: controlMinHeight, minHeight: controlMinHeight, alignItems: 'center', justifyContent: 'center' },

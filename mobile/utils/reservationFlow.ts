@@ -94,6 +94,43 @@ export function safeZone(tz: string | null | undefined): string {
   return 'America/New_York';
 }
 
+/**
+ * H-088: the width of a day chip so the strip shows `k` whole chips and a sliver (`peek` of a chip, no text in it: the label is centred)
+ * of the next one — the person sees there is more to the right and nothing is cut through a label.
+ * k is the most whole chips that still leave every chip at least `minWidth` wide. Null when the container is not measured yet or too narrow.
+ */
+export function dayChipWidth(containerWidth: number, gap: number, minWidth: number, peek = 0.2): number | null {
+  if (!Number.isFinite(containerWidth) || containerWidth <= 0) return null;
+  for (let k = Math.floor(containerWidth / (minWidth + gap)); k >= 1; k -= 1) {
+    const width = (containerWidth - k * gap) / (k + peek);
+    if (width >= minWidth) return width;
+  }
+  return null;
+}
+
+/** H-042: wait before the one automatic retry of a failed slot load. */
+export const SLOTS_RETRY_DELAY_MS = 2000;
+
+/**
+ * Runs `load` (null / a throw = failed); on failure waits `delayMs` and tries ONCE more, so a slow first call does not show the error.
+ * `isCancelled` is checked after the wait (the person changed the day or left): no second call then. Returns the last result, null if both failed.
+ */
+export async function loadWithOneRetry<T>(
+  load: () => Promise<T | null>,
+  delayMs: number = SLOTS_RETRY_DELAY_MS,
+  isCancelled: () => boolean = () => false,
+  sleep: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+): Promise<T | null> {
+  const attempt = async (): Promise<T | null> => {
+    try { return await load(); } catch { return null; }
+  };
+  const first = await attempt();
+  if (first !== null || isCancelled()) return first;
+  await sleep(delayMs);
+  if (isCancelled()) return null;
+  return attempt();
+}
+
 /** The venue's today (YYYY-MM-DD) at the instant `nowMs`. */
 export function todayInZone(nowMs: number, tz: string | null | undefined): string {
   const parts = new Intl.DateTimeFormat('en-US', { timeZone: safeZone(tz), year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(nowMs));
@@ -276,9 +313,27 @@ export function parseRequests(value: string | null | undefined): { keys: Request
 
 export type FlowLocale = 'en' | 'es';
 
-/** The time of a slot in the venue's zone ("7:00 PM" / "19:00"). */
+/** The wall-clock date and time of the instant `utcMs` in `tz` (the venue's zone). Null when the instant is not a number. */
+export function zonedParts(utcMs: number, tz: string | null | undefined): { y: number; m: number; d: number; hour: number; minute: number } | null {
+  if (!Number.isFinite(utcMs)) return null;
+  const local = new Date(utcMs + zoneOffsetMs(utcMs, safeZone(tz)));
+  return { y: local.getUTCFullYear(), m: local.getUTCMonth() + 1, d: local.getUTCDate(), hour: local.getUTCHours(), minute: local.getUTCMinutes() };
+}
+
+/**
+ * THE one clock rule of the app (H-028 / H-032): Spanish 24 h ("20:00"), English 12 h ("8:00 PM"). Written by hand, never with
+ * Intl hour12 / toLocaleTimeString: Hermes (Android) and the server render those differently.
+ */
+export function formatClock(hour: number, minute: number, locale: FlowLocale): string {
+  const mm = String(minute).padStart(2, '0');
+  if (locale === 'es') return `${String(hour).padStart(2, '0')}:${mm}`;
+  return `${hour % 12 === 0 ? 12 : hour % 12}:${mm} ${hour < 12 ? 'AM' : 'PM'}`;
+}
+
+/** The time of a slot in the venue's zone ("8:00 PM" / "20:00"). */
 export function slotTimeLabel(slotAt: string, tz: string | null | undefined, locale: FlowLocale): string {
-  return new Intl.DateTimeFormat(locale, { timeZone: safeZone(tz), hour: 'numeric', minute: '2-digit', hour12: locale === 'en' }).format(new Date(slotAt));
+  const parts = zonedParts(Date.parse(slotAt), tz);
+  return parts ? formatClock(parts.hour, parts.minute, locale) : '';
 }
 
 // Day and month names come from OUR tables, never from Intl.formatToParts: on iOS (Hermes) the month part arrives empty ("martes 24 de", H-031).
@@ -320,15 +375,30 @@ export function longDateLabel(date: string, locale: FlowLocale): string {
   return locale === 'es' ? `${weekday} ${day} de ${month}` : `${weekday}, ${month} ${day}`;
 }
 
+/** "23 de noviembre de 2026" / "November 23, 2026": the date in the order of the language (our own tables, no Intl). */
+export function dateWithYearLabel(y: number, m: number, d: number, locale: FlowLocale): string {
+  const month = monthName(m - 1, locale);
+  return locale === 'es' ? `${d} de ${month} de ${y}` : `${month} ${d}, ${y}`;
+}
+
+/** The date and time of a reservation in the venue's zone, written by the one rule above. Null when the instant is unreadable. */
+export function reservationWhenParts(iso: unknown, tz: string | null | undefined, locale: FlowLocale): { date: string; time: string } | null {
+  if (typeof iso !== 'string') return null;
+  const parts = zonedParts(Date.parse(iso), tz);
+  if (!parts) return null;
+  return { date: dateWithYearLabel(parts.y, parts.m, parts.d, locale), time: formatClock(parts.hour, parts.minute, locale) };
+}
+
 /** Short weekday of the strip ("sáb" / "Sat"). */
 export function shortWeekday(date: string, locale: FlowLocale): string {
   const p = parseDate(date);
   if (!p) return '';
-  return new Intl.DateTimeFormat(locale, { timeZone: 'UTC', weekday: 'short' }).format(new Date(Date.UTC(p.y, p.m - 1, p.d, 12))).replace('.', '');
+  return weekdayName(new Date(Date.UTC(p.y, p.m - 1, p.d, 12)).getUTCDay(), locale, 'short');
 }
 
 export function monthTitle(year: number, month: number, locale: FlowLocale): string {
-  return new Intl.DateTimeFormat(locale, { timeZone: 'UTC', month: 'long', year: 'numeric' }).format(new Date(Date.UTC(year, month - 1, 1, 12)));
+  const name = monthName(month - 1, locale);
+  return locale === 'es' ? `${name} de ${year}` : `${name} ${year}`;
 }
 
 // ── flow state ───────────────────────────────────────────────────────────────
