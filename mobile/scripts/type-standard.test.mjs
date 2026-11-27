@@ -337,3 +337,15 @@ test('B9: the preview card and the map text come from typography roles (no loose
   assert.match(map, /deniedBannerText: \{[^}]*typeStyle\('caption'\)/);
   assert.match(map, /prePermissionTitle: \{ \.\.\.typeStyle\('headline'\)/);
 });
+
+test('H-040: iOS takes the natural line height once the text is scaled up (fixed lineHeight clipped it at AX sizes); the default size and Android keep the proportional one', () => {
+  assert.equal(typo.usesNaturalLineHeight('ios', 1), false);
+  assert.equal(typo.usesNaturalLineHeight('ios', 1.15), false);
+  assert.equal(typo.usesNaturalLineHeight('ios', 1.3), true);
+  assert.equal(typo.usesNaturalLineHeight('ios', 3.1), true);
+  assert.equal(typo.usesNaturalLineHeight('android', 2), false);
+  assert.equal(typo.usesNaturalLineHeight('web', 2), false);
+  assert.equal(typo.usesNaturalLineHeight('ios', NaN), false);
+  // outside React Native (here) the proportional lineHeight is still emitted
+  assert.equal(typo.typeStyle('body').lineHeight, 22);
+});
