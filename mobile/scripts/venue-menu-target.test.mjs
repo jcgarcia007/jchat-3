@@ -60,7 +60,7 @@ test('the slug is URL-encoded and the base URL lives in one place', () => {
 });
 
 test('H-009: only an https: URL is an external menu; any other scheme, text with spaces or junk counts as no external menu', () => {
-  const bad = ['tel:+15551234567', 'sms:+15551234567', 'javascript:alert(1)', 'http://menu.example/x', 'whatsapp://send?text=hi', 'mailto:a@b.co', 'data:text/html,hi', 'file:///etc/passwd', 'menu.example/x', 'https://menu example/x', 'https:// menu.example', 'https:', 'https://', '   '];
+  const bad = ['tel:+15551234567', 'sms:+15551234567', 'javascript:alert(1)', 'http://menu.example/x', 'whatsapp://send?text=hi', 'mailto:a@b.co', 'data:text/html,hi', 'file:///etc/passwd', 'menu.example/x', 'https://menu example/x', 'https:// menu.example', 'https:', 'https://', '   ', 'https:///ruta', 'https://user@host', 'https://user:pw@host/x', 'https://@host', 'https:///', 'https://?x=1', 'https://#a', 'https://menu.example/x\ny', 'https://menu.example/\tx', 'https://menu.example\u0000', 'https:\\\\menu.example', 'ftp://menu.example/x', 'https//menu.example'];
   for (const url of bad) {
     assert.equal(safeExternalMenuUrl(url), null, url);
     // native + external mode: falls back to the app's menu (or the embedded web preview when the venue uses the web menu)
@@ -72,4 +72,28 @@ test('H-009: only an https: URL is an external menu; any other scheme, text with
   assert.equal(safeExternalMenuUrl('  https://menu.example/x?a=1  '), 'https://menu.example/x?a=1');
   assert.equal(safeExternalMenuUrl('HTTPS://Menu.Example/x'), 'HTTPS://Menu.Example/x');
   assert.deepEqual(t('android', 'external', 'bar', ' https://menu.example/x '), { kind: 'external', url: 'https://menu.example/x' });
+});
+
+test('H-009 (vuelta 2): safeExternalMenuUrl does not use URL at all (a throwing or odd URL in Hermes must not hide every external menu)', () => {
+  const src = readFileSync(new URL('../utils/venueMenuTarget.ts', import.meta.url), 'utf8');
+  const body = src.slice(src.indexOf('export function safeExternalMenuUrl'), src.indexOf('export function venueMenuTarget'));
+  assert.ok(!/new URL\(/.test(body) && !/\.hostname/.test(body) && !/\.protocol/.test(body) && !/try\s*\{/.test(body), 'plain string checks only');
+  // it keeps working even if the global URL is broken
+  const OriginalURL = globalThis.URL;
+  globalThis.URL = function Broken() { throw new TypeError('URL is broken'); };
+  try {
+    assert.equal(safeExternalMenuUrl('https://ejemplo.com'), 'https://ejemplo.com');
+    assert.equal(safeExternalMenuUrl('HTTPS://Ejemplo.com/menu?x=1'), 'HTTPS://Ejemplo.com/menu?x=1');
+    assert.equal(safeExternalMenuUrl('https://ejemplo.com#frag'), 'https://ejemplo.com#frag');
+    assert.equal(safeExternalMenuUrl('https://ejemplo.com?x=1'), 'https://ejemplo.com?x=1');
+    assert.equal(safeExternalMenuUrl('https://127.0.0.1:8080/m'), 'https://127.0.0.1:8080/m');
+    assert.equal(safeExternalMenuUrl('https://a'), 'https://a');
+    assert.equal(safeExternalMenuUrl('https://ejemplo.com/ruta@algo'), 'https://ejemplo.com/ruta@algo'); // an @ AFTER the host is just part of the path
+    assert.deepEqual(t('ios', 'external', 'bar', 'HTTPS://Ejemplo.com/menu?x=1'), { kind: 'external', url: 'HTTPS://Ejemplo.com/menu?x=1' });
+    for (const bad of ['https://', 'https:///ruta', 'https://user@host', 'http://ejemplo.com', 'tel:+1555', 'sms:+1555', 'javascript:alert(1)', 'whatsapp://send', 'https://ej emplo.com', 'https://ejemplo.com\n/menu', 'texto cualquiera']) {
+      assert.equal(safeExternalMenuUrl(bad), null, bad);
+    }
+  } finally {
+    globalThis.URL = OriginalURL;
+  }
 });

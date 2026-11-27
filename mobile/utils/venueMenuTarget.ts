@@ -28,19 +28,23 @@ export function embeddedMenuUrl(slug: string): string {
 }
 
 /**
- * An owner-typed menu link is opened only when it parses as a URL whose scheme is `https:` (no `tel:`, `sms:`, `javascript:`, `http:`,
- * another app's scheme or text with spaces). Anything else behaves as if there were no external menu. Returns the trimmed text.
+ * An owner-typed menu link is opened only when it is an `https://` link with a host: no `tel:`, `sms:`, `javascript:`, `http:`, another app's
+ * scheme, text with spaces or control characters, no empty host (`https://`, `https:///path`) and no credentials (`https://user@host`).
+ * Anything else behaves as if there were no external menu. Returns the trimmed text.
+ *
+ * Plain string checks on purpose, not `new URL(...)`: if `URL` throws or misbehaves in Hermes the `catch` would hide EVERY venue's external menu with
+ * no visible error. The browser still parses the real URL when it opens it.
  */
 export function safeExternalMenuUrl(raw: string | null | undefined): string | null {
   const text = raw?.trim();
-  if (!text || /\s/.test(text)) return null;
-  try {
-    const url = new URL(text);
-    if (url.protocol !== 'https:' || !url.hostname) return null;
-    return text;
-  } catch {
-    return null;
-  }
+  if (!text) return null;
+  if (/[\s\u0000-\u001f\u007f]/.test(text)) return null;
+  if (!/^https:\/\//i.test(text)) return null;
+  const rest = text.slice('https://'.length);
+  const authorityEnd = rest.search(/[/?#]/);
+  const authority = authorityEnd === -1 ? rest : rest.slice(0, authorityEnd);
+  if (!authority || authority.includes('@') || authority.includes('\\')) return null;
+  return text;
 }
 
 export function venueMenuTarget(input: {
