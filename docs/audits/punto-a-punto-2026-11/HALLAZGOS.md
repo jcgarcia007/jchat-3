@@ -176,3 +176,16 @@ Dev builds de `main` @ `0c4fdca9` con Metro sirviendo `release/lote2`: Android e
 | Pago con 6 % | **No repetido** en esta pasada (la pantalla de pago con 6 % ya se vio en el build 15, `capturas/android-build15/12-pago.png`); H-044 solo por pruebas | n/a |
 | Mis reservas | **Bien**: dos reservas canceladas (lun 23 y vie 20 nov) con la etiqueta «Cancelada»; ningún estado sale sin etiqueta | `ios-03-mis-reservas` |
 | Otros | Con AX5 en el mapa el nombre del pin («JChat Demo Lounge») se sale por el borde izquierdo; el mapa del `Pixel_8` firmado con la clave temporal salía en blanco, con el dev build sí carga | `ios-31-ax5-mapa` |
+
+## Lote 2 · vuelta 3 (27-nov-2026) — los cuatro restos, rama `fix/l2-restos` @ `cbcdc1b6`
+
+Dev builds de `DEV_BUILDS.md`, Metro sirviendo `fix/l2-restos` (puerto 8082). Capturas con prefijo `vuelta3-` en `capturas/lote2/`.
+
+| # | Resto | Resultado | Captura |
+|---|---|---|---|
+| 1 | H-026, chips de Cerca | **Corregido y visto** en Android e iOS: «Todos · Bar y discoteca · Café · Restaurante». `NearbyFilters` usa `categoryLabel` (como el mapa); el filtro sigue comparando el valor original. | `vuelta3-android-cerca-chips-es`, `vuelta3-ios-cerca-chips-es` |
+| 2 | Login, ES/EN sobre «Forgot your password?» | **Corregido y visto** a 360×640 (`wm size`/`density 160`) en `Pixel_8_clean`, texto normal y 1.3, con y sin teclado: el área de scroll empieza bajo la barra superior, así que el contenido se corta ahí y no pasa bajo la píldora. La posición del boleto no cambia (prueba). iOS sin cambios visibles. | `vuelta3-android-360-login-1.0-*`, `…-1.3-*`, `vuelta3-ios-login-es` |
+| 3 | H-027, barra con `font_scale 2.0` en Android | **No reproducible** con arranque limpio: etiquetas completas a 1080×2400 y a 360×640, y cambiando la escala en vivo; con y sin mi prueba de quitar el `lineHeight` los píxeles son idénticos. Lo visto en la vuelta 2 coincide con el artefacto de cambiar `font_scale` con la app abierta (medidas obsoletas, también cortó «Sign in» y «Create account»). Código de la barra **sin tocar**. | `vuelta3-android-barra-escala-2.0` |
+| 4 | Pin del mapa con AX5 | **No era el escalado**: antes y después (iOS, AX5) el pin tiene el mismo tamaño; el recorte del borde izquierdo es porque el local está pegado al borde del mapa. Dejé `maxFontSizeMultiplier={1}` en el texto del pin como protección (en Android a 2.0 sale normal). | `vuelta3-ios-pin-AX5-antes/despues`, `vuelta3-android-pin-escala-2.0` |
+| — | Ajustes con `font_scale 2.0` en Android | **Bien**, sin cortes (captura no guardada: mostraba el correo). | — |
+| — | H-031 en inglés | **No probado**: cambiar el idioma escribe `users.language` de la cuenta. | — |
