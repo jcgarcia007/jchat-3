@@ -48,10 +48,32 @@ export const TYPE_ROLES: Readonly<Record<TypeRole, TypeRoleSpec>> = {
 /** Tracking of the label role, as a proportion of its size (≈ 0.12 em). */
 export const LABEL_LETTER_SPACING_RATIO = 0.12;
 
+/**
+ * H-040. On iOS the fixed lineHeight above does not follow the capped font scale as the comment at the top assumes: with the system text size well above
+ * the default (Accessibility sizes) the glyphs are taller than the line and get CLIPPED (titles, rows and segmented options of Settings, seen on the iPhone 17
+ * simulator at AX5). From a text scale of 1.15 up, iOS therefore takes the font's natural line height (no lineHeight); at the default size nothing changes,
+ * and Android keeps the proportional lineHeight. Pure so a Node test can drive it.
+ */
+export function usesNaturalLineHeight(platform: string, fontScale: number): boolean {
+  return platform === 'ios' && Number.isFinite(fontScale) && fontScale > 1.15;
+}
+
+// Decided once, when the module loads (StyleSheets are built then); a change of the system text size applies on the next launch. Outside React Native (the
+// Node tests) `require('react-native')` is not available: the proportional lineHeight stays.
+const NATURAL_LINE_HEIGHT = (() => {
+  try {
+    const rn = require('react-native');
+    return usesNaturalLineHeight(rn.Platform.OS, rn.PixelRatio.getFontScale());
+  } catch {
+    return false;
+  }
+})();
+
 /** fontSize + lineHeight (+ letterSpacing and uppercase for `label`) of a role. */
 export function typeStyle(role: TypeRole): TextStyle {
   const { fontSize, lineHeightRatio } = TYPE_ROLES[role];
-  const style: TextStyle = { fontSize, lineHeight: Math.round(fontSize * lineHeightRatio) };
+  const style: TextStyle = { fontSize };
+  if (!NATURAL_LINE_HEIGHT) style.lineHeight = Math.round(fontSize * lineHeightRatio);
   if (role === 'label') {
     style.letterSpacing = Math.round(fontSize * LABEL_LETTER_SPACING_RATIO * 10) / 10;
     style.textTransform = 'uppercase';
