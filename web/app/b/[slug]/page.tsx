@@ -12,6 +12,7 @@
  */
 
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { getTranslations } from "next-intl/server";
@@ -195,10 +196,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 // JSON-LD structured data (schema.org LocalBusiness)
 // ---------------------------------------------------------------------------
 
-function JsonLd({ biz }: { biz: Business }) {
+function JsonLd({ biz, nonce }: { biz: Business; nonce?: string }) {
   return (
     <script
       type="application/ld+json"
+      nonce={nonce}
       dangerouslySetInnerHTML={{ __html: safeJsonLd(localBusinessJsonLd(biz)) }}
     />
   );
@@ -625,6 +627,8 @@ export default async function BusinessPreviewPage({ params }: PageProps) {
   const tc = await getTranslations("businessCategories");
   const { slug } = await params;
   const biz = await getBusiness(slug);
+  // Per-request nonce set by middleware.ts: the JSON-LD <script> carries it so the strict (report-only) CSP accepts it.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
 
   // If Supabase is configured and business not found, use Next.js notFound()
   // which renders the nearest not-found.js or a 404 response.
@@ -652,7 +656,7 @@ export default async function BusinessPreviewPage({ params }: PageProps) {
       }}
     >
       {/* JSON-LD Structured Data */}
-      <JsonLd biz={biz} />
+      <JsonLd biz={biz} nonce={nonce} />
 
       {/* Language switcher — top right */}
       <div style={{ display: "flex", justifyContent: "flex-end", padding: "12px 16px" }}>

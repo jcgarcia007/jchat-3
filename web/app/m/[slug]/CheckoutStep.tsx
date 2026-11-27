@@ -19,7 +19,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { loadStripe, type Stripe } from "@stripe/stripe-js";
+// `/pure`: the default entry injects https://js.stripe.com/…/stripe.js as soon as the module is evaluated (i.e. when the menu opens).
+// `pure` only loads it when loadStripe() is called, which happens once the payment step has an intent.
+import { loadStripe } from "@stripe/stripe-js/pure";
+import type { Stripe } from "@stripe/stripe-js"; // type only: erased at build, evaluates nothing
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { decideCheckoutPath } from "@/lib/embedCheckoutPath";

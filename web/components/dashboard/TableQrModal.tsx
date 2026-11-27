@@ -98,9 +98,12 @@ export function TableQrModal({ table, onClose }: { table: QrTable; onClose: () =
     if (!w) return;
     const title = escapeHtml(t("tablesQrModalTitle", { label: table.label }));
     w.document.write(
-      `<!doctype html><title>${title}</title><body style="margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:system-ui"><h2>${title}</h2><div style="width:320px">${svg}</div><script>window.onload=function(){window.print()}</script></body>`,
+      `<!doctype html><title>${title}</title><body style="margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:system-ui"><h2>${title}</h2><div style="width:320px">${svg}</div></body>`,
     );
     w.document.close();
+    // No inline <script> inside the popup (it inherits our CSP, and a strict policy would block it): print from here.
+    w.focus();
+    w.print();
   }
 
   return (

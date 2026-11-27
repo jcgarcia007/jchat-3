@@ -22,7 +22,8 @@
  */
 
 import { useMemo, useState, useCallback } from "react";
-import { loadStripe }                      from "@stripe/stripe-js";
+// `/pure`: stripe.js is fetched when loadStripe() runs (this form opening), not when the menu loads.
+import { loadStripe }                      from "@stripe/stripe-js/pure";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { useTranslations } from "next-intl";
 import { guestTab }        from "@/lib/guestTabSession";
