@@ -189,3 +189,11 @@ Dev builds de `DEV_BUILDS.md`, Metro sirviendo `fix/l2-restos` (puerto 8082). Ca
 | 4 | Pin del mapa con AX5 | **No era el escalado**: antes y después (iOS, AX5) el pin tiene el mismo tamaño; el recorte del borde izquierdo es porque el local está pegado al borde del mapa. Dejé `maxFontSizeMultiplier={1}` en el texto del pin como protección (en Android a 2.0 sale normal). | `vuelta3-ios-pin-AX5-antes/despues`, `vuelta3-android-pin-escala-2.0` |
 | — | Ajustes con `font_scale 2.0` en Android | **Bien**, sin cortes (captura no guardada: mostraba el correo). | — |
 | — | H-031 en inglés | **No probado**: cambiar el idioma escribe `users.language` de la cuenta. | — |
+
+## Lote 3 · web (27-nov-2026) — `fix/l3-web` @ `e82339d1`
+
+| Hallazgo | Resultado |
+|---|---|
+| H-002 / H-066, CSP estricta | Producción enviará **dos** cabeceras: la actual (sin tocar, hash idéntico a `origin/main` en las 8 páginas) y `Content-Security-Policy-Report-Only` estricta con nonce. 0 violaciones de la estricta en `/`, `/pricing`, `/nearby`, `/auth/login`, `/privacy`, `/b/<slug>`, `/m/<slug>`, `/download` y en el paso de pago de `/m` (Stripe). Datos: `capturas/lote3/l3-csp-auditoria-paginas.json`. |
+| H-068, Stripe en el menú | `@stripe/stripe-js/pure`: al abrir `/m/<slug>` 0 peticiones a Stripe (antes 4–6, ≈255 KB y TBT 80 ms → 10 ms en la prueba); al abrir el paso de pago sí (42). Capturas `l3-menu-carga-sin-stripe`, `l3-menu-paso-pago-stripe-cargado` (intent simulado, nada escrito en producción). |
+| H-068, LCP | El LCP del menú con productos es una imagen; el aviso de ubicación no retrasa el pintado del menú. |
