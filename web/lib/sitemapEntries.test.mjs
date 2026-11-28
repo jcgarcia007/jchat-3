@@ -29,6 +29,16 @@ test("pages without a real date have no lastModified instead of 'now'", () => {
   assert.ok(out.find((x) => x.url === `${B}/privacy`).lastModified instanceof Date);
 });
 
+test("the help center pages are listed, without a date", () => {
+  const out = buildSitemap(B, [], ["/help", "/help/users", "/help/users/getting-started"]);
+  for (const path of ["/help", "/help/users", "/help/users/getting-started"]) {
+    const e = out.find((x) => x.url === `${B}${path}`);
+    assert.ok(e, path);
+    assert.equal(e.lastModified, undefined);
+  }
+  assert.equal(buildSitemap(B, []).some((x) => x.url.includes("/help")), false, "no help pages unless they are passed");
+});
+
 test("a missing or invalid updated_at gives no lastModified", () => {
   const out = buildSitemap(B, [biz({ slug: "x", updated_at: null }), biz({ slug: "y", updated_at: "nope" })]);
   assert.equal(out.find((e) => e.url.endsWith("/b/x")).lastModified, undefined);

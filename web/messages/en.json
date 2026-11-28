@@ -284,6 +284,7 @@
     "openNavAria": "Open navigation menu",
     "closeNavAria": "Close navigation menu",
     "userMenuAria": "User menu",
+    "helpMenuItem": "Help",
     "userAvatarAria": "User avatar",
     "qrCopied": "Copied!",
     "qrPrintLabel": "Print",
@@ -3334,6 +3335,7 @@
       "privacy": "Privacy",
       "terms": "Terms",
       "support": "Support",
+      "help": "Help",
       "safety": "Safety",
       "contact": "Contact"
     },
@@ -3532,6 +3534,7 @@
       "privacy": "Privacy",
       "terms": "Terms",
       "support": "Support",
+      "help": "Help",
       "safety": "Safety",
       "contact": "Contact"
     },

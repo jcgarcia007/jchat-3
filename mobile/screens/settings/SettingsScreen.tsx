@@ -52,6 +52,7 @@ import {
   IconChevronLeft,
   IconChevronRight,
   IconFingerprint,
+  IconHelp,
   IconInfoCircle,
   IconLanguage,
   IconLock,
@@ -553,6 +554,11 @@ export default function SettingsScreen() {
     await WebBrowser.openBrowserAsync(legalUrl('contact', i18n.language));
   }, []);
 
+  // The user guide of the help center (jchat.cloud/help/users), in the app's language.
+  const openHelp = useCallback(async () => {
+    await WebBrowser.openBrowserAsync(legalUrl('help/users', i18n.language));
+  }, []);
+
   // TODO(geofence): Restore the proximityMode control when geofencing ships.
 
   // ── Language options ───────────────────────────────────────────────────────
@@ -914,6 +920,16 @@ export default function SettingsScreen() {
           icon={<IconShield size={20} color={c.textSecondary} strokeWidth={2} />}
           label={t('main.safetyCommunity')}
           onPress={() => { void openSafety(); }}
+          right={<ChevronRight />}
+        />
+
+        <SectionDivider />
+
+        <SettingsRow
+          testID="settings-help"
+          icon={<IconHelp size={20} color={c.textSecondary} strokeWidth={2} />}
+          label={t('main.helpCenter')}
+          onPress={() => { void openHelp(); }}
           right={<ChevronRight />}
         />
 

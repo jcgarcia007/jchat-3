@@ -2,7 +2,8 @@
  * Legal / support pages of jchat.cloud (privacy, terms, safety, contact, support). The site picks its language from the browser, so
  * the app passes its own: `?lang=es` or `?lang=en` (anything that is not Spanish is English, as in the rest of the app).
  */
-export type LegalPage = 'privacy' | 'terms' | 'safety' | 'contact' | 'support';
+// 'help/users' is the user guide of the help center (jchat.cloud/help/users), same ?lang= rule.
+export type LegalPage = 'privacy' | 'terms' | 'safety' | 'contact' | 'support' | 'help/users';
 
 const LEGAL_BASE_URL = 'https://jchat.cloud';
 

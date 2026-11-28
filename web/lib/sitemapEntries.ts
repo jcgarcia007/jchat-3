@@ -17,7 +17,8 @@ export function isIndexableBusiness(b: SitemapBusiness): b is SitemapBusiness & 
   return !!b.slug && /^[a-z0-9][a-z0-9-]*$/i.test(b.slug) && b.status === "verified" && b.is_active === true;
 }
 
-export function buildSitemap(base: string, businesses: SitemapBusiness[]): SitemapEntry[] {
+/** `helpPaths`: every page of the help center (content/help/manuals.ts helpPaths()); no date, they have no revision date of their own. */
+export function buildSitemap(base: string, businesses: SitemapBusiness[], helpPaths: readonly string[] = []): SitemapEntry[] {
   const page = (path: string, priority: number, changeFrequency: SitemapEntry["changeFrequency"], lastModified?: Date): SitemapEntry => ({
     url: `${base}${path}`,
     priority,
@@ -40,5 +41,6 @@ export function buildSitemap(base: string, businesses: SitemapBusiness[]): Sitem
     const updated = b.updated_at ? new Date(b.updated_at) : undefined;
     return page(`/b/${b.slug}`, 0.6, "weekly", updated && !Number.isNaN(updated.getTime()) ? updated : undefined);
   });
-  return [...fixed, ...venues];
+  const help = helpPaths.map((path) => page(path, path === "/help" ? 0.7 : 0.6, "monthly"));
+  return [...fixed, ...help, ...venues];
 }

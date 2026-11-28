@@ -10,6 +10,7 @@ import {
   IconMenu2,
   IconX,
   IconLogout,
+  IconHelp,
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
@@ -375,6 +376,29 @@ export function TopBar({ navOpen = false, onToggleNav }: { navOpen?: boolean; on
                   padding: "4px",
                 }}
               >
+                {/* Business guide of the public help center (Fase 6) */}
+                <Link
+                  href="/help/business"
+                  role="menuitem"
+                  onClick={() => setUserMenuOpen(false)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    width: "100%",
+                    minHeight: "40px",
+                    padding: "8px 10px",
+                    borderRadius: "var(--db-radius)",
+                    color: "var(--db-text-primary)",
+                    fontSize: "14px",
+                    fontWeight: 500,
+                    textDecoration: "none",
+                    boxSizing: "border-box",
+                  }}
+                >
+                  <IconHelp size={16} stroke={1.7} />
+                  <span>{t("helpMenuItem")}</span>
+                </Link>
                 <button
                   type="button"
                   role="menuitem"

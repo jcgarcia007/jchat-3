@@ -622,6 +622,7 @@ export default function PricingPage() {
         <a href="/privacy" style={{ color:"var(--land-muted)", textDecoration:"none" }}>{t("footer.privacy")}</a>
         <a href="/terms" style={{ color:"var(--land-muted)", textDecoration:"none" }}>{t("footer.terms")}</a>
         <a href="/support" style={{ color:"var(--land-muted)", textDecoration:"none" }}>{t("footer.support")}</a>
+        <a href="/help" style={{ color:"var(--land-muted)", textDecoration:"none" }}>{t("footer.help")}</a>
       </footer>
     </div>
     </>

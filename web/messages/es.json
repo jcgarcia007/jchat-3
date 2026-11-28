@@ -284,6 +284,7 @@
     "openNavAria": "Abrir menú de navegación",
     "closeNavAria": "Cerrar menú de navegación",
     "userMenuAria": "Menú de usuario",
+    "helpMenuItem": "Ayuda",
     "userAvatarAria": "Avatar del usuario",
     "qrCopied": "¡Copiado!",
     "qrPrintLabel": "Imprimir",
@@ -3334,6 +3335,7 @@
       "privacy": "Privacidad",
       "terms": "Términos",
       "support": "Soporte",
+      "help": "Ayuda",
       "safety": "Seguridad",
       "contact": "Contacto"
     },
@@ -3532,6 +3534,7 @@
       "privacy": "Privacidad",
       "terms": "Términos",
       "support": "Soporte",
+      "help": "Ayuda",
       "safety": "Seguridad",
       "contact": "Contacto"
     },

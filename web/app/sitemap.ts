@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { helpPaths } from "@/content/help/manuals";
 import { SITE_ORIGIN } from "@/lib/appLinks";
 import { createSupabaseAnonServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { buildSitemap, type SitemapBusiness } from "@/lib/sitemapEntries";
@@ -22,5 +23,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       // A failed read must not take the sitemap down: the static pages are still listed.
     }
   }
-  return buildSitemap(SITE_ORIGIN, businesses);
+  return buildSitemap(SITE_ORIGIN, businesses, helpPaths());
 }

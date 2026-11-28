@@ -15,6 +15,10 @@ export function SupportES() {
       </p>
 
       <p style={P}>
+        Antes de escribirnos, prueba el <a href="/help" style={LINK}>centro de ayuda</a>: tiene un manual para usuarios y otro para negocios, paso a paso.
+      </p>
+
+      <p style={P}>
         ¿Necesitas ayuda? Escribe a{" "}
         <a href="mailto:soporte@jchat.cloud" style={LINK}>soporte@jchat.cloud</a>. Respondemos en
         1–2 días hábiles. Incluye el correo de tu cuenta y, para problemas con pedidos, el código del

@@ -21,6 +21,8 @@ test('legalUrl: ?lang=es for Spanish (any region), ?lang=en for everything else'
   assert.equal(legalUrl('contact', 'fr'), 'https://jchat.cloud/contact?lang=en');
   assert.equal(legalUrl('support', undefined), 'https://jchat.cloud/support?lang=en');
   assert.equal(legalUrl('support', null), 'https://jchat.cloud/support?lang=en');
+  assert.equal(legalUrl('help/users', 'es'), 'https://jchat.cloud/help/users?lang=es');
+  assert.equal(legalUrl('help/users', 'en-US'), 'https://jchat.cloud/help/users?lang=en');
 });
 
 function walk(dir, out = []) {

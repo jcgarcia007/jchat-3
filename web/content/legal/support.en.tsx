@@ -15,6 +15,10 @@ export function SupportEN() {
       </p>
 
       <p style={P}>
+        Before you write to us, try the <a href="/help" style={LINK}>help center</a>: it has a step-by-step guide for users and another for businesses.
+      </p>
+
+      <p style={P}>
         Need help? Email{" "}
         <a href="mailto:soporte@jchat.cloud" style={LINK}>soporte@jchat.cloud</a>. We answer within
         1–2 business days. Include the email on your account and, for order issues, the receipt code.
