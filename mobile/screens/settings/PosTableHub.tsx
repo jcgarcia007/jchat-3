@@ -36,6 +36,8 @@ import { Spinner } from '../../components/common/Spinner';
 import { AppModal } from '../../components/common/AppModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import i18n from 'i18next';
+import { formatLocalTime } from '../../utils/localTime';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -1100,10 +1102,7 @@ export default function PosTableHub(): React.ReactElement {
                 {sessionDetail.session_opened_at ? (
                   <Text style={[styles.codeSince, { color: c.textSecondary }]}>
                     {t('pos.tableCode.since', {
-                      time: new Date(sessionDetail.session_opened_at).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      }),
+                      time: formatLocalTime(sessionDetail.session_opened_at, i18n.language),
                     })}
                   </Text>
                 ) : null}

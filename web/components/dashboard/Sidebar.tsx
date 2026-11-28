@@ -136,7 +136,7 @@ export function Sidebar() {
 
         {isNew && (
           <span
-            aria-label="nuevo"
+            aria-label={t("sidebarNewBadge")}
             style={{
               fontSize: "9px",
               fontWeight: 700,
@@ -150,7 +150,7 @@ export function Sidebar() {
               flexShrink: 0,
             }}
           >
-            nuevo
+            {t("sidebarNewBadge")}
           </span>
         )}
 

@@ -86,9 +86,11 @@ function Block({ block, ui, eager }: { block: HelpBlock; ui: HelpUi; eager: bool
         </aside>
       );
     }
-    case "image":
+    case "image": {
+      // A phone screenshot (780 px wide) is shown at most 340 px wide, centered; a dashboard one takes the column. Never wider than the screen (320 px phones).
+      const phone = block.platform !== "web";
       return (
-        <figure style={{ margin: "0 0 18px" }}>
+        <figure style={{ margin: "0 0 18px", textAlign: phone ? "center" : undefined }}>
           <Image
             src={block.src}
             alt={block.alt}
@@ -96,10 +98,18 @@ function Block({ block, ui, eager }: { block: HelpBlock; ui: HelpUi; eager: bool
             height={block.height}
             unoptimized
             loading={eager ? "eager" : "lazy"}
-            style={{ maxWidth: "100%", height: "auto", borderRadius: "10px", border: "1px solid var(--gray-200)" }}
+            style={{
+              display: phone ? "inline-block" : "block",
+              width: "100%",
+              maxWidth: phone ? "340px" : "100%",
+              height: "auto",
+              borderRadius: "10px",
+              border: "1px solid var(--gray-200)",
+            }}
           />
         </figure>
       );
+    }
   }
 }
 

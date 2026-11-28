@@ -16,6 +16,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
+import i18n from 'i18next';
+import { formatLocalTime } from '../../utils/localTime';
 import { IconArrowLeft, IconMessageCircle, IconTrash, IconUser } from '@tabler/icons-react-native';
 
 import type { MainStackParamList } from '../../navigation/AppNavigator';
@@ -48,8 +50,7 @@ interface Row {
 }
 
 function timeLabel(iso: string): string {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return formatLocalTime(iso, i18n.language);
 }
 
 export default function MatchActivityScreen() {

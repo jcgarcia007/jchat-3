@@ -24,6 +24,8 @@ import {
 } from 'react-native';
 import { Spinner } from '../../components/common/Spinner';
 import { useTranslation } from 'react-i18next';
+import i18n from 'i18next';
+import { formatLocalTime } from '../../utils/localTime';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import {
   IconCalendarEvent,
@@ -99,8 +101,7 @@ function formatEventDate(iso: string): string {
 }
 
 function formatEventTime(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  return formatLocalTime(iso, i18n.language);
 }
 
 // ── EventsScreen ─────────────────────────────────────────────────────────────

@@ -26,6 +26,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import i18n from 'i18next';
+import { formatLocalLongDateTime } from '../../utils/localTime';
 import {
   IconCalendarEvent,
   IconClock,
@@ -49,15 +51,7 @@ interface EventDetailScreenProps {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatFullDatetime(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleString(undefined, {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return formatLocalLongDateTime(iso, i18n.language);
 }
 
 function statusColor(
