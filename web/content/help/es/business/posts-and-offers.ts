@@ -116,7 +116,7 @@ const chapter: HelpChapter = {
       blocks: [
         {
           type: 'p',
-          text: 'Cada oferta muestra su estado: **Activa**, **Programada**, **Pausada** o **Finalizada**. **Pausar** solo cambia el estado de la oferta en tu panel: no la quita de la app ni retira su tarjeta del chat.',
+          text: 'Cada oferta muestra su estado: **Activa**, **Programada**, **Pausada** o **Finalizada**. **Pausar** la quita de las novedades de la app y **Reanudar** la vuelve a mostrar (mientras sus fechas sigan vigentes). Si ya habías publicado su tarjeta en el chat, esa tarjeta no se retira: se borra con el resto de mensajes a las 24 horas.',
         },
         {
           type: 'steps',

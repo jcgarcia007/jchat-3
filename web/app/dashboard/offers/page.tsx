@@ -18,7 +18,8 @@
  *     appears in the chat timeline.
  *     Scheduled offers are NOT posted to chat on their own (there is no scheduler). What happens at `start_at`: the app feed
  *     (`megaphone_feed`) starts returning the offer (it filters `is_active`, `start_at <= now()` and `expires_at`, not `status`).
- *     "Pause" only sets `status`: `is_active` is not an owner-updatable column, so a paused offer still shows in the feed.
+ *     "Pause" / "Resume" only set `status`; migration 278 (trigger offers_sync_is_active) keeps `is_active` in step (paused/ended → false,
+ *     active/scheduled → true), so a paused offer leaves the feed and a resumed one comes back. Its card in the chat (already a message) stays.
  *
  * Design: var(--db-*) tokens only. No hardcoded hex.
  * Guard: isSupabaseConfigured before any live DB call; demo data otherwise.

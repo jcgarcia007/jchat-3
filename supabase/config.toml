@@ -104,3 +104,7 @@ verify_jwt = false
 # D7: invoked by pg_net (evidence_purge_retry, migration 272) with x-push-secret, not a user JWT. Removes expired copies from the report-evidence bucket.
 [functions.evidence-purge]
 verify_jwt = false
+
+# Lote G: invoked by pg_net (chat_media_purge_retry, migration 278) with x-push-secret, not a user JWT. Removes the files of expired chat messages (post-media, voice-notes).
+[functions.chat-media-purge]
+verify_jwt = false
