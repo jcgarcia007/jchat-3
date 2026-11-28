@@ -68,14 +68,14 @@ const chapter: HelpChapter = {
             `**Este local todavía no acepta pagos en la app**: puedes pedir en el mostrador.`,
           ],
         },
-        { type: 'note', kind: 'important', text: `Los reembolsos los gestiona el local que te atendió. Contáctalo primero con el código de tu recibo. Si pagaste con JChat y no puedes comunicarte con el local, escríbenos.` },
+        { type: 'note', kind: 'important', text: `Los reembolsos los gestiona el local que te atendió. Contáctalo primero con tu número de pedido. Si pagaste con JChat y no puedes comunicarte con el local, escríbenos.` },
       ],
     },
     {
       id: 'contact',
       title: 'Cómo contactarnos',
       blocks: [
-        { type: 'p', text: `Escribe a [soporte@jchat.cloud](mailto:soporte@jchat.cloud). Incluye el correo de tu cuenta y, si es por un pedido, el código del recibo. También puedes usar [Contacto](/contact) o la página de [Ayuda y soporte](/support).` },
+        { type: 'p', text: `Escribe a [soporte@jchat.cloud](mailto:soporte@jchat.cloud). Incluye el correo de tu cuenta y, si es por un pedido, el número de pedido. También puedes usar [Contacto](/contact) o la página de [Ayuda y soporte](/support).` },
         { type: 'p', text: `Si quieres reportar a alguien, mira [Seguridad](/help/users/safety).` },
       ],
     },

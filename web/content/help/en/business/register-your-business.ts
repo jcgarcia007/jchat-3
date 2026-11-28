@@ -28,7 +28,7 @@ const chapter: HelpChapter = {
       id: 'choose-a-plan',
       title: 'Choose a plan before you register the venue',
       blocks: [
-        { type: 'p', text: 'To register a venue, your account needs an active Business or Pro plan; the free trial counts. Without a plan, the registration form shows **Business limit reached**. See the plans and start your trial in [Plans and free trial](/help/business/plans-and-trial).' },
+        { type: 'p', text: 'To register a venue, your account needs an active Business or Pro plan; the free trial counts. Without a plan, the registration form shows **Business limit reached**, with the buttons **Contact us** and **Back to dashboard**. If the limit is hit when you finish registering, you will see “You\'ve reached your plan\'s limit of businesses and events. Upgrade your plan to add more.” with the **See plans** link. See the plans and start your trial in [Plans and free trial](/help/business/plans-and-trial).' },
         { type: 'note', kind: 'important', text: 'The Business plan allows 1 venue or event. The Pro plan allows up to 10 venues or events in total.' },
       ],
     },
@@ -37,13 +37,13 @@ const chapter: HelpChapter = {
       title: 'Venue details and location',
       blocks: [
         { type: 'p', text: 'With your plan active, open [jchat.cloud/business/register](https://jchat.cloud/business/register) and sign in if asked. If you open the dashboard with an account that has no venue, you will also see the **Register my business** button.' },
-        { type: 'note', kind: 'important', text: 'This form appears almost entirely in English. Here we use the names exactly as you see them on screen.' },
+        { type: 'note', kind: 'important', text: 'Fields marked with an asterisk (*) are required: **Business name**, **Category**, **Street address** and **Phone**, plus the location.' },
         {
           type: 'steps',
           items: [
-            'In the **Info** step, enter the **Business Name** and choose the **Category** (for example Restaurant, Café or Bar & Nightclub).',
-            'If you like, write a **Description** (up to 500 characters), upload a photo with **Upload cover photo** (JPG, PNG or WebP) and pick an emoji in **Icon Emoji**.',
-            'Press **Continue**. In the **Location** step, enter the **Street Address** and the **Phone**. You can add your **Website**.',
+            'In the **Info** step, enter the **Business name** and choose the **Category** (for example Restaurant, Café or Bar & Nightclub).',
+            'If you like, write a **Description** (up to 500 characters), upload a photo with **Upload cover photo** (JPG, PNG or WebP) and pick an emoji in **Icon emoji**.',
+            'Press **Continue**. In the **Location** step, enter the **Street address** and the **Phone**. You can add your **Website**.',
             'Press **Continue**. JChat looks up your address on the map and fills in **Latitude** and **Longitude**; you stay on this step so you can check them.',
             'Check the coordinates and press **Continue** again.',
           ],
@@ -64,14 +64,14 @@ const chapter: HelpChapter = {
         {
           type: 'steps',
           items: [
-            'In the **Hours** step, tap the days you are open under **Working Days** (Mo to Su). You can also use **Select all** or **Clear all**.',
+            'In the **Hours** step, tap the days you are open under **Working days** (Mo to Su). You can also use **Select all** or **Clear all**.',
             'For each open day, choose the opening and closing time. Tick **Open 24 h** if you never close. If you close after midnight, you will see the notice **Closes the next day**.',
             'Use **Copy to all days** to repeat one day\'s hours on the others.',
-            'Press **Continue**. The last step is called **Stripe**: move past it without connecting anything.',
-            'Press **Complete Registration**.',
+            'Press **Continue**. The last step is called **Payments** and is informational only: there is nothing to connect there. It reminds you that you will connect Stripe from Payments when you finish, and to have your business details and the bank account where you want to receive the money at hand.',
+            'Press **Complete registration**.',
           ],
         },
-        { type: 'note', kind: 'important', text: 'Do not press **Connect Stripe** in this form: it does not connect your real account yet. Connect Stripe from **Payments** once you finish registering, as explained in [Get paid](/help/business/get-paid). Without Stripe connected, ordering and payments in the app are unavailable.' },
+        { type: 'note', kind: 'important', text: 'You can complete the registration without Stripe. Connect Stripe from **Payments** once you finish, as explained in [Get paid](/help/business/get-paid). Until then, ordering and payments inside the app are unavailable.' },
       ],
     },
     {
@@ -83,7 +83,7 @@ const chapter: HelpChapter = {
           type: 'steps',
           items: [
             'Press **Go to my dashboard**.',
-            'While you wait, set up your [menu](/help/business/menu) and connect your [payments](/help/business/get-paid).',
+            'To take payments in the app, press **Go to Payments** and connect Stripe. While you wait, also set up your [menu](/help/business/menu). More in [Get paid](/help/business/get-paid).',
           ],
         },
         { type: 'p', text: 'Once your business is verified, it shows on the map and among the nearby venues in the app. Until it is verified, it does not appear. If that screen says **Your business is already verified**, you are all set.' },

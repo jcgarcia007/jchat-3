@@ -47,14 +47,14 @@ const chapter: HelpChapter = {
           ],
         },
         { type: 'note', kind: 'important', text: `Si alguien está en peligro inmediato, llama al 911. No esperes a que se revise un reporte.` },
-        { type: 'p', text: `No puedes reportar tu propio contenido, y hay un límite de reportes por día: si lo alcanzas, la app te avisa y puedes intentarlo mañana.` },
+        { type: 'p', text: `No puedes reportar tu propio contenido, y hay un límite de reportes por día: si lo alcanzas, la app te avisa y puedes intentarlo mañana. Después de enviar un reporte, la app te responde que lo revisamos en 1–2 días hábiles.` },
       ],
     },
     {
       id: 'blocking',
       title: 'Bloquear',
       blocks: [
-        { type: 'p', text: `Bloquear a alguien hace que dejes de ver sus mensajes y que no pueda contactarte. En su perfil, además, no podrá ver tu perfil ni escribirte.` },
+        { type: 'p', text: `Al bloquear, la app te explica: «Ninguno de los dos verá el perfil, las publicaciones ni los mensajes del otro, y no podrán seguirse ni escribirse. Puedes desbloquear cuando quieras». Si bloqueas desde el chat de un local, añade: «Esto no lo quita de la sala».` },
         {
           type: 'steps',
           items: [

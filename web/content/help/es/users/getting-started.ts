@@ -110,7 +110,7 @@ const chapter: HelpChapter = {
       blocks: [
         {
           type: 'p',
-          text: 'Si entras con Apple o Google, la app te muestra **Confirma tu edad** antes de dejarte usarla. También aparece si no pudo guardar tu edad al registrarte con correo, por ejemplo por mala conexión.',
+          text: 'Si entras con Apple o Google, la app te muestra **Confirma tu edad** antes de dejarte usarla. La pantalla te lo recuerda: JChat es solo para mayores de 18 años, y solo guardamos el año de tu fecha de nacimiento. También aparece si no pudo guardar tu edad al registrarte con correo, por ejemplo por mala conexión.',
         },
         {
           type: 'steps',
@@ -173,7 +173,7 @@ const chapter: HelpChapter = {
             '**Cámara**: para tomar fotos para el chat, las publicaciones y tu perfil.',
             '**Fotos**: para elegir imágenes de tu galería para tu perfil, tus publicaciones y tus mensajes.',
             '**Micrófono**: para grabar mensajes de voz.',
-            '**Face ID o huella** (opcional): para desbloquear JChat al abrirlo y confirmar pagos, solo si lo activas.',
+            '**Face ID o huella** (opcional): para desbloquear JChat al abrirlo y confirmar pagos, solo si lo activas. En iPhone es Face ID o Touch ID; en Android, la huella o el reconocimiento facial.',
           ],
         },
         {

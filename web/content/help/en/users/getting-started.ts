@@ -110,7 +110,7 @@ const chapter: HelpChapter = {
       blocks: [
         {
           type: 'p',
-          text: 'If you sign in with Apple or Google, the app shows **Confirm your age** before letting you use it. It also appears if the app could not save your age when you signed up with email, for example because of a poor connection.',
+          text: 'If you sign in with Apple or Google, the app shows **Confirm your age** before letting you use it. The screen reminds you that JChat is only for people aged 18 or older, and that we only keep the year of your date of birth. It also appears if the app could not save your age when you signed up with email, for example because of a poor connection.',
         },
         {
           type: 'steps',
@@ -173,7 +173,7 @@ const chapter: HelpChapter = {
             '**Camera**: to take photos for chat, posts and your profile.',
             '**Photos**: to choose images from your gallery for your profile, your posts and your messages.',
             '**Microphone**: to record voice messages.',
-            '**Face ID or fingerprint** (optional): to unlock JChat when you open it and to confirm payments, only if you turn it on.',
+            '**Face ID or fingerprint** (optional): to unlock JChat when you open it and to confirm payments, only if you turn it on. On iPhone it is Face ID or Touch ID; on Android, your fingerprint or face recognition.',
           ],
         },
         {

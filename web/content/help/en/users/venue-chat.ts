@@ -130,14 +130,15 @@ const chapter: HelpChapter = {
       blocks: [
         {
           type: 'p',
-          text: 'Messages in a venue chat are deleted 24 hours after they are sent. This applies to yours and to everyone else’s.',
+          text: 'Messages in a venue chat are deleted 24 hours after they are sent. This applies to yours and to everyone else’s. The app tells you when you enter the chat: “Messages in this chat are deleted after 24 hours, except pinned ones or those under review because of a report”. The **More options** sheet shows a reminder of this rule.',
         },
         {
           type: 'list',
           items: [
             'Deletion runs every few minutes, so a message can stay visible a little longer than expected.',
             'A message the venue has pinned is kept for as long as it stays pinned.',
-            'A message that has been reported may be kept longer while the report is reviewed.',
+            'Photos you sent to the room are deleted together with their message.',
+            'A message that is under review because of a report may be kept longer, with its photo if it has one.',
           ],
         },
         {

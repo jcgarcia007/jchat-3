@@ -124,7 +124,7 @@ const chapter: HelpChapter = {
       blocks: [
         {
           type: 'p',
-          text: 'Al terminar el pago ves **¡Pago confirmado!** con tu **Número de pedido**, el negocio y el tipo de pedido.',
+          text: 'Al terminar el pago ves **¡Pago confirmado!** con tu **Número de pedido**, el negocio y el tipo de pedido. Debajo, la app te recuerda: «Puedes seguirlo en Mis pedidos.»',
         },
         {
           type: 'steps',

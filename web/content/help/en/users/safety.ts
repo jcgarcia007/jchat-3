@@ -47,14 +47,14 @@ const chapter: HelpChapter = {
           ],
         },
         { type: 'note', kind: 'important', text: `If someone is in immediate danger, call 911. Don't wait for a report to be reviewed.` },
-        { type: 'p', text: `You can't report your own content, and there is a daily limit on reports: if you reach it, the app tells you and you can try again tomorrow.` },
+        { type: 'p', text: `You can't report your own content, and there is a daily limit on reports: if you reach it, the app tells you and you can try again tomorrow. After you send a report, the app tells you we will review it in 1–2 business days.` },
       ],
     },
     {
       id: 'blocking',
       title: 'Block',
       blocks: [
-        { type: 'p', text: `Blocking someone means you stop seeing their messages and they can't contact you. From their profile, they also can't see your profile or message you.` },
+        { type: 'p', text: `When you block, the app explains: “Neither of you will see the other's profile, posts or messages, and you won't be able to follow or message each other. You can unblock anytime.” If you block from a venue chat, it adds: “This does not remove them from the room.”` },
         {
           type: 'steps',
           items: [

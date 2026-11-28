@@ -31,7 +31,7 @@ const chapter: HelpChapter = {
       blocks: [
         {
           type: 'p',
-          text: 'Two things can stop you. If either one happens, nothing is deleted and you can try again once it is sorted out:',
+          text: 'Two things can stop you. If either one happens, nothing is deleted and you can try again once it is sorted out. If closing fails for another reason, the app says “Deleting your account closes your venues. We couldn\'t finish closing them right now and nothing has been deleted. Try again; if it keeps happening, write to…” followed by the contact address:',
         },
         {
           type: 'list',

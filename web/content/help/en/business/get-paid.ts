@@ -10,7 +10,7 @@ const chapter: HelpChapter = {
       id: 'how-it-works',
       title: 'How it works',
       blocks: [
-        { type: 'p', text: 'Customers pay for their orders by card inside JChat. For the money to reach your account, you connect your business with Stripe, which runs its own secure verification.' },
+        { type: 'p', text: 'Customers pay for their orders by card inside JChat. For the money to reach your account, you connect your business with Stripe, which runs its own secure verification. Stripe is connected only from **Payments**: registering your business does not connect it, it only reminds you in its last step.' },
         { type: 'note', kind: 'important', text: 'Without Stripe connected, ordering and payments in the app are unavailable.' },
       ],
     },
@@ -23,7 +23,7 @@ const chapter: HelpChapter = {
           items: [
             'Open the dashboard and go to **Payments**.',
             'If you have more than one venue, choose which one in the **Business** selector. Each venue needs its own Stripe account.',
-            'You will see **Connect Stripe to receive your payments**. Press **Connect with Stripe**.',
+            'A venue that does not have a Stripe account yet shows no connection status: you will see the **Connect Stripe to receive your payments** card. Press **Connect with Stripe**.',
             'Stripe\'s secure page opens. Fill in the details it asks for and submit them.',
             'When you finish, Stripe sends you back to JChat. Open **Payments** again to see your status.',
           ],

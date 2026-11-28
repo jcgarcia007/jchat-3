@@ -16,7 +16,7 @@ const chapter: HelpChapter = {
         },
         {
           type: 'p',
-          text: 'Las ofertas además pueden salir como una tarjeta dentro de la sala de chat de tu local.',
+          text: 'Una oferta aparece en la app desde su fecha de inicio hasta que caduca. Además, si empieza al crearla y eliges una sala, sale como una tarjeta dentro de la sala de chat de tu local.',
         },
         {
           type: 'note',
@@ -90,7 +90,7 @@ const chapter: HelpChapter = {
         {
           type: 'note',
           kind: 'important',
-          text: 'La tarjeta en el chat se publica al crear la oferta solo si empieza en ese momento y elegiste una sala. Si pones un inicio futuro, la oferta queda como **Programada** y la tarjeta no sale sola en el chat.',
+          text: 'La tarjeta en el chat se publica al crear la oferta solo si empieza en ese momento y elegiste una sala. Si pones un inicio futuro, la oferta queda como **Programada**: aparece en la app a la hora de inicio, pero no se publica sola en el chat, así que no sale ningún aviso ni tarjeta en la sala.',
         },
       ],
     },
@@ -100,7 +100,7 @@ const chapter: HelpChapter = {
       blocks: [
         {
           type: 'p',
-          text: 'Cada oferta muestra su estado: **Activa**, **Programada**, **Pausada** o **Finalizada**.',
+          text: 'Cada oferta muestra su estado: **Activa**, **Programada**, **Pausada** o **Finalizada**. **Pausar** solo cambia el estado de la oferta en tu panel: no la quita de la app ni retira su tarjeta del chat.',
         },
         {
           type: 'steps',

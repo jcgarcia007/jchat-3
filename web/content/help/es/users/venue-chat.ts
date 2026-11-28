@@ -130,14 +130,15 @@ const chapter: HelpChapter = {
       blocks: [
         {
           type: 'p',
-          text: 'Los mensajes del chat del local se borran 24 horas después de enviarse. Esto vale para los tuyos y para los de los demás.',
+          text: 'Los mensajes del chat del local se borran 24 horas después de enviarse. Esto vale para los tuyos y para los de los demás. La app te lo avisa al entrar al chat: «Los mensajes de este chat se borran a las 24 horas, salvo los fijados o los que estén en revisión por un reporte». En la hoja de **Más opciones** también ves un recordatorio de esta regla.',
         },
         {
           type: 'list',
           items: [
             'El borrado se hace cada pocos minutos, así que un mensaje puede verse un rato más de lo esperado.',
             'Un mensaje fijado por el local se conserva mientras siga fijado.',
-            'Un mensaje que se haya reportado puede conservarse más tiempo mientras se revisa el reporte.',
+            'Las fotos que enviaste a la sala se borran junto con su mensaje.',
+            'Un mensaje que esté en revisión por un reporte puede conservarse más tiempo, con su foto si la tiene.',
           ],
         },
         {

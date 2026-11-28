@@ -10,7 +10,7 @@ const chapter: HelpChapter = {
       id: 'how-it-works',
       title: 'Cómo funciona',
       blocks: [
-        { type: 'p', text: 'Los clientes pagan sus pedidos con tarjeta dentro de JChat. Para que el dinero llegue a tu cuenta, conectas tu negocio con Stripe, que hace su propia verificación segura.' },
+        { type: 'p', text: 'Los clientes pagan sus pedidos con tarjeta dentro de JChat. Para que el dinero llegue a tu cuenta, conectas tu negocio con Stripe, que hace su propia verificación segura. Stripe se conecta solo desde **Pagos**: el registro del negocio no lo conecta, solo te lo recuerda en su último paso.' },
         { type: 'note', kind: 'important', text: 'Sin Stripe conectado no se pueden hacer pedidos ni pagos desde la app.' },
       ],
     },
@@ -23,7 +23,7 @@ const chapter: HelpChapter = {
           items: [
             'Abre el panel y entra a **Pagos**.',
             'Si tienes más de un local, elige cuál en el selector **Negocio**. Cada local necesita su propia cuenta de Stripe.',
-            'Verás **Conecta Stripe para recibir tus pagos**. Pulsa **Conectar con Stripe**.',
+            'Un local que aún no tiene cuenta de Stripe no muestra ningún estado de conexión: verás la tarjeta **Conecta Stripe para recibir tus pagos**. Pulsa **Conectar con Stripe**.',
             'Se abre la página segura de Stripe. Completa los datos que te pida y envíalos.',
             'Al terminar, Stripe te devuelve a JChat. Abre **Pagos** otra vez para ver tu estado.',
           ],

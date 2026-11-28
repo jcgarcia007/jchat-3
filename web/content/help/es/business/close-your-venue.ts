@@ -31,7 +31,7 @@ const chapter: HelpChapter = {
       blocks: [
         {
           type: 'p',
-          text: 'Hay dos cosas que te lo impiden. Si ocurre alguna, no se borra nada y puedes volver a intentarlo cuando se resuelva:',
+          text: 'Hay dos cosas que te lo impiden. Si ocurre alguna, no se borra nada y puedes volver a intentarlo cuando se resuelva. Si el cierre falla por otro motivo, la app dice «Al eliminar tu cuenta se cierran tus locales. No pudimos completar el cierre ahora y no se ha borrado nada. Inténtalo de nuevo; si sigue igual, escribe a…» y la dirección de contacto:',
         },
         {
           type: 'list',

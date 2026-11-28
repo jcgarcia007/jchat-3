@@ -124,7 +124,7 @@ const chapter: HelpChapter = {
       blocks: [
         {
           type: 'p',
-          text: 'When the payment is done you see **Payment confirmed!** with your **Order number**, the business and the order type.',
+          text: 'When the payment is done you see **Payment confirmed!** with your **Order number**, the business and the order type. Below, the app reminds you: “You can follow it in My orders.”',
         },
         {
           type: 'steps',

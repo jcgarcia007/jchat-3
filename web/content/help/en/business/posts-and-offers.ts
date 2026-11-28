@@ -16,7 +16,7 @@ const chapter: HelpChapter = {
         },
         {
           type: 'p',
-          text: 'Offers can also appear as a card inside your venue\'s chat room.',
+          text: 'An offer shows in the app from its start date until it expires. Also, if it starts when you create it and you choose a room, it appears as a card inside your venue\'s chat room.',
         },
         {
           type: 'note',
@@ -90,7 +90,7 @@ const chapter: HelpChapter = {
         {
           type: 'note',
           kind: 'important',
-          text: 'The chat card is posted when you create the offer only if it starts right then and you chose a room. If you set a future start, the offer is saved as **Scheduled** and the card does not appear in the chat by itself.',
+          text: 'The chat card is posted when you create the offer only if it starts right then and you chose a room. If you set a future start, the offer is saved as **Scheduled**: it shows in the app at its start time, but it is not posted to the chat on its own, so no notice or card appears in the room.',
         },
       ],
     },
@@ -100,7 +100,7 @@ const chapter: HelpChapter = {
       blocks: [
         {
           type: 'p',
-          text: 'Each offer shows its status: **Active**, **Scheduled**, **Paused** or **Ended**.',
+          text: 'Each offer shows its status: **Active**, **Scheduled**, **Paused** or **Ended**. **Pause** only changes the offer\'s status in your dashboard: it does not remove it from the app or take its card out of the chat.',
         },
         {
           type: 'steps',

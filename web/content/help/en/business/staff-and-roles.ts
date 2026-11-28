@@ -31,7 +31,7 @@ const chapter: HelpChapter = {
         },
         {
           type: 'p',
-          text: 'The person gets a notification on their phone: "added you as…". Under **Staff Roster** you see your whole team with their role and their status (for example **Active**).',
+          text: 'Someone you add from the form is accepted right away, with no need to reply, and gets a notification on their phone: "added you as…". Under **Staff Roster** you see your whole team with their role and their status (for example **Active**). The **No reply** and **Declined** statuses only appear from older invitations. On each row you can set the **Name on receipt** (optional) with **Edit receipt name** and **Save name**; if you leave it empty, their JChat name is used.',
         },
       ],
     },
@@ -113,7 +113,7 @@ const chapter: HelpChapter = {
         {
           type: 'note',
           kind: 'important',
-          text: 'If you reach the limit you will see "You have reached the employee limit on your current plan". See the plans in [Plans and free trial](/help/business/plans-and-trial).',
+          text: 'Everyone on the list counts toward the limit, including people left pending or declined from older invitations. If you reach the limit you will see "You have reached the employee limit on your current plan". See the plans in [Plans and free trial](/help/business/plans-and-trial).',
         },
       ],
     },

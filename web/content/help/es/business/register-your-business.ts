@@ -28,7 +28,7 @@ const chapter: HelpChapter = {
       id: 'choose-a-plan',
       title: 'Elige un plan antes de registrar el local',
       blocks: [
-        { type: 'p', text: 'Para registrar un local, tu cuenta necesita un plan Business o Pro activo; la prueba gratis cuenta. Sin plan, el formulario de registro muestra **Business limit reached**. Mira los planes y empieza tu prueba en [Planes y prueba gratis](/help/business/plans-and-trial).' },
+        { type: 'p', text: 'Para registrar un local, tu cuenta necesita un plan Business o Pro activo; la prueba gratis cuenta. Sin plan, el formulario de registro muestra **Llegaste al límite de negocios**, con los botones **Contáctanos** y **Volver al panel**. Si el límite se alcanza al terminar el registro, verás «Llegaste al límite de negocios y eventos de tu plan. Mejora tu plan para añadir más.» con el enlace **Ver planes**. Mira los planes y empieza tu prueba en [Planes y prueba gratis](/help/business/plans-and-trial).' },
         { type: 'note', kind: 'important', text: 'El plan Business permite 1 local o evento. El plan Pro permite hasta 10 locales o eventos en total.' },
       ],
     },
@@ -37,22 +37,22 @@ const chapter: HelpChapter = {
       title: 'Datos y ubicación del local',
       blocks: [
         { type: 'p', text: 'Con tu plan activo, abre [jchat.cloud/business/register](https://jchat.cloud/business/register) e inicia sesión si te lo pide. Si entras al panel con una cuenta sin local, también verás el botón **Registrar mi negocio**.' },
-        { type: 'note', kind: 'important', text: 'Este formulario aparece casi todo en inglés. Aquí usamos los nombres tal como los ves en pantalla.' },
+        { type: 'note', kind: 'important', text: 'Los campos que terminan en asterisco (*) son obligatorios: **Nombre del negocio**, **Categoría**, **Dirección** y **Teléfono**, además de la ubicación.' },
         {
           type: 'steps',
           items: [
-            'En el paso **Info**, escribe el **Business Name** y elige la **Category** (por ejemplo Restaurant, Café o Bar & Nightclub).',
-            'Si quieres, escribe una **Description** (hasta 500 caracteres), sube una foto con **Upload cover photo** (JPG, PNG o WebP) y elige un emoji en **Icon Emoji**.',
-            'Pulsa **Continue**. En el paso **Location** escribe la **Street Address** y el **Phone**. Puedes añadir tu **Website**.',
-            'Pulsa **Continue**. JChat busca tu dirección en el mapa y rellena **Latitude** y **Longitude**; te quedas en este paso para que las revises.',
-            'Revisa las coordenadas y pulsa **Continue** otra vez.',
+            'En el paso **Datos**, escribe el **Nombre del negocio** y elige la **Categoría** (por ejemplo Restaurante, Café o Bar y discoteca).',
+            'Si quieres, escribe una **Descripción** (hasta 500 caracteres), sube una foto con **Subir foto de portada** (JPG, PNG o WebP) y elige un emoji en **Emoji de icono**.',
+            'Pulsa **Continuar**. En el paso **Ubicación** escribe la **Dirección** y el **Teléfono**. Puedes añadir tu **Sitio web**.',
+            'Pulsa **Continuar**. JChat busca tu dirección en el mapa y rellena **Latitud** y **Longitud**; te quedas en este paso para que las revises.',
+            'Revisa las coordenadas y pulsa **Continuar** otra vez.',
           ],
         },
         {
           type: 'list',
           items: [
             'La ubicación es obligatoria: así confirmamos que las personas están en tu local. Si no encuentra la dirección, escribe tú la latitud y la longitud.',
-            '**Radius (m)** empieza en 100 y no puede ser menor de 10. Es el radio de tu local.',
+            '**Radio (m)** empieza en 100 y no puede ser menor de 10. Es el radio de tu local.',
           ],
         },
       ],
@@ -64,14 +64,14 @@ const chapter: HelpChapter = {
         {
           type: 'steps',
           items: [
-            'En el paso **Hours**, toca en **Working Days** los días en que abres (Mo a Su). También puedes usar **Select all** o **Clear all**.',
+            'En el paso **Horario**, toca en **Días de apertura** los días en que abres (Lu a Do). También puedes usar **Marcar todos** o **Quitar todos**.',
             'Para cada día abierto, elige la hora de apertura y la de cierre. Marca **Abierto 24 h** si no cierras. Si cierras después de medianoche, verás el aviso **Cierra al día siguiente**.',
             'Con **Copiar a todos los días** repites el horario de un día en los demás.',
-            'Pulsa **Continue**. El último paso se llama **Stripe**: pásalo sin conectar nada.',
-            'Pulsa **Complete Registration**.',
+            'Pulsa **Continuar**. El último paso se llama **Cobros** y es solo informativo: no hay nada que conectar ahí. Te recuerda que conectarás Stripe desde Pagos cuando termines, y que tengas a mano los datos de tu negocio y los de la cuenta bancaria donde quieres recibir el dinero.',
+            'Pulsa **Completar registro**.',
           ],
         },
-        { type: 'note', kind: 'important', text: 'No pulses **Connect Stripe** en este formulario: ahí todavía no conecta tu cuenta real. Conecta Stripe desde **Pagos** cuando termines de registrarte, como se explica en [Cobra tus pedidos](/help/business/get-paid). Sin Stripe conectado no se pueden hacer pedidos ni pagos desde la app.' },
+        { type: 'note', kind: 'important', text: 'Puedes completar el registro sin Stripe. Conecta Stripe desde **Pagos** cuando termines, como se explica en [Cobra tus pedidos](/help/business/get-paid). Hasta entonces, los pedidos y los pagos dentro de la app no estarán disponibles.' },
       ],
     },
     {
@@ -83,7 +83,7 @@ const chapter: HelpChapter = {
           type: 'steps',
           items: [
             'Pulsa **Ir a mi dashboard**.',
-            'Mientras esperas, prepara tu [menú](/help/business/menu) y conecta tus [cobros](/help/business/get-paid).',
+            'Para cobrar en la app, pulsa **Ir a Pagos** y conecta Stripe. Mientras esperas, prepara también tu [menú](/help/business/menu). Más en [Cobra tus pedidos](/help/business/get-paid).',
           ],
         },
         { type: 'p', text: 'Cuando tu negocio queda verificado, aparece en el mapa y entre los locales cercanos de la app. Si todavía no está verificado, no aparece. Si esa pantalla dice **Tu negocio ya está verificado**, ya está listo.' },

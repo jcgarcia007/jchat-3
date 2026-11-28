@@ -31,7 +31,7 @@ const chapter: HelpChapter = {
         },
         {
           type: 'p',
-          text: 'La persona recibe un aviso en su teléfono: «te agregó como…». En **Plantilla** ves a todo tu equipo con su rol y su estado (por ejemplo **Activo**).',
+          text: 'Quien añades desde el formulario queda aceptado al instante, sin tener que responder, y recibe un aviso en su teléfono: «te agregó como…». En **Plantilla** ves a todo tu equipo con su rol y su estado (por ejemplo **Activo**). Los estados **Sin responder** y **Rechazado** solo aparecen en invitaciones antiguas. En cada fila puedes poner el **Nombre en el recibo** (opcional) con **Editar nombre en el recibo** y **Guardar nombre**; si lo dejas vacío, se usa su nombre en JChat.',
         },
       ],
     },
@@ -113,7 +113,7 @@ const chapter: HelpChapter = {
         {
           type: 'note',
           kind: 'important',
-          text: 'Si llegas al límite verás «Has alcanzado el límite de empleados de tu plan actual». Revisa los planes en [Planes y prueba gratis](/help/business/plans-and-trial).',
+          text: 'Cada persona de la lista cuenta para el límite, también las que quedaron como pendientes o rechazadas en invitaciones antiguas. Si llegas al límite verás «Has alcanzado el límite de empleados de tu plan actual». Revisa los planes en [Planes y prueba gratis](/help/business/plans-and-trial).',
         },
       ],
     },

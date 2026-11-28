@@ -74,14 +74,14 @@ const chapter: HelpChapter = {
           type: 'steps',
           items: [
             'In **Billing**, scroll to **Update payment method or billing details**.',
-            'Press **Manage billing**.',
-            'In the billing portal you can update your card, download your invoices or cancel your subscription.',
+            'To change your card or cancel your subscription, press **Manage billing**.',
+            'To see and download every invoice and receipt, scroll to **Payment history** and press **View invoices and receipts**.',
           ],
         },
         {
           type: 'note',
           kind: 'important',
-          text: 'If the portal does not open because you do not have a billing account yet, subscribe to a plan first.',
+          text: 'Both buttons open the Stripe billing portal. If the portal does not open because you do not have a billing account yet, subscribe to a plan first.',
         },
       ],
     },

@@ -74,14 +74,14 @@ const chapter: HelpChapter = {
           type: 'steps',
           items: [
             'En **Facturación**, baja a **Actualiza el método de pago o los datos de facturación**.',
-            'Pulsa **Gestionar facturación**.',
-            'En el portal de facturación puedes actualizar tu tarjeta, descargar tus facturas o cancelar tu suscripción.',
+            'Para cambiar tu tarjeta o cancelar tu suscripción, pulsa **Gestionar facturación**.',
+            'Para ver y descargar cada factura y recibo, baja a **Historial de pagos** y pulsa **Ver facturas y recibos**.',
           ],
         },
         {
           type: 'note',
           kind: 'important',
-          text: 'Si el portal no se abre porque aún no tienes una cuenta de facturación, primero suscríbete a un plan.',
+          text: 'Los dos botones abren el portal de facturación de Stripe. Si el portal no se abre porque aún no tienes una cuenta de facturación, primero suscríbete a un plan.',
         },
       ],
     },

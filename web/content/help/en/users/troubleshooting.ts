@@ -68,14 +68,14 @@ const chapter: HelpChapter = {
             `**This venue doesn't accept in-app payments yet**: you can order at the counter.`,
           ],
         },
-        { type: 'note', kind: 'important', text: `Refunds are handled by the venue that served you. Contact them first with your receipt code. If you paid through JChat and can't reach the venue, write to us.` },
+        { type: 'note', kind: 'important', text: `Refunds are handled by the venue that served you. Contact them first with your order number. If you paid through JChat and can't reach the venue, write to us.` },
       ],
     },
     {
       id: 'contact',
       title: 'How to contact us',
       blocks: [
-        { type: 'p', text: `Write to [soporte@jchat.cloud](mailto:soporte@jchat.cloud). Include the email on your account and, for an order, the receipt code. You can also use [Contact](/contact) or the [Help & Support](/support) page.` },
+        { type: 'p', text: `Write to [soporte@jchat.cloud](mailto:soporte@jchat.cloud). Include the email on your account and, for an order, the order number. You can also use [Contact](/contact) or the [Help & Support](/support) page.` },
         { type: 'p', text: `If you want to report someone, see [Safety](/help/users/safety).` },
       ],
     },
