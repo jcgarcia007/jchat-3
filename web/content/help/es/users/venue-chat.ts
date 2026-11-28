@@ -15,6 +15,14 @@ const chapter: HelpChapter = {
           text: 'El chat de un local es para la gente que está en el local en ese momento. Por eso la app comprueba tu ubicación al entrar: así nadie de afuera se une. Usa tu ubicación solo mientras la app está abierta.',
         },
         {
+          type: 'image',
+          src: '/help/users/venue-chat/entry-sheet-es.webp',
+          alt: 'Hoja de entrada al chat del local, con el aviso de que los mensajes se borran a las 24 horas y el botón Entrar al chat.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
+        },
+        {
           type: 'steps',
           items: [
             'Elige el local. En **Mapa**, toca su pin y luego **Entrar al chat**. En **Cerca**, toca **Entrar** en su tarjeta. También puedes escanear con la cámara de tu teléfono el QR del local o de tu mesa, si lo tiene.',
@@ -41,6 +49,14 @@ const chapter: HelpChapter = {
       title: 'Escribir, fotos y notas de voz',
       blocks: [
         { type: 'p', text: 'Para escribir un mensaje:' },
+        {
+          type: 'image',
+          src: '/help/users/venue-chat/room-es.webp',
+          alt: 'Sala de chat de un local, con la caja de mensaje, el botón de cámara y el de nota de voz.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
+        },
         {
           type: 'steps',
           items: [
@@ -133,6 +149,14 @@ const chapter: HelpChapter = {
           text: 'Los mensajes del chat del local se borran 24 horas después de enviarse. Esto vale para los tuyos y para los de los demás. La app te lo avisa al entrar al chat: «Los mensajes de este chat se borran a las 24 horas, salvo los fijados o los que estén en revisión por un reporte». En la hoja de **Más opciones** también ves un recordatorio de esta regla.',
         },
         {
+          type: 'image',
+          src: '/help/users/venue-chat/room-more-es.webp',
+          alt: 'Menú de la sala con Mi perfil, Mi cuenta y pedidos, Pedir ayuda al local y Salir del local, y el recordatorio de las 24 horas.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
+        },
+        {
           type: 'list',
           items: [
             'El borrado se hace cada pocos minutos, así que un mensaje puede verse un rato más de lo esperado.',
@@ -159,6 +183,14 @@ const chapter: HelpChapter = {
             'Toca **Salir del local**.',
             'La app pregunta si quieres salir. Toca **Salir del local** para confirmar o **Cancelar** para quedarte.',
           ],
+        },
+        {
+          type: 'image',
+          src: '/help/users/venue-chat/leave-es.webp',
+          alt: 'Aviso al salir del local, que explica que se pierde la conversación y lo que hiciste en Match.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
         },
         {
           type: 'p',

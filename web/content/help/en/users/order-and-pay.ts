@@ -22,6 +22,14 @@ const chapter: HelpChapter = {
           ],
         },
         {
+          type: 'image',
+          src: '/help/users/order-and-pay/menu-en.webp',
+          alt: 'A venue menu with categories, prices and the plus button to add each product.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
+        },
+        {
           type: 'note',
           kind: 'important',
           text: 'You can see the menu wherever you are. To order, you have to be inside the venue. If you are outside, the menu is read-only and the app tells you that you can only view it from outside, unless the venue allows ordering for pick-up.',
@@ -46,6 +54,14 @@ const chapter: HelpChapter = {
             'If you chose **Table**, type your table or location in **Table / location**, for example 5, bar or terrace. It is required.',
             'Tap **Proceed to Checkout**. The button shows the subtotal.',
           ],
+        },
+        {
+          type: 'image',
+          src: '/help/users/order-and-pay/cart-en.webp',
+          alt: 'The cart with the Table or Counter option, the table field and the button that asks you to enter your table to continue.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
         },
         {
           type: 'p',

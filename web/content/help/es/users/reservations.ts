@@ -12,6 +12,14 @@ const chapter: HelpChapter = {
       blocks: [
         { type: 'p', text: `Solo eliges: no hay nada que escribir. Una reserva es una solicitud: el local la confirma después.` },
         {
+          type: 'image',
+          src: '/help/users/reservations/reserve-day-es.webp',
+          alt: 'Primer paso para reservar mesa: elegir el día entre los próximos días o Más fechas.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
+        },
+        {
           type: 'steps',
           items: [
             `Abre la pestaña **Mapa** y toca el local donde quieres reservar.`,
@@ -66,6 +74,14 @@ const chapter: HelpChapter = {
             `Toca el icono de ajustes.`,
             `Toca **Mis reservas**.`,
           ],
+        },
+        {
+          type: 'image',
+          src: '/help/users/reservations/my-reservations-es.webp',
+          alt: 'Pantalla Mis reservas con reservas anteriores y su estado.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
         },
         { type: 'p', text: `La lista tiene dos partes: **Próximas** y **Anteriores**. Arriba verás **Tu próxima reserva** con la información más importante. Esa tarjeta también aparece al principio de la pestaña **Cerca** mientras tengas una reserva pendiente o confirmada.` },
         { type: 'p', text: `La tarjeta tiene cuatro botones: **Cómo llegar** (abre la app de mapas de tu teléfono), **Añadir al calendario**, **Ver local** y **Cancelar**.` },

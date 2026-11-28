@@ -15,6 +15,14 @@ const chapter: HelpChapter = {
           text: 'La barra de abajo tiene cuatro pestañas (**Mapa**, **Cerca**, **Mensajes** y **Perfil**) y un botón central, **Ofertas**. El mapa es la primera pestaña.',
         },
         {
+          type: 'image',
+          src: '/help/users/find-a-venue/map-es.webp',
+          alt: 'Pestaña Mapa de JChat con pines de locales, el buscador y los filtros por tipo de local.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
+        },
+        {
           type: 'steps',
           items: [
             'Toca **Mapa**.',
@@ -45,6 +53,14 @@ const chapter: HelpChapter = {
         {
           type: 'p',
           text: 'Si prefieres una lista en vez de un mapa, usa la pestaña **Cerca**. Cada local aparece en una tarjeta con su categoría, si está abierto o cerrado, cuántas salas tiene, cuántas personas hay y la distancia.',
+        },
+        {
+          type: 'image',
+          src: '/help/users/find-a-venue/nearby-es.webp',
+          alt: 'Pestaña Cerca con la lista de locales, su distancia y el botón Entrar.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
         },
         {
           type: 'steps',
@@ -95,6 +111,14 @@ const chapter: HelpChapter = {
         {
           type: 'p',
           text: 'La ficha se abre al tocar un pin, un resultado de búsqueda o **Ver local** en la pestaña de ofertas. Muestra las fotos, la descripción, la dirección y la distancia, la calificación, el horario y cuántas personas hay activas.',
+        },
+        {
+          type: 'image',
+          src: '/help/users/find-a-venue/venue-card-es.webp',
+          alt: 'Ficha de un local con los botones Entrar al chat, Cómo llegar, Menú, Ofertas y Reservar.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
         },
         {
           type: 'list',

@@ -12,6 +12,14 @@ const chapter: HelpChapter = {
       blocks: [
         { type: 'p', text: `You only pick: there is nothing to type. A reservation is a request: the venue confirms it afterwards.` },
         {
+          type: 'image',
+          src: '/help/users/reservations/reserve-day-en.webp',
+          alt: 'The first step to book a table: choose the day from the next days or More dates.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
+        },
+        {
           type: 'steps',
           items: [
             `Open the **Map** tab and tap the venue where you want to book.`,
@@ -66,6 +74,14 @@ const chapter: HelpChapter = {
             `Tap the settings icon.`,
             `Tap **My reservations**.`,
           ],
+        },
+        {
+          type: 'image',
+          src: '/help/users/reservations/my-reservations-en.webp',
+          alt: 'The My reservations screen with past reservations and their status.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
         },
         { type: 'p', text: `The list has two parts: **Upcoming** and **Past**. At the top you will see **Your next reservation** with the key details. That card also shows at the top of the **Nearby** tab while you have a pending or confirmed reservation.` },
         { type: 'p', text: `The card has four buttons: **Directions** (opens your phone's maps app), **Add to calendar**, **View venue** and **Cancel**.` },

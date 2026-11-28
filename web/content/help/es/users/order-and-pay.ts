@@ -22,6 +22,14 @@ const chapter: HelpChapter = {
           ],
         },
         {
+          type: 'image',
+          src: '/help/users/order-and-pay/menu-es.webp',
+          alt: 'Menú de un local con categorías, precios y el botón más para añadir cada producto.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
+        },
+        {
           type: 'note',
           kind: 'important',
           text: 'Estés donde estés puedes ver el menú. Para pedir, tienes que estar dentro del local. Si estás fuera, el menú es solo de lectura y la app te avisa de que solo puedes verlo desde fuera, salvo que el local permita pedir para recoger.',
@@ -46,6 +54,14 @@ const chapter: HelpChapter = {
             'Si elegiste **Mesa**, escribe tu mesa o lugar en **Mesa o lugar**, por ejemplo 5, barra o terraza. Es obligatorio.',
             'Toca **Ir al pago**. El botón muestra el subtotal.',
           ],
+        },
+        {
+          type: 'image',
+          src: '/help/users/order-and-pay/cart-es.webp',
+          alt: 'Carrito con la opción Mesa o Mostrador, el campo de mesa y el botón que pide indicar la mesa para continuar.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
         },
         {
           type: 'p',

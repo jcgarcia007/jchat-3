@@ -15,6 +15,14 @@ const chapter: HelpChapter = {
           text: 'A venue chat is for the people who are at the venue right now. That is why the app checks your location when you enter: so nobody from outside joins. It uses your location only while the app is open.',
         },
         {
+          type: 'image',
+          src: '/help/users/venue-chat/entry-sheet-en.webp',
+          alt: 'The venue chat entry sheet, with the notice that messages are deleted after 24 hours and the Enter the chat button.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
+        },
+        {
           type: 'steps',
           items: [
             'Pick the venue. On **Map**, tap its pin and then **Enter Chat**. On **Nearby**, tap **Enter** on its card. You can also scan the venue’s QR, or your table’s, with your phone camera, if it has one.',
@@ -41,6 +49,14 @@ const chapter: HelpChapter = {
       title: 'Writing, photos and voice notes',
       blocks: [
         { type: 'p', text: 'To write a message:' },
+        {
+          type: 'image',
+          src: '/help/users/venue-chat/room-en.webp',
+          alt: 'A venue chat room, with the message box, the camera button and the voice note button.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
+        },
         {
           type: 'steps',
           items: [
@@ -133,6 +149,14 @@ const chapter: HelpChapter = {
           text: 'Messages in a venue chat are deleted 24 hours after they are sent. This applies to yours and to everyone else’s. The app tells you when you enter the chat: “Messages in this chat are deleted after 24 hours, except pinned ones or those under review because of a report”. The **More options** sheet shows a reminder of this rule.',
         },
         {
+          type: 'image',
+          src: '/help/users/venue-chat/room-more-en.webp',
+          alt: 'The room menu with My profile, My account and orders, Ask the venue for help and Leave the venue, plus the 24 hour reminder.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
+        },
+        {
           type: 'list',
           items: [
             'Deletion runs every few minutes, so a message can stay visible a little longer than expected.',
@@ -159,6 +183,14 @@ const chapter: HelpChapter = {
             'Tap **Leave the venue**.',
             'The app asks if you want to leave. Tap **Leave the venue** to confirm or **Cancel** to stay.',
           ],
+        },
+        {
+          type: 'image',
+          src: '/help/users/venue-chat/leave-en.webp',
+          alt: 'The leave venue warning, which explains that you lose the conversation and what you did in Match.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
         },
         {
           type: 'p',

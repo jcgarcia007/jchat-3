@@ -12,6 +12,22 @@ const chapter: HelpChapter = {
       blocks: [
         { type: 'p', text: `Your profile is in the **Profile** tab. There you see your posts and your network (followers, following and requests).` },
         {
+          type: 'image',
+          src: '/help/users/profile-and-privacy/edit-profile-en.webp',
+          alt: 'The Edit Profile screen with display name, username, bio and city.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
+        },
+        {
+          type: 'image',
+          src: '/help/users/profile-and-privacy/profile-en.webp',
+          alt: 'The Profile screen with the Edit Profile and Post buttons.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
+        },
+        {
           type: 'steps',
           items: [
             `Tap the **Profile** tab.`,
@@ -56,6 +72,14 @@ const chapter: HelpChapter = {
       blocks: [
         { type: 'p', text: `All of this is in **Settings** → **Privacy Settings**. On that screen the app reminds you that your real-time location is never shared and that this cannot be changed.` },
         {
+          type: 'image',
+          src: '/help/users/profile-and-privacy/privacy-en.webp',
+          alt: 'Privacy settings, with the notice that your real-time location is never shared.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
+        },
+        {
           type: 'steps',
           items: [
             `Tap the **Profile** tab and then the settings icon.`,
@@ -84,6 +108,14 @@ const chapter: HelpChapter = {
       blocks: [
         { type: 'p', text: `Open it with the **Profile** tab and the settings icon. The screen is called **Settings**.` },
         {
+          type: 'image',
+          src: '/help/users/profile-and-privacy/settings-language-en.webp',
+          alt: 'Settings with the language selector, the theme and the news radius.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
+        },
+        {
           type: 'steps',
           items: [
             `Under **Language**, pick **English** or **Español**. The app changes right away.`,
@@ -100,6 +132,14 @@ const chapter: HelpChapter = {
       title: 'App lock and password',
       blocks: [
         { type: 'p', text: `You can ask for your fingerprint or face when the app opens and before paying.` },
+        {
+          type: 'image',
+          src: '/help/users/profile-and-privacy/settings-bottom-en.webp',
+          alt: 'The bottom of Settings with Help, Contact us, Face ID or fingerprint, Sign Out and Delete Account.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
+        },
         {
           type: 'steps',
           items: [

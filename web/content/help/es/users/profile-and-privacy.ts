@@ -12,6 +12,22 @@ const chapter: HelpChapter = {
       blocks: [
         { type: 'p', text: `Tu perfil está en la pestaña **Perfil**. Ahí ves tus publicaciones y tu red (seguidores, siguiendo y solicitudes).` },
         {
+          type: 'image',
+          src: '/help/users/profile-and-privacy/edit-profile-es.webp',
+          alt: 'Pantalla Editar perfil con nombre visible, nombre de usuario, biografía y ciudad.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
+        },
+        {
+          type: 'image',
+          src: '/help/users/profile-and-privacy/profile-es.webp',
+          alt: 'Pantalla de Perfil con los botones Editar perfil y Publicar.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
+        },
+        {
           type: 'steps',
           items: [
             `Toca la pestaña **Perfil**.`,
@@ -56,6 +72,14 @@ const chapter: HelpChapter = {
       blocks: [
         { type: 'p', text: `Todo esto está en **Ajustes** → **Ajustes de privacidad**. En esa pantalla la app te recuerda que tu ubicación en tiempo real nunca se comparte y que eso no se puede cambiar.` },
         {
+          type: 'image',
+          src: '/help/users/profile-and-privacy/privacy-es.webp',
+          alt: 'Ajustes de privacidad, con el aviso de que tu ubicación en tiempo real nunca se comparte.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
+        },
+        {
           type: 'steps',
           items: [
             `Toca la pestaña **Perfil** y luego el icono de ajustes.`,
@@ -84,6 +108,14 @@ const chapter: HelpChapter = {
       blocks: [
         { type: 'p', text: `Entra con la pestaña **Perfil** y el icono de ajustes. La pantalla se llama **Ajustes**.` },
         {
+          type: 'image',
+          src: '/help/users/profile-and-privacy/settings-language-es.webp',
+          alt: 'Ajustes con el selector de idioma, el tema y el radio de novedades.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
+        },
+        {
           type: 'steps',
           items: [
             `En **Idioma**, elige **English** o **Español**. La app cambia al momento.`,
@@ -100,6 +132,14 @@ const chapter: HelpChapter = {
       title: 'Bloqueo de la app y contraseña',
       blocks: [
         { type: 'p', text: `Puedes pedir tu huella o tu cara al abrir la app y antes de pagar.` },
+        {
+          type: 'image',
+          src: '/help/users/profile-and-privacy/settings-bottom-es.webp',
+          alt: 'Parte baja de Ajustes con Ayuda, Contacto, Face ID o huella, Cerrar sesión y Eliminar cuenta.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
+        },
         {
           type: 'steps',
           items: [

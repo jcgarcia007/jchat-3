@@ -15,6 +15,14 @@ const chapter: HelpChapter = {
           text: 'The bar at the bottom has four tabs (**Map**, **Nearby**, **Messages** and **Profile**) and a button in the middle, **Offers**. The map is the first tab.',
         },
         {
+          type: 'image',
+          src: '/help/users/find-a-venue/map-en.webp',
+          alt: 'The JChat Map tab with venue pins, the search bar and the venue type filters.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
+        },
+        {
           type: 'steps',
           items: [
             'Tap **Map**.',
@@ -45,6 +53,14 @@ const chapter: HelpChapter = {
         {
           type: 'p',
           text: 'If you prefer a list to a map, use the **Nearby** tab. Each venue is a card with its category, whether it is open or closed, how many rooms it has, how many people are there and the distance.',
+        },
+        {
+          type: 'image',
+          src: '/help/users/find-a-venue/nearby-en.webp',
+          alt: 'The Nearby tab with the list of venues, their distance and the Enter button.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
         },
         {
           type: 'steps',
@@ -95,6 +111,14 @@ const chapter: HelpChapter = {
         {
           type: 'p',
           text: 'The card opens when you tap a pin, a search result or **View venue** on the offers tab. It shows the photos, the description, the address and distance, the rating, the opening hours and how many people are active.',
+        },
+        {
+          type: 'image',
+          src: '/help/users/find-a-venue/venue-card-en.webp',
+          alt: 'A venue card with the Enter Chat, Directions, Menu, Offers and Reserve buttons.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
         },
         {
           type: 'list',

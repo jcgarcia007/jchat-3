@@ -15,6 +15,14 @@ const chapter: HelpChapter = {
           text: 'Tap **Messages** in the bar at the bottom. The screen has two parts:',
         },
         {
+          type: 'image',
+          src: '/help/users/messages/tab-en.webp',
+          alt: 'The Messages tab with the private messages list and notifications.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
+        },
+        {
           type: 'list',
           items: [
             '**Private messages**: your one-to-one conversations. If you have unread messages, you will see how many with a **new** label.',

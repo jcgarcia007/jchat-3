@@ -15,6 +15,14 @@ const chapter: HelpChapter = {
           text: 'Toca **Mensajes** en la barra de abajo. La pantalla tiene dos partes:',
         },
         {
+          type: 'image',
+          src: '/help/users/messages/tab-es.webp',
+          alt: 'Pestaña Mensajes con la lista de mensajes privados y las notificaciones.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
+        },
+        {
           type: 'list',
           items: [
             '**Mensajes privados**: tus conversaciones uno a uno. Si tienes mensajes sin leer, verás cuántos con la etiqueta **nuevos**.',
