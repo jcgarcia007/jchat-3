@@ -231,3 +231,17 @@ Dev builds de `DEV_BUILDS.md`, Metro sirviendo `fix/l2-restos` (puerto 8082). Ca
 | H-072 SEO | Parcial | `canonical` y sitemap con fichas `verified`; **no hecho `og:image`** (no hay imagen adecuada en `web/public`) |
 
 **Fuera de este lote — después del lanzamiento:** H-015, H-020, H-022, H-024, H-039, H-045, H-046, H-061, H-062, H-064, H-069, H-077, H-080 y los avisos de Google Maps de H-063.
+
+## Lote G · archivos del chat, ofertas pausadas y últimos detalles (28-nov-2026) — `release/lote-g` @ `b196e437` (A `fix/lg-servidor` @ `40af8331` + B `fix/lg-app-web` @ `fd6f9d2d`)
+
+| Hallazgo | Estado | Cómo se comprobó |
+|---|---|---|
+| Las fotos y notas de voz del chat no se borraban a las 24 h (solo las filas) | Corregido en código; **migración 278 y función `chat-media-purge` sin aplicar/desplegar** | Prueba SQL local (59 comprobaciones: encolado con y sin excepciones, borrado de filas igual, permisos, reintentos, barrido, rollback) y prueba Deno de la lógica (9). Producción solo leída: 32 objetos en `post-media` (2 de publicaciones del negocio con 4 segmentos) y 6 en `voice-notes`, todos de más de 24 h |
+| `post-media` no es solo del chat | Anotado | Las publicaciones del negocio del dashboard viven en el mismo bucket con ruta `{uid}/business/{negocio}/{archivo}` (4 segmentos); solo se tocan las de 2 segmentos |
+| «Pausar» una oferta no la quitaba del feed | Corregido en código; trigger en la 278 | Prueba SQL: el dueño pausa y reanuda y `is_active` sigue a `status`; el permiso de columna sigue siendo solo `status`. Manual actualizado |
+| Dos locales con `acct_STUB_…` | Sentencia al final de la 278 | Prueba SQL con filas de ejemplo (la real, la vacía y una que solo se parece quedan igual) |
+| Horario de la ficha en 12 h en español | Corregido | Pruebas node (todas las horas del día en es y en, y que no quede `toLocaleTimeString` en pantallas); sin ver en pantalla |
+| Otras horas que se saltaban la regla (recibos POS, mesa, actividad de Match, eventos, mis pedidos, publicaciones) | Corregido | Mismas pruebas; los recibos del POS estaban siempre en inglés 12 h |
+| «Vista en vivo» y «nuevo» en español en el panel en inglés | Corregido | `tsc`, paridad ES = EN; sin ver en pantalla. La búsqueda de cadenas en español escritas a mano en `web/app/dashboard` no encontró más texto visible (las tablas de plantillas del editor de menú son solo respaldo) |
+| Capturas del manual: ancho en escritorio | Corregido | Playwright: 272 px a 320 px de ancho, 340 px en escritorio, columna para las del panel, sin desborde |
+| Capturas de `getting-started` | Parcial | Bienvenida, registro (paso 1), registro con Apple/Google e inicio de sesión, en ES y EN (iPhone 17). **No hechas:** el paso de edad (exige escribir una contraseña, prohibido) y los avisos de permisos (se piden con sesión iniciada) |
