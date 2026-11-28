@@ -15,6 +15,14 @@ const chapter: HelpChapter = {
           text: 'JChat es una app para mayores de 18 años. Necesitas un iPhone o un teléfono Android. Si te registras con correo, usa una dirección que puedas abrir en ese mismo teléfono.',
         },
         {
+          type: 'image',
+          src: '/help/users/getting-started/welcome-es.webp',
+          alt: 'Pantalla de bienvenida de JChat con los botones Comenzar e Iniciar sesión.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
+        },
+        {
           type: 'list',
           items: [
             'Tu fecha de nacimiento. Solo la usamos para confirmar tu edad: guardamos únicamente el año y no se muestra en tu perfil.',
@@ -36,6 +44,14 @@ const chapter: HelpChapter = {
         {
           type: 'p',
           text: 'El registro tiene dos pasos. Empieza en la pantalla de bienvenida, que tiene los botones **Comenzar** e **Iniciar sesión**. Paso 1 de 2:',
+        },
+        {
+          type: 'image',
+          src: '/help/users/getting-started/register-es.webp',
+          alt: 'Primer paso de Crea tu cuenta: nombre completo, correo, contraseña y confirmar contraseña, con el selector de idioma ES y EN arriba.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
         },
         {
           type: 'steps',
@@ -90,6 +106,14 @@ const chapter: HelpChapter = {
           text: 'Puedes crear tu cuenta sin escribir contraseña, con tu cuenta de Apple o de Google.',
         },
         {
+          type: 'image',
+          src: '/help/users/getting-started/register-social-es.webp',
+          alt: 'Final de la pantalla de registro con los botones Sign up with Apple y Google, y el enlace Iniciar sesión.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
+        },
+        {
           type: 'steps',
           items: [
             'En el paso 1 (**Crea tu cuenta**), toca **Apple** o **Google**, debajo de **o continúa con**. También los encuentras al tocar **Iniciar sesión** en la pantalla de bienvenida.',
@@ -135,6 +159,14 @@ const chapter: HelpChapter = {
         {
           type: 'p',
           text: 'Si ya tienes cuenta, puedes entrar con correo, con Apple o con Google. Con correo:',
+        },
+        {
+          type: 'image',
+          src: '/help/users/getting-started/sign-in-es.webp',
+          alt: 'Pantalla de inicio de sesión con Continuar con email, Sign in with Apple y Google, y el enlace Crear cuenta.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
         },
         {
           type: 'steps',

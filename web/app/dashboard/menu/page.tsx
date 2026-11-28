@@ -5640,7 +5640,7 @@ export default function MenuPage() {
           {/* Label */}
           <div style={{ marginBottom: 10 }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: "var(--db-text-secondary)" }}>
-              Vista en vivo
+              {t("menuLivePreview")}
             </span>
           </div>
           {/* iPhone chrome */}

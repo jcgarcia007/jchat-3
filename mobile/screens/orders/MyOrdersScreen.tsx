@@ -21,6 +21,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
+import { formatLocalDayTime } from '../../utils/localTime';
 import { IconArrowLeft, IconReceipt, IconChevronRight } from '@tabler/icons-react-native';
 
 import type { MainStackParamList } from '../../navigation/AppNavigator';
@@ -65,9 +66,7 @@ export default function MyOrdersScreen(): React.ReactElement {
 
   const renderOrder = useCallback(({ item }: ListRenderItemInfo<MyOrderRow>) => {
     const business = myOrderBusinessName(item);
-    const date = new Date(item.created_at).toLocaleDateString(i18n.language, {
-      month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
-    });
+    const date = formatLocalDayTime(item.created_at, i18n.language);
     return (
       <Pressable
         accessibilityRole="button"

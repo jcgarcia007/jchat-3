@@ -15,6 +15,14 @@ const chapter: HelpChapter = {
           text: 'JChat is an app for people aged 18 or older. You need an iPhone or an Android phone. If you sign up with email, use an address you can open on that same phone.',
         },
         {
+          type: 'image',
+          src: '/help/users/getting-started/welcome-en.webp',
+          alt: 'The JChat welcome screen with the Get started and Log in buttons.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
+        },
+        {
           type: 'list',
           items: [
             'Your date of birth. We only use it to confirm your age: we keep just the year and it is not shown on your profile.',
@@ -36,6 +44,14 @@ const chapter: HelpChapter = {
         {
           type: 'p',
           text: 'Sign-up has two steps. It starts on the welcome screen, which has the buttons **Get started** and **Log in**. Step 1 of 2:',
+        },
+        {
+          type: 'image',
+          src: '/help/users/getting-started/register-en.webp',
+          alt: 'Step 1 of Create account: full name, email, password and confirm password, with the ES and EN language switch at the top.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
         },
         {
           type: 'steps',
@@ -90,6 +106,14 @@ const chapter: HelpChapter = {
           text: 'You can create your account without typing a password, using your Apple or Google account.',
         },
         {
+          type: 'image',
+          src: '/help/users/getting-started/register-social-en.webp',
+          alt: 'The bottom of the sign-up screen with the Sign up with Apple and Google buttons, and the Log in link.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
+        },
+        {
           type: 'steps',
           items: [
             'In step 1 (**Create account**), tap **Apple** or **Google**, below **or continue with**. You also find them when you tap **Log in** on the welcome screen.',
@@ -135,6 +159,14 @@ const chapter: HelpChapter = {
         {
           type: 'p',
           text: 'If you already have an account, you can sign in with email, Apple or Google. With email:',
+        },
+        {
+          type: 'image',
+          src: '/help/users/getting-started/sign-in-en.webp',
+          alt: 'The sign-in screen with Continue with email, Sign in with Apple and Google, and the Create account link.',
+          platform: 'ios',
+          width: 780,
+          height: 1696,
         },
         {
           type: 'steps',

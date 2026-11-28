@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
+import { formatLocalDateTime } from '../../utils/localTime';
 import { ReportReasonSheet } from '../../components/report/ReportReasonSheet';
 import {
   IconArrowLeft,
@@ -175,7 +176,7 @@ export default function PostDetailScreen(): React.JSX.Element {
   const isOwner = post.user_id === user?.id;
   const business = post.business_id ? post.business ?? null : null;
   const authorName = business?.name || author?.display_name?.trim() || author?.username || t('post.unknownAuthor');
-  const date = new Date(post.created_at).toLocaleString(i18n.language);
+  const date = formatLocalDateTime(post.created_at, i18n.language);
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: c.bgBase }]}>
@@ -225,7 +226,7 @@ export default function PostDetailScreen(): React.JSX.Element {
               <Pressable key={item.id} onLongPress={() => handleCommentLongPress(item, item.author?.display_name || item.author?.username || t('post.unknownAuthor'))} delayLongPress={350} style={[styles.commentRow, { borderBottomColor: c.borderSubtle }]}>
                 <Text style={[styles.commentAuthor, { color: c.textPrimary }]}>{item.author?.display_name || item.author?.username || t('post.unknownAuthor')}</Text>
                 <Text style={[styles.commentBody, { color: c.textSecondary }]}>{item.body}</Text>
-                <Text style={[styles.commentDate, { color: c.textTertiary }]}>{new Date(item.created_at).toLocaleString(i18n.language)}</Text>
+                <Text style={[styles.commentDate, { color: c.textTertiary }]}>{formatLocalDateTime(item.created_at, i18n.language)}</Text>
               </Pressable>
             ))}
           </View>

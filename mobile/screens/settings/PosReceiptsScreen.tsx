@@ -22,6 +22,8 @@ import {
 import { Spinner } from '../../components/common/Spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import i18n from 'i18next';
+import { formatLocalTime } from '../../utils/localTime';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -60,8 +62,7 @@ function formatCents(cents: number): string {
 }
 
 function formatTime(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  return formatLocalTime(iso, i18n.language); // the one clock rule: es 24 h, en 12 h (it was always English 12 h)
 }
 
 // ─── Row component ────────────────────────────────────────────────────────────

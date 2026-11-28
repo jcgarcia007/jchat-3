@@ -131,29 +131,19 @@ export function isOpenNow(hours: unknown, now: Date = new Date(), timeZone?: str
   return getOpenStatus(hours, now, timeZone) === 'open';
 }
 
-/** "09:00" → "9:00 AM" / "9:00" following the locale. Null when the value is not a valid time. */
-export function formatHourLabel(time24: unknown, locale: string): string | null {
-  const total = parseTimeToMinutes(time24);
-  if (total === null) return null;
-  try {
-    const date = new Date(Date.UTC(2023, 0, 1, Math.floor(total / 60) % 24, total % 60));
-    return new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }).format(date);
-  } catch {
-    return null;
-  }
-}
-
 /**
- * A time as 12 h with a lower-case am / pm, the same in every language: "9:00 am", "2:00 am", "6:30 pm", "12:00 pm".
- * Takes "HH:MM" or minutes since midnight (1440, "24:00" → "12:00 am"). Null when it is not a valid time.
+ * A time written by THE one clock rule of the app (H-028 / H-032, the same as utils/reservationFlow.ts formatClock; scripts/hours-clock-rule.test.mjs
+ * keeps the two equal): Spanish 24 h ("20:00", "02:00"), English 12 h ("8:00 PM", "2:00 AM"). Written by hand, never with Intl hour12:
+ * Hermes (Android) and the server render those differently. Takes "HH:MM" or minutes since midnight (1440, "24:00" → midnight). Null when it is not a valid time.
  */
-export function format12h(time: unknown): string | null {
+export function formatClockLabel(time: unknown, locale: string): string | null {
   const total = typeof time === 'number' ? time : parseTimeToMinutes(time);
   if (total === null || !Number.isFinite(total) || total < 0 || total > MINUTES_PER_DAY) return null;
-  const hour24 = Math.floor(total / 60) % 24;
-  const minutes = Math.floor(total) % 60;
-  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
-  return `${hour12}:${String(minutes).padStart(2, '0')} ${hour24 < 12 ? 'am' : 'pm'}`;
+  const hour = Math.floor(total / 60) % 24;
+  const minute = Math.floor(total) % 60;
+  const mm = String(minute).padStart(2, '0');
+  if (String(locale).toLowerCase().startsWith('es')) return `${String(hour).padStart(2, '0')}:${mm}`;
+  return `${hour % 12 === 0 ? 12 : hour % 12}:${mm} ${hour < 12 ? 'AM' : 'PM'}`;
 }
 
 /** The full weekday name in the locale for Date.getDay()-style index (0 = Sunday): "lunes" / "Monday". */
@@ -167,11 +157,11 @@ export function weekdayName(dayIndex: number, locale: string): string {
 }
 
 /**
- * The closing time while the business is open now ("2:00 am"), or null when it is not open, when the hours can't be
+ * The closing time while the business is open now ("2:00 AM" / "02:00"), or null when it is not open, when the hours can't be
  * read, or when it is open all day. Handles the cut after midnight: 20:00–02:00 closes at 2:00 the next morning,
  * and at 1:00 that morning it still reads the shift that started yesterday.
  */
-export function closesAtLabel(hours: unknown, _locale: string, now: Date = new Date(), timeZone?: string | null): string | null {
+export function closesAtLabel(hours: unknown, locale: string, now: Date = new Date(), timeZone?: string | null): string | null {
   if (getOpenStatus(hours, now, timeZone) !== 'open') return null;
   const clock = clockIn(now, timeZone);
   if (!clock) return null;
@@ -180,13 +170,13 @@ export function closesAtLabel(hours: unknown, _locale: string, now: Date = new D
   const yesterday = parseDay(map[DAY_ORDER[(clock.day + 6) % 7]]);
   const minutes = clock.minutes;
   if (yesterday.kind === 'range' && yesterday.close < yesterday.open && minutes < yesterday.close) {
-    return format12h(yesterday.close);
+    return formatClockLabel(yesterday.close, locale);
   }
-  if (today.kind === 'range' && !isAllDay(today)) return format12h(today.close);
+  if (today.kind === 'range' && !isAllDay(today)) return formatClockLabel(today.close, locale);
   return null;
 }
 
-/** When the business opens next: the time ("6:00 pm") and the day it is on. */
+/** When the business opens next: the time ("6:00 PM" / "18:00") and the day it is on. */
 export interface OpensAt {
   time: string;
   /** 'today' (later today), 'tomorrow', or 'later' (another day: dayIndex says which). */
@@ -196,11 +186,11 @@ export interface OpensAt {
 }
 
 /**
- * The next opening while the business is closed now: the time ("6:00 pm") and the day (later today, tomorrow or
+ * The next opening while the business is closed now: the time ("6:00 PM" / "18:00") and the day (later today, tomorrow or
  * another weekday up to a week ahead). Null when it is open, when the hours can't be read ('unknown' is not
  * "closed") or when no day has an opening time.
  */
-export function opensAtLabel(hours: unknown, _locale: string, now: Date = new Date(), timeZone?: string | null): OpensAt | null {
+export function opensAtLabel(hours: unknown, locale: string, now: Date = new Date(), timeZone?: string | null): OpensAt | null {
   if (getOpenStatus(hours, now, timeZone) !== 'closed') return null;
   const clock = clockIn(now, timeZone);
   if (!clock) return null;
@@ -211,7 +201,7 @@ export function opensAtLabel(hours: unknown, _locale: string, now: Date = new Da
     const day = parseDay(map[DAY_ORDER[dayIndex]]);
     if (day.kind !== 'range') continue;
     if (offset === 0 && day.open <= minutes) continue; // today's opening already passed
-    const time = format12h(day.open);
+    const time = formatClockLabel(day.open, locale);
     if (!time) continue;
     return { time, when: offset === 0 ? 'today' : offset === 1 ? 'tomorrow' : 'later', dayIndex };
   }
@@ -219,13 +209,13 @@ export function opensAtLabel(hours: unknown, _locale: string, now: Date = new Da
 }
 
 /** The text for a day's row in the hours grid, or null when the entry can't be read. */
-export function formatDayRange(entry: unknown, _locale: string): { kind: 'closed' } | { kind: 'range'; text: string } | { kind: 'unknown' } {
+export function formatDayRange(entry: unknown, locale: string): { kind: 'closed' } | { kind: 'range'; text: string } | { kind: 'unknown' } {
   const day = parseDay(entry);
   if (day.kind === 'closed') return { kind: 'closed' };
   if (day.kind === 'invalid') return { kind: 'unknown' };
-  // 12 h with am / pm in every language, as the status chip of the business card reads (the locale is not used).
-  const open = format12h(entry && (entry as DayHours).open);
-  const close = format12h(entry && (entry as DayHours).close);
+  // The one clock rule: Spanish 24 h, English 12 h (the same as the status chip of the card).
+  const open = formatClockLabel(entry && (entry as DayHours).open, locale);
+  const close = formatClockLabel(entry && (entry as DayHours).close, locale);
   return open && close ? { kind: 'range', text: `${open} – ${close}` } : { kind: 'unknown' };
 }
 

@@ -81,10 +81,10 @@ test('midnight in the zone reads as 00:00 (not 24:00)', () => {
 });
 
 test('the labels follow the zone: closes at / opens at', () => {
-  assert.equal(closesAtLabel(nineToFive, 'en', ny(7, 14), NY), '5:00 pm');
+  assert.equal(closesAtLabel(nineToFive, 'en', ny(7, 14), NY), '5:00 PM');
   assert.equal(closesAtLabel(nineToFive, 'en', ny(7, 14), 'Asia/Tokyo'), null); // 04:00 Thu in Tokyo: closed there
-  assert.deepEqual(opensAtLabel(nineToFive, 'en', ny(7, 18), NY), { time: '9:00 am', when: 'tomorrow', dayIndex: 4 });
-  assert.deepEqual(opensAtLabel(nineToFive, 'en', ny(7, 7), NY), { time: '9:00 am', when: 'today', dayIndex: 3 });
+  assert.deepEqual(opensAtLabel(nineToFive, 'en', ny(7, 18), NY), { time: '9:00 AM', when: 'tomorrow', dayIndex: 4 });
+  assert.deepEqual(opensAtLabel(nineToFive, 'en', ny(7, 7), NY), { time: '9:00 AM', when: 'today', dayIndex: 3 });
   assert.equal(opensAtLabel(nineToFive, 'en', ny(7, 7), 'Mars/Phobos'), null);
 });
 
