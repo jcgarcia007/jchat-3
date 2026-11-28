@@ -79,7 +79,7 @@
     "detailsPlaceholder": "¿Qué debemos saber?",
     "send": "Enviar reporte",
     "successTitle": "Gracias",
-    "successMessage": "Gracias. Lo revisamos en menos de 24 h.",
+    "successMessage": "Gracias. Lo revisamos en 1–2 días hábiles.",
     "errors": {
       "notAuthenticated": "Inicia sesión para enviar un reporte.",
       "invalidReason": "Elige un motivo para el reporte.",
@@ -93,7 +93,8 @@
     "comment": "Reportar comentario",
     "block": "Bloquear a {{name}}",
     "blockTitle": "¿Bloquear a {{name}}?",
-    "blockMessage": "No verás sus mensajes y no podrá contactarte.",
+    "blockMessage": "Ninguno de los dos verá el perfil, las publicaciones ni los mensajes del otro, y no podrán seguirse ni escribirse. Puedes desbloquear cuando quieras.",
+    "blockMessageRoom": "Ninguno de los dos verá el perfil, las publicaciones ni los mensajes del otro, y no podrán seguirse ni escribirse. Puedes desbloquear cuando quieras. Esto no lo quita de la sala.",
     "blockConfirm": "Bloquear",
     "blockError": "No pudimos bloquear a esta persona. Inténtalo de nuevo.",
     "reportUser": "Reportar usuario"

@@ -12,7 +12,7 @@
  * The status is read with the owner's own session (RLS lets an owner read their business). Nothing is written from here.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { IconShieldCheck, IconCircleCheck, IconClockHour4, IconLoader2, IconChevronRight } from "@tabler/icons-react";
@@ -62,6 +62,15 @@ export default function BusinessVerifyPage() {
       active = false;
     };
   }, []);
+
+  // Opens Payments with this business preselected (the id comes from the query string of this page).
+  function goToPayments(e: MouseEvent<HTMLAnchorElement>) {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("id") ?? params.get("business_id") ?? "";
+    if (!id) return; // plain link: Payments preselects the first business
+    e.preventDefault();
+    router.push(`/dashboard/payments?business_id=${encodeURIComponent(id)}`);
+  }
 
   return (
     <div
@@ -129,6 +138,16 @@ export default function BusinessVerifyPage() {
                 {tr("goToDashboard")}
                 <IconChevronRight size={15} />
               </button>
+              <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.5, margin: "16px 0 0" }}>
+                {tr("paymentsHint")}{" "}
+                <a
+                  href="/dashboard/payments"
+                  onClick={goToPayments}
+                  style={{ color: "var(--color-brand)", textDecoration: "none", fontWeight: 600 }}
+                >
+                  {tr("paymentsLink")}
+                </a>
+              </p>
             </>
           )}
 
@@ -144,6 +163,16 @@ export default function BusinessVerifyPage() {
                 {tr("goToDashboard")}
                 <IconChevronRight size={15} />
               </button>
+              <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.5, margin: "16px 0 0" }}>
+                {tr("paymentsHint")}{" "}
+                <a
+                  href="/dashboard/payments"
+                  onClick={goToPayments}
+                  style={{ color: "var(--color-brand)", textDecoration: "none", fontWeight: 600 }}
+                >
+                  {tr("paymentsLink")}
+                </a>
+              </p>
             </>
           )}
         </div>

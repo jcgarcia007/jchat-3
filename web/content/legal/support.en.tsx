@@ -17,7 +17,7 @@ export function SupportEN() {
       <p style={P}>
         Need help? Email{" "}
         <a href="mailto:soporte@jchat.cloud" style={LINK}>soporte@jchat.cloud</a>. We answer within
-        1–2 business days. Include the email on your account and, for order issues, the receipt code.
+        1–2 business days. Include the email on your account and, for order issues, the order number.
       </p>
 
       {/* Table of contents */}
@@ -62,7 +62,7 @@ export function SupportEN() {
       <h2 id="orders-refunds" style={H2}>Orders, receipts and refunds</h2>
       <p style={P}>
         Your orders and digital receipts are in the app. Refunds are handled by the venue that served you —
-        contact them first with your receipt code. If you paid through JChat and can't reach the venue, email
+        contact them first with your order number. If you paid through JChat and can't reach the venue, email
         us.
       </p>
 

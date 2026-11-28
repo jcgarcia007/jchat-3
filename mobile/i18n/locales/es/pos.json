@@ -161,7 +161,7 @@
     "orderNumber": "Número de pedido",
     "business": "Negocio",
     "orderType": "Tipo de pedido",
-    "emailNote": "Recibirás un correo de confirmación en breve.",
+    "ordersNote": "Puedes seguirlo en Mis pedidos.",
     "savePrompt": "¿Guardar la tarjeta para pagar más rápido?",
     "saveCardA11y": "Guardar tarjeta",
     "saving": "Guardando…",

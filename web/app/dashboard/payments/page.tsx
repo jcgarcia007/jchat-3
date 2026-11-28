@@ -26,12 +26,15 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { isStripeConnectedId } from "@/lib/stripeAccount";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface Business {
   id: string;
   name: string;
+  /** Old sign-ups stored a made-up `acct_STUB_…` here: isStripeConnectedId() tells those apart from a real account. */
+  stripe_account_id: string | null;
 }
 
 interface AccountStatus {
@@ -194,7 +197,7 @@ function PaymentsInner() {
 
       const { data, error } = await supabase
         .from("businesses")
-        .select("id, name")
+        .select("id, name, stripe_account_id")
         .eq("owner_id", user.id)
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -243,8 +246,15 @@ function PaymentsInner() {
   // Reload status whenever the selected business changes.
   useEffect(() => {
     if (!isSupabaseConfigured || !selectedBusinessId) return;
+    // A made-up id (old sign-ups) is not a Stripe account: show "not connected" without asking Stripe about it.
+    const stored = businesses.find((b) => b.id === selectedBusinessId)?.stripe_account_id ?? null;
+    if (stored && !isStripeConnectedId(stored)) {
+      setStatus({ onboarded: false, account_id: null });
+      setStatusLoading(false);
+      return;
+    }
     void loadStatus(selectedBusinessId);
-  }, [selectedBusinessId, loadStatus]);
+  }, [selectedBusinessId, businesses, loadStatus]);
 
   // ── Handle the return from Stripe onboarding (?connect=success|refresh) ───────
   useEffect(() => {

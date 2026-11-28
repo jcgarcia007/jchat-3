@@ -881,29 +881,43 @@ export default function BillingPage() {
         })}
       </div>
 
-      {/* ── Payment history ──────────────────────────────────────────────── */}
+      {/* ── Payment history: the Stripe portal already lists every invoice and receipt ───────── */}
       <SectionTitle>{t("billingPaymentHistorySectionTitle")}</SectionTitle>
       <Card style={{ marginBottom: "32px" }}>
         <div
           style={{
             display: "flex",
-            alignItems: "center",
+            alignItems: "flex-start",
             gap: "10px",
             color: "var(--db-text-secondary)",
             fontSize: "13px",
           }}
         >
-          <IconReceipt size={18} />
+          <IconReceipt size={18} style={{ flexShrink: 0, marginTop: "2px" }} />
           <div>
-            <p style={{ margin: 0, fontWeight: 500, color: "var(--db-text-primary)" }}>
-              {t("billingPaymentHistorySectionTitle")}
-            </p>
-            <p style={{ margin: 0, marginTop: "2px" }}>
-              {/* TODO: Query Stripe invoices via Edge Function and render table:
-                  columns: Date, Description, Amount, Status (paid/failed), PDF download link.
-                  The Stripe Customer Portal already exposes invoices — prefer linking there. */}
-              {t("billingInvoiceHistoryPlaceholder")}
-            </p>
+            <p style={{ margin: 0, marginBottom: "10px" }}>{t("billingInvoicesHint")}</p>
+            <button
+              onClick={() => void handleOpenPortal()}
+              disabled={portalLoading}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "9px 16px",
+                borderRadius: "var(--db-radius)",
+                border: "1px solid var(--db-border)",
+                background: "var(--db-bg-elevated)",
+                color: "var(--db-text-primary)",
+                fontSize: "13px",
+                fontWeight: 600,
+                cursor: portalLoading ? "wait" : "pointer",
+                opacity: portalLoading ? 0.7 : 1,
+              }}
+            >
+              <IconReceipt size={14} />
+              {t("billingInvoicesLink")}
+              <IconExternalLink size={12} style={{ opacity: 0.7 }} />
+            </button>
           </div>
         </div>
       </Card>

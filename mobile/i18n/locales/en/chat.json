@@ -10,7 +10,7 @@
     "followedMsg": "You're now following this user.",
     "requestedMsg": "Follow request sent.",
     "reportConfirm": "Report {{name}} to moderators?",
-    "blockConfirm": "Block {{name}}? You won't see each other's messages.",
+    "blockConfirm": "Block {{name}}?",
     "errorTitle": "Something went wrong",
     "errorMsg": "Please try again.",
     "gift": "Gift",
@@ -217,7 +217,6 @@
     "reportSubmittedTitle": "Report submitted",
     "reportSubmittedMessage": "Our team will review this report.",
     "blockTitle": "Block {{name}}?",
-    "blockMessage": "They will be hidden from your view. This does not remove them from the room.",
     "blockConfirm": "Block",
     "warnedTitle": "{{name}} warned",
     "warnedMessage": "Warning has been logged.",
@@ -302,6 +301,7 @@
     "dmTitle": "Direct message",
     "dmOpenError": "Could not open the direct message.",
     "geoVerifying": "Checking your location…",
+    "retention24h": "Messages in this chat are deleted after 24 hours, except pinned ones or those under review because of a report.",
     "geoWhy": "We use your location only while you use the app, to confirm you are inside {{business}}. That way nobody from outside joins the chat. We do not store your exact location; we only confirm you are here.",
     "geoOutsideRadius": "You're {{distance}} away. Get closer to join the chat.",
     "geoReconnecting": "Reconnecting…",
@@ -392,6 +392,7 @@
     "markedRead_other": "{{count}} notifications marked as read"
   },
   "moreSheet": {
+    "retentionNote": "Messages in this chat are deleted after 24 hours, except pinned ones.",
     "myOrders": "My account and orders",
     "askHelp": "Ask the venue for help",
     "ownerSettings": "Owner settings",

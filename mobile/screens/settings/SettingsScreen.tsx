@@ -433,7 +433,7 @@ export default function SettingsScreen() {
       setDeleting(false);
       if (result === 'owns_business') {
         // Nothing was deleted: an older server answered the legacy owner code.
-        showAlert(t('alerts.deleteOwnerTitle'), t('alerts.deleteOwnerMessage'));
+        showAlert(t('alerts.deleteOwnerTitle'), t('alerts.deleteOwnerMessage', { contact: ACCOUNT_SUPPORT_EMAIL }));
         return;
       }
       if (result === 'blocked' && blocker) {

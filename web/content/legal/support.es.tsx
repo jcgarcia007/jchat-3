@@ -17,8 +17,8 @@ export function SupportES() {
       <p style={P}>
         ¿Necesitas ayuda? Escribe a{" "}
         <a href="mailto:soporte@jchat.cloud" style={LINK}>soporte@jchat.cloud</a>. Respondemos en
-        1–2 días hábiles. Incluye el correo de tu cuenta y, para problemas con pedidos, el código del
-        recibo.
+        1–2 días hábiles. Incluye el correo de tu cuenta y, para problemas con pedidos, el número de
+        pedido.
       </p>
 
       {/* Tabla de contenido */}
@@ -63,7 +63,7 @@ export function SupportES() {
       <h2 id="orders-refunds" style={H2}>Pedidos, recibos y reembolsos</h2>
       <p style={P}>
         Tus pedidos y recibos digitales están en la app. Los reembolsos los gestiona el local que te
-        atendió: contáctalo primero con tu código de recibo. Si pagaste a través de JChat y no logras
+        atendió: contáctalo primero con tu número de pedido. Si pagaste a través de JChat y no logras
         contactar al local, escríbenos.
       </p>
 

@@ -220,7 +220,7 @@ export default function StoryViewerScreen({
     const name = currentGroup.displayName ?? currentGroup.username ?? t('post.unknownAuthor');
     animRef.current?.stop();
     timerRef.current && clearTimeout(timerRef.current);
-    void confirm(t('storyViewer.blockTitle', { name }), t('storyViewer.blockMessage'), {
+    void confirm(t('storyViewer.blockTitle', { name }), t('report.blockMessage', { ns: 'common' }), {
       confirmText: t('storyViewer.block'),
       cancelText: t('storyViewer.cancel'),
       destructive: true,

@@ -31,7 +31,7 @@ test('the Truth or Dare result has a visible Report that opens the chat message 
 test('texts exist in en and es', () => {
   for (const lang of ['en', 'es']) {
     const sv = json(`mobile/i18n/locales/${lang}/feed.json`).storyViewer;
-    for (const k of ['reportA11y', 'blockA11y', 'blockTitle', 'blockMessage', 'block', 'cancel', 'blockErrorTitle', 'blockError']) {
+    for (const k of ['reportA11y', 'blockA11y', 'blockTitle', 'block', 'cancel', 'blockErrorTitle', 'blockError']) {
       assert.ok(typeof sv[k] === 'string' && sv[k].length > 0, `${lang} storyViewer.${k}`);
     }
     const r = json(`mobile/i18n/locales/${lang}/tod.json`).result;

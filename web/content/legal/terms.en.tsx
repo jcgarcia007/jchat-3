@@ -87,7 +87,7 @@ export function TermsEN() {
       </p>
       <p style={P}>
         <strong>Report</strong> content or users from their profile or the message menu; we review reports
-        and act on those that violate these rules, normally within 24 hours. <strong>Block</strong> anyone to
+        and act on those that violate these rules, normally within 1–2 business days. <strong>Block</strong> anyone to
         stop seeing their content.
       </p>
 

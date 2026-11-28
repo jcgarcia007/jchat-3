@@ -133,7 +133,6 @@
   },
   "block": {
     "title": "¿Bloquear a @{{username}}?",
-    "message": "No podrá ver tu perfil ni escribirte.",
     "confirm": "Bloquear",
     "error": "No se pudo completar esta acción del perfil.",
     "unblockTitle": "¿Desbloquear a @{{username}}?",

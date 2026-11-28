@@ -12,8 +12,8 @@
  * Design: var(--db-*) tokens exclusively. "use client" for hooks + state.
  *
  * Spec notes (Dev Plan Task 2.9):
- *   - Invite flow (addEmployee): mobile-only for now (AddEmployeeSheet).
- *     Dashboard shows roster + remove; push-notification stub noted.
+ *   - Adding people: both the app (AddEmployeeSheet) and this page insert the employee already 'accepted'; the database notifies them
+ *     (staff_added, migration 273). 'pending' / 'declined' rows only exist from older invitations.
  *   - Staff section on business profile is visible only to linked employees
  *     (status='accepted') — enforced at the mobile profile layer (Task 1.7).
  *   - Role determines chat actions available (Task 2.10).
@@ -111,7 +111,7 @@ function statusLabel(status: EmployeeStatus, t: TFn): string {
     case "accepted":
       return t("employeesStatusActive");
     case "pending":
-      return t("orderStatusPending");
+      return t("employeesStatusPending");
     case "declined":
       return t("employeesStatusDeclined");
   }
@@ -274,6 +274,7 @@ function EmployeeRow({
   t: TFn;
 }) {
   const locale = useLocale();
+  const tCommon = useTranslations("common");
   const initials = (employee.display_name ?? employee.username)
     .slice(0, 2)
     .toUpperCase();
@@ -525,7 +526,7 @@ function EmployeeRow({
             <button
               onClick={handleCancelEdit}
               disabled={savingName}
-              title={t("cancel")}
+              title={tCommon("cancel")}
               style={{
                 background: "none",
                 border: "none",

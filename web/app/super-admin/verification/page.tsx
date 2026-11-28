@@ -30,6 +30,7 @@ import {
   IconAlertTriangle,
 } from "@tabler/icons-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { isStripeConnectedId } from "@/lib/stripeAccount";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -106,7 +107,7 @@ export default function SuperAdminVerificationPage() {
         is_verified: b.is_verified,
         verified_by: b.verified_by,
         verified_at: b.verified_at,
-        has_stripe: !!b.stripe_account_id,
+        has_stripe: isStripeConnectedId(b.stripe_account_id),
         identity_status: v?.identity_status ?? null,
         selfie_submitted: !!v?.selfie_url,
         sms_verified: v?.sms_verified ?? null,

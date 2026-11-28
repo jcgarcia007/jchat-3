@@ -79,7 +79,7 @@
     "detailsPlaceholder": "What should we know?",
     "send": "Send report",
     "successTitle": "Thank you",
-    "successMessage": "Thanks. We'll review it in under 24 hours.",
+    "successMessage": "Thanks. We'll review it in 1–2 business days.",
     "errors": {
       "notAuthenticated": "Sign in to send a report.",
       "invalidReason": "Pick a reason for the report.",
@@ -93,7 +93,8 @@
     "comment": "Report comment",
     "block": "Block {{name}}",
     "blockTitle": "Block {{name}}?",
-    "blockMessage": "You won't see their messages and they won't be able to contact you.",
+    "blockMessage": "Neither of you will see the other's profile, posts or messages, and you won't be able to follow or message each other. You can unblock anytime.",
+    "blockMessageRoom": "Neither of you will see the other's profile, posts or messages, and you won't be able to follow or message each other. You can unblock anytime. This does not remove them from the room.",
     "blockConfirm": "Block",
     "blockError": "We couldn't block this person. Try again.",
     "reportUser": "Report user"

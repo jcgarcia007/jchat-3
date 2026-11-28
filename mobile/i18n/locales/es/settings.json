@@ -162,7 +162,7 @@
     "biometricUnavailableMessage": "Primero configura Face ID o Touch ID en los ajustes de tu dispositivo.",
     "biometricUnavailableMessageAndroid": "Primero configura una huella o el reconocimiento facial en los ajustes de tu dispositivo.",
     "deleteOwnerTitle": "Eres dueño de un negocio",
-    "deleteOwnerMessage": "Eres dueño de un negocio. Ciérralo o transfiérelo antes de eliminar tu cuenta."
+    "deleteOwnerMessage": "Al eliminar tu cuenta se cierran tus locales. No pudimos completar el cierre ahora y no se ha borrado nada. Inténtalo de nuevo; si sigue igual, escribe a {{contact}}."
   },
   "workMode": {
     "title": "Modo trabajo",

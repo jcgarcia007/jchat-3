@@ -337,7 +337,7 @@ export default function ProfileScreen({ userId }: { userId?: string } = {}) {
   const confirmBlock = useCallback(() => {
     if (!profile || !targetId || actionBusy || relationBusy) return; // double-tap guard
     if (blocked) { handleUnblock(); return; }
-    void confirm(t('block.title', { username: profile.username }), t('block.message'), { confirmText: t('block.confirm'), cancelText: t('actions.cancel'), destructive: true }).then((accepted) => {
+    void confirm(t('block.title', { username: profile.username }), t('report.blockMessage', { ns: 'common' }), { confirmText: t('block.confirm'), cancelText: t('actions.cancel'), destructive: true }).then((accepted) => {
       if (!accepted) return;
       setActionBusy(true);
       void blockUser(targetId).then(() => { setMenuVisible(false); navigation.goBack(); }).catch(() => showAlert(t('actions.errorTitle'), t('block.error'))).finally(() => setActionBusy(false));
