@@ -15,6 +15,14 @@ const chapter: HelpChapter = {
           text: 'You manage your team in the web dashboard. The person you want to add must already have a JChat account: you look them up by username.',
         },
         {
+          type: 'image',
+          src: '/help/business/staff-and-roles/dash-en.webp',
+          alt: 'The Employees screen with the staff roster, the Add employee button and the role reference.',
+          platform: 'web',
+          width: 1280,
+          height: 800,
+        },
+        {
           type: 'steps',
           items: [
             'In the dashboard, open **Configuration** (the gear at the bottom of the side menu) and go to **Employees**.',

@@ -12,6 +12,14 @@ const chapter: HelpChapter = {
       blocks: [
         { type: 'p', text: 'Orders arrive when a customer pays from the app. To see them, open the dashboard and go to **Orders** > **Orders**. The list updates live: you do not need to reload the page.' },
         {
+          type: 'image',
+          src: '/help/business/orders/dash-en.webp',
+          alt: 'The dashboard Orders screen with the status filters and the list of orders.',
+          platform: 'web',
+          width: 1280,
+          height: 800,
+        },
+        {
           type: 'list',
           items: [
             '**Order**: the order number, the same one your customer sees.',

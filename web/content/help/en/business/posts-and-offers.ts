@@ -45,6 +45,14 @@ const chapter: HelpChapter = {
           ],
         },
         {
+          type: 'image',
+          src: '/help/business/posts-and-offers/posts-en.webp',
+          alt: 'The dashboard Posts screen with the New post button and an existing post.',
+          platform: 'web',
+          width: 1280,
+          height: 800,
+        },
+        {
           type: 'note',
           kind: 'important',
           text: 'You need text or at least one photo. Otherwise you will see **Add some text or at least one photo.**',
@@ -86,6 +94,14 @@ const chapter: HelpChapter = {
             'If you like, set the start and end date and time. If you set no start, the offer begins as soon as you create it.',
             'Press **Create Offer**.',
           ],
+        },
+        {
+          type: 'image',
+          src: '/help/business/posts-and-offers/offers-en.webp',
+          alt: 'The Offers & Promotions screen with the counters and two active offers.',
+          platform: 'web',
+          width: 1280,
+          height: 800,
         },
         {
           type: 'note',

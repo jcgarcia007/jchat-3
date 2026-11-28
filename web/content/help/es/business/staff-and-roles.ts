@@ -15,6 +15,14 @@ const chapter: HelpChapter = {
           text: 'Tu equipo se maneja en el panel web. La persona que quieres añadir necesita tener ya una cuenta de JChat: la buscas por su nombre de usuario.',
         },
         {
+          type: 'image',
+          src: '/help/business/staff-and-roles/dash-es.webp',
+          alt: 'Pantalla Empleados con la lista de personal, el botón Añadir empleado y la referencia de roles.',
+          platform: 'web',
+          width: 1280,
+          height: 800,
+        },
+        {
           type: 'steps',
           items: [
             'En el panel, abre **Configuración** (el engranaje al pie del menú lateral) y entra en **Empleados**.',

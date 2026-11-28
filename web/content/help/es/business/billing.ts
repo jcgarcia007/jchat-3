@@ -29,6 +29,14 @@ const chapter: HelpChapter = {
           text: 'En **Plan actual** ves el nombre de tu plan y su estado: **Prueba gratis**, **Activo**, **Problema de pago** o **Cancelado**. También ves:',
         },
         {
+          type: 'image',
+          src: '/help/business/billing/billing-es.webp',
+          alt: 'Pantalla Facturación y suscripción con el plan actual y los planes disponibles.',
+          platform: 'web',
+          width: 1280,
+          height: 800,
+        },
+        {
           type: 'list',
           items: [
             '**La prueba termina**: la fecha en que acaba tu prueba gratis, con los días que te quedan.',

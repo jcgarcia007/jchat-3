@@ -12,6 +12,14 @@ const chapter: HelpChapter = {
       blocks: [
         { type: 'p', text: 'En el panel, abre **Menú** > **Menú**: se abre el **Editor de menú**. En **Modo del menú** eliges cómo muestras tu menú a los clientes en el hub web.' },
         {
+          type: 'image',
+          src: '/help/business/menu/dash-es.webp',
+          alt: 'Editor de menú del panel con el modo de menú, las categorías y la vista en vivo del teléfono.',
+          platform: 'web',
+          width: 1280,
+          height: 800,
+        },
+        {
           type: 'list',
           items: [
             '**Crear mi Menú Web (plantilla)**: crea tu propio menú interactivo con el editor de JChat (categorías, productos, precios).',

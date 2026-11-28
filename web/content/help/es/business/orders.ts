@@ -12,6 +12,14 @@ const chapter: HelpChapter = {
       blocks: [
         { type: 'p', text: 'Los pedidos llegan cuando un cliente paga desde la app. Para verlos, abre el panel y entra a **Pedidos** > **Pedidos**. La lista se actualiza en vivo: no tienes que recargar la página.' },
         {
+          type: 'image',
+          src: '/help/business/orders/dash-es.webp',
+          alt: 'Pantalla Pedidos del panel con los filtros por estado y la lista de pedidos.',
+          platform: 'web',
+          width: 1280,
+          height: 800,
+        },
+        {
           type: 'list',
           items: [
             '**Pedido**: el número del pedido, el mismo que ve tu cliente.',

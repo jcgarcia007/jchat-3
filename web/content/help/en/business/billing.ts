@@ -29,6 +29,14 @@ const chapter: HelpChapter = {
           text: 'Under **Current plan** you see the name of your plan and its status: **Free Trial**, **Active**, **Payment issue** or **Canceled**. You also see:',
         },
         {
+          type: 'image',
+          src: '/help/business/billing/billing-en.webp',
+          alt: 'The Billing & Subscription screen with the current plan and the available plans.',
+          platform: 'web',
+          width: 1280,
+          height: 800,
+        },
+        {
           type: 'list',
           items: [
             '**Trial ends**: the date your free trial ends, with the days you have left.',

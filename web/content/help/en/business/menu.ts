@@ -12,6 +12,14 @@ const chapter: HelpChapter = {
       blocks: [
         { type: 'p', text: 'In the dashboard, open **Menu** > **Menu**: the **Menu Editor** opens. Under **Menu mode** you choose how to show your menu to customers in the web hub.' },
         {
+          type: 'image',
+          src: '/help/business/menu/dash-en.webp',
+          alt: 'The dashboard menu editor with the menu mode, the categories and the live phone preview.',
+          platform: 'web',
+          width: 1280,
+          height: 800,
+        },
+        {
           type: 'list',
           items: [
             '**Create my Web Menu (template)**: create your own interactive menu with JChat\'s editor (categories, products, prices).',

@@ -45,6 +45,14 @@ const chapter: HelpChapter = {
           ],
         },
         {
+          type: 'image',
+          src: '/help/business/posts-and-offers/posts-es.webp',
+          alt: 'Pantalla Publicaciones del panel con el botón Nueva publicación y una publicación existente.',
+          platform: 'web',
+          width: 1280,
+          height: 800,
+        },
+        {
           type: 'note',
           kind: 'important',
           text: 'Necesitas texto o al menos una foto. Si no, verás **Escribe un texto o añade al menos una foto.**',
@@ -86,6 +94,14 @@ const chapter: HelpChapter = {
             'Si quieres, pon la fecha y la hora de inicio y de fin. Si no pones inicio, la oferta empieza al crearla.',
             'Pulsa **Crear oferta**.',
           ],
+        },
+        {
+          type: 'image',
+          src: '/help/business/posts-and-offers/offers-es.webp',
+          alt: 'Pantalla Ofertas y promociones con los contadores y dos ofertas activas.',
+          platform: 'web',
+          width: 1280,
+          height: 800,
         },
         {
           type: 'note',
