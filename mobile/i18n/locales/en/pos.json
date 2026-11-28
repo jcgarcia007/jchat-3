@@ -161,7 +161,7 @@
     "orderNumber": "Order number",
     "business": "Business",
     "orderType": "Order type",
-    "emailNote": "A confirmation email will be sent to you shortly.",
+    "ordersNote": "You can follow it in My orders.",
     "savePrompt": "Save card for faster checkout?",
     "saveCardA11y": "Save card",
     "saving": "Saving…",

@@ -1498,7 +1498,7 @@ export default function ChatRoomScreen() {
     const m = msgAction;
     if (!m) return;
     setMsgAction(null);
-    void confirm(tc('report.blockTitle', { name: msgActionName }), tc('report.blockMessage'), { confirmText: tc('report.blockConfirm'), cancelText: tc('actions.cancel'), destructive: true }).then((accepted) => {
+    void confirm(tc('report.blockTitle', { name: msgActionName }), tc('report.blockMessageRoom'), { confirmText: tc('report.blockConfirm'), cancelText: tc('actions.cancel'), destructive: true }).then((accepted) => {
       if (!accepted) return;
       void blockUser(m.user_id)
         .then(() => {
@@ -1758,6 +1758,9 @@ export default function ChatRoomScreen() {
                   </View>
                   <Text style={[gateStyles.roomSub, { color: themeColors.textSecondary }]}>
                     {gt('chatRoom.gateSubtitle')}
+                  </Text>
+                  <Text testID="chat-retention-24h" style={[gateStyles.geoWhy, { color: themeColors.textSecondary }]}>
+                    {gt('chatRoom.retention24h')}
                   </Text>
                   {/* Why the location is asked (read BEFORE tapping Enter, which triggers the permission prompt). */}
                   <Text testID="chat-geo-why" style={[gateStyles.geoWhy, { color: themeColors.textSecondary }]}>

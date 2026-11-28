@@ -46,7 +46,7 @@ export function SafetyEN() {
 
       <h2 style={H2}>How fast we respond</h2>
       <p style={P}>
-        We review every report within <strong>24 hours</strong>; child-safety reports are handled first. If the content or the
+        We review every report within <strong>1–2 business days</strong>; child-safety reports are handled first. If the content or the
         account breaks our rules we remove it and tell you the outcome when we can.
       </p>
 

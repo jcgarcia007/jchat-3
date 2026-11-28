@@ -2,7 +2,7 @@
 
 /**
  * JChat 3.0 — Business Registration Wizard (Task 2.1)
- * 4-step wizard: Info → Location → Hours → Stripe Connect
+ * 4-step wizard: Info → Location → Hours → Payments (informative: Stripe is connected later from the dashboard's Payments page)
  * On finish: inserts `businesses` row (status='pending_verification')
  *            + auto-creates default Main Room in `rooms`
  *            → redirects to /business/verify
@@ -33,6 +33,8 @@ import {
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { Json } from "@/lib/database.types";
 import { getUsageAndLimits, type UsageAndLimits } from "@/lib/planLimits";
+import { categoryLabel } from "@/lib/categoryLabel";
+import { registerErrorKind, type RegisterErrorKind } from "@/lib/registerErrors";
 import { APIProvider, useMapsLibrary } from "@vis.gl/react-google-maps";
 import {
   coordsFrom,
@@ -80,21 +82,21 @@ interface WizardData {
   website: string;
   // Step 3 — Hours
   hours: HoursMap;
-  // Step 4 — Stripe
-  stripe_account_id: string; // set after Stripe redirect (stub)
+  // Step 4 (Payments) is informative: the sign-up NEVER writes stripe_account_id (only the stripe-connect function does).
   // Event mode (?type=event) — validity window for a temporary business
   event_starts_at: string; // datetime-local value
   event_ends_at: string;
 }
 
+/** `label` and `short` are keys of the businessRegister messages. */
 const DAYS: { key: DayKey; label: string; short: string }[] = [
-  { key: "mon", label: "Monday",    short: "Mo" },
-  { key: "tue", label: "Tuesday",   short: "Tu" },
-  { key: "wed", label: "Wednesday", short: "We" },
-  { key: "thu", label: "Thursday",  short: "Th" },
-  { key: "fri", label: "Friday",    short: "Fr" },
-  { key: "sat", label: "Saturday",  short: "Sa" },
-  { key: "sun", label: "Sunday",    short: "Su" },
+  { key: "mon", label: "dayMon", short: "dayShortMon" },
+  { key: "tue", label: "dayTue", short: "dayShortTue" },
+  { key: "wed", label: "dayWed", short: "dayShortWed" },
+  { key: "thu", label: "dayThu", short: "dayShortThu" },
+  { key: "fri", label: "dayFri", short: "dayShortFri" },
+  { key: "sat", label: "daySat", short: "dayShortSat" },
+  { key: "sun", label: "daySun", short: "dayShortSun" },
 ];
 
 const CATEGORIES = [
@@ -134,7 +136,6 @@ const INITIAL_DATA: WizardData = {
   phone: "",
   website: "",
   hours: DEFAULT_HOURS,
-  stripe_account_id: "",
   event_starts_at: "",
   event_ends_at: "",
 };
@@ -244,13 +245,14 @@ function EmojiPicker({
   value: string;
   onSelect: (emoji: string) => void;
 }) {
+  const tr = useTranslations("businessRegister");
   const [open, setOpen] = useState(false);
   return (
     <div style={{ position: "relative" }}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        aria-label="Choose an icon emoji"
+        aria-label={tr("emojiPickerAria")}
         style={{
           ...S.input,
           fontSize: "24px",
@@ -313,6 +315,7 @@ function CoverUpload({
   value: string;
   onChange: (url: string) => void;
 }) {
+  const tr = useTranslations("businessRegister");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -321,7 +324,7 @@ function CoverUpload({
     if (!file) return;
     setError(null);
     if (!isSupabaseConfigured) {
-      setError("Storage is not configured.");
+      setError(tr("storageNotConfigured"));
       return;
     }
     setUploading(true);
@@ -330,7 +333,7 @@ function CoverUpload({
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        setError("Please sign in before uploading.");
+        setError(tr("signInToUpload"));
         return;
       }
       const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
@@ -343,7 +346,7 @@ function CoverUpload({
       const { data: pub } = supabase.storage.from("covers").getPublicUrl(path);
       onChange(pub.publicUrl);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed.");
+      setError(err instanceof Error ? err.message : tr("uploadFailed"));
     } finally {
       setUploading(false);
     }
@@ -355,7 +358,7 @@ function CoverUpload({
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={value}
-          alt="Cover preview"
+          alt={tr("coverAlt")}
           style={{
             width: "100%",
             height: "120px",
@@ -377,7 +380,7 @@ function CoverUpload({
         }}
       >
         <IconUpload size={15} />
-        {uploading ? "Uploading…" : value ? "Replace cover photo" : "Upload cover photo"}
+        {uploading ? tr("uploading") : value ? tr("replaceCover") : tr("uploadCover")}
         <input
           type="file"
           accept="image/*"
@@ -392,7 +395,7 @@ function CoverUpload({
         </p>
       )}
       <p style={{ fontSize: "11px", color: "var(--text-tertiary)", marginTop: "4px" }}>
-        JPG/PNG/WebP — uploaded to secure Supabase Storage.
+        {tr("coverHint")}
       </p>
     </div>
   );
@@ -410,15 +413,17 @@ function StepInfo({
   errors: Record<string, string>;
   isEventMode: boolean;
 }) {
+  const tr = useTranslations("businessRegister");
+  const tc = useTranslations("businessCategories");
   return (
     <div>
       <div style={S.field()}>
-        <label style={S.label}>{isEventMode ? "Event Name *" : "Business Name *"}</label>
+        <label style={S.label}>{isEventMode ? tr("eventName") : tr("businessName")}</label>
         <input
           style={{ ...S.input, ...(errors.name ? S.inputError : {}) }}
           value={data.name}
           onChange={(e) => onChange({ name: e.target.value })}
-          placeholder={isEventMode ? "e.g. Friday Night Live" : "e.g. The Blue Lounge"}
+          placeholder={isEventMode ? tr("eventNamePlaceholder") : tr("businessNamePlaceholder")}
           maxLength={80}
         />
         {errors.name && (
@@ -430,16 +435,16 @@ function StepInfo({
 
       {!isEventMode && (
         <div style={S.field()}>
-          <label style={S.label}>Category *</label>
+          <label style={S.label}>{tr("category")}</label>
           <select
             style={{ ...S.input, ...S.select, ...(errors.category ? S.inputError : {}) }}
             value={data.category}
             onChange={(e) => onChange({ category: e.target.value })}
           >
-            <option value="">Select a category…</option>
+            <option value="">{tr("categoryPlaceholder")}</option>
             {CATEGORIES.map((c) => (
               <option key={c} value={c}>
-                {c}
+                {categoryLabel(c, tc)}
               </option>
             ))}
           </select>
@@ -452,12 +457,12 @@ function StepInfo({
       )}
 
       <div style={S.field()}>
-        <label style={S.label}>Description</label>
+        <label style={S.label}>{tr("description")}</label>
         <textarea
           style={{ ...S.input, ...S.textarea }}
           value={data.description}
           onChange={(e) => onChange({ description: e.target.value })}
-          placeholder="Tell guests what makes your venue special…"
+          placeholder={tr("descriptionPlaceholder")}
           maxLength={500}
         />
         <p style={{ fontSize: "11px", color: "var(--text-tertiary)", marginTop: "4px" }}>
@@ -471,7 +476,7 @@ function StepInfo({
           <label
             style={{ ...S.label, display: "flex", alignItems: "center", gap: "6px" }}
           >
-            <IconPhoto size={14} /> Cover Photo
+            <IconPhoto size={14} /> {tr("coverPhoto")}
           </label>
           <CoverUpload
             value={data.cover_url}
@@ -483,7 +488,7 @@ function StepInfo({
           <label
             style={{ ...S.label, display: "flex", alignItems: "center", gap: "6px" }}
           >
-            <IconMoodSmile size={14} /> Icon Emoji
+            <IconMoodSmile size={14} /> {tr("iconEmoji")}
           </label>
           <EmojiPicker
             value={data.icon_emoji}
@@ -544,13 +549,13 @@ function StepLocation({
       )}
 
       <div style={S.field()}>
-        <label style={S.label}>Street Address *</label>
+        <label style={S.label}>{tr("streetAddress")}</label>
         <input
           style={{ ...S.input, ...(errors.address ? S.inputError : {}) }}
           value={data.address}
           onChange={(e) => onChange({ address: e.target.value })}
           onBlur={onAddressBlur}
-          placeholder="123 Main St, City, State, ZIP"
+          placeholder={tr("addressPlaceholder")}
         />
         {errors.address && (
           <p style={S.errorMsg}>
@@ -561,7 +566,7 @@ function StepLocation({
 
       <div style={{ ...S.row, marginBottom: "16px" }}>
         <div style={S.field()}>
-          <label style={S.label}>Latitude *</label>
+          <label style={S.label}>{tr("latitude")}</label>
           <input
             style={{ ...S.input, ...(errors.lat ? S.inputError : {}) }}
             value={data.lat}
@@ -569,7 +574,7 @@ function StepLocation({
               onManualCoords();
               onChange({ lat: e.target.value });
             }}
-            placeholder="e.g. 25.7617"
+            placeholder={tr("latPlaceholder")}
             type="number"
             step="any"
           />
@@ -580,7 +585,7 @@ function StepLocation({
           )}
         </div>
         <div style={S.field()}>
-          <label style={S.label}>Longitude *</label>
+          <label style={S.label}>{tr("longitude")}</label>
           <input
             style={{ ...S.input, ...(errors.lng ? S.inputError : {}) }}
             value={data.lng}
@@ -588,7 +593,7 @@ function StepLocation({
               onManualCoords();
               onChange({ lng: e.target.value });
             }}
-            placeholder="e.g. -80.1918"
+            placeholder={tr("lngPlaceholder")}
             type="number"
             step="any"
           />
@@ -599,7 +604,7 @@ function StepLocation({
           )}
         </div>
         <div style={S.field()}>
-          <label style={S.label}>Radius (m)</label>
+          <label style={S.label}>{tr("radius")}</label>
           <input
             style={{ ...S.input, ...(errors.radius_m ? S.inputError : {}) }}
             value={data.radius_m}
@@ -622,7 +627,7 @@ function StepLocation({
           <label
             style={{ ...S.label, display: "flex", alignItems: "center", gap: "6px" }}
           >
-            <IconPhone size={13} /> Phone *
+            <IconPhone size={13} /> {tr("phone")}
           </label>
           <input
             style={{ ...S.input, ...(errors.phone ? S.inputError : {}) }}
@@ -641,7 +646,7 @@ function StepLocation({
           <label
             style={{ ...S.label, display: "flex", alignItems: "center", gap: "6px" }}
           >
-            <IconWorld size={13} /> Website
+            <IconWorld size={13} /> {tr("website")}
           </label>
           <input
             style={S.input}
@@ -696,7 +701,7 @@ function StepHours({
     <div>
       {/* Working-days pill row */}
       <div style={{ marginBottom: "20px" }}>
-        <label style={{ ...S.label, marginBottom: "10px" }}>Working Days</label>
+        <label style={{ ...S.label, marginBottom: "10px" }}>{tr("workingDays")}</label>
         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
           {DAYS.map((d) => {
             const isOpen = !data.hours[d.key].closed;
@@ -720,7 +725,7 @@ function StepHours({
                   transition: "all 0.15s ease",
                 }}
               >
-                {d.short}
+                {tr(d.short)}
               </button>
             );
           })}
@@ -731,14 +736,14 @@ function StepHours({
             onClick={() => toggleAll(false)}
             style={{ fontSize: "12px", color: "var(--color-brand)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
           >
-            Select all
+            {tr("selectAll")}
           </button>
           <button
             type="button"
             onClick={() => toggleAll(true)}
             style={{ fontSize: "12px", color: "var(--text-tertiary)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
           >
-            Clear all
+            {tr("clearAll")}
           </button>
           <button
             type="button"
@@ -778,7 +783,7 @@ function StepHours({
                   flexShrink: 0,
                 }}
               >
-                {d.label}
+                {tr(d.label)}
               </span>
 
               {/* Closed toggle */}
@@ -801,7 +806,7 @@ function StepHours({
                   onChange={(e) => updateDay(d.key, { closed: e.target.checked })}
                   style={{ accentColor: "var(--color-brand)" }}
                 />
-                Closed
+                {tr("closed")}
               </label>
 
               {/* Open 24 h */}
@@ -844,7 +849,7 @@ function StepHours({
                   }}
                 />
                 <span style={{ fontSize: "12px", color: "var(--text-tertiary)", flexShrink: 0 }}>
-                  to
+                  {tr("hoursTo")}
                 </span>
                 <input
                   type="time"
@@ -874,23 +879,9 @@ function StepHours({
   );
 }
 
-/** Step 4 — Stripe Connect (stub) */
-function StepStripe({
-  data,
-  onConnected,
-}: {
-  data: WizardData;
-  onConnected: (accountId: string) => void;
-}) {
-  const isConnected = data.stripe_account_id !== "";
-
-  function handleConnect() {
-    // TODO(Task 3.6): redirect to stripe-connect Edge Function, capture account_id
-    // e.g. window.location.href = `/api/stripe-connect?redirect_uri=${encodeURIComponent(window.location.href)}`;
-    // For now, stub a fake account_id so the wizard can be completed.
-    onConnected("acct_STUB_" + Math.random().toString(36).slice(2, 10));
-  }
-
+/** Step 4 — Payments. Informative only: Stripe is connected later from the dashboard's Payments page (stripe-connect Edge Function). */
+function StepPayments() {
+  const tr = useTranslations("businessRegister");
   return (
     <div>
       <div
@@ -905,7 +896,7 @@ function StepStripe({
       >
         <IconBrandStripe
           size={48}
-          style={{ color: "#635BFF", marginBottom: "12px" }}
+          style={{ color: "var(--color-brand)", marginBottom: "12px" }}
         />
         <h3
           style={{
@@ -915,50 +906,28 @@ function StepStripe({
             margin: "0 0 8px",
           }}
         >
-          Connect your Stripe account
+          {tr("payTitle")}
         </h3>
         <p
           style={{
             fontSize: "14px",
             color: "var(--text-secondary)",
             lineHeight: 1.5,
-            marginBottom: "20px",
+            margin: "0 0 12px",
           }}
         >
-          JChat uses Stripe Connect to handle payments securely.
-          You&apos;ll be redirected to Stripe to create or connect your account.
+          {tr("payBody")}
         </p>
-
-        {isConnected ? (
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "10px 20px",
-              borderRadius: "10px",
-              background: "rgba(29, 158, 117, 0.15)",
-              color: "var(--color-success)",
-              fontSize: "14px",
-              fontWeight: 600,
-            }}
-          >
-            <IconCheck size={16} />
-            Stripe Connected (stub)
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={handleConnect}
-            style={{
-              ...S.primaryBtn,
-              background: "#635BFF",
-            }}
-          >
-            <IconBrandStripe size={16} />
-            Connect Stripe
-          </button>
-        )}
+        <p
+          style={{
+            fontSize: "13px",
+            color: "var(--text-secondary)",
+            lineHeight: 1.5,
+            margin: 0,
+          }}
+        >
+          {tr("payNeeds")}
+        </p>
       </div>
 
       <div
@@ -972,23 +941,8 @@ function StepStripe({
           lineHeight: 1.6,
         }}
       >
-        <strong style={{ color: "var(--text-primary)" }}>Stripe Connect is optional.</strong>{" "}
-        You can skip this step and connect Stripe later from your dashboard. Without it,
-        in-app ordering and payments will be unavailable.
-        {/* TODO(Task 3.6): redirect to stripe-connect Edge Function, capture account_id */}
+        {tr("payNote")}
       </div>
-
-      {data.stripe_account_id && (
-        <p
-          style={{
-            fontSize: "11px",
-            color: "var(--text-tertiary)",
-            marginTop: "10px",
-          }}
-        >
-          Account: {data.stripe_account_id}
-        </p>
-      )}
     </div>
   );
 }
@@ -1003,10 +957,11 @@ function StepEventDates({
   onChange: (patch: Partial<WizardData>) => void;
   errors: Record<string, string>;
 }) {
+  const tr = useTranslations("businessRegister");
   return (
     <div>
       <div style={S.field()}>
-        <label style={S.label}>Event start *</label>
+        <label style={S.label}>{tr("eventStart")}</label>
         <input
           type="datetime-local"
           style={{ ...S.input, colorScheme: "dark", ...(errors.event_starts_at ? S.inputError : {}) }}
@@ -1020,7 +975,7 @@ function StepEventDates({
         )}
       </div>
       <div style={S.field()}>
-        <label style={S.label}>Event end *</label>
+        <label style={S.label}>{tr("eventEnd")}</label>
         <input
           type="datetime-local"
           style={{ ...S.input, colorScheme: "dark", ...(errors.event_ends_at ? S.inputError : {}) }}
@@ -1039,39 +994,42 @@ function StepEventDates({
 
 // ─── Validation ───────────────────────────────────────────────────────────────
 
+type Tr = (key: string) => string;
+
 function validateStep(
   key: StepKey,
   data: WizardData,
   isEventMode: boolean,
+  tr: Tr,
 ): Record<string, string> {
   const errors: Record<string, string> = {};
   if (key === "info") {
     if (!data.name.trim())
-      errors.name = isEventMode ? "Event name is required." : "Business name is required.";
-    if (!isEventMode && !data.category) errors.category = "Please select a category.";
+      errors.name = isEventMode ? tr("errNameEvent") : tr("errNameBusiness");
+    if (!isEventMode && !data.category) errors.category = tr("errCategory");
   }
   if (key === "dates") {
-    if (!data.event_starts_at) errors.event_starts_at = "Event start is required.";
-    if (!data.event_ends_at) errors.event_ends_at = "Event end is required.";
+    if (!data.event_starts_at) errors.event_starts_at = tr("errEventStart");
+    if (!data.event_ends_at) errors.event_ends_at = tr("errEventEnd");
     if (
       data.event_starts_at &&
       data.event_ends_at &&
       new Date(data.event_ends_at) <= new Date(data.event_starts_at)
     ) {
-      errors.event_ends_at = "End must be after start.";
+      errors.event_ends_at = tr("errEndAfterStart");
     }
   }
   if (key === "location") {
-    if (!data.address.trim()) errors.address = "Address is required.";
-    if (!data.phone.trim()) errors.phone = "Phone number is required.";
+    if (!data.address.trim()) errors.address = tr("errAddress");
+    if (!data.phone.trim()) errors.phone = tr("errPhone");
     if (data.lat !== "" && isNaN(parseFloat(data.lat)))
-      errors.lat = "Must be a valid number.";
+      errors.lat = tr("errNumber");
     if (data.lng !== "" && isNaN(parseFloat(data.lng)))
-      errors.lng = "Must be a valid number.";
+      errors.lng = tr("errNumber");
     if (data.radius_m !== "" && (isNaN(parseInt(data.radius_m)) || parseInt(data.radius_m) < 10))
-      errors.radius_m = "Radius must be at least 10 m.";
+      errors.radius_m = tr("errRadius");
   }
-  // "hours" and "stripe" have no hard required fields.
+  // "hours" and "payments" have no hard required fields.
   return errors;
 }
 
@@ -1081,23 +1039,25 @@ type StepKey = "info" | "dates" | "location" | "hours" | "stripe";
 
 interface StepDef {
   key: StepKey;
-  label: string;
+  /** Keys of the businessRegister messages. */
+  labelKey: string;
+  titleKey: string;
   icon: typeof IconBuilding;
-  title: string;
 }
 
 const STEP_DEFS: Record<StepKey, StepDef> = {
-  info:     { key: "info",     label: "Info",     icon: IconBuilding,      title: "Tell us about your business" },
-  dates:    { key: "dates",    label: "Dates",    icon: IconCalendarEvent, title: "When is your event?" },
-  location: { key: "location", label: "Location", icon: IconMapPin,        title: "Where are you located?" },
-  hours:    { key: "hours",    label: "Hours",    icon: IconClock,         title: "When are you open?" },
-  stripe:   { key: "stripe",   label: "Stripe",   icon: IconBrandStripe,   title: "Set up payments" },
+  info:     { key: "info",     labelKey: "stepInfo",     titleKey: "titleInfo",     icon: IconBuilding },
+  dates:    { key: "dates",    labelKey: "stepDates",    titleKey: "titleDates",    icon: IconCalendarEvent },
+  location: { key: "location", labelKey: "stepLocation", titleKey: "titleLocation", icon: IconMapPin },
+  hours:    { key: "hours",    labelKey: "stepHours",    titleKey: "titleHours",    icon: IconClock },
+  stripe:   { key: "stripe",   labelKey: "stepPayments", titleKey: "titlePayments", icon: IconBrandStripe },
 };
 
 const BUSINESS_STEPS: StepDef[] = [STEP_DEFS.info, STEP_DEFS.location, STEP_DEFS.hours, STEP_DEFS.stripe];
 const EVENT_STEPS: StepDef[] = [STEP_DEFS.info, STEP_DEFS.dates, STEP_DEFS.location, STEP_DEFS.hours, STEP_DEFS.stripe];
 
 function StepBar({ steps, current }: { steps: StepDef[]; current: number }) {
+  const tr = useTranslations("businessRegister");
   return (
     <div
       style={{
@@ -1161,7 +1121,7 @@ function StepBar({ steps, current }: { steps: StepDef[]; current: number }) {
                   whiteSpace: "nowrap",
                 }}
               >
-                {s.label}
+                {tr(s.labelKey)}
               </span>
             </div>
             {idx < steps.length - 1 && (
@@ -1186,15 +1146,6 @@ function StepBar({ steps, current }: { steps: StepDef[]; current: number }) {
 
 // ─── Main wizard ──────────────────────────────────────────────────────────────
 
-// Map raw Postgres trigger errors (plan-limit guards) to friendly copy.
-function friendlyError(msg: string): string {
-  if (msg.includes("PLAN_LIMIT_BUSINESSES"))
-    return "You've reached your plan's business limit. Please upgrade or contact support to add more.";
-  if (msg.includes("PLAN_LIMIT_EVENTS"))
-    return "You've reached your plan's event limit. Please upgrade or contact support to add more.";
-  return msg;
-}
-
 function BusinessRegisterWizard() {
   const tr = useTranslations("businessRegister");
   const router = useRouter();
@@ -1205,6 +1156,8 @@ function BusinessRegisterWizard() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // The database refused the insert because of the plan limit: the message ends with a link to the plans.
+  const [submitErrorKind, setSubmitErrorKind] = useState<RegisterErrorKind | null>(null);
   const [usage, setUsage] = useState<UsageAndLimits | null>(null);
   const [usageLoaded, setUsageLoaded] = useState(false);
   // Location: the coordinates come from the address (Google Maps Geocoder) unless the owner types them.
@@ -1287,7 +1240,7 @@ function BusinessRegisterWizard() {
   }
 
   async function handleNext() {
-    const errs = validateStep(currentStep.key, data, isEventMode);
+    const errs = validateStep(currentStep.key, data, isEventMode, tr);
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
       return;
@@ -1326,6 +1279,7 @@ function BusinessRegisterWizard() {
     setErrors({});
     setSubmitting(true);
     setSubmitError(null);
+    setSubmitErrorKind(null);
 
     try {
       if (!isSupabaseConfigured) {
@@ -1395,13 +1349,13 @@ function BusinessRegisterWizard() {
             isEventMode && data.event_ends_at
               ? new Date(data.event_ends_at).toISOString()
               : null,
-          stripe_account_id: data.stripe_account_id || null,
+          // stripe_account_id is NEVER written here: only the stripe-connect Edge Function sets it (dashboard → Payments).
         })
         .select("id")
         .single();
 
       if (bizError) throw new Error(bizError.message);
-      if (!inserted) throw new Error("Business insert returned no data.");
+      if (!inserted) throw new Error(tr("errInsertEmpty"));
 
       const businessId: string = inserted.id as string;
 
@@ -1422,8 +1376,13 @@ function BusinessRegisterWizard() {
       // 3) Redirect to verification with the real business UUID
       router.push(`/business/verify?id=${businessId}`);
     } catch (err) {
+      const message = err instanceof Error ? err.message : "";
+      const kind = registerErrorKind(message);
+      setSubmitErrorKind(kind);
       setSubmitError(
-        err instanceof Error ? friendlyError(err.message) : "An unexpected error occurred."
+        kind
+          ? tr(kind === "planLimit" ? "errPlanLimit" : kind === "planLimitEvents" ? "errPlanLimitEvents" : "errPlanLimitBusinesses")
+          : message || tr("errUnexpected")
       );
       setSubmitting(false);
     }
@@ -1478,7 +1437,7 @@ function BusinessRegisterWizard() {
                 margin: "0 0 8px",
               }}
             >
-              {isEventMode ? "Event limit reached" : "Business limit reached"}
+              {isEventMode ? tr("limitEventTitle") : tr("limitBusinessTitle")}
             </h1>
             <p
               style={{
@@ -1488,9 +1447,10 @@ function BusinessRegisterWizard() {
                 lineHeight: 1.5,
               }}
             >
-              Your current plan allows {limitInfo.limit}{" "}
-              {isEventMode ? "event(s)" : "business(es)"} and you already have{" "}
-              {limitInfo.used}. Upgrade or request a custom plan to add more.
+              {tr(isEventMode ? "limitBodyEvent" : "limitBodyBusiness", {
+                limit: limitInfo.limit,
+                used: limitInfo.used,
+              })}
             </p>
             <div
               style={{
@@ -1501,15 +1461,15 @@ function BusinessRegisterWizard() {
               }}
             >
               <a
-                href="mailto:soporte@jchat.cloud?subject=Custom plan request"
+                href={`mailto:soporte@jchat.cloud?subject=${encodeURIComponent(tr("limitMailSubject"))}`}
                 style={{ ...S.primaryBtn, textDecoration: "none" }}
               >
                 <IconMail size={18} />
-                Contact us
+                {tr("limitContact")}
               </a>
               <a href="/dashboard" style={{ ...S.ghostBtn, textDecoration: "none" }}>
                 <IconArrowLeft size={18} />
-                Back to dashboard
+                {tr("limitBack")}
               </a>
             </div>
           </div>
@@ -1559,12 +1519,10 @@ function BusinessRegisterWizard() {
               margin: "0 0 6px",
             }}
           >
-            {isEventMode ? "Create your event" : "Register your business"}
+            {isEventMode ? tr("pageTitleEvent") : tr("pageTitleBusiness")}
           </h1>
           <p style={{ fontSize: "14px", color: "var(--text-secondary)", margin: 0 }}>
-            {isEventMode
-              ? "Set up your temporary event — it works just like a business."
-              : "Complete all steps to get listed on JChat."}
+            {isEventMode ? tr("pageSubEvent") : tr("pageSubBusiness")}
           </p>
         </div>
 
@@ -1589,8 +1547,8 @@ function BusinessRegisterWizard() {
             }}
           >
             {isEventMode && currentStep.key === "info"
-              ? "Tell us about your event"
-              : currentStep.title}
+              ? tr("titleInfoEvent")
+              : tr(currentStep.titleKey)}
           </h2>
 
           {/* Step content (rendered by the current step's key, order-agnostic) */}
@@ -1617,12 +1575,7 @@ function BusinessRegisterWizard() {
           {currentStep.key === "hours" && (
             <StepHours data={data} onChange={patch} />
           )}
-          {currentStep.key === "stripe" && (
-            <StepStripe
-              data={data}
-              onConnected={(accountId) => patch({ stripe_account_id: accountId })}
-            />
-          )}
+          {currentStep.key === "stripe" && <StepPayments />}
 
           {/* Global submit error */}
           {submitError && (
@@ -1641,7 +1594,17 @@ function BusinessRegisterWizard() {
               }}
             >
               <IconAlertCircle size={14} />
-              {submitError}
+              <span>
+                {submitError}
+                {submitErrorKind && (
+                  <>
+                    {" "}
+                    <a href="/pricing" style={{ color: "var(--color-danger)", fontWeight: 600 }}>
+                      {tr("seePlans")}
+                    </a>
+                  </>
+                )}
+              </span>
             </div>
           )}
 
@@ -1659,7 +1622,7 @@ function BusinessRegisterWizard() {
             {/* Back / Cancel */}
             {step === 1 ? (
               <span style={{ fontSize: "13px", color: "var(--text-tertiary)" }}>
-                Step {step} of {steps.length}
+                {tr("stepOf", { step, total: steps.length })}
               </span>
             ) : (
               <button
@@ -1669,7 +1632,7 @@ function BusinessRegisterWizard() {
                 style={S.ghostBtn}
               >
                 <IconChevronLeft size={15} />
-                Back
+                {tr("back")}
               </button>
             )}
 
@@ -1681,7 +1644,7 @@ function BusinessRegisterWizard() {
                 disabled={geocoding}
                 style={{ ...S.primaryBtn, opacity: geocoding ? 0.6 : 1, cursor: geocoding ? "wait" : "pointer" }}
               >
-                Continue
+                {tr("continue")}
                 <IconChevronRight size={15} />
               </button>
             ) : (
@@ -1697,11 +1660,11 @@ function BusinessRegisterWizard() {
               >
                 {submitting
                   ? isEventMode
-                    ? "Creating…"
-                    : "Registering…"
+                    ? tr("creating")
+                    : tr("registering")
                   : isEventMode
-                    ? "Create event"
-                    : "Complete Registration"}
+                    ? tr("createEvent")
+                    : tr("completeRegistration")}
                 {!submitting && <IconCheck size={15} />}
               </button>
             )}
@@ -1717,8 +1680,8 @@ function BusinessRegisterWizard() {
             marginTop: "20px",
           }}
         >
-          Your listing will be reviewed before going live.{" "}
-          Questions? Contact{" "}
+          {tr("footerNote")}{" "}
+          {tr("footerQuestions")}{" "}
           <a
             href="mailto:soporte@jchat.cloud"
             style={{ color: "var(--color-brand)", textDecoration: "none" }}

@@ -8,7 +8,7 @@
  */
 
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { AppModal } from '../common/AppModal';
 import { useTranslation } from 'react-i18next';
 import { IconFaceId, IconFingerprint } from '@tabler/icons-react-native';
@@ -34,9 +34,9 @@ export default function BiometricEnrollSheet({
 
   const method =
     kind === 'face'
-      ? t('biometricEnroll.methodFace')
+      ? t(Platform.OS === 'android' ? 'biometricEnroll.methodFaceAndroid' : 'biometricEnroll.methodFace')
       : kind === 'fingerprint'
-        ? t('biometricEnroll.methodFingerprint')
+        ? t(Platform.OS === 'android' ? 'biometricEnroll.methodFingerprintAndroid' : 'biometricEnroll.methodFingerprint')
         : t('biometricEnroll.methodGeneric');
 
   const Icon = kind === 'fingerprint' ? IconFingerprint : IconFaceId;

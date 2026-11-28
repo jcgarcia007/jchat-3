@@ -68,6 +68,8 @@ export function ChatMoreSheet({
           <Row testID="venue-leave" icon={<IconDoorExit size={22} color={c.dangerText} />} label={t('venueSession.leave')} onPress={run(onLeaveVenue)} color={c.dangerText} border={c.borderSubtle} />
         ) : null}
 
+        <Text testID="more-retention-note" style={[styles.retentionNote, { color: c.textTertiary }]}>{t('moreSheet.retentionNote')}</Text>
+
         <Pressable onPress={onClose} accessibilityRole="button" style={styles.cancel}>
           <Text style={[styles.cancelLabel, { color: c.textSecondary }]}>{t('moreSheet.close')}</Text>
         </Pressable>
@@ -119,4 +121,5 @@ const styles = StyleSheet.create({
   rowLabel: { fontSize: 16, fontWeight: '600' },
   cancel: { minHeight: 52, alignItems: 'center', justifyContent: 'center' },
   cancelLabel: { fontSize: 15 },
+  retentionNote: { fontSize: 12, lineHeight: 17, textAlign: 'center', paddingHorizontal: 16, paddingTop: 10 },
 });

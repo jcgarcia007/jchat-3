@@ -108,7 +108,6 @@
     "reportA11y": "Reportar esta historia",
     "blockA11y": "Bloquear a esta persona",
     "blockTitle": "¿Bloquear a {{name}}?",
-    "blockMessage": "Dejarás de ver sus historias, publicaciones y mensajes, y no verá los tuyos.",
     "block": "Bloquear",
     "cancel": "Cancelar",
     "blockErrorTitle": "No se pudo bloquear",

@@ -212,7 +212,7 @@ export default function UserQuickCard({
   }, [onClose, onReport, targetUserId, targetName]);
 
   const handleBlock = useCallback(() => {
-    void confirm(t('quickCard.block'), t('quickCard.blockConfirm', { name: targetName }), { confirmText: t('quickCard.block'), cancelText: t('actions.cancel', { ns: 'common' }), destructive: true }).then((accepted) => {
+    void confirm(t('quickCard.block'), `${t('quickCard.blockConfirm', { name: targetName })} ${t('report.blockMessageRoom', { ns: 'common' })}`, { confirmText: t('quickCard.block'), cancelText: t('actions.cancel', { ns: 'common' }), destructive: true }).then((accepted) => {
       if (!accepted) return;
       void (async () => {
         try {

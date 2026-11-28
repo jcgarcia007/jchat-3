@@ -46,7 +46,7 @@ export function SafetyES() {
 
       <h2 style={H2}>Con qué rapidez respondemos</h2>
       <p style={P}>
-        Revisamos cada reporte en un máximo de <strong>24 horas</strong>; los de seguridad infantil se atienden primero. Si el contenido
+        Revisamos cada reporte en <strong>1–2 días hábiles</strong>; los de seguridad infantil se atienden primero. Si el contenido
         o la cuenta incumple las normas, lo retiramos y te informamos del resultado cuando es posible.
       </p>
 

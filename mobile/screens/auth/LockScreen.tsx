@@ -13,7 +13,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '../../components/common/Spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -59,7 +59,7 @@ export default function LockScreen() {
           <IconFingerprint size={56} color={c.brandText} strokeWidth={1.5} />
         </View>
         <Text style={[styles.title, { color: c.textPrimary }]}>{t('lock.title')}</Text>
-        <Text style={[styles.subtitle, { color: c.textSecondary }]}>{t('lock.subtitle')}</Text>
+        <Text style={[styles.subtitle, { color: c.textSecondary }]}>{t(Platform.OS === 'android' ? 'lock.subtitleAndroid' : 'lock.subtitle')}</Text>
       </View>
 
       <View style={styles.actions}>

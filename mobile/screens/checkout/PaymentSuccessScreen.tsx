@@ -16,9 +16,7 @@
  * - Animation: RN Animated scale+opacity spring on the checkmark circle.
  * - Save card: calls saveCard(user.id) via the SetupIntent Edge Function path.
  *   The server presents a Stripe PaymentSheet configured for card-only setup.
- * - Confirmation email: sent server-side by a Supabase Edge Function that
- *   listens for the payment_intent.succeeded webhook event.
- *   // TODO(server): confirmation email Edge Function
+ * - No confirmation email is promised (none is sent); the note points to My orders.
  *
  * Colors: useThemeColors() + palette — NO hardcoded hex.
  * Icons: @tabler/icons-react-native.
@@ -238,10 +236,9 @@ export default function PaymentSuccessScreen() {
           </View>
         </View>
 
-        {/* ── Confirmation email note ───────────────────────────────────── */}
+        {/* ── Where to follow the order ─────────────────────────────────── */}
         <Text style={[styles.emailNote, { color: c.textTertiary }]}>
-          {/* TODO(server): confirmation email Edge Function */}
-          {t('success.emailNote')}
+          {t('success.ordersNote')}
         </Text>
 
         {/* ── Save-card prompt ──────────────────────────────────────────── */}

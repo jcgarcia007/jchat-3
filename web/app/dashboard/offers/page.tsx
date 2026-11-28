@@ -9,15 +9,16 @@
  *  2. Scheduling: start_at + expires_at date/time pickers.
  *     If start_at is in the future → status='scheduled'.
  *     If start_at is now/past and active → status='active'.
- *  3. Targeting: all users in chat / verified users only / new users first visit.
+ *  3. (Targeting Todos/Verificados/Nuevos was removed from the UI: it was saved but nothing reads `offers.targeting`.)
  *  4. Active offers list: name, type, status badge, redemption count.
  *  5. Pause/resume toggle: active ↔ paused.
  *  6. Analytics per offer: views, taps on "Order now", conversions (redemption_count).
  *  7. Auto-publish to chat: when an offer is created as 'active', a message is
  *     inserted into `messages` (type='offer', is_system=false) so an OfferCard
  *     appears in the chat timeline.
- *     For scheduled offers: // TODO(cron): publish message at start_at via
- *     an Edge Function / pg_cron job (see supabase/functions/offers-scheduler/).
+ *     Scheduled offers are NOT posted to chat on their own (there is no scheduler). What happens at `start_at`: the app feed
+ *     (`megaphone_feed`) starts returning the offer (it filters `is_active`, `start_at <= now()` and `expires_at`, not `status`).
+ *     "Pause" only sets `status`: `is_active` is not an owner-updatable column, so a paused offer still shows in the feed.
  *
  * Design: var(--db-*) tokens only. No hardcoded hex.
  * Guard: isSupabaseConfigured before any live DB call; demo data otherwise.
@@ -46,7 +47,6 @@ import {
   IconShoppingCart,
   IconTag,
   IconTargetArrow,
-  IconUsers,
   IconX,
   IconBolt,
 } from "@tabler/icons-react";
@@ -139,12 +139,6 @@ const OFFER_TYPES: { value: OfferType; label: string; icon: React.ReactNode; hin
     icon: <IconHash size={18} />,
     hint: "Redeemable promo code with a custom code string",
   },
-];
-
-const TARGETING_OPTIONS: { value: OfferTargeting; label: string; description: string }[] = [
-  { value: "all", label: "All users in chat", description: "Everyone currently in the room" },
-  { value: "verified", label: "Verified users only", description: "Users who have completed verification" },
-  { value: "new", label: "New users — first visit", description: "First-time visitors to this venue" },
 ];
 
 const EMPTY_FORM: CreateOfferForm = {
@@ -260,10 +254,6 @@ function formatDateShort(iso: string, locale: string): string {
 function offerTypeLabel(type: string | null, labels: Record<OfferType, string>): string {
   const found = OFFER_TYPES.find((t) => t.value === type);
   return found ? labels[found.value] : (type ?? "—");
-}
-
-function targetingLabel(targeting: OfferTargeting, labels: Record<OfferTargeting, string>): string {
-  return labels[targeting] ?? targeting;
 }
 
 function computeStatus(startAt: string | null, currentStatus: OfferStatus): OfferStatus {
@@ -400,11 +390,6 @@ function OfferRow({
     bogo: t("offersTypeBogo"),
     discount_code: t("offersTypeDiscountCode"),
   };
-  const targetingLabels: Record<OfferTargeting, string> = {
-    all: t("offersTargetAll"),
-    verified: t("offersTargetVerified"),
-    new: t("offersTargetNew"),
-  };
   const statusLabels: Record<OfferStatus, string> = {
     active: t("offersStatusActive"),
     paused: t("offersStatusPaused"),
@@ -498,18 +483,6 @@ function OfferRow({
             }}
           >
             {offer.type && <span>{offerTypeLabel(offer.type, offerTypeLabels)}</span>}
-            {offer.targeting !== "all" && (
-              <span
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "3px",
-                }}
-              >
-                <IconTargetArrow size={11} />
-                {targetingLabel(offer.targeting, targetingLabels)}
-              </span>
-            )}
             {offer.expires_at && (
               <span
                 style={{
@@ -693,10 +666,6 @@ function OfferRow({
                 fontStyle: "italic",
               }}
             >
-              {/* TODO(cron): an Edge Function / pg_cron job publishes the offer
-                   message to chat at start_at. See supabase/functions/offers-scheduler/.
-                   Until that lands, the offer will appear in chat only when manually
-                   set active from this dashboard. */}
               {t("offersScheduledAutoPublishNote")}
             </p>
           )}
@@ -726,16 +695,6 @@ export default function OffersPage() {
     flash_sale: t("offersTypeHintFlashSale"),
     bogo: t("offersTypeHintBogo"),
     discount_code: t("offersTypeHintDiscountCode"),
-  };
-  const targetingLabels: Record<OfferTargeting, string> = {
-    all: t("offersTargetAll"),
-    verified: t("offersTargetVerified"),
-    new: t("offersTargetNew"),
-  };
-  const targetingDescriptions: Record<OfferTargeting, string> = {
-    all: t("offersTargetDescAll"),
-    verified: t("offersTargetDescVerified"),
-    new: t("offersTargetDescNew"),
   };
 
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -806,12 +765,8 @@ export default function OffersPage() {
   /**
    * Inserts an 'offer' message into the messages table so an OfferCard appears
    * in the chat timeline for the linked room.
-   * Called immediately when an offer becomes active (start_at is null or past).
-   *
-   * TODO(cron): For scheduled offers, this call should happen at start_at via
-   * an Edge Function triggered by pg_cron. See supabase/functions/offers-scheduler/
-   * (not yet implemented). Until that ships, scheduled offers need to be manually
-   * activated from this dashboard to push the message.
+   * Called when an offer is created already active (start_at is null or past), and when a paused offer is resumed.
+   * Scheduled offers are not posted to chat at start_at (no scheduler exists); they show in the app feed from start_at.
    */
   const publishOfferToChat = useCallback(
     async (
@@ -935,11 +890,6 @@ export default function OffersPage() {
           min_purchase_cents: minCents,
         });
       }
-
-      // For scheduled offers, the message will be published by a cron job at start_at.
-      // TODO(cron): trigger supabase/functions/offers-scheduler/ at start_at to call
-      // publishOfferToChat server-side. Until that lands, the owner must manually
-      // activate the scheduled offer from this dashboard to push the chat message.
 
       const titleTrimmed = form.title.trim();
       setSuccess(
@@ -1416,61 +1366,6 @@ export default function OffersPage() {
               />
             </div>
 
-            {/* Targeting */}
-            <div style={{ gridColumn: "1 / -1" }}>
-              <Label>
-                <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                  <IconTargetArrow size={12} />
-                  {t("offersTargetingFieldLabel")}
-                </span>
-              </Label>
-              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                {TARGETING_OPTIONS.map((opt) => {
-                  const sel = form.targeting === opt.value;
-                  return (
-                    <button
-                      key={opt.value}
-                      onClick={() => setField("targeting", opt.value)}
-                      title={targetingDescriptions[opt.value]}
-                      style={{
-                        padding: "7px 14px",
-                        borderRadius: "var(--db-radius)",
-                        border: sel
-                          ? "2px solid var(--db-accent)"
-                          : "1px solid var(--db-border)",
-                        background: sel
-                          ? "var(--db-accent-bg)"
-                          : "var(--db-bg-elevated)",
-                        color: sel
-                          ? "var(--db-accent)"
-                          : "var(--db-text-secondary)",
-                        fontSize: "13px",
-                        fontWeight: sel ? 600 : 400,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                      }}
-                    >
-                      {opt.value === "all" && <IconUsers size={13} />}
-                      {opt.value === "verified" && <IconCheck size={13} />}
-                      {opt.value === "new" && <IconBolt size={13} />}
-                      {targetingLabels[opt.value]}
-                    </button>
-                  );
-                })}
-              </div>
-              <p
-                style={{
-                  fontSize: "12px",
-                  color: "var(--db-text-tertiary)",
-                  marginTop: "6px",
-                }}
-              >
-                {targetingDescriptions[form.targeting]}
-              </p>
-            </div>
-
             {/* Room selector */}
             {rooms.length > 0 && (
               <div style={{ gridColumn: "1 / -1" }}>
@@ -1570,13 +1465,6 @@ export default function OffersPage() {
                       strong: (chunks) => <strong>{chunks}</strong>,
                       em: (chunks) => <em>{chunks}</em>,
                     })}
-                    <br />
-                    {/* TODO(cron): implement supabase/functions/offers-scheduler/ to call
-                         publishOfferToChat at start_at. Until then, the owner must manually
-                         resume the offer from this dashboard to trigger the chat message. */}
-                    <span style={{ color: "var(--db-text-tertiary)", fontSize: "11px" }}>
-                      {t("offersSchedulingTodoNote")}
-                    </span>
                   </>
                 ) : (
                   <>

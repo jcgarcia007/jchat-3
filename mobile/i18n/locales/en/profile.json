@@ -133,7 +133,6 @@
   },
   "block": {
     "title": "Block @{{username}}?",
-    "message": "They won't be able to see your profile or message you.",
     "confirm": "Block",
     "error": "This profile action couldn't be completed.",
     "unblockTitle": "Unblock @{{username}}?",

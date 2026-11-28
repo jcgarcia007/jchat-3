@@ -88,7 +88,7 @@ export function TermsES() {
       </p>
       <p style={P}>
         <strong>Reporta</strong> contenido o usuarios desde su perfil o el menú del mensaje; revisamos los
-        reportes y actuamos sobre los que incumplen estas normas, normalmente en 24 horas.{" "}
+        reportes y actuamos sobre los que incumplen estas normas, normalmente en 1–2 días hábiles.{" "}
         <strong>Bloquea</strong> a cualquiera para dejar de ver su contenido.
       </p>
 

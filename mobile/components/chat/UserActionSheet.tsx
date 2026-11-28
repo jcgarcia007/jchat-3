@@ -356,7 +356,7 @@ export function UserActionSheet({
 
   const handleBlock = useCallback(async () => {
     if (!user) return;
-    void confirm(t('userAction.blockTitle', { name: targetName }), t('userAction.blockMessage'), { confirmText: t('userAction.blockConfirm'), cancelText: t('actions.cancel', { ns: 'common' }), destructive: true }).then(async (accepted) => {
+    void confirm(t('userAction.blockTitle', { name: targetName }), t('report.blockMessageRoom', { ns: 'common' }), { confirmText: t('userAction.blockConfirm'), cancelText: t('actions.cancel', { ns: 'common' }), destructive: true }).then(async (accepted) => {
       if (!accepted) return;
       await run('block', async () => {
         await blockUser(targetUserId);
