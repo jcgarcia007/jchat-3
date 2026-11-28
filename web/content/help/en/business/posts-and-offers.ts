@@ -116,7 +116,7 @@ const chapter: HelpChapter = {
       blocks: [
         {
           type: 'p',
-          text: 'Each offer shows its status: **Active**, **Scheduled**, **Paused** or **Ended**. **Pause** only changes the offer\'s status in your dashboard: it does not remove it from the app or take its card out of the chat.',
+          text: 'Each offer shows its status: **Active**, **Scheduled**, **Paused** or **Ended**. **Pause** takes the offer out of the app\'s news and **Resume** shows it again (as long as its dates are still valid). If you had already posted its card in the chat, that card is not withdrawn: it is deleted with the rest of the messages after 24 hours.',
         },
         {
           type: 'steps',
